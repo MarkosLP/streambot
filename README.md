@@ -115,6 +115,12 @@ import { log } from './core/logger.js';   // el archivo real es logger.ts
 
 No es un error. En módulos ESM de Node, el import apunta al archivo **tal como existirá al ejecutarse**, y la extensión es obligatoria. TypeScript lo sabe y resuelve `logger.js` → `logger.ts`. Es la forma correcta y evita problemas más adelante.
 
+### Si cierras y reabres Streamer.bot
+
+No pasa nada: el sistema reintenta solo, de forma indefinida. Pero el intervalo entre reintentos **crece 1 segundo por intento hasta un tope de 30 segundos**, así que si reinicias Streamer.bot en mitad de un directo, el bot puede tardar **hasta medio minuto** en volver a engancharse.
+
+En la consola solo verás un aviso al perder la conexión y otro al recuperarla. El ruido de los reintentos está silenciado a propósito para que no tape los eventos del chat; si quieres verlo, arranca con `LOG_LEVEL=debug`.
+
 ### `logs/raw-events.log`
 
 Los eventos que todavía no sabemos normalizar (follows, subs, raids…) se guardan ahí en crudo. No es un log de errores: es **materia prima** para escribir sus normalizadores en la Fase 3 con datos reales en lugar de deducirlos de la documentación.
