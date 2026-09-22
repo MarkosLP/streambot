@@ -43,11 +43,28 @@ let client: StreamerbotClient | null = null;
 
 /** Estado de la conexión, solo para que los logs de reconexión sean legibles. */
 let connected = false;
+let everConnected = false;
 let failedAttempts = 0;
+let target = '';
+
+/**
+ * Si la PRIMERA conexión falla, casi siempre es una de estas tres cosas.
+ * Merece la pena explicarlo aquí: el error que da la librería
+ * ("Handshake timeout exceeded") no dice nada por sí solo.
+ */
+function explicarFalloInicial(): void {
+  log.warn(`No se pudo establecer la sesión con ${target}. Reintentando en segundo plano.`);
+  log.warn('Si arriba ves "Handshake timeout exceeded", hay algo escuchando en ese puerto,');
+  log.warn('pero no responde como el WebSocket Server de la API de Streamer.bot. Revisa:');
+  log.warn('  1. Servers/Clients -> "WebSocket Server" (NO "Custom WebSocket Servers":');
+  log.warn('     ese es otro servicio distinto y no habla el protocolo de la API).');
+  log.warn('  2. Que los dos no estén usando el mismo puerto.');
+  log.warn('  3. Que el puerto de tu .env coincida con el que muestra Streamer.bot.');
+}
 
 export async function connect(): Promise<void> {
   const { host, port, endpoint, password } = config.streamerbot;
-  const target = `ws://${host}:${port}${endpoint}`;
+  target = `ws://${host}:${port}${endpoint}`;
 
   log.info(`Conectando a Streamer.bot en ${target} ...`);
   if (!password) {
@@ -77,6 +94,7 @@ export async function connect(): Promise<void> {
 
     onConnect: (info) => {
       connected = true;
+      everConnected = true;
       if (failedAttempts > 0) {
         log.info(`Reconectado con Streamer.bot tras ${failedAttempts} intento(s).`);
       }
@@ -90,7 +108,10 @@ export async function connect(): Promise<void> {
       failedAttempts += 1;
 
       if (failedAttempts === 1) {
-        log.warn('Conexión con Streamer.bot perdida. Reintentando en segundo plano...');
+        // Nunca haber conectado y perder la conexión son problemas distintos,
+        // y el primero casi siempre es de configuración.
+        if (everConnected) log.warn('Conexión con Streamer.bot perdida. Reintentando en segundo plano...');
+        else explicarFalloInicial();
       } else if (failedAttempts % 20 === 0) {
         log.warn(
           `Streamer.bot sigue sin responder (${failedAttempts} intentos). ` +
