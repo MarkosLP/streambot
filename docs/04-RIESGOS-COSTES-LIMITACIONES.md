@@ -20,32 +20,49 @@ Este es el documento que conviene releer antes de cada fase.
 
 Si algún día el backend se fuera a la nube, súmale un VPS pequeño (~5 €/mes). No hace falta ahora.
 
-### 1.2 Cálculo del coste de una llamada a la IA
+### 1.2 Coste real de una llamada — MEDIDO (23 sep 2026)
 
-Llamada típica de `#5 Pregunta a Crid4m AI` con `claude-opus-5` y `effort: "low"`:
+> Los números de esta sección ya no son estimaciones. Salen de la primera llamada real de la Fase 4, registrada en la tabla `ai_usage`.
+
+Llamada real de `pregunta-ia` con `claude-opus-5` y `effort: "low"`, pregunta *"¿mando o teclado?"*, respuesta de 149 caracteres:
 
 | Parte | Tokens | Precio | Coste |
 |---|---:|---|---:|
-| Entrada: personalidad + reglas | ~800 | $5/M | $0.0040 |
-| Entrada: contexto + pregunta | ~400 | $5/M | $0.0020 |
-| Salida: razonamiento (effort low) | ~250 | $25/M | $0.0063 |
-| Salida: respuesta (≤500 caracteres) | ~150 | $25/M | $0.0037 |
-| **Total** | | | **~$0.016** |
+| Entrada (prompt de sistema, esquema y pregunta) | 1.273 | $5/M | $0.006365 |
+| Salida (razonamiento + respuesta) | 68 | $25/M | $0.001700 |
+| **Total** | **1.341** | | **$0.008065** |
 
-**El hallazgo importante: la salida cuesta el 62 % del total, aunque sea tres veces más corta que la entrada.** Esto determina qué optimizaciones sirven y cuáles no (sección 1.4).
+Latencia: **4.360 ms**.
+
+**Corrección importante respecto a la estimación de la Fase 0.** Habíamos calculado ~$0.016 por llamada con la salida dominando el coste (62 %). La realidad es la contraria:
+
+| | Estimado | Real | |
+|---|---:|---:|---|
+| Tokens de entrada | ~1.200 | 1.273 | acertado |
+| Tokens de salida | ~400 | **68** | 6× menos |
+| Coste por llamada | $0.016 | **$0.008** | la mitad |
+| **Peso de la entrada** | 38 % | **79 %** | **se invierte** |
+
+Dos causas: el razonamiento con `effort: "low"` gasta muchísimo menos de lo previsto, y la instrucción de brevedad de `crid4m.md` funciona. **El coste lo domina la entrada, no la salida**, y eso cambia qué optimizaciones sirven (§1.4.1).
+
+*Una sola muestra, y con una respuesta corta. Respuestas más largas subirán la salida, pero la entrada es casi fija, así que el reparto no debería moverse mucho.*
 
 ### 1.3 Escenarios
 
 Asumiendo 4 directos por semana de 4 horas (16 directos al mes):
 
+Recalculado con el coste medido de **$0.008065** por llamada:
+
 | Escenario | Llamadas/hora | Por directo | Al mes |
 |---|---:|---:|---:|
-| **Situación actual de Crid4m** (sin espectadores) | 0-2 | **~$0.10** | **~$1.60 (1,50 €)** |
-| Canal pequeño, cooldowns generosos | 20 | $1.28 | ~$20 (19 €) |
-| Canal creciendo | 40 | $2.56 | ~$41 (39 €) |
-| Canal activo, varias interacciones con IA | 60 | $3.84 | ~$61 (58 €) |
+| **Situación actual de Crid4m** (sin espectadores) | 0-2 | **~$0.016** | **~$0.26 (0,25 €)** |
+| Canal pequeño, cooldowns generosos | 20 | $0.65 | ~$10 (10 €) |
+| Canal creciendo | 40 | $1.29 | ~$21 (20 €) |
+| Canal activo, varias interacciones con IA | 60 | $1.94 | ~$31 (30 €) |
 
-**Con el canal como está hoy, el coste real es despreciable: menos de 2 € al mes**, casi todo de tus propias pruebas. La fila de "canal pequeño" es el objetivo, no el punto de partida. Esto quita presión a la decisión de modelo: no hay ningún motivo para bajar de Opus 5 mientras el gasto sea este.
+**Todas las cifras son la mitad de lo estimado en la Fase 0.** Con el canal como está hoy el gasto es de céntimos al mes, casi todo de tus propias pruebas.
+
+Esto cierra el debate del modelo: **no hay ningún motivo para bajar de Opus 5.** Incluso con el canal creciendo, hablamos de 20 € al mes.
 
 **Comparación de modelos** (misma llamada, mismos tokens):
 
@@ -61,32 +78,49 @@ Asumiendo 4 directos por semana de 4 horas (16 directos al mes):
 
 Ordenadas por efecto real en **este** caso de uso:
 
+Reordenadas con los datos reales de la Fase 4. **La entrada es el 79 % del coste**, así que las palancas que atacan la salida importan mucho menos de lo que pensábamos:
+
 | Palanca | Ahorro | Comentario |
 |---|---:|---|
-| **No llamar a la IA** | 100 % | Cooldowns, respuestas predefinidas, y la regla de tu punto 3. Es, con diferencia, la palanca más grande. |
-| **`effort: "low"`** | ~40 % | Ataca el razonamiento, que es la mitad cara. Ya está en el diseño. |
-| **`max_tokens` bajo (~300)** | ~15 % | El chat de Twitch solo admite 500 caracteres: pedir más tokens es pagar por texto que se va a truncar. |
-| Cambiar de modelo | 60-80 % | Efectiva, pero es la única que cuesta calidad. Decisión para la Fase 12, con datos. |
-| **Caché de prompt** | **~20 %** | Más modesto de lo que parece, porque solo afecta a la entrada, que es la mitad barata. |
+| **No llamar a la IA** | 100 % | Cooldowns, respuestas predefinidas, y la regla de tu punto 3. Sigue siendo la palanca más grande con diferencia. |
+| **Caché de prompt** | **30-40 %** | **Sube al segundo puesto.** El 75 % de la entrada es prefijo fijo. Bloqueada solo por el volumen de llamadas, no por el diseño (§1.4.1). |
+| **Acortar el prompt de sistema** | hasta ~30 % | Palanca nueva que no habíamos visto: 963 de los 1.273 tokens de entrada son la personalidad. Cada línea que sobre en `crid4m.md` se paga en **todas** las llamadas. |
+| `effort: "low"` | ya aplicado | Funciona mejor de lo previsto: 68 tokens de salida en vez de los ~400 estimados. Ya no queda margen aquí. |
+| `max_tokens` bajo | ~0 % | Irrelevante: solo es un tope, y la salida real (68 tokens) no se acerca. |
+| Cambiar de modelo | 60-80 % | La única que cuesta calidad. Con 10 €/mes en el peor caso, **no compensa ni planteárselo**. |
 
-### 1.4.1 Caché de prompt: medido en la Fase 4 → NO se implementa
+### 1.4.1 Caché de prompt: medido en la Fase 4 → NO se implementa (todavía)
 
-El prompt de sistema real (personalidad + reglas de la intención) mide **2.181 caracteres ≈ 545-606 tokens**. Supera el mínimo de 512 de Opus 5, así que *técnicamente* es cacheable. Pero al echar las cuentas no compensa:
+Medido con `npm run ai:test -- --tokens`, no estimado:
 
-| Concepto | Sin caché | Con caché |
+- **Prompt de sistema: 963 tokens** (2.181 caracteres). El mínimo de Opus 5 son 512, así que hay **casi el doble de margen**. Es cacheable de sobra.
+- Entrada total por llamada: **1.273 tokens**. Es decir, **el 75 % de la entrada es prefijo fijo y cacheable**.
+
+> Nota sobre una estimación fallida: en la Fase 0 calculé ~570 tokens usando 3,6 caracteres por token. En español con acentos y markdown la densidad real es de **2,26 caracteres por token**. Conviene medir, no estimar.
+
+Cuentas con los precios reales:
+
+| | Sin caché | Con caché (lectura) |
 |---|---:|---:|
-| Entrada del sistema (~600 tok) | $0.0030 | $0.0003 (lectura) |
-| Entrada variable (~60 tok) | $0.0003 | $0.0003 |
-| Salida (~400 tok) | $0.0100 | $0.0100 |
-| **Total por llamada** | **$0.0133** | **$0.0106** |
+| Entrada cacheable (963 tok) | $0.004815 | $0.000482 |
+| Entrada variable (310 tok) | $0.001550 | $0.001550 |
+| Salida (68 tok) | $0.001700 | $0.001700 |
+| **Total** | **$0.008065** | **$0.003732** |
 
-Ahorro: ~20 %. Pero **escribir la caché cuesta 1,25×** (~$0.0038) y el TTL por defecto son **5 minutos**. El punto de equilibrio está en **2 llamadas dentro de la misma ventana de 5 minutos**.
+El ahorro sería del **53 %**, no del 20 % que había calculado antes. Pero eso solo aplica a las **lecturas**: escribir la caché cuesta 1,25×, y el TTL son **5 minutos**.
 
-**Con el canal como está —sin espectadores y con un cooldown de 5 minutos en `Pregunta a Crid4m AI`— habrá menos de una llamada cada 5 minutos.** La caché se escribiría, caducaría sin usarse, y saldría **más caro**, no más barato.
+| Llamadas en una ventana de 5 min | Sin caché | Con caché | |
+|---:|---:|---:|---|
+| 1 | $0.0081 | $0.0093 | ❌ **más caro** |
+| 2 | $0.0161 | $0.0130 | ✅ −19 % |
+| 3 | $0.0242 | $0.0168 | ✅ −30 % |
+| 5 | $0.0403 | $0.0244 | ✅ −39 % |
 
-Hay además un riesgo silencioso: el margen sobre los 512 tokens es de apenas 30-90 tokens. Si algún día recortas `src/personality/crid4m.md`, el prefijo caería por debajo del mínimo y **la caché dejaría de funcionar sin dar ningún error**.
+**El punto de equilibrio está en 2 llamadas cada 5 minutos.** Con el canal sin espectadores y un cooldown de 5 minutos en `Pregunta a Crid4m AI`, no se llega ni de lejos: la caché se escribiría, caducaría sin usarse y saldría **más cara**.
 
-**Decisión: documentado y no implementado.** Revisar cuando se den las dos condiciones a la vez: varias interacciones con IA activas **y** suficiente chat para superar 2 llamadas cada 5 minutos. Para medir el prompt exacto en cualquier momento: `npm run ai:test -- --tokens`.
+**Decisión: documentado y no implementado.** Pero el incentivo futuro es mucho mayor de lo que creíamos: cuando haya chat, esto vale un 30-40 % de la factura de IA.
+
+**Condición para revisarlo:** que la tabla `ai_usage` muestre 2 o más llamadas dentro de cualquier ventana de 5 minutos. Se puede comprobar con una consulta sobre esa tabla; no hace falta adivinarlo.
 
 **Sobre el caché, dos avisos concretos:**
 
@@ -181,8 +215,11 @@ Llegan 200 personas; el sistema detecta 200 primeros mensajes y dispara 200 bien
 
 Un espectador redime puntos y espera. Si tarda más de 5 segundos, el momento ya pasó.
 
-**Mitigación:** `effort: "low"`, `max_tokens` bajo, timeout duro de 8 s con respuesta de reserva. Sin streaming, porque no se puede publicar una respuesta a medias en el chat.
-**Objetivo:** percentil 95 por debajo de 4 s, medido en la Fase 12.
+**Mitigación:** `effort: "low"`, timeout duro de 8 s con respuesta de reserva. Sin streaming, porque no se puede publicar una respuesta a medias en el chat.
+
+**Primera medición real (Fase 4): 4.360 ms.** Ya por encima del objetivo de 4 s, con una sola muestra y una respuesta corta. Hay margen hasta el timeout de 8 s, pero el objetivo está justo.
+
+**Revisar en la Fase 5, con varias muestras.** La tabla `ai_usage` guarda `latency_ms` en cada llamada, así que el percentil se puede calcular en lugar de estimarlo. Si se confirma por encima de 4 s, la palanca no es el modelo: es acortar el prompt de sistema (963 tokens tardan en procesarse) o dar un acuse de recibo en el chat mientras se piensa.
 
 ### 🟡 R7 — Rate limit del chat de Twitch
 
