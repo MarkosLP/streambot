@@ -1,10 +1,17 @@
 import { config } from '../config.js';
 import { log, captureRaw } from './logger.js';
-import { describe, type DomainEvent, type Viewer, type ViewerMessageEvent } from './events.js';
+import {
+  describe,
+  type DomainEvent,
+  type Viewer,
+  type ViewerMessageEvent,
+  type ViewerRedeemEvent,
+} from './events.js';
 import * as killswitch from './killswitch.js';
 import { send } from './output.js';
 import * as users from '../data/users.js';
 import * as primerMensaje from '../interactions/primer-mensaje.js';
+import * as preguntaIa from '../interactions/pregunta-ia.js';
 
 /**
  * Punto único por el que pasan TODOS los eventos, vengan de Streamer.bot
@@ -39,7 +46,34 @@ export async function handleEvent(event: DomainEvent): Promise<void> {
 
   if (event.type === 'viewer.message') {
     await handleMessage(event);
+    return;
   }
+
+  if (event.type === 'viewer.redeem') {
+    await handleRedeem(event);
+  }
+}
+
+/** ¿Es esta la recompensa de "Pregunta a Crid4m AI"? */
+function esRecompensaPreguntaIa(event: ViewerRedeemEvent): boolean {
+  const { rewardId, rewardTitle } = config.preguntaIa;
+  // El ID es lo fiable: no cambia aunque renombres la recompensa.
+  if (rewardId) return event.rewardId === rewardId;
+  return event.rewardTitle.trim().toLowerCase() === rewardTitle.trim().toLowerCase();
+}
+
+async function handleRedeem(event: ViewerRedeemEvent): Promise<void> {
+  // El ID en los logs para que puedas copiarlo al .env sin buscarlo.
+  log.debug(`Recompensa "${event.rewardTitle}" con id ${event.rewardId}`);
+
+  if (!esRecompensaPreguntaIa(event)) return;
+
+  users.touch(event.viewer);
+  await preguntaIa.handle({
+    viewer: event.viewer,
+    question: event.userInput,
+    trigger: 'channel-point',
+  });
 }
 
 /**
@@ -63,6 +97,22 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
     if (control === 'ping') {
       await send({ text: `pong, ${viewer.displayName}`, reason: 'sonda-verificacion' });
     }
+    return;
+  }
+
+  // !pregunta entra por el MISMO camino que el Channel Point: una sola
+  // implementación, dos disparadores.
+  //
+  // Se comprueba contra la lista de bots, no contra isIgnored(): al dueño del
+  // canal SÍ le dejamos usarlo, porque si no no podrías probarlo tú.
+  if (/^!pregunta\b/i.test(text)) {
+    if (config.ignoredLogins.includes(viewer.login)) return;
+    if (!isIgnored(viewer)) users.touch(viewer);
+    await preguntaIa.handle({
+      viewer,
+      question: text.slice('!pregunta'.length),
+      trigger: 'command',
+    });
     return;
   }
 

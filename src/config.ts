@@ -89,6 +89,29 @@ export const config = {
   /** true = no envía nada a Twitch, solo registra. Útil para probar en directo sin riesgo. */
   dryRun: bool('DRY_RUN', false),
 
+  /**
+   * Modo revisión: lo que genere la IA espera tu aprobación por consola antes
+   * de publicarse. Se aplica SOLO a texto generado por Claude; los mensajes
+   * deterministas (saludos, textos de reserva) salen directos.
+   *
+   * Por defecto activado: es la mitigación del riesgo R2 de docs/04, y ante
+   * Twitch respondes tú de lo que diga el bot. Se desactiva tras los dos
+   * directos de validación.
+   */
+  reviewMode: bool('REVIEW_MODE', true),
+
+  preguntaIa: {
+    /** ID de la recompensa. Es lo más fiable: no cambia aunque la renombres. */
+    rewardId: str('PREGUNTA_IA_REWARD_ID', ''),
+    /** Alternativa por nombre, si no has puesto el ID. */
+    rewardTitle: str('PREGUNTA_IA_REWARD_TITLE', 'Pregunta a Crid4m AI'),
+    /** Cooldowns del comando gratuito. Vienen de docs/02 § 3, interacción #5. */
+    commandGlobalCooldownMs: int('PREGUNTA_IA_COOLDOWN_GLOBAL_MS', 5 * 60_000),
+    commandUserCooldownMs: int('PREGUNTA_IA_COOLDOWN_USER_MS', 15 * 60_000),
+    /** Preguntas más largas se rechazan ANTES de gastar dinero en la IA. */
+    maxQuestionLength: int('PREGUNTA_IA_MAX_INPUT', 300),
+  },
+
   ai: {
     /**
      * Modelo por defecto, decidido en docs/01 § 4.3. Configurable: el código

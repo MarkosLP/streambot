@@ -2,7 +2,7 @@
 
 Sistema de interacciones para el canal de Twitch **Crid4m**.
 
-**Estado: FASE 3 — primer ciclo completo.** Recibe eventos de Twitch, consulta SQLite, decide y **responde en el chat**. Sin IA todavía.
+**Estado: FASE 5 — primera interacción con IA.** Recibe eventos de Twitch, consulta SQLite, llama a Claude cuando toca y **responde en el chat**.
 
 La propuesta completa está en [docs/](docs/): arquitectura, catálogo de interacciones, roadmap y riesgos.
 
@@ -63,6 +63,7 @@ npm start
 | `npm run check` | Tipos + tests. **Úsalo antes de cada directo.** |
 | `npm run simulate -- flujo` | Usuario nuevo saluda, el mismo usuario ya no |
 | `npm run simulate -- demo` | Interruptor de emergencia y policy |
+| `npm run simulate -- pregunta` | Pregunta a Crid4m AI por sus dos disparadores |
 | `npm run simulate -- estado` | Contenido de la base de datos de simulación |
 | `npm run simulate -- <comando>` | Dispara un evento concreto |
 | `npm run ai:test "pregunta"` | Prueba la IA aislada. **No toca Twitch** |
@@ -92,7 +93,8 @@ El simulador no construye eventos a mano: fabrica un payload con la forma de Str
 | `!apagar` | tú y los moderadores | **Interruptor de emergencia.** Bloquea al instante cualquier salida |
 | `!encender` | tú y los moderadores | Reactiva el sistema |
 | `!estado` | cualquiera | Muestra el estado en la consola |
-| `!ping` | cualquiera | Sonda de prueba de la Fase 2. Se elimina en la Fase 3 |
+| `!ping` | cualquiera | Sonda de verificación del camino de envío |
+| `!pregunta <texto>` | cualquiera | Pregunta a Crid4m AI. Gratis, con cooldown de 5 min global y 15 min por persona |
 
 ---
 
@@ -109,13 +111,22 @@ src/
     killswitch.ts          interruptor de emergencia
     cooldowns.ts           ventanas de tiempo por interacción y por usuario
     policy.ts              qué puede salir al chat y qué no
+    review.ts              aprobación manual de lo que genera la IA
+    console-approver.ts    la parte de la revisión que habla con la terminal
     output.ts              única salida del sistema
   data/
     db.ts                  SQLite: conexión y esquema
     users.ts               quién ha escrito y cuándo
     interactions.ts        qué hizo el sistema y cómo acabó
   interactions/
-    primer-mensaje.ts      #1 del catálogo
+    primer-mensaje.ts      #1 del catálogo, sin IA
+    pregunta-ia.ts         #5 del catálogo, con IA
+  services/ai/
+    index.ts               ask(intent, context) — el resto no conoce Anthropic
+    claude.ts              único archivo que importa el SDK
+    budget.ts              presupuesto y contabilidad
+  personality/
+    crid4m.md              personalidad, editable sin tocar código
   transport/
     streamerbot.ts         único archivo que sabe que Streamer.bot existe
   cli/
@@ -126,7 +137,8 @@ Tres reglas sostienen el diseño:
 
 1. **Si cambiamos de motor, solo se tocan `transport/` y `events.ts`.** Nada más ve un payload de Streamer.bot en crudo.
 2. **Nada sale al chat sin pasar por `policy`.** No porque haya que acordarse de llamarla, sino porque `output.send()` es el único camino y la llama siempre.
-3. **`output.ts` no importa el transporte: se lo inyectan.** Eso rompe el ciclo de dependencias y permite que tests y simulador recorran el mismo código con un emisor falso.
+3. **`output.ts` no importa el transporte: se lo inyectan.** Eso rompe el ciclo de dependencias y permite que tests y simulador recorran el mismo código con un emisor falso. Lo mismo vale para el aprobador y para la llamada a Claude.
+4. **Claude propone contenido; Node decide qué hacer con él.** La IA nunca ejecuta una acción.
 
 ### Recorrido de un mensaje
 
@@ -137,13 +149,17 @@ Twitch → Streamer.bot → transport → normalize() → handler
                                                      │
                                           users.touch()  ← SQLite
                                                      │
-                                          primer-mensaje
+                                      primer-mensaje / pregunta-ia
                                                      │
-                                          ¿ya saludado? ¿cooldown?
+                                          guardas: ¿cooldown? ¿entrada válida?
+                                                     │
+                                          services/ai → Claude  (si toca)
                                                      │
                                           output.send()
                                                      │
                                           policy.evaluate()
+                                                     │
+                                          review  ← aprobación manual
                                                      │
                                           transport.sendChat() → Twitch
                                                      │
@@ -194,9 +210,37 @@ No hay prisa, pero hazlo antes de que el proyecto crezca: cuanto más tarde, má
 
 Sirve para hacer un directo completo comprobando qué habría dicho el bot, antes de soltarlo de verdad.
 
+## Pregunta a Crid4m AI
+
+La interacción tiene **dos disparadores y una sola implementación** ([pregunta-ia.ts](src/interactions/pregunta-ia.ts)):
+
+- **Channel Point** — crea en Twitch una recompensa con **"Requerir que el espectador introduzca texto"** activado. Llámala `Pregunta a Crid4m AI` o pon su ID en `PREGUNTA_IA_REWARD_ID`.
+- **`!pregunta <texto>`** — gratis, con cooldown de 5 min global y 15 min por persona.
+
+Los cooldowns **solo se aplican al comando**. Una redención de Channel Points nunca se bloquea por ellos: quien paga puntos tiene que recibir respuesta. Su limitador es el coste, que configuras en Twitch donde corresponde.
+
+### Modo revisión
+
+Con `REVIEW_MODE=true` (por defecto), **nada de lo que escriba Claude sale al chat sin tu visto bueno**:
+
+```
+┌─ REVISIÓN ──────────────────────────────────────────────────
+│ Interacción: pregunta-ia
+│
+│   @pepe Mando para plataformas, teclado para shooters.
+│
+└─ ¿Se publica en Twitch?  s = sí · n = no  (90s)
+```
+
+Escribes `s` o `n`. Si no contestas en 90 segundos, se descarta — un directo no puede quedarse colgado esperándote.
+
+Solo pasa por aquí el texto **generado por Claude**. Los saludos y los textos de reserva son deterministas: ya sabes qué dicen, revisarlos sería un incordio sin ganancia.
+
+Es la mitigación del riesgo R2 de [docs/04](docs/04-RIESGOS-COSTES-LIMITACIONES.md): ante Twitch, de lo que diga tu bot respondes tú. Se desactiva tras los dos directos de validación.
+
 ## La capa de IA
 
-Vive en [src/services/ai/](src/services/ai/) y **todavía no está conectada al chat**. Genera contenido validado y lo devuelve; quien decide qué hacer con él es el backend. Esa conexión es la Fase 5.
+Vive en [src/services/ai/](src/services/ai/). Genera contenido validado y lo devuelve; quien decide qué hacer con él es el backend.
 
 - La personalidad está en [src/personality/crid4m.md](src/personality/crid4m.md). **Es un archivo de texto: cámbialo sin tocar código.**
 - El texto del espectador viaja siempre dentro de `<mensaje_espectador>` en el turno de usuario, **nunca** interpolado en el prompt de sistema. Esa separación es la defensa contra la inyección de prompt, y no es un filtro de palabras que se pueda esquivar reformulando.
@@ -208,7 +252,6 @@ Cada llamada queda registrada en la tabla `ai_usage` con tokens, coste y latenci
 
 ## Qué NO hace todavía
 
-- **La IA no está conectada al chat.** Fase 5.
-- **Solo hay una interacción** (`primer-mensaje`). El motor que permita añadirlas sin tocar el resto llega en la Fase 7, cuando haya tres casos reales de los que extraer el patrón.
+- **Solo hay dos interacciones** (`primer-mensaje` y `pregunta-ia`). El motor que permita añadirlas sin tocar el resto llega en la Fase 7, cuando haya tres casos reales de los que extraer el patrón.
 - El interruptor de emergencia vive en memoria: **reiniciar el proceso lo reactiva.** Deliberado.
 - Los cooldowns también viven en memoria. El "una sola vez en la vida" de `primer-mensaje` **no** depende de ellos: lo garantiza SQLite, que sí sobrevive a los reinicios.

@@ -1,6 +1,7 @@
 import { config } from '../config.js';
 import { log } from './logger.js';
 import * as policy from './policy.js';
+import * as review from './review.js';
 import type { OutboundMessage, PolicyRejection } from './policy.js';
 
 /**
@@ -27,7 +28,11 @@ export function setSender(fn: Sender | null): void {
 
 export type SendOutcome =
   | { sent: true; dryRun: boolean }
-  | { sent: false; rejection: PolicyRejection | 'no-sender' | 'transport-error'; detail: string };
+  | {
+      sent: false;
+      rejection: PolicyRejection | 'no-sender' | 'transport-error' | 'not-approved';
+      detail: string;
+    };
 
 export async function send(message: OutboundMessage): Promise<SendOutcome> {
   const verdict = policy.evaluate(message);
@@ -36,6 +41,14 @@ export async function send(message: OutboundMessage): Promise<SendOutcome> {
     log.warn(`SALIDA BLOQUEADA (${verdict.rejection}) en "${message.reason}": ${verdict.detail}`);
     log.debug(`Texto rechazado: ${message.text}`);
     return { sent: false, rejection: verdict.rejection, detail: verdict.detail };
+  }
+
+  // Modo revisión: DESPUÉS de policy y ANTES de publicar. Ese orden importa:
+  // lo que ya ha rechazado la política no merece ni que lo mires.
+  const approval = await review.review(verdict.text, message.reason, message.aiGenerated === true);
+  if (!approval.approved) {
+    log.warn(`SALIDA NO APROBADA en "${message.reason}": ${approval.reason}`);
+    return { sent: false, rejection: 'not-approved', detail: approval.reason };
   }
 
   if (config.dryRun) {

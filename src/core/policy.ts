@@ -23,6 +23,11 @@ export interface OutboundMessage {
    * a terceros a una interacción en la que no han entrado.
    */
   allowedMentions?: string[];
+  /**
+   * true si el texto lo escribió Claude. Decide si pasa por el modo revisión:
+   * lo determinista ya sabemos qué dice, lo generado no.
+   */
+  aiGenerated?: boolean;
 }
 
 export type PolicyRejection =
