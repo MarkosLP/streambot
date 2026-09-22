@@ -1,0 +1,25 @@
+{
+  "name": "crid4m-interaction-system",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Sistema de interacciones para el canal de Twitch Crid4m. Fase 2: esqueleto.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "simulate": "tsx src/cli/simulate.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@streamerbot/client": "^1.12.0",
+    "dotenv": "^17.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

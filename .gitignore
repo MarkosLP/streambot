@@ -1,0 +1,24 @@
+# Secretos — NUNCA deben entrar en git
+.env
+.env.local
+.env.*.local
+
+# Dependencias
+node_modules/
+
+# Datos locales (la base de datos llega en la Fase 3)
+data/
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs y payloads capturados
+logs/
+*.log
+
+# Sistema operativo / editor
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
