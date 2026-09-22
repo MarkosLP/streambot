@@ -28,6 +28,13 @@ function bool(name: string, fallback: boolean): boolean {
   return ['1', 'true', 'si', 'sí', 'yes'].includes(raw.toLowerCase());
 }
 
+function list(name: string, fallback: string): string[] {
+  return str(name, fallback)
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const levelRaw = str('LOG_LEVEL', 'info').toLowerCase();
@@ -41,10 +48,40 @@ export const config = {
     host: str('STREAMERBOT_HOST', '127.0.0.1'),
     port: int('STREAMERBOT_PORT', 8080),
     endpoint: str('STREAMERBOT_ENDPOINT', '/'),
-    /** Cadena vacía = autenticación desactivada en Streamer.bot. */
+    /** Cadena vacía = autenticación desactivada. SendMessage la EXIGE. */
     password: str('STREAMERBOT_PASSWORD', ''),
+    /** false = escribir desde la cuenta del canal; true = desde la cuenta de bot. */
+    useBotAccount: bool('STREAMERBOT_USE_BOT_ACCOUNT', false),
   },
+
   logLevel: levelRaw as LogLevel,
   captureRawEvents: bool('CAPTURE_RAW_EVENTS', true),
   broadcasterLogin: str('BROADCASTER_LOGIN', 'crid4m').toLowerCase(),
+
+  /** Archivo SQLite. El simulador y los tests usan otro distinto. */
+  dbPath: str('DB_PATH', 'data/crid4m.sqlite'),
+
+  /**
+   * Cuentas que el sistema ignora por completo: otros bots y el propio canal.
+   * Sin esto, lo primero que haría el bot es dar la bienvenida a StreamElements.
+   */
+  ignoredLogins: list(
+    'IGNORED_LOGINS',
+    'streamelements,streamlabs,nightbot,moobot,fossabot,sery_bot,wizebot',
+  ),
+
+  /**
+   * Techo de mensajes del bot por hora. Viene de docs/04 § R4: el riesgo
+   * número uno del producto es que el bot se perciba como spam.
+   */
+  messagesPerHour: int('BOT_MESSAGES_PER_HOUR', 12),
+
+  /** true = no envía nada a Twitch, solo registra. Útil para probar en directo sin riesgo. */
+  dryRun: bool('DRY_RUN', false),
 } as const;
+
+/**
+ * Límite duro de Twitch: 500 caracteres por mensaje.
+ * Dejamos margen. No es configurable a propósito.
+ */
+export const MAX_MESSAGE_LENGTH = 480;

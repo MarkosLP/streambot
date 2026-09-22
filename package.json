@@ -8,10 +8,12 @@
     "node": ">=22"
   },
   "scripts": {
-    "start": "tsx src/index.ts",
-    "dev": "tsx watch src/index.ts",
-    "simulate": "tsx src/cli/simulate.ts",
-    "typecheck": "tsc --noEmit"
+    "start": "tsx --disable-warning=ExperimentalWarning src/index.ts",
+    "dev": "tsx watch --disable-warning=ExperimentalWarning src/index.ts",
+    "simulate": "tsx --disable-warning=ExperimentalWarning src/cli/simulate.ts",
+    "test": "tsx --disable-warning=ExperimentalWarning --test src/**/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test"
   },
   "dependencies": {
     "@streamerbot/client": "^1.12.0",

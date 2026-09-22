@@ -68,10 +68,10 @@ export async function connect(): Promise<void> {
 
   log.info(`Conectando a Streamer.bot en ${target} ...`);
   if (!password) {
-    log.warn(
-      'STREAMERBOT_PASSWORD está vacío. Funciona, pero conviene activar la ' +
-        'autenticación en Streamer.bot (Servers/Clients -> WebSocket Server).',
-    );
+    // Esto ya no es una recomendación: SendMessage exige autenticación.
+    log.warn('STREAMERBOT_PASSWORD está vacío y la petición SendMessage EXIGE autenticación.');
+    log.warn('Sin contraseña, el sistema recibirá eventos pero no podrá escribir en el chat.');
+    log.warn('Actívala en Streamer.bot (Servers/Clients -> WebSocket Server) y cópiala al .env.');
   }
 
   client = new StreamerbotClient({
@@ -140,15 +140,39 @@ export async function connect(): Promise<void> {
   for (const [source, types] of Object.entries(SUBSCRIPTIONS)) {
     for (const type of types as string[]) {
       const eventName = `${source}.${type}`;
-      client.on(eventName as any, (payload: any) => {
+      client.on(eventName as any, async (payload: any) => {
         try {
-          handleEvent(normalize(eventName, payload?.data, 'streamerbot'));
+          await handleEvent(normalize(eventName, payload?.data, 'streamerbot'));
         } catch (err) {
           // Un evento malformado nunca debe tumbar el proceso en mitad de un directo.
           log.error(`Fallo procesando ${eventName}: ${String(err)}`);
         }
       });
     }
+  }
+}
+
+/**
+ * Publica un mensaje en el chat de Twitch a través de Streamer.bot.
+ *
+ * Se inyecta en `output.setSender()` desde index.ts; nadie lo llama
+ * directamente. Lanza excepción si falla, y `output.send()` la recoge:
+ * un fallo de envío no debe tumbar el proceso en mitad de un directo.
+ */
+export async function sendChat(text: string): Promise<void> {
+  if (!client) throw new Error('no hay conexión con Streamer.bot');
+
+  const response = await client.sendMessage('twitch', text, {
+    bot: config.streamerbot.useBotAccount,
+  });
+
+  if (response?.status !== 'ok') {
+    const detail = (response as any)?.error ?? JSON.stringify(response);
+    // El fallo más probable aquí es que falte la contraseña del WebSocket.
+    throw new Error(
+      `Streamer.bot rechazó SendMessage: ${detail}. ` +
+        '¿Está STREAMERBOT_PASSWORD puesta y la autenticación activada?',
+    );
   }
 }
 

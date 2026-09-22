@@ -6,11 +6,14 @@
 # Dependencias
 node_modules/
 
-# Datos locales (la base de datos llega en la Fase 3)
+# Datos locales: la base de datos del canal no se comparte
 data/
 *.sqlite
 *.sqlite3
 *.db
+# Archivos auxiliares del modo WAL de SQLite
+*.sqlite-wal
+*.sqlite-shm
 
 # Logs y payloads capturados
 logs/

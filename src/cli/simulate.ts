@@ -2,18 +2,30 @@ import { log } from '../core/logger.js';
 import { normalize } from '../core/events.js';
 import { handleEvent } from '../core/handler.js';
 import * as killswitch from '../core/killswitch.js';
+import * as cooldowns from '../core/cooldowns.js';
+import * as policy from '../core/policy.js';
+import { setSender } from '../core/output.js';
+import { configureDatabase, truncateAll, getDb } from '../data/db.js';
+import * as users from '../data/users.js';
+import * as interactionLog from '../data/interactions.js';
 
 /**
  * Consola de simulación.
  *
- * Permite disparar eventos sin estar en directo y sin Streamer.bot abierto.
- * Sin esto, cada prueba del proyecto costaría un directo entero.
+ * Dispara eventos sin estar en directo y sin Streamer.bot abierto.
  *
- * Detalle importante: el simulador NO construye eventos de dominio a mano.
- * Construye un payload con la forma de Streamer.bot y lo pasa por el MISMO
- * normalize() que usa el transporte real. Por eso lo que ves aquí es
- * exactamente lo que verás en directo: no hay dos caminos que puedan divergir.
+ * Dos detalles que hacen que esto valga para algo:
+ *
+ *  1. NO construye eventos de dominio a mano. Fabrica un payload con la forma
+ *     de Streamer.bot y lo pasa por el MISMO normalize() y el MISMO
+ *     handleEvent() que el camino real. Recorre policy, cooldowns, SQLite y
+ *     la interacción de verdad; lo único falso es el último centímetro.
+ *
+ *  2. Usa una base de datos aparte (data/crid4m.sim.sqlite) para que trastear
+ *     no ensucie los usuarios reales del canal.
  */
+
+const SIM_DB = 'data/crid4m.sim.sqlite';
 
 interface Args {
   command: string;
@@ -51,7 +63,10 @@ function flagNum(flags: Args['flags'], name: string, fallback: number): number {
 }
 
 /** Construye un bloque `user` con la forma exacta que envía Streamer.bot. */
-function fakeUser(login: string, opts: { mod?: boolean; broadcaster?: boolean; sub?: boolean; vip?: boolean }) {
+function fakeUser(
+  login: string,
+  opts: { mod?: boolean; broadcaster?: boolean; sub?: boolean; vip?: boolean },
+) {
   const badges: Array<{ name: string; version: string }> = [];
   if (opts.broadcaster) badges.push({ name: 'broadcaster', version: '1' });
   if (opts.mod) badges.push({ name: 'moderator', version: '1' });
@@ -59,7 +74,7 @@ function fakeUser(login: string, opts: { mod?: boolean; broadcaster?: boolean; s
   if (opts.sub) badges.push({ name: 'subscriber', version: '1' });
 
   return {
-    id: `sim-${login}`,
+    id: `sim-${login.toLowerCase()}`,
     login: login.toLowerCase(),
     name: login,
     role: 1,
@@ -71,7 +86,7 @@ function fakeUser(login: string, opts: { mod?: boolean; broadcaster?: boolean; s
   };
 }
 
-function simulateMessage(flags: Args['flags']): void {
+async function simulateMessage(flags: Args['flags']): Promise<void> {
   const login = flagStr(flags, 'user', 'pepe');
   const payload = {
     messageId: `sim-${Date.now()}`,
@@ -92,10 +107,10 @@ function simulateMessage(flags: Args['flags']): void {
     emotes: [],
     isReply: false,
   };
-  handleEvent(normalize('Twitch.ChatMessage', payload, 'simulator'));
+  await handleEvent(normalize('Twitch.ChatMessage', payload, 'simulator'));
 }
 
-function simulateRedeem(flags: Args['flags']): void {
+async function simulateRedeem(flags: Args['flags']): Promise<void> {
   const login = flagStr(flags, 'user', 'pepe');
   const payload = {
     redemptionId: `sim-${Date.now()}`,
@@ -112,45 +127,89 @@ function simulateRedeem(flags: Args['flags']): void {
     createdAt: new Date().toISOString(),
     isTest: true,
   };
-  handleEvent(normalize('Twitch.RewardRedemption', payload, 'simulator'));
+  await handleEvent(normalize('Twitch.RewardRedemption', payload, 'simulator'));
 }
 
-/**
- * Escena guionizada que recorre el criterio de hecho de la Fase 2 de una vez:
- * un espectador nuevo, una redención, y el interruptor de emergencia
- * bloqueando una salida.
- */
-function runDemo(): void {
-  const step = (title: string) => log.info(`\n───── ${title} ─────`);
+function step(title: string): void {
+  log.info(`\n───── ${title} ─────`);
+}
 
-  step('1. Mensaje normal');
-  simulateMessage({ user: 'pepe', text: 'buenas' });
+/** El flujo que exige el criterio de hecho 8: usuario nuevo y usuario repetido. */
+async function runFlujo(): Promise<void> {
+  truncateAll();
+  cooldowns.reset();
+  policy.reset();
+  log.info('Base de datos de simulación vaciada.\n');
 
-  step('2. Primer mensaje de alguien nuevo');
-  simulateMessage({ user: 'nuevo_viewer', text: 'hola a todos', first: true });
+  step('1ª ejecución de "pepe" — usuario NUEVO, debe saludar');
+  await simulateMessage({ user: 'pepe', text: 'hola' });
+  mostrarEstado();
 
-  step('3. Redención de Channel Point');
-  simulateRedeem({ user: 'pepe', text: '¿mando o teclado?' });
+  step('2ª ejecución de "pepe" — usuario EXISTENTE, NO debe saludar');
+  await simulateMessage({ user: 'pepe', text: 'sigo por aquí' });
+  mostrarEstado();
 
-  step('4. Sonda de salida con el sistema ACTIVO');
-  simulateMessage({ user: 'pepe', text: '!ping' });
+  step('"ana" entra por primera vez, pero el cooldown global de 60 s está activo');
+  await simulateMessage({ user: 'ana', text: 'buenas' });
+  mostrarEstado();
 
-  step('5. Alguien sin permisos intenta apagar');
-  simulateMessage({ user: 'pepe', text: '!apagar' });
+  step('StreamElements escribe — se ignora, ni se registra');
+  await simulateMessage({ user: 'streamelements', text: 'llevo 2 días en marcha' });
+  mostrarEstado();
+}
 
-  step('6. El dueño del canal apaga');
-  simulateMessage({ user: 'crid4m', text: '!apagar', broadcaster: true });
+/** Escena que recorre el interruptor de emergencia y la policy. */
+async function runDemo(): Promise<void> {
+  truncateAll();
+  cooldowns.reset();
+  policy.reset();
 
-  step('7. Sonda de salida con el sistema APAGADO (debe bloquearse)');
-  simulateMessage({ user: 'pepe', text: '!ping' });
+  step('1. Sonda de salida con el sistema ACTIVO');
+  await simulateMessage({ user: 'pepe', text: '!ping' });
 
-  step('8. El dueño del canal reactiva');
-  simulateMessage({ user: 'crid4m', text: '!encender', broadcaster: true });
+  step('2. Alguien sin permisos intenta apagar');
+  await simulateMessage({ user: 'pepe', text: '!apagar' });
 
-  step('9. Sonda de salida de nuevo (debe salir)');
-  simulateMessage({ user: 'pepe', text: '!ping' });
+  step('3. El dueño del canal apaga');
+  await simulateMessage({ user: 'crid4m', text: '!apagar', broadcaster: true });
+
+  step('4. Sonda con el sistema APAGADO (debe bloquearse)');
+  await simulateMessage({ user: 'pepe', text: '!ping' });
+
+  step('5. Usuario nuevo con el sistema APAGADO (tampoco debe salir)');
+  await simulateMessage({ user: 'nuevo', text: 'hola' });
+
+  step('6. El dueño del canal reactiva');
+  await simulateMessage({ user: 'crid4m', text: '!encender', broadcaster: true });
+
+  step('7. Redención de Channel Point (aún sin interacción asociada)');
+  await simulateRedeem({ user: 'pepe', text: '¿mando o teclado?' });
 
   log.info(`\nEstado final: ${killswitch.status()}`);
+  mostrarEstado();
+}
+
+function mostrarEstado(): void {
+  const db = getDb();
+  const filas = db
+    .prepare('SELECT login, first_seen, last_seen FROM users ORDER BY first_seen')
+    .all() as Array<{ login: string; first_seen: string; last_seen: string }>;
+
+  console.log(`\n  users (${filas.length}):`);
+  for (const f of filas) {
+    const primeraVez = f.first_seen === f.last_seen ? ' (primera aparición)' : '';
+    console.log(`    ${f.login.padEnd(16)} visto por última vez ${f.last_seen}${primeraVez}`);
+  }
+
+  const inter = interactionLog.all();
+  console.log(`  interactions (${inter.length}):`);
+  for (const i of inter) {
+    console.log(
+      `    ${i.interaction.padEnd(16)} ${String(i.twitch_id).padEnd(20)} ${i.status}` +
+        (i.detail ? ` — ${i.detail}` : ''),
+    );
+  }
+  console.log('');
 }
 
 function usage(): void {
@@ -162,48 +221,80 @@ Consola de simulación — CRID4M
 Comandos:
   message     Mensaje de chat
   redeem      Redención de Channel Point
-  demo        Escena guionizada que recorre el criterio de hecho de la Fase 2
+  flujo       Usuario nuevo -> saluda; el mismo usuario -> no saluda
+  demo        Interruptor de emergencia y policy
+  estado      Muestra el contenido de la base de datos de simulación
+  reset       Vacía la base de datos de simulación
 
 Opciones de message:
-  --user=<login>     quién escribe            (por defecto: pepe)
-  --text="<texto>"   qué escribe              (por defecto: hola)
-  --first            marcarlo como primer mensaje del usuario
-  --returning        marcarlo como returning chatter
-  --mod              darle badge de moderador
-  --broadcaster      darle badge de dueño del canal
-  --sub / --vip      darle badge de sub / VIP
+  --user=<login>      quién escribe             (por defecto: pepe)
+  --text="<texto>"    qué escribe               (por defecto: hola)
+  --first             marcar como primer mensaje según Streamer.bot
+  --mod / --broadcaster / --sub / --vip   badges
 
 Opciones de redeem:
-  --user=<login>     quién canjea             (por defecto: pepe)
-  --text="<texto>"   texto introducido
-  --reward="<nombre>" nombre de la recompensa (por defecto: Pregunta a Crid4m AI)
-  --cost=<n>         coste en puntos          (por defecto: 500)
+  --user=<login>      quién canjea
+  --text="<texto>"    texto introducido
+  --reward="<nombre>" nombre de la recompensa
+  --cost=<n>          coste en puntos
+
+Opción general:
+  --reset             vacía la base de datos antes de ejecutar
 
 Ejemplos:
+  npm run simulate -- flujo
   npm run simulate -- message --user=pepe --text="hola"
-  npm run simulate -- message --user=nuevo --text="hola" --first
-  npm run simulate -- redeem --user=pepe --text="¿mando o teclado?"
-  npm run simulate -- demo
+  npm run simulate -- message --user=pepe --text="hola"     (2ª vez: no saluda)
+  npm run simulate -- estado
 
-Nota: los dos guiones (--) son necesarios para que npm no se quede
-las opciones para sí mismo.
+Nota: los dos guiones (--) son necesarios para que npm no se quede las opciones.
+La simulación usa ${SIM_DB}, no la base de datos real.
 `);
 }
 
-const { command, flags } = parseArgs(process.argv.slice(2));
+async function main(): Promise<void> {
+  configureDatabase(SIM_DB);
 
-switch (command) {
-  case 'message':
-    simulateMessage(flags);
-    break;
-  case 'redeem':
-    simulateRedeem(flags);
-    break;
-  case 'demo':
-    runDemo();
-    break;
-  default:
-    if (command) console.log(`Comando desconocido: "${command}"`);
-    usage();
-    process.exitCode = command ? 1 : 0;
+  // Emisor falso: recorre output.send() y policy igual que el camino real,
+  // pero el último centímetro no llega a Twitch.
+  setSender(async () => {});
+
+  const { command, flags } = parseArgs(process.argv.slice(2));
+
+  if (command && command !== 'estado') {
+    log.info('EMISOR SIMULADO: nada de lo que veas aquí sale a Twitch.\n');
+  }
+  if (flags.reset === true && command !== 'reset') {
+    truncateAll();
+    log.info('Base de datos de simulación vaciada.');
+  }
+
+  switch (command) {
+    case 'message':
+      await simulateMessage(flags);
+      mostrarEstado();
+      break;
+    case 'redeem':
+      await simulateRedeem(flags);
+      break;
+    case 'flujo':
+      await runFlujo();
+      break;
+    case 'demo':
+      await runDemo();
+      break;
+    case 'estado':
+      mostrarEstado();
+      break;
+    case 'reset':
+      truncateAll();
+      log.info('Base de datos de simulación vaciada.');
+      break;
+    default:
+      if (command) console.log(`Comando desconocido: "${command}"`);
+      usage();
+      process.exitCode = command ? 1 : 0;
+  }
 }
+
+await main();

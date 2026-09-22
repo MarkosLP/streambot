@@ -2,7 +2,7 @@
 
 Sistema de interacciones para el canal de Twitch **Crid4m**.
 
-**Estado: FASE 2 — esqueleto.** Se conecta a Streamer.bot, normaliza los eventos que llegan y los imprime. **Todavía no responde en el chat.**
+**Estado: FASE 3 — primer ciclo completo.** Recibe eventos de Twitch, consulta SQLite, decide y **responde en el chat**. Sin IA todavía.
 
 La propuesta completa está en [docs/](docs/): arquitectura, catálogo de interacciones, roadmap y riesgos.
 
@@ -22,7 +22,7 @@ En Streamer.bot: **Servers/Clients → WebSocket Server**.
 
 - Dirección: `127.0.0.1`, puerto `8080` (los valores por defecto).
 - Marca **Auto Start**.
-- Recomendado: activa la autenticación y pon una contraseña.
+- **Activa la autenticación y pon una contraseña.** Ya no es opcional: la petición `SendMessage` la exige. Sin contraseña el sistema recibe eventos pero **no puede escribir en el chat**, y Streamer.bot responde `Authentication required`.
 
 > ⚠️ **No lo confundas con `Custom WebSocket Servers`.** Son dos servicios distintos y están uno al lado del otro en el menú:
 >
@@ -58,8 +58,12 @@ npm start
 |---|---|
 | `npm start` | Arranca el sistema y se conecta a Streamer.bot |
 | `npm run dev` | Igual, pero se reinicia solo al guardar un archivo |
-| `npm run typecheck` | Comprueba los tipos. **Úsalo antes de cada directo.** |
-| `npm run simulate -- demo` | Escena guionizada que recorre toda la Fase 2 sin Twitch |
+| `npm test` | Ejecuta los tests |
+| `npm run typecheck` | Comprueba los tipos |
+| `npm run check` | Tipos + tests. **Úsalo antes de cada directo.** |
+| `npm run simulate -- flujo` | Usuario nuevo saluda, el mismo usuario ya no |
+| `npm run simulate -- demo` | Interruptor de emergencia y policy |
+| `npm run simulate -- estado` | Contenido de la base de datos de simulación |
 | `npm run simulate -- <comando>` | Dispara un evento concreto |
 
 ### Simulador
@@ -94,21 +98,55 @@ El simulador no construye eventos a mano: fabrica un payload con la forma de Str
 
 ```
 src/
-  index.ts                 arranque
+  index.ts                 arranque y cableado
   config.ts                única puerta al .env — nadie más lee process.env
   core/
     logger.ts              logs + captura de payloads sin normalizar
     events.ts              tipos de dominio y normalize()
-    killswitch.ts          interruptor de emergencia
-    output.ts              única salida del sistema
     handler.ts             pipeline por el que pasan todos los eventos
+    killswitch.ts          interruptor de emergencia
+    cooldowns.ts           ventanas de tiempo por interacción y por usuario
+    policy.ts              qué puede salir al chat y qué no
+    output.ts              única salida del sistema
+  data/
+    db.ts                  SQLite: conexión y esquema
+    users.ts               quién ha escrito y cuándo
+    interactions.ts        qué hizo el sistema y cómo acabó
+  interactions/
+    primer-mensaje.ts      #1 del catálogo
   transport/
     streamerbot.ts         único archivo que sabe que Streamer.bot existe
   cli/
     simulate.ts            consola de simulación
 ```
 
-La regla que sostiene el diseño: **si algún día cambiamos de motor, solo se tocan `transport/` y `events.ts`.** Nada más del sistema ve un payload de Streamer.bot en crudo.
+Tres reglas sostienen el diseño:
+
+1. **Si cambiamos de motor, solo se tocan `transport/` y `events.ts`.** Nada más ve un payload de Streamer.bot en crudo.
+2. **Nada sale al chat sin pasar por `policy`.** No porque haya que acordarse de llamarla, sino porque `output.send()` es el único camino y la llama siempre.
+3. **`output.ts` no importa el transporte: se lo inyectan.** Eso rompe el ciclo de dependencias y permite que tests y simulador recorran el mismo código con un emisor falso.
+
+### Recorrido de un mensaje
+
+```
+Twitch → Streamer.bot → transport → normalize() → handler
+                                                     │
+                                          ignora bots y al canal
+                                                     │
+                                          users.touch()  ← SQLite
+                                                     │
+                                          primer-mensaje
+                                                     │
+                                          ¿ya saludado? ¿cooldown?
+                                                     │
+                                          output.send()
+                                                     │
+                                          policy.evaluate()
+                                                     │
+                                          transport.sendChat() → Twitch
+                                                     │
+                                          interactions.record() ← SQLite
+```
 
 ---
 
@@ -148,9 +186,15 @@ No hay prisa, pero hazlo antes de que el proyecto crezca: cuanto más tarde, má
 
 ---
 
+## Modo de prueba sin riesgo
+
+`DRY_RUN=true` en el `.env` hace que el sistema funcione entero —eventos, SQLite, cooldowns, policy— pero **sin enviar nada a Twitch**. En la consola verás `[SIMULADO · ...]` en lugar de `[ENVIADO · ...]`.
+
+Sirve para hacer un directo completo comprobando qué habría dicho el bot, antes de soltarlo de verdad.
+
 ## Qué NO hace todavía
 
-- **No escribe en el chat.** `core/output.ts` solo registra lo que enviaría. Llega en la Fase 3.
-- **No tiene base de datos.** Fase 3.
 - **No usa IA.** Fase 4.
-- El interruptor de emergencia vive en memoria: **reiniciar el proceso lo reactiva.** Deliberado mientras no haya base de datos.
+- **Solo hay una interacción** (`primer-mensaje`). El motor que permita añadirlas sin tocar el resto llega en la Fase 7, cuando haya tres casos reales de los que extraer el patrón.
+- El interruptor de emergencia vive en memoria: **reiniciar el proceso lo reactiva.** Deliberado.
+- Los cooldowns también viven en memoria. El "una sola vez en la vida" de `primer-mensaje` **no** depende de ellos: lo garantiza SQLite, que sí sobrevive a los reinicios.

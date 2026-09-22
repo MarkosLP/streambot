@@ -6,10 +6,14 @@
     "moduleResolution": "NodeNext",
     "types": ["node"],
 
-    // FASE 2: arrancamos en modo permisivo a propósito.
-    // Cuando te sientas cómodo, pon "strict": true y ve arreglando lo que salga.
+    // Arrancamos en modo permisivo a propósito, pero con una excepción:
+    // strictNullChecks se activó en la Fase 3 porque sin él TypeScript no
+    // estrecha uniones discriminadas por booleano, y todo el sistema las usa
+    // ({ ok: true } | { ok: false, rejection }). Salió gratis: cero errores.
+    // Siguiente paso cuando te sientas cómodo: "strict": true.
     // Ver README.md § "Endurecer TypeScript".
     "strict": false,
+    "strictNullChecks": true,
 
     "noEmit": true,
     "skipLibCheck": true,
