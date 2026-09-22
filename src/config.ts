@@ -22,6 +22,16 @@ function int(name: string, fallback: number): number {
   return parsed;
 }
 
+function num(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const parsed = Number.parseFloat(raw);
+  if (Number.isNaN(parsed)) {
+    throw new Error(`La variable ${name} debe ser un número, y vale "${raw}"`);
+  }
+  return parsed;
+}
+
 function bool(name: string, fallback: boolean): boolean {
   const raw = process.env[name];
   if (raw === undefined || raw === '') return fallback;
@@ -78,6 +88,28 @@ export const config = {
 
   /** true = no envía nada a Twitch, solo registra. Útil para probar en directo sin riesgo. */
   dryRun: bool('DRY_RUN', false),
+
+  ai: {
+    /**
+     * Modelo por defecto, decidido en docs/01 § 4.3. Configurable: el código
+     * no debe quedar atado a un modelo concreto.
+     */
+    model: str('AI_MODEL', 'claude-opus-5'),
+
+    /**
+     * Tope de tokens de salida. Tiene que cubrir el razonamiento MÁS la
+     * respuesta: en Opus 5 el pensamiento está activo por defecto y cuenta
+     * aquí. Una respuesta de chat gasta ~150; el resto es margen para que
+     * no se corte a media frase.
+     */
+    maxTokens: int('AI_MAX_TOKENS', 4000),
+
+    /** docs/01 § 3.3: 8 segundos y respuesta de reserva. El directo no espera. */
+    timeoutMs: int('AI_TIMEOUT_MS', 8000),
+
+    /** docs/04 § 1.5: 3 $ por directo. */
+    budgetPerStreamUsd: num('AI_BUDGET_PER_STREAM_USD', 3),
+  },
 } as const;
 
 /**

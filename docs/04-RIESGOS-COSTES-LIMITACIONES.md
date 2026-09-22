@@ -69,6 +69,25 @@ Ordenadas por efecto real en **este** caso de uso:
 | Cambiar de modelo | 60-80 % | Efectiva, pero es la única que cuesta calidad. Decisión para la Fase 12, con datos. |
 | **Caché de prompt** | **~20 %** | Más modesto de lo que parece, porque solo afecta a la entrada, que es la mitad barata. |
 
+### 1.4.1 Caché de prompt: medido en la Fase 4 → NO se implementa
+
+El prompt de sistema real (personalidad + reglas de la intención) mide **2.181 caracteres ≈ 545-606 tokens**. Supera el mínimo de 512 de Opus 5, así que *técnicamente* es cacheable. Pero al echar las cuentas no compensa:
+
+| Concepto | Sin caché | Con caché |
+|---|---:|---:|
+| Entrada del sistema (~600 tok) | $0.0030 | $0.0003 (lectura) |
+| Entrada variable (~60 tok) | $0.0003 | $0.0003 |
+| Salida (~400 tok) | $0.0100 | $0.0100 |
+| **Total por llamada** | **$0.0133** | **$0.0106** |
+
+Ahorro: ~20 %. Pero **escribir la caché cuesta 1,25×** (~$0.0038) y el TTL por defecto son **5 minutos**. El punto de equilibrio está en **2 llamadas dentro de la misma ventana de 5 minutos**.
+
+**Con el canal como está —sin espectadores y con un cooldown de 5 minutos en `Pregunta a Crid4m AI`— habrá menos de una llamada cada 5 minutos.** La caché se escribiría, caducaría sin usarse, y saldría **más caro**, no más barato.
+
+Hay además un riesgo silencioso: el margen sobre los 512 tokens es de apenas 30-90 tokens. Si algún día recortas `src/personality/crid4m.md`, el prefijo caería por debajo del mínimo y **la caché dejaría de funcionar sin dar ningún error**.
+
+**Decisión: documentado y no implementado.** Revisar cuando se den las dos condiciones a la vez: varias interacciones con IA activas **y** suficiente chat para superar 2 llamadas cada 5 minutos. Para medir el prompt exacto en cualquier momento: `npm run ai:test -- --tokens`.
+
 **Sobre el caché, dos avisos concretos:**
 
 1. **Solo funciona si el prefijo llega a 512 tokens** (mínimo de Opus 5). Si el archivo de personalidad se queda corto, el caché **no se activa y no da ningún error**: verás `cache_creation_input_tokens: 0` y creerás que funciona. Hay que comprobarlo explícitamente en la Fase 4.

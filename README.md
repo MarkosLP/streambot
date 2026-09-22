@@ -65,6 +65,8 @@ npm start
 | `npm run simulate -- demo` | Interruptor de emergencia y policy |
 | `npm run simulate -- estado` | Contenido de la base de datos de simulación |
 | `npm run simulate -- <comando>` | Dispara un evento concreto |
+| `npm run ai:test "pregunta"` | Prueba la IA aislada. **No toca Twitch** |
+| `npm run ai:test -- --tokens` | Mide el prompt de sistema (para decidir sobre la caché) |
 
 ### Simulador
 
@@ -192,9 +194,21 @@ No hay prisa, pero hazlo antes de que el proyecto crezca: cuanto más tarde, má
 
 Sirve para hacer un directo completo comprobando qué habría dicho el bot, antes de soltarlo de verdad.
 
+## La capa de IA
+
+Vive en [src/services/ai/](src/services/ai/) y **todavía no está conectada al chat**. Genera contenido validado y lo devuelve; quien decide qué hacer con él es el backend. Esa conexión es la Fase 5.
+
+- La personalidad está en [src/personality/crid4m.md](src/personality/crid4m.md). **Es un archivo de texto: cámbialo sin tocar código.**
+- El texto del espectador viaja siempre dentro de `<mensaje_espectador>` en el turno de usuario, **nunca** interpolado en el prompt de sistema. Esa separación es la defensa contra la inyección de prompt, y no es un filtro de palabras que se pueda esquivar reformulando.
+- La respuesta se valida contra un esquema y contra el límite de 480 caracteres. Si algo falla —timeout, error, salida inválida, respuesta demasiado larga— se devuelve un **texto de reserva determinista**, nunca una segunda llamada a la IA.
+- Presupuesto de 3 $ por sesión. Al agotarse, deja de llamar y el resto del sistema sigue funcionando.
+- El interruptor de emergencia corta las llamadas **antes** de gastar nada.
+
+Cada llamada queda registrada en la tabla `ai_usage` con tokens, coste y latencia.
+
 ## Qué NO hace todavía
 
-- **No usa IA.** Fase 4.
+- **La IA no está conectada al chat.** Fase 5.
 - **Solo hay una interacción** (`primer-mensaje`). El motor que permita añadirlas sin tocar el resto llega en la Fase 7, cuando haya tres casos reales de los que extraer el patrón.
 - El interruptor de emergencia vive en memoria: **reiniciar el proceso lo reactiva.** Deliberado.
 - Los cooldowns también viven en memoria. El "una sola vez en la vida" de `primer-mensaje` **no** depende de ellos: lo garantiza SQLite, que sí sobrevive a los reinicios.
