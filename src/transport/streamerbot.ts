@@ -131,16 +131,25 @@ export async function connect(): Promise<void> {
     },
   });
 
-  // Un único manejador para todos los eventos suscritos: normaliza y entrega.
-  client.on('*', (payload: any) => {
-    const eventName = `${payload?.event?.source}.${payload?.event?.type}`;
-    try {
-      handleEvent(normalize(eventName, payload?.data, 'streamerbot'));
-    } catch (err) {
-      // Un evento malformado nunca debe tumbar el proceso en mitad de un directo.
-      log.error(`Fallo procesando ${eventName}: ${String(err)}`);
+  // Un manejador por evento de la lista de arriba.
+  //
+  // OJO: aquí NO se puede usar client.on('*'). En esta librería .on() se
+  // suscribe automáticamente al evento que le pasas, así que el comodín
+  // equivale a "suscríbeme a todo" y pasa por encima de SUBSCRIPTIONS:
+  // empiezan a llegar clics de ratón y cambios de portapapeles del PC entero.
+  for (const [source, types] of Object.entries(SUBSCRIPTIONS)) {
+    for (const type of types as string[]) {
+      const eventName = `${source}.${type}`;
+      client.on(eventName as any, (payload: any) => {
+        try {
+          handleEvent(normalize(eventName, payload?.data, 'streamerbot'));
+        } catch (err) {
+          // Un evento malformado nunca debe tumbar el proceso en mitad de un directo.
+          log.error(`Fallo procesando ${eventName}: ${String(err)}`);
+        }
+      });
     }
-  });
+  }
 }
 
 export async function disconnect(): Promise<void> {
