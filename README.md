@@ -18,11 +18,18 @@ La propuesta completa está en [docs/](docs/): arquitectura, catálogo de intera
 
 ### 1. Activar el servidor WebSocket en Streamer.bot
 
-En Streamer.bot: pestaña **Servers/Clients → WebSocket Server**.
+En Streamer.bot: **Servers/Clients → WebSocket Server**.
 
 - Dirección: `127.0.0.1`, puerto `8080` (los valores por defecto).
 - Marca **Auto Start**.
 - Recomendado: activa la autenticación y pon una contraseña.
+
+> ⚠️ **No lo confundas con `Custom WebSocket Servers`.** Son dos servicios distintos y están uno al lado del otro en el menú:
+>
+> - **`WebSocket Server`** → el de la API. Habla el protocolo (`Hello`, `Subscribe`, `DoAction`). **Es el que necesitamos.**
+> - **`Custom WebSocket Servers`** → servidores en crudo para integraciones propias. **No hablan el protocolo de la API.**
+>
+> Si apuntas al segundo, la conexión TCP se establece pero el handshake nunca llega, y verás `Handshake timeout exceeded`. Y si los dos usan el mismo puerto, hay conflicto y el bueno no puede arrancar. El sistema detecta este caso y te lo explica en la consola.
 
 > Por defecto solo escucha en `127.0.0.1`, es decir, solo acepta conexiones desde este mismo PC. Está bien así: **no lo abras a internet.**
 
