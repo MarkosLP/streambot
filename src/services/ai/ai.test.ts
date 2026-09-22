@@ -15,6 +15,7 @@ import {
   type Caller,
 } from './index.js';
 import type { Usage } from './budget.js';
+import { describeAuthProblem } from './claude.js';
 
 /**
  * Estos tests NO llaman a la API real: sustituyen el emisor de más bajo nivel
@@ -313,5 +314,24 @@ describe('capa de IA', () => {
       assert.ok(FALLBACK_MESSAGE.length <= MAX_MESSAGE_LENGTH);
       assert.ok(FALLBACK_MESSAGE.length > 0);
     });
+  });
+});
+
+describe('diagnóstico de la API key', () => {
+  test('detecta una clave de otro servicio y no la revela', () => {
+    const d = describeAuthProblem('apikey_abcdefghijklmnopqrstuvwx');
+    assert.match(d, /no parece de Anthropic/);
+    assert.match(d, /sk-ant-/, 'debe decir cuál es el formato correcto');
+    assert.ok(!d.includes('abcdefghijklmnopqrstuvwx'), 'jamás debe incluir la clave');
+  });
+
+  test('con formato correcto apunta a revocación o falta de crédito', () => {
+    const d = describeAuthProblem('sk-ant-api03-loquesea');
+    assert.match(d, /crédito|revocada/);
+    assert.ok(!d.includes('loquesea'), 'jamás debe incluir la clave');
+  });
+
+  test('con la clave vacía también da un mensaje útil', () => {
+    assert.match(describeAuthProblem(''), /console\.anthropic\.com/);
   });
 });

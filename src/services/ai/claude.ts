@@ -55,6 +55,27 @@ function getClient(): Anthropic {
   return client;
 }
 
+/**
+ * Un 401 puede ser por varias razones, y la más común tiene un síntoma
+ * evidente: haber pegado una clave de otro servicio. Distinguirlo ahorra
+ * mucho tiempo, porque "la API key no es válida" no dice dónde mirar.
+ *
+ * Nunca incluye la clave ni ningún fragmento suyo, solo su forma.
+ */
+export function describeAuthProblem(key = process.env.ANTHROPIC_API_KEY ?? ''): string {
+  if (!key.startsWith('sk-ant-')) {
+    return (
+      `la API key no parece de Anthropic: empieza por "${key.slice(0, 7)}" y tiene ` +
+      `${key.length} caracteres, cuando las de Anthropic empiezan por "sk-ant-" y son ` +
+      'bastante más largas. Consigue una en console.anthropic.com -> Settings -> API keys'
+    );
+  }
+  return (
+    'Anthropic rechaza la API key. Comprueba que no esté revocada y que la cuenta ' +
+    'tenga crédito (Plans & Billing en console.anthropic.com)'
+  );
+}
+
 function extractUsage(usage: any): Usage {
   return {
     inputTokens: usage?.input_tokens ?? 0,
@@ -89,7 +110,7 @@ export async function call(params: CallParams): Promise<RawOutcome> {
     }
     // Cadena de más específico a menos: no todos los fallos son iguales.
     if (err instanceof Anthropic.AuthenticationError) {
-      return { kind: 'error', detail: 'la API key no es válida' };
+      return { kind: 'error', detail: describeAuthProblem() };
     }
     if (err instanceof Anthropic.RateLimitError) {
       return { kind: 'error', detail: 'límite de peticiones alcanzado' };
