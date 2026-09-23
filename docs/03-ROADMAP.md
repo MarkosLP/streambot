@@ -159,7 +159,18 @@ La pregunta original de esta puerta era *"¿la usa alguien?"*, y ahora mismo no 
 
 ---
 
-## FASE 6 — Dos interacciones más (sin motor todavía)
+## FASE 6 — Dos interacciones más (sin motor todavía) ✅ CÓDIGO ENTREGADO (23 sep 2026)
+
+> **Estado:** las dos interacciones están construidas, probadas y documentadas.
+> `#1` refinada para disparar con el flag de Streamer.bot en vez de con "es
+> nuevo en nuestra base de datos", `#18` nueva, tabla `streams` creada y
+> escena `npm run simulate -- vuelta` que recorre el criterio de hecho.
+>
+> Las notas del motor están en **docs/05-NOTAS-PARA-EL-MOTOR.md**.
+>
+> Las dos son espontáneas y el `.env` de Crid4m tiene
+> `INTERACCIONES_ESPONTANEAS=false`, así que existen pero no se disparan.
+> Decisión suya, tomada a sabiendas. Ver § 5 de las notas del motor.
 
 **Qué vamos a conseguir:** `#1 Primer Mensaje` refinada y **`#18 Bienvenida de Vuelta`** funcionando.
 

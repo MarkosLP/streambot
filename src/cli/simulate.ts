@@ -263,6 +263,60 @@ async function runPregunta(): Promise<void> {
   mostrarEstado();
 }
 
+/**
+ * Escena de la FASE 6: las tres interacciones conviviendo.
+ *
+ * El criterio de hecho pide "simulas un usuario visto hace 20 días y el bot
+ * lo reconoce al volver". Eso es el paso 4.
+ */
+async function runVuelta(): Promise<void> {
+  truncateAll();
+  cooldowns.reset();
+  policy.reset();
+  killswitch.enable('simulador');
+
+  step('1. Empieza el directo');
+  await handleEvent(normalize('Twitch.StreamOnline', {}, 'simulator'));
+
+  step('2. Alguien escribe por PRIMERA VEZ (flag de Streamer.bot) — saluda #1');
+  await simulateMessage({ user: 'nuevo', text: 'hola a todos', first: true });
+
+  step('3. Un habitual del canal que nosotros no conocíamos — NO debe saludar');
+  await simulateMessage({ user: 'habitual', text: 'buenas' });
+
+  cooldowns.reset();
+
+  step('4. "pepe", visto por última vez hace 20 días, vuelve — saluda #18');
+  vistoHace('pepe', 20);
+  await simulateMessage({ user: 'pepe', text: 'cuanto tiempo' });
+
+  cooldowns.reset();
+
+  step('5. "pepe" escribe otra vez — ya no se le reconoce como vuelta');
+  await simulateMessage({ user: 'pepe', text: 'sigo aqui' });
+
+  step('6. "ana", vista hace 3 días, no está volviendo de nada');
+  vistoHace('ana', 3);
+  await simulateMessage({ user: 'ana', text: 'hola' });
+
+  step('7. Termina el directo');
+  await handleEvent(normalize('Twitch.StreamOffline', {}, 'simulator'));
+
+  mostrarEstado();
+}
+
+/** Registra a alguien como visto hace N días, para poder probar #18. */
+function vistoHace(login: string, dias: number): void {
+  const cuando = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
+  getDb()
+    .prepare(
+      'INSERT OR REPLACE INTO users (twitch_id, login, display_name, first_seen, last_seen) ' +
+        'VALUES (?, ?, ?, ?, ?)',
+    )
+    .run(`sim-${login}`, login, login, cuando, cuando);
+  log.info(`  (${login} registrado como visto hace ${dias} días)`);
+}
+
 function mostrarEstado(): void {
   const db = getDb();
   const filas = db
@@ -298,6 +352,7 @@ Comandos:
   flujo       Usuario nuevo -> saluda; el mismo usuario -> no saluda
   demo        Interruptor de emergencia y policy
   pregunta    "Pregunta a Crid4m AI" por sus dos disparadores
+  vuelta      FASE 6: primer mensaje, habitual y alguien que vuelve tras 20 dias
   estado      Muestra el contenido de la base de datos de simulación
   reset       Vacía la base de datos de simulación
 
@@ -387,6 +442,9 @@ async function main(): Promise<void> {
       break;
     case 'pregunta':
       await runPregunta();
+      break;
+    case 'vuelta':
+      await runVuelta();
       break;
     case 'estado':
       mostrarEstado();

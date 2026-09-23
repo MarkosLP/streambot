@@ -10,7 +10,9 @@ import {
 import * as killswitch from './killswitch.js';
 import { send } from './output.js';
 import * as users from '../data/users.js';
+import * as streams from '../data/streams.js';
 import * as primerMensaje from '../interactions/primer-mensaje.js';
+import * as bienvenidaVuelta from '../interactions/bienvenida-vuelta.js';
 import * as preguntaIa from '../interactions/pregunta-ia.js';
 import { budget } from '../services/ai/index.js';
 
@@ -52,6 +54,18 @@ export async function handleEvent(event: DomainEvent): Promise<void> {
 
   if (event.type === 'viewer.redeem') {
     await handleRedeem(event);
+    return;
+  }
+
+  // El principio y el final del directo abren y cierran una fila en `streams`.
+  // No producen ningún mensaje en el chat: solo dejan constancia.
+  if (event.type === 'stream.online') {
+    streams.open();
+    return;
+  }
+
+  if (event.type === 'stream.offline') {
+    streams.close();
   }
 }
 
@@ -122,13 +136,25 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   // Registro de presencia. Ocurre SIEMPRE, dispare o no una interacción:
   // last_seen tiene que reflejar la realidad aunque hoy no respondamos.
   // Es gratis y no guarda el texto del mensaje, solo quién y cuándo.
-  const { isNew } = users.touch(viewer);
+  //
+  // `previousLastSeen` se captura AQUÍ porque esta llamada machaca last_seen.
+  // Después de esta línea ya no hay forma de saber cuánto llevaba sin venir.
+  const { isNew, previousLastSeen } = users.touch(viewer);
 
   // A partir de aquí el bot hablaría sin que nadie se lo pida. Con las
   // interacciones espontáneas apagadas, solo responde a comandos.
   if (!config.interaccionesEspontaneas) return;
 
-  await primerMensaje.handle(event, isNew);
+  // #1 y #18 son excluyentes por definición: quien nunca ha estado no puede
+  // volver, y quien vuelve no es nuevo. Aun así el orden importa, porque las
+  // dos comparten el techo de mensajes por hora: si #1 ha saludado, #18 no
+  // vuelve a hablar de la misma persona en el mismo mensaje.
+  if (primerMensaje.esPrimerMensaje(event, isNew)) {
+    await primerMensaje.handle(event, isNew);
+    return;
+  }
+
+  await bienvenidaVuelta.handle(event, previousLastSeen, isNew);
 }
 
 /**

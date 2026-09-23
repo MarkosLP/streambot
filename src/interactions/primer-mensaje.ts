@@ -1,4 +1,5 @@
 
+import { config } from '../config.js';
 import { log } from '../core/logger.js';
 import type { ViewerMessageEvent } from '../core/events.js';
 import * as cooldowns from '../core/cooldowns.js';
@@ -84,13 +85,58 @@ function yaSaludado(twitchId: string): boolean {
 }
 
 /**
+ * ¿Se le debía un saludo de una vez anterior?
+ *
+ * El flag de Streamer.bot marca UN solo mensaje. Si ese mensaje justo cae
+ * dentro del cooldown de 60 s —porque entraron tres personas a la vez— la
+ * ocasión se pierde para siempre: los mensajes siguientes de esa persona ya
+ * no vienen marcados y nunca se le saludaría.
+ *
+ * La deuda queda anotada sola: el intento fallido deja una fila `skipped` en
+ * `interactions`. Si existe esa fila y no hay ninguna `sent`, se le saluda en
+ * cuanto vuelva a escribir.
+ *
+ * Esto NO reabre la puerta a saludar a habituales de toda la vida: solo entra
+ * aquí quien en su momento llegó a disparar la interacción de verdad.
+ */
+function pendienteDeSaludo(twitchId: string): boolean {
+  const filas = interactionLog.findByUser(twitchId).filter((row) => row.interaction === NAME);
+  if (filas.length === 0) return false;
+  return !filas.some((row) => row.status === 'sent');
+}
+
+/**
+ * ¿Es de verdad su primer mensaje en el canal?
+ *
+ * FASE 6, refinamiento. Antes bastaba con ser nuevo en NUESTRA base de datos,
+ * y eso está mal: el día que el bot se estrena en un canal con historia,
+ * todos los habituales aparecen como nuevos y se llevarían un "primera vez
+ * que te leo por aquí" que es falso y queda fatal.
+ *
+ * La fuente buena es el flag de Streamer.bot, que lleva su propio registro
+ * del canal entero (EventSub no da este dato). Ver docs/02 § 2, interacción 1.
+ *
+ * `confiarEnFlag` a false vuelve al criterio antiguo. Está ahí porque la
+ * fiabilidad de ese flag no se puede comprobar sin un directo con gente, y
+ * más vale un interruptor que un despliegue a ciegas.
+ */
+export function esPrimerMensaje(event: ViewerMessageEvent, isNew: boolean): boolean {
+  if (!config.primerMensaje.confiarEnFlag) return isNew || pendienteDeSaludo(event.viewer.id);
+  return event.isFirstMessage || pendienteDeSaludo(event.viewer.id);
+}
+
+/**
  * @param isNew lo decide el manejador, que es quien registra la presencia.
  *              Aquí solo se decide si hay que saludar y qué decir.
  */
 export async function handle(event: ViewerMessageEvent, isNew: boolean): Promise<void> {
   const { viewer } = event;
 
-  if (!isNew && yaSaludado(viewer.id)) return;
+  if (!esPrimerMensaje(event, isNew)) return;
+
+  // Una segunda red por si el flag llegara dos veces o el usuario se borrara
+  // y volviera: nadie recibe el saludo de bienvenida dos veces.
+  if (yaSaludado(viewer.id)) return;
 
   if (!cooldowns.tryConsume(cooldowns.keys.interaction(NAME), COOLDOWN_MS)) {
     const faltan = Math.ceil(cooldowns.remaining(cooldowns.keys.interaction(NAME), COOLDOWN_MS) / 1000);

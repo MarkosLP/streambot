@@ -34,14 +34,20 @@ beforeEach(() => {
   enviados = [];
 });
 
-function mensajeDe(login: string, text = 'hola') {
+/**
+ * Desde la Fase 6 el disparador de #1 es el flag de primer mensaje de
+ * Streamer.bot, no "es nuevo en nuestra base de datos". Por eso el flag va a
+ * true por defecto aquí: es lo que describe el escenario de casi todos estos
+ * tests. Los que simulan un mensaje POSTERIOR lo pasan a false.
+ */
+function mensajeDe(login: string, text = 'hola', primerMensaje = true) {
   return normalize(
     'Twitch.ChatMessage',
     {
       messageId: `m-${Math.random()}`,
       user: { id: `id-${login}`, login, name: login, role: 1, badges: [], subscribed: false },
       text,
-      meta: { firstMessage: false, returningChatter: false },
+      meta: { firstMessage: primerMensaje, returningChatter: false },
     },
     'simulator',
   );
@@ -178,5 +184,55 @@ describe('primer-mensaje', () => {
         assert.ok(texto.length <= 480, `saludo demasiado largo: ${texto.length}`);
       }
     });
+  });
+});
+
+/**
+ * El refinamiento de la Fase 6.
+ *
+ * Antes bastaba con ser nuevo en NUESTRA base de datos. Eso significaba que
+ * el primer directo del bot en un canal con historia saludaba a todos los
+ * habituales con un "primera vez que te leo por aquí" que era mentira.
+ */
+describe('refinamiento: el flag manda sobre la base de datos', () => {
+  test('un habitual del canal desconocido para nosotros NO recibe saludo', async () => {
+    // Nuevo para la base de datos, pero Streamer.bot sabe que lleva años.
+    await handleEvent(mensajeDe('habitual', 'buenas otra vez', false));
+
+    assert.deepEqual(enviados, []);
+    assert.equal(users.find('id-habitual')?.login, 'habitual', 'su presencia sí se registra');
+  });
+
+  test('con el flag puesto sí se le saluda', async () => {
+    await handleEvent(mensajeDe('recien', 'hola', true));
+
+    assert.equal(enviados.length, 1);
+    assert.match(enviados[0]!, /primera vez que te leo/);
+  });
+
+  test('un saludo perdido por el cooldown se recupera en el siguiente mensaje', async () => {
+    // Dos personas nuevas a la vez: la segunda se queda sin saludo.
+    await handleEvent(mensajeDe('uno', 'hola', true));
+    await handleEvent(mensajeDe('dos', 'hola', true));
+    assert.equal(enviados.length, 1, 'el cooldown de 60s deja fuera al segundo');
+
+    cooldowns.reset();
+
+    // Su siguiente mensaje YA NO lleva el flag: Streamer.bot solo marca uno.
+    // Aun así hay que saludarle, porque se le debía.
+    await handleEvent(mensajeDe('dos', 'sigo por aquí', false));
+
+    assert.equal(enviados.length, 2);
+    assert.match(enviados[1]!, /@dos/);
+  });
+
+  test('a quien ya se saludó no se le vuelve a saludar nunca', async () => {
+    await handleEvent(mensajeDe('pepe', 'hola', true));
+    cooldowns.reset();
+    await handleEvent(mensajeDe('pepe', 'otra vez', true));
+    cooldowns.reset();
+    await handleEvent(mensajeDe('pepe', 'y otra', false));
+
+    assert.equal(enviados.length, 1);
   });
 });

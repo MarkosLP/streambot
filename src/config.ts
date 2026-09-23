@@ -135,6 +135,29 @@ export const config = {
    */
   reviewMode: bool('REVIEW_MODE', true),
 
+  /** #1 Primer Mensaje (docs/02 § 2, interacción 1). */
+  primerMensaje: {
+    /**
+     * true  = se saluda solo si Streamer.bot marca el mensaje como el primero
+     *         del usuario en el canal. Es la fuente correcta.
+     * false = se saluda a quien sea nuevo en NUESTRA base de datos, que es el
+     *         criterio antiguo y saluda de más en un canal con historia.
+     */
+    confiarEnFlag: bool('PRIMER_MENSAJE_CONFIA_EN_FLAG', true),
+  },
+
+  /** #18 Bienvenida de Vuelta (docs/02 § 4, interacción 18). */
+  bienvenidaVuelta: {
+    /**
+     * Días sin aparecer a partir de los cuales alguien "vuelve".
+     *
+     * 14 sale de la ficha del catálogo. Por debajo de dos semanas la vuelta
+     * no se percibe como tal y el mensaje suena raro: alguien que faltó
+     * cuatro días no siente que haya estado fuera.
+     */
+    diasAusencia: int('BIENVENIDA_VUELTA_DIAS', 14),
+  },
+
   preguntaIa: {
     /** ID de la recompensa. Es lo más fiable: no cambia aunque la renombres. */
     rewardId: str('PREGUNTA_IA_REWARD_ID', ''),

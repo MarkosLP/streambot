@@ -69,7 +69,23 @@ export interface RawEvent extends BaseEvent {
   payload: unknown;
 }
 
-export type DomainEvent = ViewerMessageEvent | ViewerRedeemEvent | RawEvent;
+/**
+ * El directo empieza o termina.
+ *
+ * Hasta la Fase 6 estos dos caían en `raw` y solo se guardaban en el log.
+ * Ahora abren y cierran una fila en la tabla `streams`, que es lo que
+ * permite distinguir "primera vez en este directo" de "primera vez en su
+ * vida".
+ */
+export interface StreamStateEvent extends BaseEvent {
+  type: 'stream.online' | 'stream.offline';
+}
+
+export type DomainEvent =
+  | ViewerMessageEvent
+  | ViewerRedeemEvent
+  | StreamStateEvent
+  | RawEvent;
 
 // ---------------------------------------------------------------------------
 // Normalización
@@ -204,6 +220,12 @@ export function normalize(
       };
     }
 
+    case 'Twitch.StreamOnline':
+      return { ...base, type: 'stream.online' };
+
+    case 'Twitch.StreamOffline':
+      return { ...base, type: 'stream.offline' };
+
     default:
       return { ...base, type: 'raw', eventName, payload };
   }
@@ -225,6 +247,10 @@ export function describe(event: DomainEvent): string {
     case 'viewer.redeem':
       return `${event.viewer.displayName} canjeó "${event.rewardTitle}" (${event.rewardCost} pts)` +
         (event.userInput ? ` -> "${event.userInput}"` : '');
+    case 'stream.online':
+      return 'el directo ha empezado';
+    case 'stream.offline':
+      return 'el directo ha terminado';
     case 'raw':
       return `evento sin normalizar: ${event.eventName}`;
   }
