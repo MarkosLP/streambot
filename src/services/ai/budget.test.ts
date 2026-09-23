@@ -33,9 +33,19 @@ function gastoRegistrado(costUsd: number | null, at = new Date().toISOString()):
     .run(at, costUsd);
 }
 
-/** Un instante de hoy que seguro cae dentro del día local en curso. */
+/**
+ * Un instante que SEGURO cae dentro del día local en curso.
+ *
+ * Antes esto era `Date.now() - 60_000`, y parecía razonable hasta que la
+ * suite se ejecutó a las 00:00:36: "hace un minuto" era ayer, las ventanas
+ * diarias no veían las filas y tres tests fallaban. Un test que solo falla
+ * durante 60 segundos al día es peor que uno que falla siempre, porque nadie
+ * lo reproduce cuando lo reporta.
+ *
+ * El instante actual siempre está dentro del día actual, por definición.
+ */
 function hoyMismo(): string {
-  return new Date(Date.now() - 60_000).toISOString();
+  return new Date().toISOString();
 }
 
 describe('topes de gasto', () => {

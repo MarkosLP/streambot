@@ -3,6 +3,7 @@ import { config } from '../config.js';
 import type { ViewerMessageEvent } from '../core/events.js';
 import * as cooldowns from '../core/cooldowns.js';
 import type { Ctx, Interaction } from '../core/interaction.js';
+import type { Tema } from '../core/memory.js';
 import * as interactionLog from '../data/interactions.js';
 
 /**
@@ -28,32 +29,38 @@ export const COOLDOWN_MS = 60_000;
 /**
  * Preguntas que se contestan con una palabra. Todas de temas neutros, según
  * la lista blanca de docs/02: videojuegos, comida y costumbres cotidianas.
+ *
+ * FASE 8: cada una declara su TEMA. No es decoración. La respuesta que dé el
+ * espectador se guarda como recuerdo (`#2 Ticket de Entrada`), y todo lo que
+ * se guarda tiene que caer dentro de la lista blanca de `memory.ts`. Atando
+ * el tema a la pregunta, el recuerdo nace ya clasificado y no hay que
+ * adivinar después de qué hablaba "con cebolla".
  */
-const PREGUNTAS = [
-  '¿mando o teclado?',
-  '¿café o té?',
-  '¿dulce o salado?',
-  '¿playa o montaña?',
-  '¿perro o gato?',
-  '¿piña en la pizza, sí o no?',
-  '¿madrugar o trasnochar?',
-  '¿verano o invierno?',
-  '¿libro o película?',
-  '¿tortilla con cebolla o sin?',
-  '¿ducha de mañana o de noche?',
-  '¿serie o peli?',
-  '¿chocolate negro o con leche?',
-  '¿ciudad o pueblo?',
-  '¿silencio o música de fondo?',
-  '¿modo fácil o modo difícil?',
-  '¿multijugador o campaña?',
-  '¿subtítulos sí o no?',
-  '¿hamburguesa o kebab?',
-  '¿sofá o silla?',
-  '¿guardas cada cinco minutos o vives al límite?',
-  '¿mapa o perderse?',
-  '¿correr o andar?',
-  '¿plan en casa o plan fuera?',
+const PREGUNTAS: Array<{ texto: string; tema: Tema }> = [
+  { texto: '¿mando o teclado?', tema: 'juegos' },
+  { texto: '¿café o té?', tema: 'comida' },
+  { texto: '¿dulce o salado?', tema: 'comida' },
+  { texto: '¿playa o montaña?', tema: 'planes' },
+  { texto: '¿perro o gato?', tema: 'costumbres' },
+  { texto: '¿piña en la pizza, sí o no?', tema: 'comida' },
+  { texto: '¿madrugar o trasnochar?', tema: 'costumbres' },
+  { texto: '¿verano o invierno?', tema: 'planes' },
+  { texto: '¿libro o película?', tema: 'planes' },
+  { texto: '¿tortilla con cebolla o sin?', tema: 'comida' },
+  { texto: '¿ducha de mañana o de noche?', tema: 'costumbres' },
+  { texto: '¿serie o peli?', tema: 'planes' },
+  { texto: '¿chocolate negro o con leche?', tema: 'comida' },
+  { texto: '¿ciudad o pueblo?', tema: 'planes' },
+  { texto: '¿silencio o música de fondo?', tema: 'costumbres' },
+  { texto: '¿modo fácil o modo difícil?', tema: 'juegos' },
+  { texto: '¿multijugador o campaña?', tema: 'juegos' },
+  { texto: '¿subtítulos sí o no?', tema: 'costumbres' },
+  { texto: '¿hamburguesa o kebab?', tema: 'comida' },
+  { texto: '¿sofá o silla?', tema: 'costumbres' },
+  { texto: '¿guardas cada cinco minutos o vives al límite?', tema: 'juegos' },
+  { texto: '¿mapa o perderse?', tema: 'juegos' },
+  { texto: '¿correr o andar?', tema: 'planes' },
+  { texto: '¿plan en casa o plan fuera?', tema: 'planes' },
 ];
 
 /**
@@ -63,12 +70,16 @@ const PREGUNTAS = [
  * (solo la ve una vez en su vida, así que da igual) y personas distintas
  * reciben preguntas distintas. Al no usar azar, los tests no son frágiles.
  */
-export function elegirPregunta(twitchId: string): string {
+export function elegirPreguntaCompleta(twitchId: string): { texto: string; tema: Tema } {
   let hash = 0;
   for (let i = 0; i < twitchId.length; i += 1) {
     hash = (hash * 31 + twitchId.charCodeAt(i)) >>> 0;
   }
-  return PREGUNTAS[hash % PREGUNTAS.length];
+  return PREGUNTAS[hash % PREGUNTAS.length]!;
+}
+
+export function elegirPregunta(twitchId: string): string {
+  return elegirPreguntaCompleta(twitchId).texto;
 }
 
 export function componerSaludo(displayName: string, twitchId: string): string {

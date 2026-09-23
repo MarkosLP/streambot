@@ -118,6 +118,38 @@ function buildSystem(system: string): Anthropic.MessageCreateParams['system'] {
   ];
 }
 
+/**
+ * Traduce un fallo del SDK a nuestro vocabulario.
+ *
+ * Está fuera de `call()` porque hay dos caminos de llamada —texto y salida
+ * estructurada— y una sola forma correcta de interpretar estos errores. Dos
+ * copias de esta cadena acabarían divergiendo.
+ */
+function traducirError(err: unknown): RawOutcome {
+  if (err instanceof Anthropic.APIConnectionTimeoutError) {
+    return { kind: 'timeout', detail: `sin respuesta en ${config.ai.timeoutMs} ms` };
+  }
+  // Cadena de más específico a menos: no todos los fallos son iguales.
+  if (err instanceof Anthropic.AuthenticationError) {
+    return { kind: 'error', detail: describeAuthProblem() };
+  }
+  if (err instanceof Anthropic.RateLimitError) {
+    return { kind: 'error', detail: 'límite de peticiones alcanzado' };
+  }
+  // Corte de red a mitad de llamada: es el tercer caso límite que exige el
+  // criterio de hecho de la Fase 5. Tiene que ir ANTES que APIError porque
+  // hereda de él, y con `status` a undefined: sin esta rama el registro
+  // decía "error undefined de la API", que no ayuda a nadie a las 2 de la
+  // mañana con el directo en marcha.
+  if (err instanceof Anthropic.APIConnectionError) {
+    return { kind: 'error', detail: 'no se pudo conectar con Anthropic (¿se ha caído la red?)' };
+  }
+  if (err instanceof Anthropic.APIError) {
+    return { kind: 'error', detail: `error ${err.status} de la API` };
+  }
+  return { kind: 'error', detail: err instanceof Error ? err.message : String(err) };
+}
+
 export async function call(params: CallParams): Promise<RawOutcome> {
   const model = config.ai.model;
 
@@ -138,28 +170,7 @@ export async function call(params: CallParams): Promise<RawOutcome> {
       messages: [{ role: 'user', content: params.userContent }],
     });
   } catch (err) {
-    if (err instanceof Anthropic.APIConnectionTimeoutError) {
-      return { kind: 'timeout', detail: `sin respuesta en ${config.ai.timeoutMs} ms` };
-    }
-    // Cadena de más específico a menos: no todos los fallos son iguales.
-    if (err instanceof Anthropic.AuthenticationError) {
-      return { kind: 'error', detail: describeAuthProblem() };
-    }
-    if (err instanceof Anthropic.RateLimitError) {
-      return { kind: 'error', detail: 'límite de peticiones alcanzado' };
-    }
-    // Corte de red a mitad de llamada: es el tercer caso límite que exige el
-    // criterio de hecho de la Fase 5. Tiene que ir ANTES que APIError porque
-    // hereda de él, y con `status` a undefined: sin esta rama el registro
-    // decía "error undefined de la API", que no ayuda a nadie a las 2 de la
-    // mañana con el directo en marcha.
-    if (err instanceof Anthropic.APIConnectionError) {
-      return { kind: 'error', detail: 'no se pudo conectar con Anthropic (¿se ha caído la red?)' };
-    }
-    if (err instanceof Anthropic.APIError) {
-      return { kind: 'error', detail: `error ${err.status} de la API` };
-    }
-    return { kind: 'error', detail: err instanceof Error ? err.message : String(err) };
+    return traducirError(err);
   }
 
   const usage = extractUsage(response.usage);
@@ -192,4 +203,74 @@ export async function countSystemTokens(system: string): Promise<number> {
     messages: [{ role: 'user', content: 'x' }],
   });
   return result.input_tokens;
+}
+
+/**
+ * Esquema de la EXTRACCIÓN de datos (#15 Dato Inútil).
+ *
+ * Distinto del de respuesta porque aquí Claude no escribe para el chat: mira
+ * un mensaje y dice si contiene algo que merezca recordarse. Es lo más cerca
+ * que el proyecto deja al modelo de "decidir", y por eso la decisión llega
+ * troceada en campos que el código puede comprobar uno a uno, no como una
+ * frase que habría que interpretar.
+ *
+ * `tema` incluye "ninguno" a propósito: sin esa opción, un modelo al que se
+ * le exige elegir entre cuatro temas acabará forzando uno.
+ */
+export const DatoSchema = z
+  .object({
+    merece_recordarse: z.boolean(),
+    tema: z.enum(['juegos', 'comida', 'planes', 'costumbres', 'ninguno']),
+    dato: z.string(),
+  })
+  .strict();
+
+export type DatoExtraido = z.infer<typeof DatoSchema>;
+
+export type ExtraccionOutcome =
+  | { kind: 'ok'; dato: DatoExtraido; usage: Usage; model: string }
+  | { kind: 'refusal'; detail: string; usage: Usage; model: string }
+  | { kind: 'invalid'; detail: string; usage: Usage; model: string }
+  | { kind: 'timeout'; detail: string }
+  | { kind: 'error'; detail: string };
+
+/**
+ * Pide a Claude que mire un mensaje y diga si hay algo que guardar.
+ *
+ * Comparte cliente, caché, timeout y traducción de errores con `call()`. Lo
+ * único que cambia es el esquema de salida.
+ */
+export async function extraer(params: CallParams): Promise<ExtraccionOutcome> {
+  const model = config.ai.model;
+
+  let response: Awaited<ReturnType<Anthropic['messages']['parse']>>;
+  try {
+    response = await getClient().messages.parse({
+      model,
+      max_tokens: config.ai.maxTokens,
+      output_config: { effort: 'low', format: zodOutputFormat(DatoSchema) },
+      system: buildSystem(params.system),
+      messages: [{ role: 'user', content: params.userContent }],
+    });
+  } catch (err) {
+    return traducirError(err) as ExtraccionOutcome;
+  }
+
+  const usage = extractUsage(response.usage);
+
+  if (response.stop_reason === 'refusal') {
+    const categoria = response.stop_details?.category ?? 'sin categoría';
+    return { kind: 'refusal', detail: `rechazo de seguridad (${categoria})`, usage, model };
+  }
+
+  if (response.stop_reason === 'max_tokens') {
+    return { kind: 'invalid', detail: 'la extracción se cortó por max_tokens', usage, model };
+  }
+
+  const parsed = response.parsed_output as DatoExtraido | null;
+  if (!parsed) {
+    return { kind: 'invalid', detail: 'la extracción no encaja con el esquema', usage, model };
+  }
+
+  return { kind: 'ok', dato: parsed, usage, model };
 }

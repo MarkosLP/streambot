@@ -224,7 +224,21 @@ La pregunta original de esta puerta era *"¿la usa alguien?"*, y ahora mismo no 
 
 ---
 
-## FASE 8 — Sistema de memoria
+## FASE 8 — Sistema de memoria ✅ CÓDIGO ENTREGADO (24 sep 2026)
+
+> **Estado:** `core/memory.ts`, `core/consent.ts`, tablas `memories` y
+> `consent`, y las tres interacciones: `#2 Ticket de Entrada`,
+> `#24 Continuará` y `#15 Dato Inútil`.
+>
+> Criterios cubiertos y comprobados con `npm run simulate -- memoria`:
+> se guarda un dato, se envejece tres semanas y el bot lo saca al volver la
+> persona; `!olvidame` borra todo y se verifica consultando SQLite; al cerrar
+> el directo se genera y guarda un "continuará" y al abrir el siguiente se
+> lee; y lo guardado no puede salir de los cuatro temas neutros, porque la
+> lista blanca la comprueba el código después de que responda la IA.
+>
+> `#2` y `#15` son espontáneas, así que están dormidas con
+> `INTERACCIONES_ESPONTANEAS=false`. `#24` y `!olvidame` funcionan igualmente.
 
 > **Esta fase era "Sistema social". Se ha cambiado** porque las dinámicas sociales necesitan gente y el canal todavía no la tiene. Con un espectador, lo valioso no es que se relacione con otros: es que el bot lo recuerde.
 

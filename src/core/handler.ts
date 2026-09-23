@@ -9,10 +9,14 @@ import {
 } from './events.js';
 import * as killswitch from './killswitch.js';
 import * as engine from './engine.js';
+import * as consent from './consent.js';
 import { send } from './output.js';
 import * as users from '../data/users.js';
 import * as streams from '../data/streams.js';
 import * as primerMensaje from '../interactions/primer-mensaje.js';
+import * as ticketEntrada from '../interactions/ticket-entrada.js';
+import * as continuara from '../interactions/continuara.js';
+import * as datoInutil from '../interactions/dato-inutil.js';
 import * as bienvenidaVuelta from '../interactions/bienvenida-vuelta.js';
 import * as preguntaIa from '../interactions/pregunta-ia.js';
 import * as preguntaIncomoda from '../interactions/pregunta-incomoda.js';
@@ -64,10 +68,16 @@ export async function handleEvent(event: DomainEvent): Promise<void> {
   // No producen ningún mensaje en el chat: solo dejan constancia.
   if (event.type === 'stream.online') {
     streams.open();
+    // #24: si el directo anterior dejó algo en el aire, se recupera ahora.
+    await continuara.alAbrir();
     return;
   }
 
   if (event.type === 'stream.offline') {
+    // El orden importa: #24 necesita saber cuándo empezó el directo para
+    // resumirlo, así que se genera ANTES de cerrar la fila.
+    const abierto = streams.current();
+    if (abierto) await continuara.alCerrar(abierto);
     streams.close();
   }
 }
@@ -109,6 +119,21 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   if (control !== null) {
     // Escribir un comando también es estar presente. Se registra igual, para
     // que quien entre soltando un !ping no se quede fuera de la base de datos.
+    if (control === 'olvidar') {
+      // Ojo con el orden: NO se registra la presencia de quien acaba de pedir
+      // que le olvidemos. Un users.touch() aquí volvería a crear la ficha que
+      // el borrado acaba de eliminar.
+      const borrado = consent.olvidar(viewer.id);
+      await send({
+        text:
+          `@${viewer.displayName} hecho, no guardo nada tuyo y no volveré a hacerlo ` +
+          `(${borrado.memories} recuerdo(s) borrados).`,
+        reason: 'olvidame',
+        allowedMentions: [viewer.login],
+      });
+      return;
+    }
+
     if (!isIgnored(viewer)) users.touch(viewer);
     if (control === 'ping') {
       await send({ text: `pong, ${viewer.displayName}`, reason: 'sonda-verificacion' });
@@ -141,6 +166,13 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
     return;
   }
 
+  // Quien pidió el olvido no se registra ni dispara nada. Se comprueba aquí,
+  // antes del touch, porque si no la ficha se recrearía en cuanto escribiera.
+  if (consent.haPedidoOlvido(viewer.id)) {
+    log.debug(`${viewer.login} pidió que le olvidáramos; no se registra nada.`);
+    return;
+  }
+
   // Registro de presencia. Ocurre SIEMPRE, dispare o no una interacción:
   // last_seen tiene que reflejar la realidad aunque hoy no respondamos.
   // Es gratis y no guarda el texto del mensaje, solo quién y cuándo.
@@ -160,6 +192,12 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   //
   // El motor se encarga de guardas, cooldowns, envío y registro. Aquí solo se
   // decide A CUÁL se le da la oportunidad, que es lo propio del enrutado.
+  // #2 va PRIMERO: solo puede aplicar al mensaje siguiente a un saludo, así
+  // que si aplica, ni #1 (ya saludó) ni #18 (no vuelve de nada) tenían nada
+  // que hacer con este mensaje. Además no escribe en el chat, así que no
+  // compite por el techo de mensajes por hora.
+  await engine.run(ticketEntrada.interaction, { viewer, trigger: 'chat', event });
+
   if (primerMensaje.esPrimerMensaje(event, isNew)) {
     await engine.run(primerMensaje.interaction, {
       viewer,
@@ -170,12 +208,25 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
     return;
   }
 
-  await engine.run(bienvenidaVuelta.interaction, {
-    viewer,
-    trigger: 'chat',
-    previousLastSeen,
-    isNew,
-  });
+  // Quien vuelve recibe UNA cosa, no dos. #15 y #18 se disparan en el mismo
+  // momento —alguien reaparece tras semanas— así que el reparto se hace aquí:
+  // si hay un recuerdo suyo sin usar va #15, que es personal y por tanto mucho
+  // mejor; si no, #18, que es el saludo genérico. Nunca las dos.
+  if (datoInutil.tieneAlgoQueSacar(viewer.id)) {
+    await engine.run(datoInutil.interaction, { viewer, trigger: 'chat', event, previousLastSeen, isNew });
+  } else {
+    await engine.run(bienvenidaVuelta.interaction, {
+      viewer,
+      trigger: 'chat',
+      previousLastSeen,
+      isNew,
+    });
+  }
+
+  // Y al final, mirar si este mensaje contenía algo que merezca recordarse.
+  // Va lo ÚLTIMO a propósito: es la única llamada a la IA que dispara el chat
+  // y no una persona, así que no debe retrasar nada de lo que sí se ve.
+  await datoInutil.quizaGuardar(event);
 }
 
 /**
@@ -213,7 +264,7 @@ function matchPreguntaCommand(text: string): string | null {
   return null;
 }
 
-type ControlOutcome = 'handled' | 'ping' | null;
+type ControlOutcome = 'handled' | 'ping' | 'olvidar' | null;
 
 /** Síncrono a propósito. Ver el comentario de handleMessage. */
 function matchControlCommand(text: string, viewer: Viewer): ControlOutcome {
@@ -228,6 +279,12 @@ function matchControlCommand(text: string, viewer: Viewer): ControlOutcome {
     else killswitch.enable(`!encender de ${viewer.displayName}`);
     return 'handled';
   }
+
+  // Derecho al olvido. Va con los comandos de control, no con las
+  // interacciones, porque tiene que funcionar SIEMPRE: aunque el sistema esté
+  // apagado, aunque haya cooldowns, aunque todo lo demás falle. Nadie debería
+  // tener que esperar a que el bot esté de humor para que le olviden.
+  if (command === '!olvidame') return 'olvidar';
 
   if (command === '!estado') {
     log.info(`Estado del sistema: ${killswitch.status()}`);

@@ -321,6 +321,69 @@ function vistoHace(login: string, dias: number): void {
   log.info(`  (${login} registrado como visto hace ${dias} días)`);
 }
 
+/**
+ * Escena de la FASE 8: memoria.
+ *
+ * Recorre el criterio de hecho: se guarda un dato, se simula el paso de tres
+ * semanas y el bot lo saca al volver la persona. Y !olvidame lo borra todo.
+ */
+async function runMemoria(): Promise<void> {
+  truncateAll();
+  cooldowns.reset();
+  policy.reset();
+  killswitch.enable('simulador');
+
+  step('1. Empieza el directo');
+  await handleEvent(normalize('Twitch.StreamOnline', {}, 'simulator'));
+
+  step('2. "pepe" llega por primera vez — #1 le pregunta');
+  await simulateMessage({ user: 'pepe', text: 'buenas a todos', first: true });
+
+  step('3. "pepe" contesta — #2 guarda el ticket sin decir nada');
+  await simulateMessage({ user: 'pepe', text: 'con cebolla siempre' });
+  mostrarMemoria();
+
+  step('4. Pasan tres semanas y "pepe" vuelve — el bot lo reconoce');
+  envejecer('pepe', 21);
+  cooldowns.reset();
+  await simulateMessage({ user: 'pepe', text: 'cuanto tiempo sin pasarme' });
+
+  step('5. "pepe" pide que le olvidemos');
+  await simulateMessage({ user: 'pepe', text: '!olvidame' });
+  mostrarMemoria();
+
+  step('6. Vuelve a escribir: ya no se le registra ni se le reconoce');
+  await simulateMessage({ user: 'pepe', text: 'hola otra vez', first: true });
+  mostrarMemoria();
+
+  step('7. Termina el directo');
+  await handleEvent(normalize('Twitch.StreamOffline', {}, 'simulator'));
+
+  mostrarEstado();
+}
+
+/** Envejece a una persona y sus recuerdos, para simular el paso del tiempo. */
+function envejecer(login: string, dias: number): void {
+  const cuando = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
+  const db = getDb();
+  db.prepare('UPDATE users SET last_seen = ? WHERE login = ?').run(cuando, login);
+  db.prepare('UPDATE memories SET created_at = ? WHERE twitch_id = ?').run(cuando, `sim-${login}`);
+  log.info(`  (${login} y sus recuerdos envejecidos ${dias} días)`);
+}
+
+function mostrarMemoria(): void {
+  const filas = getDb()
+    .prepare('SELECT twitch_id, kind, topic, content FROM memories ORDER BY id')
+    .all() as Array<{ twitch_id: string; kind: string; topic: string; content: string }>;
+
+  console.log(`
+  memories (${filas.length}):`);
+  for (const f of filas) {
+    console.log(`    ${f.twitch_id.padEnd(14)} ${f.kind.padEnd(8)} ${f.topic.padEnd(12)} ${f.content}`);
+  }
+  console.log('');
+}
+
 function mostrarEstado(): void {
   const db = getDb();
   const filas = db
@@ -357,6 +420,7 @@ Comandos:
   demo        Interruptor de emergencia y policy
   pregunta    "Pregunta a Crid4m AI" por sus dos disparadores
   vuelta      FASE 6: primer mensaje, habitual y alguien que vuelve tras 20 dias
+  memoria     FASE 8: ticket, tres semanas despues, y !olvidame
   estado      Muestra el contenido de la base de datos de simulación
   reset       Vacía la base de datos de simulación
 
@@ -449,6 +513,9 @@ async function main(): Promise<void> {
       break;
     case 'vuelta':
       await runVuelta();
+      break;
+    case 'memoria':
+      await runMemoria();
       break;
     case 'estado':
       mostrarEstado();

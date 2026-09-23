@@ -6,6 +6,8 @@ import { setApprover } from './core/review.js';
 import { consoleApprover, closeApprover } from './core/console-approver.js';
 import { getDb, closeDatabase } from './data/db.js';
 import * as users from './data/users.js';
+import * as memory from './core/memory.js';
+import * as consent from './core/consent.js';
 import { budget } from './services/ai/index.js';
 import { connect, disconnect, sendChat } from './transport/streamerbot.js';
 
@@ -24,6 +26,12 @@ async function main(): Promise<void> {
   // enterarse con el chat aún sin escuchar que a mitad del primer mensaje.
   getDb();
   log.info(`SQLite: ${config.dbPath} · ${users.count()} usuario(s) conocidos`);
+
+  // Los recuerdos caducados se borran al arrancar. Las lecturas ya filtran
+  // por fecha, así que esto no arregla nada; lo que evita es guardar para
+  // siempre datos de personas que nadie va a volver a leer.
+  memory.limpiarCaducados();
+  log.info(`Memoria: ${memory.count()} recuerdo(s) · ${consent.count()} persona(s) pidieron el olvido`);
 
   // El gasto, antes de recibir el primer evento. Los topes de día y mes se
   // leen de la base de datos, así que reiniciar no los borra: si ayer te

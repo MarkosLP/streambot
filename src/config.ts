@@ -135,6 +135,49 @@ export const config = {
    */
   reviewMode: bool('REVIEW_MODE', true),
 
+  /**
+   * #15 Dato Inútil (docs/02 § 4, interacción 15).
+   *
+   * Los tres valores existen para lo mismo: que la única llamada a la IA que
+   * dispara el CHAT no se convierta en una factura. Ver dato-inutil.ts.
+   */
+  datoInutil: {
+    /** Por debajo de esto no hay nada que extraer. "jajaja" no es un dato. */
+    minimoCaracteres: int('DATO_INUTIL_MIN_CARACTERES', 40),
+    /** Entre extracción y extracción, sea de quien sea. */
+    cooldownExtraccionMs: int('DATO_INUTIL_COOLDOWN_MS', 10 * 60_000),
+  },
+
+  /** Sistema de memoria (docs/03, Fase 8). */
+  memoria: {
+    /**
+     * Días que vive un recuerdo. 90 sale de docs/02, como mitigación del
+     * riesgo de #15: un dato de hace cuatro meses que la persona ya no
+     * recuerda haber dicho desconcierta en vez de agradar.
+     */
+    diasCaducidad: int('MEMORIA_DIAS_CADUCIDAD', 90),
+
+    /**
+     * Tope del TEXTO LIBRE que escribió un desconocido. docs/02, #2:
+     * "limitar a 60 caracteres y sanear". Se aplica al fragmento que viene de
+     * fuera, no a la fila entera.
+     */
+    maxLongitud: int('MEMORIA_MAX_LONGITUD', 60),
+
+    /**
+     * Tope de la fila completa que se guarda.
+     *
+     * Es mayor que el anterior porque un recuerdo suele llevar contexto
+     * nuestro además del fragmento ajeno: en #2 se guarda la pregunta Y la
+     * respuesta, y si el tope fuera 60 para el conjunto, una pregunta larga
+     * dejaría sin sitio a la respuesta, que es justo el dato que interesa.
+     */
+    maxContenido: int('MEMORIA_MAX_CONTENIDO', 200),
+
+    /** Minutos tras el saludo de #1 en los que la respuesta cuenta como ticket. */
+    ventanaTicketMinutos: int('TICKET_VENTANA_MINUTOS', 2),
+  },
+
   /** #1 Primer Mensaje (docs/02 § 2, interacción 1). */
   primerMensaje: {
     /**
