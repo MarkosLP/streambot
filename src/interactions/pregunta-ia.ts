@@ -1,10 +1,9 @@
 import { config, MAX_MESSAGE_LENGTH } from '../config.js';
-import { log } from '../core/logger.js';
-import type { Viewer } from '../core/events.js';
+import type { Viewer, ViewerRedeemEvent } from '../core/events.js';
+import * as engine from '../core/engine.js';
 import * as cooldowns from '../core/cooldowns.js';
-import { send } from '../core/output.js';
+import type { Ctx, Interaction } from '../core/interaction.js';
 import { ask } from '../services/ai/index.js';
-import * as interactionLog from '../data/interactions.js';
 
 /**
  * #5 Pregunta a Crid4m AI (docs/02 § 3).
@@ -19,7 +18,7 @@ export const NAME = 'pregunta-ia';
 
 export type Trigger = 'channel-point' | 'command';
 
-export interface Peticion {
+export interface Peticion extends Ctx {
   viewer: Viewer;
   question: string;
   trigger: Trigger;
@@ -54,100 +53,92 @@ export function validarPregunta(texto: string): { ok: true; question: string } |
   return { ok: true, question };
 }
 
-/**
- * Cooldowns.
- *
- * Solo se aplican al comando gratuito. Las redenciones de Channel Points ya
- * tienen su propio limitador donde corresponde —el coste en puntos y los
- * límites de la propia recompensa en Twitch—, y bloquear una redención con
- * un cooldown nuestro significaría que alguien paga puntos y no recibe nada.
- *
- * El gasto sigue acotado por el presupuesto de IA y por el techo de mensajes
- * por hora de la policy, que se aplican a los dos disparadores.
- */
-function pasaCooldown(peticion: Peticion): { ok: true } | { ok: false; motivo: string } {
-  if (peticion.trigger === 'channel-point') return { ok: true };
+export const interaction: Interaction<Peticion> = {
+  name: NAME,
 
-  const { commandGlobalCooldownMs, commandUserCooldownMs } = config.preguntaIa;
-  const claveUsuario = cooldowns.keys.user(NAME, peticion.viewer.id);
-  const claveGlobal = cooldowns.keys.interaction(NAME);
+  // Nunca habla sola: siempre la invoca alguien, con el comando o pagando
+  // puntos de canal. Por eso INTERACCIONES_ESPONTANEAS no la apaga.
+  spontaneous: false,
 
-  const faltaUsuario = cooldowns.remaining(claveUsuario, commandUserCooldownMs);
-  if (faltaUsuario > 0) {
-    return { ok: false, motivo: `cooldown de ${peticion.viewer.login}, faltan ${Math.ceil(faltaUsuario / 1000)}s` };
-  }
+  // Los dos disparadores se distinguen en el registro, que es lo que permite
+  // saber después si la gente prefiere el comando o el punto de canal.
+  describeSkip: (motivo, ctx) => `${ctx.trigger}: ${motivo}`,
 
-  const faltaGlobal = cooldowns.remaining(claveGlobal, commandGlobalCooldownMs);
-  if (faltaGlobal > 0) {
-    return { ok: false, motivo: `cooldown global, faltan ${Math.ceil(faltaGlobal / 1000)}s` };
-  }
+  guards: [
+    // Este descarte SÍ se registra: la interacción aplicaba y se ha rechazado
+    // la entrada. Es justo lo que quieres poder mirar después, y además
+    // demuestra que no se gastó dinero.
+    (ctx) => {
+      const validacion = validarPregunta(ctx.question);
+      return validacion.ok
+        ? { ok: true }
+        : { ok: false, motivo: validacion.motivo, registrar: true };
+    },
+  ],
 
-  // Se consumen los dos solo cuando ambos estaban libres.
-  cooldowns.tryConsume(claveUsuario, commandUserCooldownMs);
-  cooldowns.tryConsume(claveGlobal, commandGlobalCooldownMs);
-  return { ok: true };
-}
+  // Dos cooldowns, y ninguno se aplica al Channel Point: quien paga puntos
+  // recibe respuesta. El motor los comprueba los dos antes de consumir
+  // ninguno, que es lo que impide que el de usuario se gaste cuando el global
+  // va a bloquear igualmente.
+  cooldowns: [
+    {
+      key: (ctx) => cooldowns.keys.user(NAME, ctx.viewer.id),
+      ms: config.preguntaIa.commandUserCooldownMs,
+      motivo: (ctx, faltan) => `cooldown de ${ctx.viewer.login}, faltan ${faltan}s`,
+      applies: (ctx) => ctx.trigger === 'command',
+    },
+    {
+      key: () => cooldowns.keys.interaction(NAME),
+      ms: config.preguntaIa.commandGlobalCooldownMs,
+      motivo: (_ctx, faltan) => `cooldown global, faltan ${faltan}s`,
+      applies: (ctx) => ctx.trigger === 'command',
+    },
+  ],
 
-export async function handle(peticion: Peticion): Promise<void> {
-  const { viewer, trigger } = peticion;
+  run: async (ctx) => {
+    const validacion = validarPregunta(ctx.question);
+    // La guarda ya lo comprobó; esto es solo para estrechar el tipo.
+    if (!validacion.ok) return null;
 
-  const validacion = validarPregunta(peticion.question);
-  if (!validacion.ok) {
-    log.info(`${NAME}: descartada sin llamar a la IA — ${validacion.motivo}`);
-    interactionLog.record({
-      interaction: NAME,
-      twitchId: viewer.id,
-      status: 'skipped',
-      detail: `${trigger}: ${validacion.motivo}`,
+    const resultado = await ask(NAME, {
+      userMessage: validacion.question,
+      username: ctx.viewer.displayName,
     });
-    return;
-  }
 
-  // Todo lo que decide se resuelve de forma síncrona antes del primer await,
-  // igual que en primer-mensaje: si no, dos peticiones seguidas podrían
-  // intercalarse y saltarse el cooldown.
-  const cooldown = pasaCooldown(peticion);
-  if (!cooldown.ok) {
-    log.info(`${NAME}: ${cooldown.motivo}`);
-    interactionLog.record({
-      interaction: NAME,
-      twitchId: viewer.id,
-      status: 'skipped',
-      detail: `${trigger}: ${cooldown.motivo}`,
-    });
-    return;
-  }
+    return {
+      // El resultado SIEMPRE trae texto usable: si la IA falló, es el de
+      // reserva. El espectador recibe respuesta pase lo que pase.
+      text: componer(ctx.viewer.displayName, resultado.message),
+      allowedMentions: [ctx.viewer.login],
+      // Solo lo que escribió Claude pasa por el modo revisión. El texto de
+      // reserva es nuestro y ya sabemos qué dice.
+      aiGenerated: resultado.ok,
+      detail: (outcome) =>
+        [
+          ctx.trigger,
+          resultado.ok ? 'ia-ok' : `ia-${resultado.failure}`,
+          outcome.sent ? null : `salida-${outcome.rejection}`,
+          resultado.usage ? `${resultado.usage.latencyMs}ms` : null,
+          resultado.usage?.costUsd != null ? `$${resultado.usage.costUsd.toFixed(6)}` : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+    };
+  },
+};
 
-  const resultado = await ask('pregunta-ia', {
-    userMessage: validacion.question,
-    username: viewer.displayName,
-  });
-
-  // El resultado SIEMPRE trae texto usable: si la IA falló, es el de reserva.
-  // El espectador recibe respuesta pase lo que pase; nunca silencio.
-  const outcome = await send({
-    text: componer(viewer.displayName, resultado.message),
-    reason: NAME,
-    allowedMentions: [viewer.login],
-    // Solo lo que escribió Claude pasa por el modo revisión. El texto de
-    // reserva es nuestro y ya sabemos qué dice.
-    aiGenerated: resultado.ok,
-  });
-
-  const detalle = [
-    trigger,
-    resultado.ok ? 'ia-ok' : `ia-${resultado.failure}`,
-    outcome.sent ? null : `salida-${outcome.rejection}`,
-    resultado.usage ? `${resultado.usage.latencyMs}ms` : null,
-    resultado.usage?.costUsd != null ? `$${resultado.usage.costUsd.toFixed(6)}` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-
-  interactionLog.record({
-    interaction: NAME,
-    twitchId: viewer.id,
-    status: outcome.sent ? 'sent' : 'blocked',
-    detail: detalle,
-  });
-}
+/** Lo que el registro de `index.ts` necesita saber. Ver `interactions/index.ts`. */
+export const channelPointBinding = {
+  matches: (event: ViewerRedeemEvent): boolean => {
+    const { rewardId, rewardTitle } = config.preguntaIa;
+    // El ID es lo fiable: no cambia aunque renombres la recompensa.
+    if (rewardId) return event.rewardId === rewardId;
+    return event.rewardTitle.trim().toLowerCase() === rewardTitle.trim().toLowerCase();
+  },
+  run: (event: ViewerRedeemEvent): Promise<void> =>
+    engine.run(interaction, {
+      viewer: event.viewer,
+      question: event.userInput,
+      trigger: 'channel-point' as const,
+    }),
+};

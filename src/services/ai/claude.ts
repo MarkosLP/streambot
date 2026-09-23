@@ -148,6 +148,14 @@ export async function call(params: CallParams): Promise<RawOutcome> {
     if (err instanceof Anthropic.RateLimitError) {
       return { kind: 'error', detail: 'límite de peticiones alcanzado' };
     }
+    // Corte de red a mitad de llamada: es el tercer caso límite que exige el
+    // criterio de hecho de la Fase 5. Tiene que ir ANTES que APIError porque
+    // hereda de él, y con `status` a undefined: sin esta rama el registro
+    // decía "error undefined de la API", que no ayuda a nadie a las 2 de la
+    // mañana con el directo en marcha.
+    if (err instanceof Anthropic.APIConnectionError) {
+      return { kind: 'error', detail: 'no se pudo conectar con Anthropic (¿se ha caído la red?)' };
+    }
     if (err instanceof Anthropic.APIError) {
       return { kind: 'error', detail: `error ${err.status} de la API` };
     }

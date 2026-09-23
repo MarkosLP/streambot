@@ -95,6 +95,7 @@ El simulador no construye eventos a mano: fabrica un payload con la forma de Str
 | `!estado` | cualquiera | Muestra el estado en la consola |
 | `!ping` | cualquiera | Sonda de verificación del camino de envío |
 | `!pregunta <texto>` | cualquiera | Pregunta a Crid4m AI. Gratis, con cooldown de 5 min global y 15 min por persona. `!preguntar` vale igual |
+| `!incomoda` | subs y mods | Saca una pregunta personal del banco para que la respondas en voz alta. Tambien por Channel Point, sin cooldown |
 
 ---
 

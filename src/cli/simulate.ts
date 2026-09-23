@@ -132,8 +132,12 @@ async function simulateRedeem(flags: Args['flags']): Promise<void> {
   // recompensa" emitiría un ID que no coincide con el del .env, la redención
   // se descartaría en silencio y la simulación no probaría absolutamente
   // nada — que es justo lo que pasaba.
+  // Si pides una recompensa POR NOMBRE, no se te cuela el ID de otra. El ID
+  // manda sobre el titulo al repartir, asi que heredarlo aqui haria que
+  // `--reward="Otra cosa"` acabara disparando la interaccion equivocada.
+  const pidesOtra = typeof flags['reward'] === 'string';
   const reward = {
-    id: flagStr(flags, 'reward-id', config.preguntaIa.rewardId || 'sim-reward'),
+    id: flagStr(flags, 'reward-id', pidesOtra ? 'sim-reward' : config.preguntaIa.rewardId || 'sim-reward'),
     title: flagStr(flags, 'reward', config.preguntaIa.rewardTitle),
     cost: flagNum(flags, 'cost', 500),
     prompt: '',

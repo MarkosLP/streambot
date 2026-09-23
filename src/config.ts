@@ -170,6 +170,14 @@ export const config = {
     maxQuestionLength: int('PREGUNTA_IA_MAX_INPUT', 300),
   },
 
+  /** #10 Pregunta Incómoda (docs/02 § 3, interacción 10). */
+  preguntaIncomoda: {
+    rewardId: str('PREGUNTA_INCOMODA_REWARD_ID', ''),
+    rewardTitle: str('PREGUNTA_INCOMODA_REWARD_TITLE', 'Pregunta Incómoda'),
+    /** Solo se aplica al comando !incomoda; el Channel Point se paga con puntos. */
+    cooldownMs: int('PREGUNTA_INCOMODA_COOLDOWN_MS', 5 * 60_000),
+  },
+
   ai: {
     /**
      * Modelo por defecto, decidido en docs/01 § 4.3. Configurable: el código

@@ -1,9 +1,6 @@
 import { config } from '../config.js';
-import { log } from '../core/logger.js';
-import type { ViewerMessageEvent } from '../core/events.js';
 import * as cooldowns from '../core/cooldowns.js';
-import { send } from '../core/output.js';
-import * as interactionLog from '../data/interactions.js';
+import type { Ctx, Interaction } from '../core/interaction.js';
 
 /**
  * #18 Bienvenida de Vuelta (docs/02 § 4).
@@ -88,51 +85,51 @@ export function componer(displayName: string, dias: number): string {
   return `@${displayName} ¡mira quién vuelve! Hacía ${dias} días. Bienvenido de nuevo.`;
 }
 
-/**
- * @param previousLastSeen cuándo se le vio ANTES de este mensaje. Lo pasa el
- *        manejador, que es quien registra la presencia; si lo consultáramos
- *        aquí leeríamos la escritura que `users.touch()` acaba de hacer y
- *        la ausencia siempre saldría de cero.
- */
-export async function handle(
-  event: ViewerMessageEvent,
-  previousLastSeen: string | null,
-  isNew: boolean,
-): Promise<void> {
-  const { viewer } = event;
-
-  const veredicto = vuelve(previousLastSeen, isNew);
-  if (!veredicto.ok) {
-    log.debug(`${NAME}: no aplica a ${viewer.login} — ${veredicto.motivo}`);
-    return;
-  }
-
-  if (!cooldowns.tryConsume(cooldowns.keys.interaction(NAME), COOLDOWN_MS)) {
-    const faltan = Math.ceil(
-      cooldowns.remaining(cooldowns.keys.interaction(NAME), COOLDOWN_MS) / 1000,
-    );
-    log.info(`${NAME}: en cooldown, faltan ${faltan}s. No se saluda a ${viewer.displayName}.`);
-    interactionLog.record({
-      interaction: NAME,
-      twitchId: viewer.id,
-      status: 'skipped',
-      detail: `cooldown, faltan ${faltan}s`,
-    });
-    return;
-  }
-
-  const outcome = await send({
-    text: componer(viewer.displayName, veredicto.dias),
-    reason: NAME,
-    allowedMentions: [viewer.login],
-  });
-
-  interactionLog.record({
-    interaction: NAME,
-    twitchId: viewer.id,
-    status: outcome.sent ? 'sent' : 'blocked',
-    detail: outcome.sent
-      ? `${veredicto.dias} días de ausencia${outcome.dryRun ? ' · dry-run' : ''}`
-      : `${outcome.rejection}: ${outcome.detail}`,
-  });
+/** Contexto propio de esta interacción. */
+export interface Contexto extends Ctx {
+  /**
+   * Cuándo se le vio ANTES de este mensaje. Lo calcula el manejador: si se
+   * consultara aquí se leería la escritura que `users.touch()` acaba de
+   * hacer y la ausencia saldría siempre de cero.
+   */
+  previousLastSeen: string | null;
+  isNew: boolean;
 }
+
+export const interaction: Interaction<Contexto> = {
+  name: NAME,
+  spontaneous: true,
+
+  guards: [
+    // Descarte silencioso: esto le pasa a CADA mensaje de CADA persona que no
+    // esté volviendo de nada, que son casi todos. Registrarlo sería llenar la
+    // tabla de ruido.
+    (ctx) => {
+      const veredicto = vuelve(ctx.previousLastSeen, ctx.isNew);
+      return veredicto.ok ? { ok: true } : { ok: false, motivo: veredicto.motivo };
+    },
+  ],
+
+  cooldowns: [
+    {
+      key: () => cooldowns.keys.interaction(NAME),
+      ms: COOLDOWN_MS,
+      motivo: (_ctx, faltan) => `cooldown, faltan ${faltan}s`,
+    },
+  ],
+
+  run: (ctx) => {
+    // Se recalcula en vez de arrastrarlo desde la guarda. Es una resta de
+    // fechas: cuesta menos que el acoplamiento de pasarse estado entre pasos.
+    const dias = diasDesde(ctx.previousLastSeen!);
+
+    return {
+      text: componer(ctx.viewer.displayName, dias),
+      allowedMentions: [ctx.viewer.login],
+      detail: (outcome) =>
+        outcome.sent
+          ? `${dias} días de ausencia${outcome.dryRun ? ' · dry-run' : ''}`
+          : `${outcome.rejection}: ${outcome.detail}`,
+    };
+  },
+};

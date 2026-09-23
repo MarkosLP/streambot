@@ -335,3 +335,49 @@ describe('diagnóstico de la API key', () => {
     assert.match(describeAuthProblem(''), /console\.anthropic\.com/);
   });
 });
+
+/**
+ * Los tres casos límite que exige el criterio de hecho de la Fase 5.
+ *
+ * El del corte de red se probaba "a mano quitando el wifi". Aquí está
+ * automatizado: lo que importa no es desenchufar el cable, sino que el
+ * espectador reciba respuesta y que el registro diga algo útil.
+ */
+describe('casos límite de la Fase 5', () => {
+  test('un corte de red no deja al espectador sin respuesta', async () => {
+    setCaller(async () => {
+      throw new (await import('@anthropic-ai/sdk')).default.APIConnectionError({
+        message: 'Connection error.',
+      });
+    });
+
+    const resultado = await ask('pregunta-ia', CONTEXTO);
+
+    assert.equal(resultado.ok, false);
+    assert.equal(resultado.message, FALLBACK_MESSAGE);
+  });
+
+  test('y el motivo registrado dice qué ha pasado, no "undefined"', async () => {
+    // Fallo de conexión DE VERDAD contra un puerto que rechaza, para recorrer
+    // la cadena de catch real de claude.ts. Un test que reimplementara esa
+    // cadena comprobaría la copia, no el código.
+    const antes = { url: process.env.ANTHROPIC_BASE_URL, key: process.env.ANTHROPIC_API_KEY };
+    process.env.ANTHROPIC_BASE_URL = 'http://127.0.0.1:9';
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-noop';
+
+    try {
+      const { call } = await import('./claude.js');
+      const outcome = await call({ system: 'x'.repeat(20), userContent: 'hola' });
+
+      assert.equal(outcome.kind, 'error');
+      const detalle = 'detail' in outcome ? outcome.detail : '';
+      assert.doesNotMatch(detalle, /undefined/);
+      assert.match(detalle, /no se pudo conectar/);
+    } finally {
+      if (antes.url === undefined) delete process.env.ANTHROPIC_BASE_URL;
+      else process.env.ANTHROPIC_BASE_URL = antes.url;
+      if (antes.key === undefined) delete process.env.ANTHROPIC_API_KEY;
+      else process.env.ANTHROPIC_API_KEY = antes.key;
+    }
+  });
+});

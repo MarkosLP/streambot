@@ -8,12 +8,15 @@ import {
   type ViewerRedeemEvent,
 } from './events.js';
 import * as killswitch from './killswitch.js';
+import * as engine from './engine.js';
 import { send } from './output.js';
 import * as users from '../data/users.js';
 import * as streams from '../data/streams.js';
 import * as primerMensaje from '../interactions/primer-mensaje.js';
 import * as bienvenidaVuelta from '../interactions/bienvenida-vuelta.js';
 import * as preguntaIa from '../interactions/pregunta-ia.js';
+import * as preguntaIncomoda from '../interactions/pregunta-incomoda.js';
+import * as registry from '../interactions/index.js';
 import { budget } from '../services/ai/index.js';
 
 /**
@@ -69,26 +72,24 @@ export async function handleEvent(event: DomainEvent): Promise<void> {
   }
 }
 
-/** ¿Es esta la recompensa de "Pregunta a Crid4m AI"? */
-function esRecompensaPreguntaIa(event: ViewerRedeemEvent): boolean {
-  const { rewardId, rewardTitle } = config.preguntaIa;
-  // El ID es lo fiable: no cambia aunque renombres la recompensa.
-  if (rewardId) return event.rewardId === rewardId;
-  return event.rewardTitle.trim().toLowerCase() === rewardTitle.trim().toLowerCase();
-}
-
+/**
+ * Reparto de las redenciones de Channel Point.
+ *
+ * El manejador ya no sabe qué recompensas existen: recorre el registro y la
+ * primera interacción que reconozca la suya se la queda. Añadir otra es
+ * escribir su archivo y una línea en `interactions/index.ts`, sin volver por
+ * aquí. Esa es la prueba de la Fase 7.
+ */
 async function handleRedeem(event: ViewerRedeemEvent): Promise<void> {
   // El ID en los logs para que puedas copiarlo al .env sin buscarlo.
   log.debug(`Recompensa "${event.rewardTitle}" con id ${event.rewardId}`);
 
-  if (!esRecompensaPreguntaIa(event)) return;
-
-  users.touch(event.viewer);
-  await preguntaIa.handle({
-    viewer: event.viewer,
-    question: event.userInput,
-    trigger: 'channel-point',
-  });
+  for (const binding of registry.channelPoint) {
+    if (!binding.matches(event)) continue;
+    users.touch(event.viewer);
+    await binding.run(event);
+    return;
+  }
 }
 
 /**
@@ -124,7 +125,14 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   if (pregunta !== null) {
     if (config.ignoredLogins.includes(viewer.login)) return;
     if (!isIgnored(viewer)) users.touch(viewer);
-    await preguntaIa.handle({ viewer, question: pregunta, trigger: 'command' });
+    await engine.run(preguntaIa.interaction, { viewer, question: pregunta, trigger: 'command' });
+    return;
+  }
+
+  if (preguntaIncomoda.COMMAND.test(text)) {
+    if (config.ignoredLogins.includes(viewer.login)) return;
+    if (!isIgnored(viewer)) users.touch(viewer);
+    await preguntaIncomoda.runCommand(viewer, `${viewer.id}-${event.id}`);
     return;
   }
 
@@ -149,12 +157,25 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   // volver, y quien vuelve no es nuevo. Aun así el orden importa, porque las
   // dos comparten el techo de mensajes por hora: si #1 ha saludado, #18 no
   // vuelve a hablar de la misma persona en el mismo mensaje.
+  //
+  // El motor se encarga de guardas, cooldowns, envío y registro. Aquí solo se
+  // decide A CUÁL se le da la oportunidad, que es lo propio del enrutado.
   if (primerMensaje.esPrimerMensaje(event, isNew)) {
-    await primerMensaje.handle(event, isNew);
+    await engine.run(primerMensaje.interaction, {
+      viewer,
+      trigger: 'chat',
+      event,
+      isNew,
+    });
     return;
   }
 
-  await bienvenidaVuelta.handle(event, previousLastSeen, isNew);
+  await engine.run(bienvenidaVuelta.interaction, {
+    viewer,
+    trigger: 'chat',
+    previousLastSeen,
+    isNew,
+  });
 }
 
 /**

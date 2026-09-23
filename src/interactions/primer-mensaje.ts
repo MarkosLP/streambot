@@ -1,10 +1,8 @@
 
 import { config } from '../config.js';
-import { log } from '../core/logger.js';
 import type { ViewerMessageEvent } from '../core/events.js';
 import * as cooldowns from '../core/cooldowns.js';
-import { send } from '../core/output.js';
-
+import type { Ctx, Interaction } from '../core/interaction.js';
 import * as interactionLog from '../data/interactions.js';
 
 /**
@@ -125,41 +123,40 @@ export function esPrimerMensaje(event: ViewerMessageEvent, isNew: boolean): bool
   return event.isFirstMessage || pendienteDeSaludo(event.viewer.id);
 }
 
-/**
- * @param isNew lo decide el manejador, que es quien registra la presencia.
- *              Aquí solo se decide si hay que saludar y qué decir.
- */
-export async function handle(event: ViewerMessageEvent, isNew: boolean): Promise<void> {
-  const { viewer } = event;
-
-  if (!esPrimerMensaje(event, isNew)) return;
-
-  // Una segunda red por si el flag llegara dos veces o el usuario se borrara
-  // y volviera: nadie recibe el saludo de bienvenida dos veces.
-  if (yaSaludado(viewer.id)) return;
-
-  if (!cooldowns.tryConsume(cooldowns.keys.interaction(NAME), COOLDOWN_MS)) {
-    const faltan = Math.ceil(cooldowns.remaining(cooldowns.keys.interaction(NAME), COOLDOWN_MS) / 1000);
-    log.info(`${NAME}: en cooldown, faltan ${faltan}s. No se saluda a ${viewer.displayName} todavía.`);
-    interactionLog.record({
-      interaction: NAME,
-      twitchId: viewer.id,
-      status: 'skipped',
-      detail: `cooldown, faltan ${faltan}s`,
-    });
-    return;
-  }
-
-  const outcome = await send({
-    text: componerSaludo(viewer.displayName, viewer.id),
-    reason: NAME,
-    allowedMentions: [viewer.login],
-  });
-
-  interactionLog.record({
-    interaction: NAME,
-    twitchId: viewer.id,
-    status: outcome.sent ? 'sent' : 'blocked',
-    detail: outcome.sent ? (outcome.dryRun ? 'dry-run' : null) : `${outcome.rejection}: ${outcome.detail}`,
-  });
+/** Contexto propio de esta interacción. */
+export interface Contexto extends Ctx {
+  event: ViewerMessageEvent;
+  isNew: boolean;
 }
+
+export const interaction: Interaction<Contexto> = {
+  name: NAME,
+  spontaneous: true,
+
+  guards: [
+    // Los dos descartes son silenciosos: le pasan a casi todos los mensajes
+    // del chat y registrarlos no aportaría nada que mirar después.
+    (ctx) =>
+      esPrimerMensaje(ctx.event, ctx.isNew)
+        ? { ok: true }
+        : { ok: false, motivo: 'no es su primer mensaje' },
+
+    // Segunda red: nadie recibe el saludo de bienvenida dos veces, ni aunque
+    // el flag llegara repetido.
+    (ctx) =>
+      yaSaludado(ctx.viewer.id) ? { ok: false, motivo: 'ya se le saludó' } : { ok: true },
+  ],
+
+  cooldowns: [
+    {
+      key: () => cooldowns.keys.interaction(NAME),
+      ms: COOLDOWN_MS,
+      motivo: (_ctx, faltan) => `cooldown, faltan ${faltan}s`,
+    },
+  ],
+
+  run: (ctx) => ({
+    text: componerSaludo(ctx.viewer.displayName, ctx.viewer.id),
+    allowedMentions: [ctx.viewer.login],
+  }),
+};

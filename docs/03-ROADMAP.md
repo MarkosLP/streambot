@@ -192,7 +192,18 @@ La pregunta original de esta puerta era *"¿la usa alguien?"*, y ahora mismo no 
 
 ---
 
-## FASE 7 — Motor de interacciones
+## FASE 7 — Motor de interacciones ✅ CÓDIGO ENTREGADO (23 sep 2026)
+
+> **Estado:** `src/core/interaction.ts` (el contrato) y `src/core/engine.ts`
+> (el motor), con las tres interacciones migradas.
+>
+> **Criterio 1 cumplido, y de la forma más convincente:** las tres siguen
+> funcionando exactamente igual y NO se tocó ni un solo test al migrarlas.
+>
+> **Criterio 2 cumplido:** la cuarta interacción, `#10 Pregunta Incómoda`,
+> se escribió entera en un archivo más una línea en `interactions/index.ts`,
+> y trae una guarda de permisos que ninguna de las tres primeras tenía —
+> sin tocar el motor. Sus 11 tests pasaron a la primera.
 
 **Qué vamos a conseguir:** extraer el patrón común para que añadir una interacción sea añadir un archivo.
 
