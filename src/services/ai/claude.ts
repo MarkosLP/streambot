@@ -85,6 +85,39 @@ function extractUsage(usage: any): Usage {
   };
 }
 
+/**
+ * El prompt de sistema, marcado para que Anthropic lo cachee.
+ *
+ * La personalidad más las reglas de la intención son ~1.200 tokens que van
+ * IDÉNTICOS en cada pregunta, mientras que lo único que cambia es el mensaje
+ * del espectador, que viaja en el turno de usuario. Es el caso de libro para
+ * el caché: leer de caché cuesta 0,1x lo que cuesta la entrada normal.
+ *
+ * El TTL de 1 hora es deliberado. El caché se mide desde el inicio de la
+ * petición y cada lectura reinicia el contador, así que con el TTL de 5
+ * minutos por defecto y preguntas separadas por más de 5 minutos —que es lo
+ * que imponen los propios cooldowns— la entrada caducaría casi siempre y
+ * pagaríamos la escritura una y otra vez sin llegar a leerla nunca.
+ * Escribir con TTL de 1 hora cuesta 2x en lugar de 1,25x, así que sale a
+ * cuenta a partir de la tercera pregunta de la hora.
+ *
+ * El mínimo cacheable de Opus 5 son 512 tokens y el prompt los supera de
+ * sobra. Si algún día se recorta la personalidad por debajo de ese mínimo,
+ * el caché dejaría de aplicarse EN SILENCIO: el síntoma es
+ * `cache_read_tokens` siempre a 0 en la tabla `ai_usage`.
+ */
+function buildSystem(system: string): Anthropic.MessageCreateParams['system'] {
+  if (config.ai.cacheTtl === 'off') return system;
+
+  return [
+    {
+      type: 'text',
+      text: system,
+      cache_control: { type: 'ephemeral', ttl: config.ai.cacheTtl },
+    },
+  ];
+}
+
 export async function call(params: CallParams): Promise<RawOutcome> {
   const model = config.ai.model;
 
@@ -101,7 +134,7 @@ export async function call(params: CallParams): Promise<RawOutcome> {
         effort: 'low',
         format: zodOutputFormat(RespuestaSchema),
       },
-      system: params.system,
+      system: buildSystem(params.system),
       messages: [{ role: 'user', content: params.userContent }],
     });
   } catch (err) {

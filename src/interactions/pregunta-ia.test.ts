@@ -305,3 +305,51 @@ describe('pregunta-ia', () => {
     });
   });
 });
+
+/**
+ * Alias del comando.
+ *
+ * Armifer91 estuvo un rato entero escribiendo en el chat sin conseguir una
+ * sola respuesta: el bot solo escuchaba `!pregunta` exacto y no coincidía
+ * con lo que él escribía. La interacción ni llegaba a llamarse, así que no
+ * quedaba ni una fila en la base de datos que lo delatara.
+ */
+describe('alias del comando', () => {
+  for (const alias of ['!pregunta', '!preguntar', '!Preguntar', '!PREGUNTA', '!preguntame']) {
+    test(`${alias} dispara la interacción`, async () => {
+      await handleEvent(comando('armifer91', `${alias} ¿mando o teclado?`));
+
+      assert.equal(llamadasIa, 1);
+      assert.equal(enviados.length, 1);
+    });
+  }
+
+  test('la pregunta llega limpia, sin restos del alias', async () => {
+    let recibida = '';
+    setCaller(async ({ userContent }) => {
+      recibida = userContent;
+      return {
+        kind: 'ok' as const,
+        message: RESPUESTA_IA,
+        usage: { inputTokens: 1273, outputTokens: 68, cacheReadTokens: 0, cacheCreationTokens: 0 },
+        model: 'claude-opus-5',
+      };
+    });
+
+    await handleEvent(comando('armifer91', '!preguntar ¿mando o teclado?'));
+
+    // Con un recorte de longitud fija se colaría una "r" delante.
+    assert.match(recibida, /¿mando o teclado\?/);
+    assert.doesNotMatch(recibida, /r ¿mando/);
+  });
+
+  test('una palabra que solo empieza igual NO llama a la IA', async () => {
+    await handleEvent(comando('armifer91', '!preguntas cosas'));
+
+    // No se llama a la IA y no sale la respuesta de la IA. Sí puede salir
+    // otra cosa —el saludo de primer-mensaje—, porque para el sistema esto
+    // es un mensaje normal de chat, que es justo lo que queremos.
+    assert.equal(llamadasIa, 0);
+    assert.ok(!enviados.some((t) => t.includes(RESPUESTA_IA)));
+  });
+});

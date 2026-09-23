@@ -1,11 +1,22 @@
-import 'dotenv/config';
-
 /**
  * Configuración del sistema, leída una sola vez al arrancar.
  *
  * Regla del proyecto: ningún otro archivo lee process.env directamente.
  * Si necesitas un valor nuevo, se añade aquí y al .env.example.
+ *
+ * LOS TESTS NO LEEN EL .env. `node --test` marca sus procesos hijo con
+ * NODE_TEST_CONTEXT, y cuando esa marca está presente el .env no se carga:
+ * la suite corre siempre contra los valores por defecto.
+ *
+ * No es cosmético. Cuando el .env se cargaba también en los tests, poner
+ * PREGUNTA_IA_REWARD_ID con el ID real de la recompensa tumbaba once tests
+ * que no tenían ningún fallo: comprobaban el camino del Channel Point con un
+ * ID de mentira que ya no coincidía con el configurado. Un test solo debe
+ * ponerse rojo por el código, nunca por la máquina en la que corre.
  */
+if (!process.env.NODE_TEST_CONTEXT) {
+  await import('dotenv/config');
+}
 
 function str(name: string, fallback: string): string {
   const value = process.env[name];
@@ -53,6 +64,14 @@ if (!validLevels.includes(levelRaw as LogLevel)) {
   throw new Error(`LOG_LEVEL debe ser uno de: ${validLevels.join(', ')}. Vale "${levelRaw}".`);
 }
 
+export type CacheTtl = '5m' | '1h' | 'off';
+
+const cacheTtlRaw = str('AI_CACHE_TTL', '1h').toLowerCase();
+const validTtls: CacheTtl[] = ['5m', '1h', 'off'];
+if (!validTtls.includes(cacheTtlRaw as CacheTtl)) {
+  throw new Error(`AI_CACHE_TTL debe ser uno de: ${validTtls.join(', ')}. Vale "${cacheTtlRaw}".`);
+}
+
 export const config = {
   streamerbot: {
     host: str('STREAMERBOT_HOST', '127.0.0.1'),
@@ -88,6 +107,22 @@ export const config = {
 
   /** true = no envía nada a Twitch, solo registra. Útil para probar en directo sin riesgo. */
   dryRun: bool('DRY_RUN', false),
+
+  /**
+   * ¿Puede el bot hablar sin que nadie le invoque?
+   *
+   * Con `false`, las únicas cosas que le hacen escribir en el chat son los
+   * comandos (`!pregunta`, `!preguntar`) y el Channel Point. Sigue recibiendo
+   * y registrando la presencia de quien escribe —eso no cuesta dinero y hace
+   * falta para `#18 Bienvenida de Vuelta`—, pero no responde por su cuenta.
+   *
+   * Por defecto `true`, que es el diseño de docs/02: `#1 Primer Mensaje`
+   * existe precisamente para romper el hielo sin que nadie tenga que saberse
+   * un comando. Apagarlo es una decisión de producto legítima, y por eso es
+   * un interruptor y no un borrado; pero deja el proyecto con UNA sola
+   * interacción, y la Fase 7 necesita tres para extraer el motor.
+   */
+  interaccionesEspontaneas: bool('INTERACCIONES_ESPONTANEAS', true),
 
   /**
    * Modo revisión: lo que genere la IA espera tu aprobación por consola antes
@@ -130,8 +165,39 @@ export const config = {
     /** docs/01 § 3.3: 8 segundos y respuesta de reserva. El directo no espera. */
     timeoutMs: int('AI_TIMEOUT_MS', 8000),
 
-    /** docs/04 § 1.5: 3 $ por directo. */
+    /**
+     * Topes de gasto. Se comprueban TODOS antes de cada llamada y basta con
+     * que uno salte para que no se llame a Anthropic.
+     *
+     * El de sesión vive en memoria y cubre un directo (docs/04 § 1.5). Los de
+     * día y mes salen de la tabla `ai_usage` en SQLite, así que SOBREVIVEN a
+     * reiniciar el proceso: sin eso, "3 $ por directo" en realidad significaba
+     * "3 $ por cada vez que arrancas", que es un tope que no protege de nada.
+     */
     budgetPerStreamUsd: num('AI_BUDGET_PER_STREAM_USD', 3),
+    budgetPerDayUsd: num('AI_BUDGET_PER_DAY_USD', 5),
+    budgetPerMonthUsd: num('AI_BUDGET_PER_MONTH_USD', 20),
+
+    /**
+     * Tope de llamadas al día, además del de dinero.
+     *
+     * No es redundante: el coste solo se conoce si el modelo está en nuestra
+     * tabla de precios. Si algún día se configura un modelo que no está,
+     * el coste se registra como null y los topes en dólares dejarían de ver
+     * el gasto. Contar llamadas funciona siempre.
+     */
+    maxCallsPerDay: int('AI_MAX_CALLS_PER_DAY', 250),
+
+    /**
+     * Caché del prompt de sistema. La personalidad son ~1.200 tokens que se
+     * repiten en CADA pregunta; cachearla es el ahorro más grande que hay
+     * aquí sin tocar la calidad.
+     *
+     * '1h' porque las preguntas llegan separadas por minutos, no por
+     * segundos: con el TTL de 5 minutos la entrada caducaría entre preguntas
+     * y pagaríamos la escritura una y otra vez. Ver docs/04.
+     */
+    cacheTtl: cacheTtlRaw as CacheTtl,
   },
 } as const;
 

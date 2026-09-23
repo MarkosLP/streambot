@@ -6,6 +6,7 @@ import { setApprover } from './core/review.js';
 import { consoleApprover, closeApprover } from './core/console-approver.js';
 import { getDb, closeDatabase } from './data/db.js';
 import * as users from './data/users.js';
+import { budget } from './services/ai/index.js';
 import { connect, disconnect, sendChat } from './transport/streamerbot.js';
 
 /**
@@ -23,6 +24,22 @@ async function main(): Promise<void> {
   // enterarse con el chat aún sin escuchar que a mitad del primer mensaje.
   getDb();
   log.info(`SQLite: ${config.dbPath} · ${users.count()} usuario(s) conocidos`);
+
+  // El gasto, antes de recibir el primer evento. Los topes de día y mes se
+  // leen de la base de datos, así que reiniciar no los borra: si ayer te
+  // acercaste al tope, esta línea te lo dice ahora y no a mitad del directo.
+  log.info(`IA: ${config.ai.model} · caché ${config.ai.cacheTtl}`);
+  log.info(`Gasto — ${budget.describeSpend()}`);
+
+  if (!budget.modelHasKnownPrice()) {
+    log.warn(`No conocemos el precio de "${config.ai.model}", así que su gasto NO se puede sumar.`);
+    log.warn(`Los topes en dólares quedan ciegos; solo protege el de ${config.ai.maxCallsPerDay} llamadas/día.`);
+  }
+
+  const topes = budget.check();
+  if (!topes.ok) {
+    log.warn(`ATENCIÓN: ya se ha superado un tope (${topes.reason}). La IA no responderá.`);
+  }
 
   if (config.dryRun) {
     log.warn('DRY_RUN activo: no se enviará nada a Twitch, solo se registrará.');

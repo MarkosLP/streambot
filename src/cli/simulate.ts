@@ -1,3 +1,4 @@
+import { config } from '../config.js';
 import { log } from '../core/logger.js';
 import { normalize } from '../core/events.js';
 import { handleEvent } from '../core/handler.js';
@@ -113,23 +114,54 @@ async function simulateMessage(flags: Args['flags']): Promise<void> {
   await handleEvent(normalize('Twitch.ChatMessage', payload, 'simulator'));
 }
 
+/**
+ * Redención de Channel Point.
+ *
+ * OJO con la forma del payload. Hasta el 23 sep 2026 esta función fabricaba
+ * `{ user: {...}, userInput }`, y Streamer.bot NO manda eso: manda `user_id`,
+ * `user_login`, `user_name` y `user_input` planos. El simulador validaba una
+ * forma que no existe, así que daba luz verde a un camino que en el chat real
+ * llegaba con el espectador y la pregunta vacíos.
+ *
+ * Por defecto se emite la forma REAL. `--forma-antigua` emite la anidada,
+ * que el normalizador sigue aceptando, para poder comprobar las dos.
+ */
 async function simulateRedeem(flags: Args['flags']): Promise<void> {
   const login = flagStr(flags, 'user', 'pepe');
-  const payload = {
-    redemptionId: `sim-${Date.now()}`,
-    user: fakeUser(login, { sub: flags.sub === true }),
-    status: 'unfulfilled',
-    userInput: flagStr(flags, 'text', ''),
-    reward: {
-      id: flagStr(flags, 'reward-id', 'sim-reward'),
-      title: flagStr(flags, 'reward', 'Pregunta a Crid4m AI'),
-      cost: flagNum(flags, 'cost', 500),
-      prompt: '',
-      requiresUserInput: true,
-    },
-    createdAt: new Date().toISOString(),
-    isTest: true,
+  // El ID por defecto es el que esté configurado. Si no, simular "la
+  // recompensa" emitiría un ID que no coincide con el del .env, la redención
+  // se descartaría en silencio y la simulación no probaría absolutamente
+  // nada — que es justo lo que pasaba.
+  const reward = {
+    id: flagStr(flags, 'reward-id', config.preguntaIa.rewardId || 'sim-reward'),
+    title: flagStr(flags, 'reward', config.preguntaIa.rewardTitle),
+    cost: flagNum(flags, 'cost', 500),
+    prompt: '',
   };
+  const texto = flagStr(flags, 'text', '');
+
+  const payload =
+    flags['forma-antigua'] === true
+      ? {
+          redemptionId: `sim-${Date.now()}`,
+          user: fakeUser(login, { sub: flags.sub === true }),
+          status: 'unfulfilled',
+          userInput: texto,
+          reward: { ...reward, requiresUserInput: true },
+          createdAt: new Date().toISOString(),
+          isTest: true,
+        }
+      : {
+          id: `sim-${Date.now()}`,
+          user_id: `sim-${login.toLowerCase()}`,
+          user_login: login.toLowerCase(),
+          user_name: login,
+          user_input: texto,
+          status: 'unfulfilled',
+          reward,
+          redeemed_at: new Date().toISOString(),
+        };
+
   await handleEvent(normalize('Twitch.RewardRedemption', payload, 'simulator'));
 }
 
@@ -280,6 +312,8 @@ Opciones de redeem:
   --text="<texto>"    texto introducido
   --reward="<nombre>" nombre de la recompensa
   --cost=<n>          coste en puntos
+  --forma-antigua     emite el payload anidado en "user" en vez del plano que
+                      manda Streamer.bot de verdad
 
 Opciones generales:
   --reset             vacía la base de datos antes de ejecutar

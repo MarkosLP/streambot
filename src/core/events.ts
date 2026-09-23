@@ -9,6 +9,8 @@
  * (tras la migración a EventSub, que eliminó el objeto `message` antiguo).
  */
 
+import { log } from './logger.js';
+
 export type Platform = 'twitch';
 
 /** De dónde vino el evento. El simulador produce eventos idénticos salvo por este campo. */
@@ -115,6 +117,43 @@ function normalizeViewer(user: any): Viewer {
 }
 
 /**
+ * El espectador de una REDENCION de puntos.
+ *
+ * Streamer.bot no manda aqui la misma forma que en el chat. En la version
+ * con EventSub los datos de la persona vienen PLANOS y en snake_case
+ * (`user_id`, `user_login`, `user_name`), no dentro de un objeto `user`.
+ * Leerlo mal fue el fallo de la Fase 5: la pregunta y el espectador
+ * llegaban vacios y la interaccion se descartaba antes de llamar a la IA.
+ *
+ * Aceptamos LAS DOS formas a proposito. Streamer.bot ya ha cambiado estos
+ * payloads entre versiones y nos interesa mas sobrevivir al proximo cambio
+ * que apostar por una sola forma.
+ *
+ * Una redencion no trae badges, asi que ningun permiso se deduce de aqui:
+ * todos los flags salen en false, que es el valor seguro.
+ */
+function normalizeRedeemViewer(payload: any): Viewer {
+  // Forma antigua: todo colgando de `user`. Si existe, es la mas completa
+  // (trae badges), asi que tiene prioridad.
+  if (payload?.user && typeof payload.user === 'object') {
+    const viewer = normalizeViewer(payload.user);
+    if (viewer.id || viewer.login) return viewer;
+  }
+
+  const login = text(payload?.user_login).toLowerCase();
+  return {
+    id: text(payload?.user_id),
+    login,
+    displayName: text(payload?.user_name, login),
+    isBroadcaster: false,
+    isModerator: false,
+    isVip: false,
+    isSubscriber: false,
+    rawRole: null,
+  };
+}
+
+/**
  * Punto de entrada único de la normalización.
  *
  * Lo llaman TANTO el transporte real COMO el simulador. Esa es la razón de que
@@ -139,16 +178,31 @@ export function normalize(
         isReturningChatter: payload?.meta?.returningChatter === true,
       };
 
-    case 'Twitch.RewardRedemption':
+    case 'Twitch.RewardRedemption': {
+      const viewer = normalizeRedeemViewer(payload);
+      const userInput = text(payload?.user_input, text(payload?.userInput));
+
+      // Si no reconocemos al espectador, el payload tiene una forma que no
+      // contemplamos. Avisamos con las CLAVES del objeto (nunca su contenido,
+      // que incluye lo que escribió la persona) para poder arreglarlo.
+      if (!viewer.id && !viewer.login) {
+        log.warn(
+          'Redencion sin usuario reconocible. Claves del payload: ' +
+            Object.keys(payload ?? {}).join(', '),
+        );
+        log.debug('payload crudo de la redencion', payload);
+      }
+
       return {
         ...base,
         type: 'viewer.redeem',
-        viewer: normalizeViewer(payload?.user),
+        viewer,
         rewardId: text(payload?.reward?.id),
         rewardTitle: text(payload?.reward?.title),
         rewardCost: num(payload?.reward?.cost),
-        userInput: text(payload?.userInput),
+        userInput,
       };
+    }
 
     default:
       return { ...base, type: 'raw', eventName, payload };

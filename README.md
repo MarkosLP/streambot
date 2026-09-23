@@ -94,7 +94,7 @@ El simulador no construye eventos a mano: fabrica un payload con la forma de Str
 | `!encender` | tú y los moderadores | Reactiva el sistema |
 | `!estado` | cualquiera | Muestra el estado en la consola |
 | `!ping` | cualquiera | Sonda de verificación del camino de envío |
-| `!pregunta <texto>` | cualquiera | Pregunta a Crid4m AI. Gratis, con cooldown de 5 min global y 15 min por persona |
+| `!pregunta <texto>` | cualquiera | Pregunta a Crid4m AI. Gratis, con cooldown de 5 min global y 15 min por persona. `!preguntar` vale igual |
 
 ---
 
@@ -215,7 +215,7 @@ Sirve para hacer un directo completo comprobando qué habría dicho el bot, ante
 La interacción tiene **dos disparadores y una sola implementación** ([pregunta-ia.ts](src/interactions/pregunta-ia.ts)):
 
 - **Channel Point** — crea en Twitch una recompensa con **"Requerir que el espectador introduzca texto"** activado. Llámala `Pregunta a Crid4m AI` o pon su ID en `PREGUNTA_IA_REWARD_ID`.
-- **`!pregunta <texto>`** — gratis, con cooldown de 5 min global y 15 min por persona.
+- **`!pregunta <texto>`** — gratis, con cooldown de 5 min global y 15 min por persona. Se acepta también `!preguntar`, porque es lo que la gente escribe de forma natural.
 
 Los cooldowns **solo se aplican al comando**. Una redención de Channel Points nunca se bloquea por ellos: quien paga puntos tiene que recibir respuesta. Su limitador es el coste, que configuras en Twitch donde corresponde.
 

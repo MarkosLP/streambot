@@ -12,6 +12,7 @@ import { send } from './output.js';
 import * as users from '../data/users.js';
 import * as primerMensaje from '../interactions/primer-mensaje.js';
 import * as preguntaIa from '../interactions/pregunta-ia.js';
+import { budget } from '../services/ai/index.js';
 
 /**
  * Punto único por el que pasan TODOS los eventos, vengan de Streamer.bot
@@ -105,14 +106,11 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   //
   // Se comprueba contra la lista de bots, no contra isIgnored(): al dueño del
   // canal SÍ le dejamos usarlo, porque si no no podrías probarlo tú.
-  if (/^!pregunta\b/i.test(text)) {
+  const pregunta = matchPreguntaCommand(text);
+  if (pregunta !== null) {
     if (config.ignoredLogins.includes(viewer.login)) return;
     if (!isIgnored(viewer)) users.touch(viewer);
-    await preguntaIa.handle({
-      viewer,
-      question: text.slice('!pregunta'.length),
-      trigger: 'command',
-    });
+    await preguntaIa.handle({ viewer, question: pregunta, trigger: 'command' });
     return;
   }
 
@@ -123,9 +121,49 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
 
   // Registro de presencia. Ocurre SIEMPRE, dispare o no una interacción:
   // last_seen tiene que reflejar la realidad aunque hoy no respondamos.
+  // Es gratis y no guarda el texto del mensaje, solo quién y cuándo.
   const { isNew } = users.touch(viewer);
 
+  // A partir de aquí el bot hablaría sin que nadie se lo pida. Con las
+  // interacciones espontáneas apagadas, solo responde a comandos.
+  if (!config.interaccionesEspontaneas) return;
+
   await primerMensaje.handle(event, isNew);
+}
+
+/**
+ * Alias del comando de preguntas.
+ *
+ * Antes solo valía `!pregunta` exacto. En el chat de verdad la gente escribe
+ * `!preguntar`, que es el infinitivo y lo que suena natural al anunciarlo, y
+ * esas preguntas se caían sin dejar rastro: no coincidían aquí, así que la
+ * interacción ni se llamaba y no se registraba nada. Costó una sesión entera
+ * de un espectador (Armifer91, 23 sep 2026) darse cuenta.
+ *
+ * El `\b` del final es lo que impide que `!preguntas` o `!preguntame` que no
+ * queramos entren por accidente.
+ */
+const PREGUNTA_COMMAND = /^!pregunta(r|me)?\b/i;
+
+/**
+ * Devuelve la pregunta si el mensaje es el comando, y null si no lo es.
+ *
+ * La pregunta se recorta por la longitud de LO QUE HA COINCIDIDO, no por una
+ * longitud fija: con `!preguntar` un recorte fijo de 9 caracteres dejaría una
+ * "r" pegada al principio de la pregunta.
+ */
+function matchPreguntaCommand(text: string): string | null {
+  const match = PREGUNTA_COMMAND.exec(text);
+  if (match) return text.slice(match[0].length);
+
+  // Alguien ha intentado preguntar y no le hemos entendido. Se avisa a nivel
+  // info, no debug: es raro, y sin esta línea el intento desaparece sin dejar
+  // ni una huella en la base de datos.
+  if (/^!pregunt/i.test(text)) {
+    log.warn(`Comando de pregunta no reconocido: "${text.split(/\s+/)[0]}". Los válidos son !pregunta y !preguntar.`);
+  }
+
+  return null;
 }
 
 type ControlOutcome = 'handled' | 'ping' | null;
@@ -146,6 +184,9 @@ function matchControlCommand(text: string, viewer: Viewer): ControlOutcome {
 
   if (command === '!estado') {
     log.info(`Estado del sistema: ${killswitch.status()}`);
+    // El gasto va aquí porque es la pregunta que de verdad se hace uno en
+    // mitad del directo: cuánto llevo. Se consulta sin parar nada.
+    log.info(`Gasto de IA: ${budget.describeSpend()}`);
     return 'handled';
   }
 

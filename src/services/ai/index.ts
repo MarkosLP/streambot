@@ -154,12 +154,12 @@ export async function ask(intent: Intent, context: AskContext): Promise<AiResult
   }
 
   // 2. Presupuesto. Comprobado ANTES de llamar, nunca después.
-  if (!budget.canSpend()) {
-    log.warn(
-      `AI BUDGET EXCEEDED — gastado $${budget.summary().spentUsd.toFixed(4)} de ` +
-        `$${config.ai.budgetPerStreamUsd}. No se harán más llamadas esta sesión.`,
-    );
-    return fail('budget-exceeded', `presupuesto de $${config.ai.budgetPerStreamUsd} agotado`);
+  //    Son cuatro topes (sesión, día, mes y llamadas/día) y basta con que
+  //    salte uno. El motivo dice cuál ha sido y con qué cifras.
+  const presupuesto = budget.check();
+  if (!presupuesto.ok) {
+    log.warn(`AI BUDGET EXCEEDED — ${presupuesto.reason}. No se llamará a la IA.`);
+    return fail('budget-exceeded', presupuesto.reason);
   }
 
   const system = buildSystemPrompt(intent);
@@ -250,8 +250,12 @@ export async function ask(intent: Intent, context: AskContext): Promise<AiResult
 
   log.info(
     `AI success — ${latencyMs} ms · ${usage?.inputTokens ?? 0} in / ${usage?.outputTokens ?? 0} out` +
+      ` · ${usage?.cacheReadTokens ?? 0} de caché` +
       (costUsd !== null ? ` · $${costUsd.toFixed(5)}` : ' · coste desconocido'),
   );
+  // Dónde queda el gasto tras esta llamada. En cada llamada a propósito:
+  // el gasto tiene que verse en el momento, no al final del directo.
+  log.info(`AI gasto — ${budget.describeSpend()}`);
 
   return { ok: true, message, usage: info! };
 }

@@ -83,13 +83,13 @@ Reordenadas con los datos reales de la Fase 4. **La entrada es el 79 % del coste
 | Palanca | Ahorro | Comentario |
 |---|---:|---|
 | **No llamar a la IA** | 100 % | Cooldowns, respuestas predefinidas, y la regla de tu punto 3. Sigue siendo la palanca más grande con diferencia. |
-| **Caché de prompt** | **30-40 %** | **Sube al segundo puesto.** El 75 % de la entrada es prefijo fijo. Bloqueada solo por el volumen de llamadas, no por el diseño (§1.4.1). |
+| **Caché de prompt** | **30-40 %** | **Sube al segundo puesto.** El 75 % de la entrada es prefijo fijo. Implementado con TTL de 1 hora; rentable a partir de 3 preguntas/hora (§1.4.1). |
 | **Acortar el prompt de sistema** | hasta ~30 % | Palanca nueva que no habíamos visto: 963 de los 1.273 tokens de entrada son la personalidad. Cada línea que sobre en `crid4m.md` se paga en **todas** las llamadas. |
 | `effort: "low"` | ya aplicado | Funciona mejor de lo previsto: 68 tokens de salida en vez de los ~400 estimados. Ya no queda margen aquí. |
 | `max_tokens` bajo | ~0 % | Irrelevante: solo es un tope, y la salida real (68 tokens) no se acerca. |
 | Cambiar de modelo | 60-80 % | La única que cuesta calidad. Con 10 €/mes en el peor caso, **no compensa ni planteárselo**. |
 
-### 1.4.1 Caché de prompt: medido en la Fase 4 → NO se implementa (todavía)
+### 1.4.1 Caché de prompt: medido en la Fase 4 → implementado en la Fase 5
 
 Medido con `npm run ai:test -- --tokens`, no estimado:
 
@@ -107,36 +107,65 @@ Cuentas con los precios reales:
 | Salida (68 tok) | $0.001700 | $0.001700 |
 | **Total** | **$0.008065** | **$0.003732** |
 
-El ahorro sería del **53 %**, no del 20 % que había calculado antes. Pero eso solo aplica a las **lecturas**: escribir la caché cuesta 1,25×, y el TTL son **5 minutos**.
+El ahorro sería del **53 %**, no del 20 % que había calculado antes. Pero eso solo aplica a las **lecturas**: escribir la caché cuesta 1,25× con el TTL de 5 minutos y 2× con el de 1 hora.
 
-| Llamadas en una ventana de 5 min | Sin caché | Con caché | |
+#### Revisión (23 sep 2026): implementado con TTL de 1 hora
+
+La tabla de arriba daba el equilibrio en 2 llamadas **por cada ventana de 5 minutos**, y de ahí salió el "no implementado". El error de razonamiento estaba en la ventana, no en las cuentas: **los cooldowns del propio sistema son de 5 y 15 minutos**, así que dos preguntas dentro de la misma ventana de 5 minutos es precisamente lo que el diseño impide que ocurra. Con ese TTL la caché estaba condenada a caducar sin leerse nunca.
+
+Con TTL de 1 hora la escritura cuesta 2× en vez de 1,25×, pero la entrada aguanta entre preguntas, que es lo que aquí hace falta:
+
+| Llamadas en una hora | Sin caché | Con caché 1h | |
 |---:|---:|---:|---|
-| 1 | $0.0081 | $0.0093 | ❌ **más caro** |
-| 2 | $0.0161 | $0.0130 | ✅ −19 % |
-| 3 | $0.0242 | $0.0168 | ✅ −30 % |
-| 5 | $0.0403 | $0.0244 | ✅ −39 % |
+| 1 | $0.0081 | $0.0129 | ❌ más caro |
+| 2 | $0.0161 | $0.0166 | ≈ igual |
+| 3 | $0.0242 | $0.0203 | ✅ −16 % |
+| 5 | $0.0403 | $0.0278 | ✅ −31 % |
+| 10 | $0.0807 | $0.0465 | ✅ −42 % |
 
-**El punto de equilibrio está en 2 llamadas cada 5 minutos.** Con el canal sin espectadores y un cooldown de 5 minutos en `Pregunta a Crid4m AI`, no se llega ni de lejos: la caché se escribiría, caducaría sin usarse y saldría **más cara**.
+**El punto de equilibrio está en 3 preguntas por hora.** Cada lectura reinicia el contador del TTL, así que un directo con preguntas cada 10-20 minutos mantiene la entrada viva toda la sesión.
 
-**Decisión: documentado y no implementado.** Pero el incentivo futuro es mucho mayor de lo que creíamos: cuando haya chat, esto vale un 30-40 % de la factura de IA.
+**Decisión: implementado y configurable** (`AI_CACHE_TTL`, por defecto `1h`; acepta `5m` y `off`).
 
-**Condición para revisarlo:** que la tabla `ai_usage` muestre 2 o más llamadas dentro de cualquier ventana de 5 minutos. Se puede comprobar con una consulta sobre esa tabla; no hace falta adivinarlo.
+Con el tráfico de hoy (0-2 preguntas por directo) esto es **ligeramente peor**, del orden de medio céntimo por directo. Se asume a propósito: el coste de equivocarse por este lado es despreciable y el de no tenerlo puesto cuando el chat crezca es un 40 % de la factura. La condición para volver a `5m` u `off` sería que la tabla `ai_usage` mostrase, de forma sostenida, menos de 3 llamadas por hora de directo.
 
 **Sobre el caché, dos avisos concretos:**
 
 1. **Solo funciona si el prefijo llega a 512 tokens** (mínimo de Opus 5). Si el archivo de personalidad se queda corto, el caché **no se activa y no da ningún error**: verás `cache_creation_input_tokens: 0` y creerás que funciona. Hay que comprobarlo explícitamente en la Fase 4.
 2. **Cualquier byte que cambie en el prefijo lo invalida todo.** Un timestamp o un contador dentro del prompt de personalidad y el caché deja de servir en silencio. El orden correcto es: personalidad fija → reglas fijas → punto de caché → contexto variable → mensaje del espectador.
 
-### 1.5 Tope de gasto
+### 1.5 Topes de gasto
 
-Más importante que optimizar es no poder pasarse. El diseño incluye, desde la Fase 4:
+Más importante que optimizar es no poder pasarse.
 
-- Contador de gasto **por directo**, guardado en SQLite
-- Corte automático de las interacciones con IA al llegar al tope (el resto del sistema sigue funcionando)
-- Cooldown por usuario **y** cooldown global en toda interacción con IA
-- Ninguna interacción con IA sin coste en Channel Points o sin cooldown largo
+#### Corrección (23 sep 2026): el tope por directo no protegía
 
-Sugerencia de partida: 3 $ por directo. Es más del doble del escenario pequeño, así que solo saltará si algo va mal — que es exactamente para lo que está.
+Hasta aquí el único tope era el de **sesión**, y vivía en memoria. Eso significaba que reiniciar el proceso lo ponía a cero. En una tarde de pruebas el bot se arranca diez veces, así que "3 $ por directo" era en la práctica **"3 $ por cada arranque"**: un tope que no acota nada.
+
+Ahora son **cuatro topes**, y basta con que salte uno para que no se llame a Anthropic:
+
+| Tope | Variable | Por defecto | Dónde vive |
+|---|---|---:|---|
+| Por sesión | `AI_BUDGET_PER_STREAM_USD` | 3 $ | memoria (se reinicia al arrancar) |
+| Por día | `AI_BUDGET_PER_DAY_USD` | 5 $ | **SQLite** (sobrevive al reinicio) |
+| Por mes | `AI_BUDGET_PER_MONTH_USD` | 20 $ | **SQLite** |
+| Llamadas por día | `AI_MAX_CALLS_PER_DAY` | 250 | **SQLite** |
+
+Los de día y mes se calculan sumando `cost_usd` en la tabla `ai_usage`. Los cortes caen a **medianoche local**, no UTC: un directo de 22:00 a 02:00 cruza la medianoche UTC a mitad de sesión, y con ventanas UTC el tope diario se reiniciaría en mitad del directo.
+
+**El tope de llamadas no es redundante con los de dinero.** `cost_usd` solo se conoce si el modelo está en la tabla de precios de `budget.ts`. Si se configura un modelo que no está, el coste se guarda como `null`, los topes en dólares dejan de ver el gasto y **solo el contador de llamadas sigue protegiendo**. Por eso al arrancar se avisa explícitamente cuando el modelo configurado no tiene precio conocido.
+
+Si no se puede leer la contabilidad (base de datos bloqueada, disco lleno), `since()` devuelve infinito y **no se llama a la IA**. Ante la duda, no se gasta.
+
+Además, y como antes:
+
+- Corte automático de las interacciones con IA al llegar a cualquier tope; el resto del sistema sigue funcionando con el texto de reserva
+- Cooldown por usuario **y** cooldown global en el comando gratuito
+- Interruptor de emergencia (`!apagar`) por delante de todo, antes incluso de mirar el presupuesto
+
+El gasto se ve sin abrir la base de datos: al arrancar, después de cada llamada, y bajo demanda con `!estado`.
+
+**Fuera de nuestro código queda el tope duro:** el límite de gasto mensual de la consola de Anthropic (Plans & Billing). Ese es el único que no depende de que nuestro código funcione, y conviene tenerlo puesto.
 
 ---
 
@@ -244,7 +273,7 @@ Si el backend falla, falla en la máquina desde la que estás emitiendo.
 
 ### 🟡 R10 — Coste descontrolado por un troll o un bucle
 
-**Mitigación:** ya cubierto en 1.5. El tope por directo es la red de seguridad final.
+**Mitigación:** ya cubierto en 1.5. Los topes de **día y mes** son la red de seguridad final, y son los que importan aquí: viven en SQLite, así que un troll no los esquiva reiniciando el bot ni esperando al día siguiente dentro del mismo mes. El tope de llamadas diarias cubre además el caso de que el coste no se pueda calcular.
 
 ### 🟢 R11 — Datos personales
 
@@ -298,7 +327,7 @@ Cosas que **no se pueden hacer**, para no diseñar sobre suposiciones:
 | 1 | ¿Eres Afiliado? | ✅ **Sí** | R1 cerrado. Channel Points, Polls y Predicciones disponibles |
 | 2 | ¿Espectadores activos? | ✅ **Prácticamente cero** | 12 interacciones a la espera; núcleo reducido a 6. Ver R13 |
 | 3 | ¿Cuenta de bot separada? | ⏳ Pendiente | Se decide en la Fase 3. Afecta al rate limit (R7) |
-| 4 | ¿Tope de gasto mensual? | ⏳ Pendiente | Arranca en 3 $/directo por defecto. Con el gasto real actual (~1,50 €/mes) no es urgente |
+| 4 | ¿Tope de gasto mensual? | ✅ **Resuelto** | 20 $/mes y 5 $/día, persistidos en SQLite (§1.5). Falta ponerlo también en la consola de Anthropic, que es el tope duro |
 | 5 | ¿Node en el PC del directo? | ✅ **Sí** | Arquitectura local confirmada |
 | 6 | ¿Otros bots en el chat? | ✅ **Se apagan** | R14 resuelto. Solo Streamer.bot |
 
