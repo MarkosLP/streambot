@@ -151,8 +151,14 @@ describe('consentimiento', () => {
   });
 
   describe('!olvidame borra todo — verificado en la base de datos', () => {
-    test('borra recuerdos, interacciones y ficha', () => {
+    test('borra recuerdos, interacciones, ficha y racha', () => {
       guardar('id-pepe');
+      getDb()
+        .prepare(
+          'INSERT INTO streaks (twitch_id, current, best, last_stream_id, comodin_mes, updated_at) ' +
+            'VALUES (?, 4, 4, 1, NULL, ?)',
+        )
+        .run('id-pepe', new Date().toISOString());
       interactionLog.record({ interaction: 'primer-mensaje', twitchId: 'id-pepe', status: 'sent' });
       getDb()
         .prepare(
@@ -162,7 +168,7 @@ describe('consentimiento', () => {
 
       const borrado = consent.olvidar('id-pepe');
 
-      assert.deepEqual(borrado, { memories: 1, interactions: 1, users: 1 });
+      assert.deepEqual(borrado, { memories: 1, interactions: 1, users: 1, streaks: 1 });
 
       // La comprobación que pide el criterio: se consulta la BD, no se supone.
       const cuenta = (tabla: string) =>
@@ -173,6 +179,7 @@ describe('consentimiento', () => {
       assert.equal(cuenta('memories'), 0);
       assert.equal(cuenta('interactions'), 0);
       assert.equal(cuenta('users'), 0);
+      assert.equal(cuenta('streaks'), 0);
     });
 
     test('no toca los datos de otra persona', () => {

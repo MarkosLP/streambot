@@ -17,6 +17,7 @@ import * as primerMensaje from '../interactions/primer-mensaje.js';
 import * as ticketEntrada from '../interactions/ticket-entrada.js';
 import * as continuara from '../interactions/continuara.js';
 import * as datoInutil from '../interactions/dato-inutil.js';
+import * as rachas from '../interactions/rachas.js';
 import * as bienvenidaVuelta from '../interactions/bienvenida-vuelta.js';
 import * as preguntaIa from '../interactions/pregunta-ia.js';
 import * as preguntaIncomoda from '../interactions/pregunta-incomoda.js';
@@ -192,6 +193,14 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   //
   // El motor se encarga de guardas, cooldowns, envío y registro. Aquí solo se
   // decide A CUÁL se le da la oportunidad, que es lo propio del enrutado.
+  // La asistencia al directo se registra ANTES que ninguna interacción, y
+  // pase lo que pase después. Si dependiera de que #19 llegue a ejecutarse,
+  // un cooldown o una guarda de otra cosa podría costarle a alguien su racha.
+  const racha = rachas.registrar(viewer.id);
+  if (racha) {
+    await engine.run(rachas.interaction, { viewer, trigger: 'chat', resultado: racha });
+  }
+
   // #2 va PRIMERO: solo puede aplicar al mensaje siguiente a un saludo, así
   // que si aplica, ni #1 (ya saludó) ni #18 (no vuelve de nada) tenían nada
   // que hacer con este mensaje. Además no escribe en el chat, así que no

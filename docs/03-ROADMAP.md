@@ -272,7 +272,22 @@ No tiene sentido estimarla ahora.
 
 ---
 
-## FASE 9 — Progresión
+## FASE 9 — Progresión ✅ CÓDIGO ENTREGADO (24 sep 2026)
+
+> **Estado:** `#19 Rachas` construida (`data/streaks.ts`,
+> `interactions/rachas.ts`, tabla `streaks`), con comodín mensual y los hitos
+> 3, 5, 10 y 25.
+>
+> **XP y Logros: diseñados y NO construidos.** La decisión y su porqué están
+> en **docs/06-DISENO-XP-Y-LOGROS.md**, con la condición concreta para
+> revisarla: 5+ espectadores habituales y 4+ interacciones alcanzables.
+> Hoy son 0-2 y 2.
+>
+> Dos detalles del diseño que no son evidentes: la asistencia se registra en
+> el manejador y NO dentro de la interacción, porque el motor comprueba los
+> cooldowns antes de ejecutarla y un cooldown ajeno podría costarle la racha a
+> alguien; y romper una racha no se anuncia, porque decirlo es la frustración
+> que docs/02 pide evitar, no su mitigación.
 
 **Qué vamos a conseguir:** `#19 Rachas`. **Diseñar** XP y logros; implementar solo si el diseño convence.
 
