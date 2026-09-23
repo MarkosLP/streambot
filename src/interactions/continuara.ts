@@ -1,3 +1,4 @@
+import { config } from '../config.js';
 import { getDb } from '../data/db.js';
 import { log } from '../core/logger.js';
 import { send } from '../core/output.js';
@@ -99,6 +100,16 @@ export function ultimo(): string | null {
  * empezó el directo para resumirlo.
  */
 export async function alCerrar(stream: streams.StreamRow): Promise<void> {
+  // Esta interacción habla sin que nadie la invoque, así que la apaga el mismo
+  // interruptor que a las demás. No pasa por el motor —no la dispara un
+  // espectador— y por eso hay que comprobarlo aquí a mano: sin esta línea,
+  // INTERACCIONES_ESPONTANEAS=false dejaría un único camino por el que el bot
+  // habla solo, y encima gastando dinero.
+  if (!config.interaccionesEspontaneas) {
+    log.debug(`${NAME}: las interacciones espontáneas están apagadas.`);
+    return;
+  }
+
   const resumen = resumirDirecto(stream.started_at);
 
   if (resumen.espectadores.length < MINIMO_ESPECTADORES) {
@@ -154,6 +165,8 @@ export async function alCerrar(stream: streams.StreamRow): Promise<void> {
  * justo lo que lo hace barato.
  */
 export async function alAbrir(): Promise<void> {
+  if (!config.interaccionesEspontaneas) return;
+
   const pendiente = ultimo();
   if (!pendiente) {
     log.debug(`${NAME}: no hay ningún "continuará" del directo anterior.`);

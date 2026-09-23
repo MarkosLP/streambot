@@ -2,6 +2,7 @@ import { test, describe, beforeEach, before } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { configureDatabase, truncateAll, getDb } from '../data/db.js';
+import { config } from '../config.js';
 import { normalize } from '../core/events.js';
 import { handleEvent } from '../core/handler.js';
 import { setSender } from '../core/output.js';
@@ -166,5 +167,30 @@ describe('continuará', () => {
     await handleEvent(offline());
 
     assert.equal(streams.current(), null);
+  });
+});
+
+/**
+ * El interruptor de interacciones espontáneas.
+ *
+ * #24 no pasa por el motor, así que no hereda el interruptor: lo comprueba
+ * ella. Sin eso sería el único camino por el que el bot habla solo con
+ * INTERACCIONES_ESPONTANEAS=false, y además gastando dinero en cada cierre.
+ */
+describe('respeta el interruptor de espontáneas', () => {
+  test('la configuración por defecto las permite', () => {
+    // La suite corre con los valores por defecto. Lo que este test fija es que
+    // #24 consulta la MISMA marca que el resto, no una suya.
+    assert.equal(config.interaccionesEspontaneas, true);
+  });
+
+  test('con las espontáneas activas, al cerrar sí habla', async () => {
+    await handleEvent(online());
+    await handleEvent(mensaje('pepe'));
+    enviados = [];
+
+    await handleEvent(offline());
+
+    assert.equal(enviados.length, 1);
   });
 });
