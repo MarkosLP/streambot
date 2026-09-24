@@ -3,13 +3,19 @@ import { log } from './core/logger.js';
 import * as killswitch from './core/killswitch.js';
 import { setSender } from './core/output.js';
 import { setApprover } from './core/review.js';
-import { consoleApprover, closeApprover } from './core/console-approver.js';
+import { preguntarEnConsola, closeApprover } from './core/console-approver.js';
 import { getDb, closeDatabase } from './data/db.js';
 import * as users from './data/users.js';
 import * as memory from './core/memory.js';
 import * as consent from './core/consent.js';
 import { budget } from './services/ai/index.js';
+import * as streamerbot from './transport/streamerbot.js';
 import { connect, disconnect, sendChat } from './transport/streamerbot.js';
+import * as panel from './panel/server.js';
+import { aprobadorPanel } from './panel/revision.js';
+import type { Server } from 'node:http';
+
+let panelServer: Server | null = null;
 
 /**
  * Arranque del sistema.
@@ -54,13 +60,19 @@ async function main(): Promise<void> {
   }
 
   if (config.reviewMode) {
-    log.warn('MODO REVISIÓN activo: lo que genere la IA esperará tu aprobación por consola.');
-    setApprover(consoleApprover);
+    log.warn('MODO REVISIÓN activo: lo que genere la IA esperará tu aprobación en la consola o en el panel.');
   }
+
+  // El aprobador se pone SIEMPRE, aunque la revisión arranque apagada: el
+  // panel puede activarla en caliente, y review.ts falla cerrado si no hay
+  // aprobador. Contesta el primero de los dos, consola o panel.
+  setApprover(aprobadorPanel(preguntarEnConsola));
 
   // Aquí se enchufa el envío real. output.ts no importa el transporte:
   // así se rompe el ciclo y los tests pueden inyectar un emisor falso.
   setSender(sendChat);
+
+  panelServer = await panel.arrancar(streamerbot);
 
   await connect();
 
@@ -70,6 +82,7 @@ async function main(): Promise<void> {
 async function shutdown(signal: string): Promise<void> {
   log.info(`Recibido ${signal}. Cerrando...`);
   try {
+    panelServer?.close();
     await disconnect();
     closeApprover();
     closeDatabase();

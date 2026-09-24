@@ -1,4 +1,4 @@
-import { config } from '../config.js';
+import * as ajustes from './ajustes.js';
 import { log } from './logger.js';
 
 /**
@@ -29,7 +29,7 @@ export function setApprover(fn: Approver | null): void {
 }
 
 export function isEnabled(): boolean {
-  return config.reviewMode;
+  return ajustes.modoRevision();
 }
 
 /**
@@ -42,7 +42,7 @@ export async function review(
   reason: string,
   aiGenerated: boolean,
 ): Promise<Verdict> {
-  if (!config.reviewMode || !aiGenerated) return { approved: true };
+  if (!ajustes.modoRevision() || !aiGenerated) return { approved: true };
 
   if (!approver) {
     // Fallar cerrado, no abierto: si el modo revisión está activo y no hay

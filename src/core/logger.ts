@@ -14,8 +14,35 @@ function stamp(): string {
   return new Date().toLocaleTimeString('es-ES', { hour12: false });
 }
 
+/**
+ * Las últimas líneas, en memoria, para el panel.
+ *
+ * Es un anillo de tamaño fijo: un directo de seis horas no puede ir llenando
+ * la memoria del proceso. Guarda lo mismo que sale por consola y con el mismo
+ * umbral de nivel, para que el panel y la terminal cuenten la misma historia.
+ */
+export interface LineaLog {
+  n: number;
+  at: string;
+  level: LogLevel;
+  msg: string;
+}
+
+const MAX_RECIENTES = 300;
+const buffer: LineaLog[] = [];
+let contador = 0;
+
+/** Líneas con número mayor que `desde`. Así el panel solo pide lo nuevo. */
+export function recientes(desde = 0): LineaLog[] {
+  return buffer.filter((l) => l.n > desde);
+}
+
 function write(level: LogLevel, label: string, msg: string, extra?: unknown): void {
   if (ORDER[level] < threshold) return;
+  contador += 1;
+  buffer.push({ n: contador, at: new Date().toISOString(), level, msg });
+  if (buffer.length > MAX_RECIENTES) buffer.shift();
+
   const line = `${stamp()} ${label} ${msg}`;
   if (level === 'error') console.error(line);
   else if (level === 'warn') console.warn(line);

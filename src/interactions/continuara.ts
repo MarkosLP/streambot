@@ -1,4 +1,4 @@
-import { config } from '../config.js';
+import * as ajustes from '../core/ajustes.js';
 import { getDb } from '../data/db.js';
 import { log } from '../core/logger.js';
 import { send } from '../core/output.js';
@@ -105,7 +105,7 @@ export async function alCerrar(stream: streams.StreamRow): Promise<void> {
   // espectador— y por eso hay que comprobarlo aquí a mano: sin esta línea,
   // INTERACCIONES_ESPONTANEAS=false dejaría un único camino por el que el bot
   // habla solo, y encima gastando dinero.
-  if (!config.interaccionesEspontaneas) {
+  if (!ajustes.interaccionesEspontaneas()) {
     log.debug(`${NAME}: las interacciones espontáneas están apagadas.`);
     return;
   }
@@ -165,7 +165,7 @@ export async function alCerrar(stream: streams.StreamRow): Promise<void> {
  * justo lo que lo hace barato.
  */
 export async function alAbrir(): Promise<void> {
-  if (!config.interaccionesEspontaneas) return;
+  if (!ajustes.interaccionesEspontaneas()) return;
 
   const pendiente = ultimo();
   if (!pendiente) {

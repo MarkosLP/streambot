@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel Crid4m</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='13' fill='%23e3b341' stroke='%23a07818' stroke-width='3'/><text x='16' y='21' font-size='13' text-anchor='middle' font-family='sans-serif' font-weight='700' fill='%23654a0c'>C</text></svg>">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="marca">
+      <span class="moneda" aria-hidden="true"></span>
+      <div>
+        <h1>Crid4m</h1>
+        <p class="sub">Panel de control</p>
+      </div>
+    </div>
+
+    <div class="pastillas" id="pastillas">
+      <span class="pastilla" id="p-sb">Streamer.bot</span>
+      <span class="pastilla" id="p-directo">Directo</span>
+      <span class="pastilla" id="p-dry" hidden>DRY RUN</span>
+    </div>
+
+    <button class="interruptor" id="interruptor" type="button">
+      <span class="luz"></span>
+      <span class="interruptor-texto">Cargando…</span>
+    </button>
+  </header>
+
+  <nav class="pestanas" role="tablist">
+    <button role="tab" data-tab="directo" aria-selected="true">Directo</button>
+    <button role="tab" data-tab="efectos">Efectos</button>
+    <button role="tab" data-tab="interacciones">Interacciones</button>
+    <button role="tab" data-tab="espectadores">Espectadores</button>
+    <button role="tab" data-tab="registro">Registro</button>
+  </nav>
+
+  <main>
+    <!-- DIRECTO -->
+    <section class="vista" id="v-directo">
+      <div class="aviso-conexion" id="sin-bot" hidden>
+        No hay conexión con el bot. ¿Está en marcha <code>npm start</code>?
+      </div>
+
+      <article class="tarjeta revision" id="t-revision" hidden>
+        <header><h2>Esperando tu aprobación</h2></header>
+        <div id="pendientes"></div>
+      </article>
+
+      <div class="rejilla">
+        <article class="tarjeta">
+          <header><h2>Ajustes</h2><span class="nota">Hasta reiniciar el bot</span></header>
+          <label class="ajuste">
+            <span>
+              <strong>Interacciones espontáneas</strong>
+              <small>El bot habla sin que le invoquen: saludos, rachas, vueltas, continuará.</small>
+            </span>
+            <input type="checkbox" class="toggle" id="a-espontaneas">
+          </label>
+          <label class="ajuste">
+            <span>
+              <strong>Modo revisión</strong>
+              <small>Lo que escribe la IA espera tu aprobación antes de salir.</small>
+            </span>
+            <input type="checkbox" class="toggle" id="a-revision">
+          </label>
+        </article>
+
+        <article class="tarjeta">
+          <header><h2>Gasto de IA</h2><span class="nota" id="modelo"></span></header>
+          <div id="gasto"></div>
+        </article>
+      </div>
+
+      <article class="tarjeta">
+        <header><h2>Escribir en el chat</h2><span class="nota">Pasa por los mismos filtros que el bot</span></header>
+        <form class="chat" id="f-chat">
+          <input id="chat-texto" maxlength="480" placeholder="Mensaje para el chat…" autocomplete="off">
+          <button type="submit" class="boton primario">Enviar</button>
+        </form>
+        <p class="resultado" id="chat-resultado"></p>
+      </article>
+
+      <article class="tarjeta">
+        <header><h2>Actividad reciente</h2><button class="enlace" data-ir="registro" type="button">Ver todo</button></header>
+        <ol class="log corto" id="log-corto"></ol>
+      </article>
+    </section>
+
+    <!-- EFECTOS -->
+    <section class="vista" id="v-efectos" hidden>
+      <div class="cabecera-vista">
+        <div>
+          <h2>Efectos con Oro 🪙</h2>
+          <p class="nota">Se montan en Streamer.bot. Aquí ves cuáles faltan y los pruebas sin gastar puntos.</p>
+        </div>
+        <button class="boton" id="r-efectos" type="button">Actualizar</button>
+      </div>
+      <div class="aviso" id="efectos-sin-sb" hidden>
+        Sin conexión con Streamer.bot: no se puede saber qué está montado.
+      </div>
+      <div class="efectos" id="efectos"></div>
+      <div id="efectos-extra"></div>
+    </section>
+
+    <!-- INTERACCIONES -->
+    <section class="vista" id="v-interacciones" hidden>
+      <div class="cabecera-vista">
+        <h2>Interacciones</h2>
+        <button class="boton" id="r-interacciones" type="button">Actualizar</button>
+      </div>
+      <div class="tabla-envoltorio">
+        <table class="tabla">
+          <thead>
+            <tr><th>#</th><th>Interacción</th><th>Disparador</th><th>Estado</th><th>Hoy</th><th>Última vez</th></tr>
+          </thead>
+          <tbody id="interacciones"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ESPECTADORES -->
+    <section class="vista" id="v-espectadores" hidden>
+      <div class="cabecera-vista">
+        <h2>Espectadores <span class="contador" id="n-espectadores"></span></h2>
+        <div class="acciones-cabecera">
+          <input type="search" id="buscar" placeholder="Buscar…">
+          <button class="boton" id="r-espectadores" type="button">Actualizar</button>
+        </div>
+      </div>
+      <div class="tabla-envoltorio">
+        <table class="tabla">
+          <thead>
+            <tr><th>Nombre</th><th>Última vez</th><th>Primera vez</th><th>Racha</th><th>Recuerdos</th><th></th></tr>
+          </thead>
+          <tbody id="espectadores"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- REGISTRO -->
+    <section class="vista" id="v-registro" hidden>
+      <div class="cabecera-vista">
+        <h2>Registro</h2>
+        <div class="filtros" id="filtros">
+          <label><input type="checkbox" value="debug"> debug</label>
+          <label><input type="checkbox" value="info" checked> info</label>
+          <label><input type="checkbox" value="warn" checked> avisos</label>
+          <label><input type="checkbox" value="error" checked> errores</label>
+        </div>
+      </div>
+      <ol class="log" id="log"></ol>
+    </section>
+  </main>
+
+  <div class="tostada" id="tostada" role="status" aria-live="polite"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

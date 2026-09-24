@@ -1,41 +1,74 @@
-# Dónde lo dejamos — 24 sep 2026
+# Dónde lo dejamos — 25 sep 2026
 
-Traspaso para la próxima sesión. Lo primero de todo está en la sección 1.
+Traspaso para la próxima sesión. **Lo primero de todo está en la sección 0.**
 
 ---
 
-## 0. Lo primero de mañana, ya acordado
+## 0. CAMBIO DE RUMBO (sesión del 24-25 sep)
 
-Reescribir las puertas de validación de las fases 6-9 con el **mismo criterio
-adaptado que ya tiene la Fase 5**, y preparar un guion de UN directo de unos
-30 minutos que cierre todo lo que se puede cerrar sin comunidad.
+**Lo que dijiste:** conectar los Channel Points con la IA no te termina de
+convencer. Quieres que esto sirva para **sacarle partido a Streamer.bot**:
+comandos interesantes, juegos con el chat y añadidos que, mientras juegas o
+haces Just Chatting, inviten a quedarse y divertirse. Los juegos de grupo,
+para cuando haya gente.
 
-El planteamiento, que salió al final de la sesión del 24:
+**Lo que eso significa:**
+- La IA pasa a ser un ingrediente más, no el centro. `#5 Pregunta a Crid4m AI` se queda como un comando más.
+- Primero, lo que funciona con **1-3 espectadores** y **se ve en pantalla** (Streamer.bot → OBS).
+- Lo sencillo (sonidos, filtros) se monta **directamente en Streamer.bot**. Nuestro código se reserva para lo que tiene **estado o memoria**: juegos, marcadores, inventarios.
+- Todo lo construido (conexión, SQLite, cooldowns, interruptor, simulador, memoria) se aprovecha.
 
-**"Necesito un directo" y "necesito espectadores" no son lo mismo**, y las
-había estado mezclando. Cinco de las seis cosas pendientes se validan en
-solitario: el Channel Point con payload real, rechazar en revisión, el corte
-de red, el caché en marcha, y los eventos de principio y fin de directo.
+**Datos del canal que ya no hay que volver a preguntar:** eres **afiliado**, tienes **OBS conectado a Streamer.bot**, y emites **MMOs** con **Just Chatting ocasional**.
 
-Solo cuatro interacciones necesitan a otra persona: `#1`, `#18`, `#15` y
-`#19`. Y para eso está **`crid4n`**, que ya es una cuenta real con historial
-en el canal (id `1541361603`, vista el 22 de sep). Desde el móvil y con datos
-en vez de wifi, para el bot es un espectador de verdad: otro `twitch_id`,
-otros badges, los mismos payloads. No es comunidad, pero para validar el
-código es equivalente.
+### El plan, en orden
 
-La Fase 5 ya tenía esto resuelto en el roadmap —separa "¿funciona?" de
-"¿le importa a alguien?", y deja la segunda aplazada— y es lo que hay que
-extender a las demás.
+| # | Qué | Dónde vive | Estado |
+|---|---|---|---|
+| 1 | **Efectos con Oro 🪙** (sonido, "bebe agua", maldición B/N, terremoto, lag) | Streamer.bot + OBS | 📄 Guía escrita en `docs/07`. **Te toca montarlos.** |
+| 2 | **Loot del chat** ⭐ — mientras farmeas, al chat le caen objetos con rareza; un legendario lanza un efecto en OBS; `!inventario` | Nuestro código + `DoAction` | Por diseñar |
+| 3 | **Retos al jugador** con Channel Points + overlay con temporizador | Streamer.bot + nuestro código | Idea |
+| 4 | **Predicciones** de drop/wipe, abiertas y cerradas solas | Nuestro código | Idea |
+| 5 | **Contador de wipes/muertes** en pantalla + `!wipes` | Streamer.bot | Idea |
+| — | Jefe de raid del chat con barra de vida | — | Para cuando haya gente |
 
-**Excepción a tener en cuenta:** `#24 Continuará` exige al menos un
-espectador, y el dueño del canal se ignora a propósito, así que un directo en
-el que solo hablas tú cuenta cero y se saltará siempre. Esa necesita a
-`crid4n` escribiendo una vez.
+Just Chatting: ruleta de temas y `#5` tal cual.
 
-Y el dato que conviene no perder de vista: **el 23 de sep hubo tres personas
-en el chat**, y `armifer91` estuvo 44 minutos. No es un canal sin espectadores,
-es un canal con pocos.
+### Lo primero de mañana
+
+1. **Pruebas el panel**: `npm start` y abre **http://127.0.0.1:7070**. No lo he visto pintado en un navegador; si algo se ve raro, se arregla lo primero.
+2. **Montas "Grito de guerra"** siguiendo `docs/07` § 5 (o la pestaña Efectos del panel, que trae los mismos pasos). La Action se tiene que llamar `Efecto - Grito de guerra` para que el panel la reconozca. Cuando el panel la marque como **Montado** y el botón **Probar** suene, el patrón está validado.
+3. **Me dices qué MMO juegas.** Hace falta para darle nombres del juego a las rarezas del Loot, a los retos y a los efectos.
+4. Diseñamos el **Loot del chat**.
+
+### Pendientes de esta idea
+
+- **La moneda:** propuse **Oro 🪙** en vez de las esferas del dragón, que no pegan en un canal de MMO. No me has dicho si te convence. Me ofrecí a generar el icono en 18, 36 y 72 px.
+- Los nombres de menú de Streamer.bot en `docs/07` no están comprobados en tu pantalla. Si alguno no coincide, se corrige la guía.
+
+---
+
+## 0-bis. El panel de control (nuevo)
+
+`src/panel/`. Lo sirve el propio bot en **http://127.0.0.1:7070** (`PANEL_PORT`, `PANEL_ENABLED` en el `.env`).
+
+- **Directo:** interruptor, espontáneas y revisión en caliente, gasto, escribir en el chat, actividad.
+- **Revisión desde el panel:** lo que la IA quiere decir aparece arriba con Publicar / Descartar. La consola sigue funcionando; vale la primera respuesta.
+- **Efectos:** cruza el catálogo con las Actions reales de Streamer.bot y las prueba con `DoAction`.
+- **Interacciones**, **Espectadores** (con olvidar) y **Registro**.
+- Los interruptores del panel **duran hasta reiniciar**. El `.env` sigue mandando.
+- Seguridad: solo escucha en 127.0.0.1, comprueba la cabecera Host y exige `X-Panel: 1` en todo lo que cambia algo. Ver el comentario de `src/panel/server.ts`.
+
+---
+
+## 0-ter. El plan de validación de antes (sigue valiendo, ya no es lo primero)
+
+Lo que había acordado el 24 sep, resumido: "necesito un directo" y "necesito
+espectadores" no son lo mismo. Casi todo se valida en solitario, y para lo
+que necesita a otra persona está `crid4n` desde el móvil con datos (id
+`1541361603`). `#24 Continuará` exige al menos un espectador que no seas tú.
+
+Con el cambio de rumbo, esto queda **detrás** de los efectos y el Loot.
+Las interacciones que valida son las de la etapa anterior.
 
 ---
 
@@ -69,7 +102,7 @@ FASE 9    ✅ código · #19 Rachas (XP diseñado, NO hecho) 🚦 sin validar
 FASE 10   ◀── siguiente: sistema de personalidad
 ```
 
-**256 tests, 0 fallos.** `npm run check`.
+**275 tests, 0 fallos.** `npm run check`.
 
 ### Las siete interacciones
 
@@ -107,7 +140,9 @@ Lo he tapado: ahora consulta la misma marca. **Si quieres el "continuará" pero 
 
 ---
 
-## 4. Qué viene: Fase 10 — Sistema de personalidad
+## 4. Lo que iba a venir: Fase 10 — Sistema de personalidad
+
+> **Aplazado por el cambio de rumbo (sección 0).** Se queda como referencia.
 
 Lee `docs/03-ROADMAP.md`. Dos cosas que ya sabemos:
 
@@ -128,7 +163,7 @@ Lee `docs/03-ROADMAP.md`. Dos cosas que ya sabemos:
 ## 6. Para volver a coger el hilo rápido
 
 ```bash
-npm run check          # 256 tests
+npm run check          # 275 tests
 npm start              # arranca; mira las lineas de "Gasto —" e "IA:"
 ```
 
@@ -165,3 +200,4 @@ O simplemente `!estado` en el chat.
 | `docs/04-RIESGOS-COSTES-LIMITACIONES.md` | Costes medidos, los cuatro topes, el caché |
 | `docs/05-NOTAS-PARA-EL-MOTOR.md` | Por qué el motor es como es |
 | `docs/06-DISENO-XP-Y-LOGROS.md` | El diseño de XP y por qué NO se construyó |
+| `docs/07-EFECTOS-CANAL.md` | **Nuevo.** La moneda Oro, precios y la guía paso a paso de los efectos |

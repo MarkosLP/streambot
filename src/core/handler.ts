@@ -8,6 +8,7 @@ import {
   type ViewerRedeemEvent,
 } from './events.js';
 import * as killswitch from './killswitch.js';
+import * as ajustes from './ajustes.js';
 import * as engine from './engine.js';
 import * as consent from './consent.js';
 import { send } from './output.js';
@@ -184,7 +185,7 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
 
   // A partir de aquí el bot hablaría sin que nadie se lo pida. Con las
   // interacciones espontáneas apagadas, solo responde a comandos.
-  if (!config.interaccionesEspontaneas) return;
+  if (!ajustes.interaccionesEspontaneas()) return;
 
   // #1 y #18 son excluyentes por definición: quien nunca ha estado no puede
   // volver, y quien vuelve no es nuevo. Aun así el orden importa, porque las

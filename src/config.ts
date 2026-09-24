@@ -83,6 +83,15 @@ export const config = {
     useBotAccount: bool('STREAMERBOT_USE_BOT_ACCOUNT', false),
   },
 
+  /**
+   * Panel de control web. Solo escucha en 127.0.0.1: se abre desde el PC del
+   * directo y desde ningún otro sitio. Ver src/panel/server.ts.
+   */
+  panel: {
+    enabled: bool('PANEL_ENABLED', true),
+    port: int('PANEL_PORT', 7070),
+  },
+
   logLevel: levelRaw as LogLevel,
   captureRawEvents: bool('CAPTURE_RAW_EVENTS', true),
   broadcasterLogin: str('BROADCASTER_LOGIN', 'crid4m').toLowerCase(),

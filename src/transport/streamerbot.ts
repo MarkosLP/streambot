@@ -99,6 +99,7 @@ export async function connect(): Promise<void> {
         log.info(`Reconectado con Streamer.bot tras ${failedAttempts} intento(s).`);
       }
       failedAttempts = 0;
+      version = `${info.name} v${info.version}`;
       log.info(`Conectado a ${info.name} v${info.version} (${info.os}).`);
       log.info(`Suscrito a: ${Object.values(SUBSCRIPTIONS).flat().join(', ')}`);
     },
@@ -173,6 +174,54 @@ export async function sendChat(text: string): Promise<void> {
       `Streamer.bot rechazó SendMessage: ${detail}. ` +
         '¿Está STREAMERBOT_PASSWORD puesta y la autenticación activada?',
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Para el panel
+// ---------------------------------------------------------------------------
+
+export interface EstadoConexion {
+  conectado: boolean;
+  destino: string;
+  /** "Streamer.bot v1.0.7", o null si nunca ha conectado. */
+  version: string | null;
+  intentosFallidos: number;
+}
+
+let version: string | null = null;
+
+export function estado(): EstadoConexion {
+  return { conectado: connected, destino: target, version, intentosFallidos: failedAttempts };
+}
+
+export interface AccionSB {
+  id: string;
+  name: string;
+  group: string;
+  enabled: boolean;
+}
+
+/** Todas las Actions que hay creadas en Streamer.bot. */
+export async function acciones(): Promise<AccionSB[]> {
+  if (!client || !connected) throw new Error('no hay conexión con Streamer.bot');
+  const response = await client.getActions();
+  if (response?.status !== 'ok') throw new Error('Streamer.bot no devolvió la lista de acciones');
+  return response.actions.map((a) => ({ id: a.id, name: a.name, group: a.group, enabled: a.enabled }));
+}
+
+/**
+ * Ejecuta una Action de Streamer.bot, igual que su botón "Test".
+ *
+ * No pasa por el interruptor de emergencia a propósito: el interruptor calla
+ * al BOT en el chat, y esto lo pulsas tú a mano desde el panel para probar
+ * un efecto. Si la Action escribe en el chat, eso lo hace Streamer.bot.
+ */
+export async function ejecutarAccion(id: string): Promise<void> {
+  if (!client || !connected) throw new Error('no hay conexión con Streamer.bot');
+  const response = await client.doAction({ id });
+  if (response?.status !== 'ok') {
+    throw new Error(`Streamer.bot no ejecutó la acción: ${(response as any)?.error ?? 'sin detalle'}`);
   }
 }
 

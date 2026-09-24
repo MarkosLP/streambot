@@ -30,9 +30,11 @@ export function closeApprover(): void {
   rl = null;
 }
 
-async function prompt(text: string, reason: string): Promise<Verdict> {
+async function prompt(text: string, reason: string, externa?: AbortSignal): Promise<Verdict> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const retirar = () => controller.abort();
+  externa?.addEventListener('abort', retirar, { once: true });
 
   console.log('\n┌─ REVISIÓN ──────────────────────────────────────────────────');
   console.log(`│ Interacción: ${reason}`);
@@ -53,6 +55,10 @@ async function prompt(text: string, reason: string): Promise<Verdict> {
     log.warn('Revisión: RECHAZADO, no se publica.');
     return { approved: false, reason: 'rechazado en revisión' };
   } catch (err) {
+    if (externa?.aborted) {
+      console.log('  (resuelto desde el panel)');
+      return { approved: false, reason: 'resuelto en otro sitio' };
+    }
     if (controller.signal.aborted) {
       log.warn(`Revisión: sin respuesta en ${TIMEOUT_MS / 1000}s. No se publica.`);
       return { approved: false, reason: 'sin respuesta a tiempo' };
@@ -61,6 +67,7 @@ async function prompt(text: string, reason: string): Promise<Verdict> {
     return { approved: false, reason: 'error leyendo la consola' };
   } finally {
     clearTimeout(timer);
+    externa?.removeEventListener('abort', retirar);
   }
 }
 
@@ -82,9 +89,22 @@ function partir(text: string, ancho: number): string[] {
   return lineas;
 }
 
-export const consoleApprover: Approver = (text, reason) => {
-  const siguiente = queue.then(() => prompt(text, reason));
+export const consoleApprover: Approver = (text, reason) => preguntarEnConsola(text, reason);
+
+/**
+ * Igual que `consoleApprover`, pero se puede retirar desde fuera.
+ *
+ * Lo usa el panel: cuando apruebas o rechazas allí, la pregunta de la consola
+ * sobra, y sin esto se quedaría esperando una tecla que ya no significa nada.
+ * Si la señal llega antes de que le toque el turno en la cola, ni se pregunta.
+ */
+export function preguntarEnConsola(text: string, reason: string, externa?: AbortSignal): Promise<Verdict> {
+  const siguiente = queue.then(() =>
+    externa?.aborted
+      ? ({ approved: false, reason: 'resuelto en otro sitio' } as Verdict)
+      : prompt(text, reason, externa),
+  );
   // La cola no debe romperse si una aprobación falla.
   queue = siguiente.catch(() => undefined);
   return siguiente;
-};
+}

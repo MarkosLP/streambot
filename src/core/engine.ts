@@ -1,4 +1,4 @@
-import { config } from '../config.js';
+import * as ajustes from './ajustes.js';
 import { log } from './logger.js';
 import * as cooldowns from './cooldowns.js';
 import { send } from './output.js';
@@ -32,7 +32,7 @@ import { detalleEstandar, type Ctx, type Interaction } from './interaction.js';
  * escrita dejaría a la siguiente persona sin poder preguntar.
  */
 export async function run<C extends Ctx>(def: Interaction<C>, ctx: C): Promise<void> {
-  if (def.spontaneous && !config.interaccionesEspontaneas) {
+  if (def.spontaneous && !ajustes.interaccionesEspontaneas()) {
     log.debug(`${def.name}: las interacciones espontáneas están apagadas.`);
     return;
   }

@@ -1,0 +1,168 @@
+# DOCUMENTO 7 — Efectos del chat con Channel Points
+
+**Fecha:** 24 de septiembre de 2026.
+**Qué es:** guía paso a paso para montar en Streamer.bot los efectos que el chat
+lanza con puntos de canal. Nada de esto necesita nuestro código: vive entero en
+Streamer.bot y OBS.
+
+---
+
+## 1. La moneda: Oro 🪙
+
+| | Propuesta |
+|---|---|
+| Nombre | **Oro** |
+| Icono | Una moneda de oro, estilo pixel o icono de MMO |
+| Por qué | Todo el que juega a un MMO lo entiende sin explicación. "Gastar 500 de oro en maldecir al streamer" se lee solo. |
+
+Las esferas del dragón no encajan con un canal de MMO, y además apuntan a una
+franquicia concreta que no es la tuya.
+
+Dónde se cambia: **Panel de creador → Comunidad → Puntos de canal → Configuración**.
+Twitch pide el icono en PNG con fondo transparente en tres tamaños:
+**18×18, 36×36 y 72×72**.
+
+Alternativas si Oro te suena demasiado genérico: **Maná** 💧, **Fragmentos** 💎, **Esencia** ✨.
+
+---
+
+## 2. Precios
+
+Un espectador gana de media **unos 300 puntos por hora** (lo que da Twitch por
+tiempo viendo más el cofre que hay que reclamar). Con pocos espectadores,
+**lo barato tiene que estar al alcance en la primera hora**, o nadie lo usará.
+
+| Nivel | Coste | Para qué |
+|---|---:|---|
+| Barato | 300 | Se puede usar en el primer directo |
+| Medio | 800 – 1.500 | Algo que se ahorra durante un par de directos |
+| Caro | 3.000+ | Retos (punto 3 del plan, más adelante) |
+
+---
+
+## 3. Los efectos
+
+Los tres primeros funcionan con **OBS tal cual, sin plugins**. Los dos últimos
+necesitan un plugin gratuito.
+
+| # | Recompensa | Coste | Cooldown | Qué pasa | Necesita |
+|---|---|---:|---|---|---|
+| 1 | **Grito de guerra** | 300 | 1 min | Suena un sonido | Nada |
+| 2 | **Poción de vida** | 300 | 5 min | Aparece "¡Bebe agua!" 5 s en pantalla | Nada |
+| 3 | **Maldición** | 800 | 5 min | La pantalla se queda en blanco y negro 30 s | Nada |
+| 4 | **Terremoto** | 1.000 | 5 min | La cámara tiembla 5 s | Plugin *Move* |
+| 5 | **Lag** | 1.500 | 10 min | La imagen se congela 5 s | Plugin *Freeze Filter* |
+
+Los plugins 4 y 5 son de Exeldro, gratuitos y de uso muy extendido. Déjalos para
+cuando los tres primeros funcionen.
+
+---
+
+## 4. Regla importante: crea las recompensas DESDE Streamer.bot
+
+Twitch solo deja que una aplicación active, desactive o modifique **las
+recompensas que ha creado esa misma aplicación**. Si las creas en el panel de
+Twitch, Streamer.bot las puede leer pero no tocar.
+
+Si las creas desde Streamer.bot, más adelante podrás hacer cosas como
+desactivarlas todas al pulsar `!apagar`, o esconderlas cuando no estés en directo.
+
+---
+
+## 5. Paso a paso: el primero, entero
+
+Los nombres de menú son los de Streamer.bot v1.0.x. Si alguno no coincide
+exactamente, el menú de clic derecho está ordenado por categorías y se encuentra
+rápido.
+
+### 5.1 Crear la recompensa
+
+1. **Platforms → Twitch → Channel Point Rewards.**
+2. Clic derecho en la lista → **Add**.
+3. Rellena:
+   - Title: `Grito de guerra`
+   - Cost: `300`
+   - Global cooldown: `60` segundos
+   - Marca **Skip reward queue**. Así la recompensa se da por cumplida sola y no
+     se te acumulan canjes pendientes.
+   - Marca **Enabled**.
+4. Guarda. Comprueba en tu canal de Twitch que aparece.
+
+### 5.2 Crear la acción
+
+1. Pestaña **Actions**.
+2. Clic derecho en la lista de acciones → **Add**. Nombre: `Efecto - Grito de guerra`.
+   Crea también un grupo `Efectos` para tenerlas juntas.
+3. En **Triggers** (abajo a la izquierda): clic derecho → **Twitch → Channel Reward
+   → Reward Redemption**, y elige `Grito de guerra`.
+4. En **Sub-Actions** (abajo a la derecha): clic derecho → **Core → Sounds → Play
+   Sound**. Elige el archivo y ajusta el volumen.
+5. Opcional, otro sub-action: **Twitch → Chat → Send Message to Channel** con el
+   texto `%user% lanza un grito de guerra ⚔️`.
+
+### 5.3 Probarla sin gastar puntos
+
+Clic derecho en la acción → **Test**. Si suena, ya está. Después pruébala de
+verdad canjeándola desde tu canal.
+
+---
+
+## 6. El resto de efectos
+
+La recompensa se crea igual que en 5.1 en todos los casos. Solo cambian los
+sub-actions.
+
+### 6.1 Poción de vida
+
+**En OBS, una vez:**
+1. En la escena del juego, añade una fuente **Imagen** (o un GIF) con el texto
+   "¡Bebe agua!". Llámala `FX Pocion`.
+2. Colócala donde quieras y **ocúltala** (el icono del ojo).
+
+**Sub-actions:**
+1. **OBS → Sources → Set Source Visibility** → escena del juego, `FX Pocion`, **Visible**.
+2. **Core → Delay** → `5000` ms.
+3. **OBS → Sources → Set Source Visibility** → `FX Pocion`, **Hidden**.
+
+### 6.2 Maldición
+
+**En OBS, una vez:**
+1. Clic derecho en la **fuente del juego** (no en la escena) → **Filtros**.
+2. Añade **Corrección de color**. Llámalo `FX Maldicion`. Pon **Saturación a -1**.
+3. **Desactívalo** (el icono del ojo junto al filtro).
+
+**Sub-actions:**
+1. **OBS → Filters → Set Filter State** → fuente del juego, `FX Maldicion`, **Enabled**.
+2. **Core → Delay** → `30000` ms.
+3. **OBS → Filters → Set Filter State** → `FX Maldicion`, **Disabled**.
+4. Opcional: **Send Message to Channel** → `%user% ha maldecido al streamer 💀`.
+
+Si en vez de la fuente del juego pones el filtro en la escena entera, se
+maldice todo, cámara incluida. Queda más gracioso.
+
+### 6.3 Terremoto *(plugin Move)*
+
+Con el plugin **Move** instalado, se añade a la fuente de la cámara un filtro
+**Move Value** que oscile la posición, y se activa y desactiva como en 6.2 con
+un Delay de 5 s. Lo detallo cuando llegues aquí; depende de la versión del plugin.
+
+### 6.4 Lag *(plugin Freeze Filter)*
+
+Con **Freeze Filter** instalado, se añade el filtro **Freeze** a la fuente del
+juego, y se activa y desactiva como en 6.2 con un Delay de 5 s.
+
+---
+
+## 7. Una comprobación que conviene hacer
+
+**Canjea dos efectos a la vez.** Si "Maldición" está activa y alguien lanza otra
+"Maldición", el primer temporizador la apagará antes de tiempo. El cooldown
+global de 5 minutos ya lo evita, pero si algún día lo bajas, activa en la acción
+**Queue → una cola bloqueante** para que los canjes se ejecuten uno detrás de otro.
+
+---
+
+## 8. Relación con nuestro bot
+
+Ninguna, y es a propósito. El bot solo reacciona a la recompensa de `#5 Pregunta
+a Crid4m AI` e ignora las demás. Si el bot se cae, los efectos siguen funcionando.
