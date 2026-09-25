@@ -600,7 +600,7 @@ const RAREZA_LOOT = {
   epico: { clase: 'r-epico', nombre: 'Épico' },
   legendario: { clase: 'r-legendario', nombre: 'Legendario' },
 };
-const ORIGEN = { cofre: 'cofre', oro: 'Cofre del tesoro', panel: 'desde el panel' };
+const ORIGEN = { cofre: 'cofre', oro: 'Cofre del tesoro', panel: 'desde el panel', forja: 'forjado' };
 
 function mmss(seg) {
   const m = Math.floor(seg / 60);
@@ -641,11 +641,17 @@ async function cargarLoot() {
       h('span', { class: 'dato' }, `${ORIGEN[f.origen] || f.origen} · ${hace(f.at)}`)))
     : [h('li', { class: 'vacio-lista' }, 'Todavía no ha caído nada. El primer cofre llegará en el próximo directo.')]));
 
+  $('l-comandos').replaceChildren(...d.comandos.map(([cmd, que]) => h('li', {}, chipCopiar(cmd, cmd), h('span', {}, que))));
+
   $('l-mochilas').replaceChildren(...(d.mochilas.length
     ? d.mochilas.map((m, i) => h('li', {},
       h('span', { class: 'puesto' }, String(i + 1)),
-      h('strong', {}, m.display_name),
-      h('span', { class: 'dato' }, `${m.total} objetos`),
+      h('div', { class: 'mochila-quien' },
+        h('strong', {}, m.display_name),
+        h('span', { class: 'dato' },
+          `⚔️ ${m.poder} · 🎒 ${m.total}/${d.mochilaMax} · 📖 ${m.coleccion}` +
+          (m.ganados + m.perdidos ? ` · duelos ${m.ganados}-${m.perdidos}` : '')),
+        m.titulo && h('span', { class: 'titulo-loot' }, `«${m.titulo}»`)),
       m.legendarios > 0 && h('span', { class: 'botin r-legendario' }, h('span', { class: 'gema' }), `${m.legendarios}`),
       m.epicos > 0 && h('span', { class: 'botin r-epico' }, h('span', { class: 'gema' }), `${m.epicos}`)))
     : [h('li', { class: 'vacio-lista' }, 'Aún no hay mochilas.')]));

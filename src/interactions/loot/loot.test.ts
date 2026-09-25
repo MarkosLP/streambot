@@ -241,7 +241,7 @@ describe('!inventario', () => {
     lootDb.guardar('id-pepe', 'pepe', { objeto: 'Capa de las Sombras', rareza: 'epico' }, 'cofre');
     lootDb.guardar('id-pepe', 'pepe', { objeto: 'Mapa arrugado', rareza: 'comun' }, 'cofre');
     await handleEvent(mensaje('pepe', '!mochila'));
-    assert.equal(enviados[0], '@pepe 🎒 3 objetos: 2 ⚪ 1 🟣 · Tu mejor pieza: 🟣 Capa de las Sombras');
+    assert.equal(enviados[0], '@pepe 🎒 3/20: 2 ⚪ 1 🟣 · ⚔️ Poder 10 · Tu mejor pieza: 🟣 Capa de las Sombras');
   });
 
   test('una vez por minuto y persona', async () => {

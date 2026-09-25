@@ -23,6 +23,7 @@ import * as bienvenidaVuelta from '../interactions/bienvenida-vuelta.js';
 import * as preguntaIa from '../interactions/pregunta-ia.js';
 import * as preguntaIncomoda from '../interactions/pregunta-incomoda.js';
 import * as loot from '../interactions/loot/index.js';
+import * as lootComandos from '../interactions/loot/comandos.js';
 import * as registry from '../interactions/index.js';
 import { budget } from '../services/ai/index.js';
 
@@ -116,6 +117,10 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   const { viewer } = event;
   const text = event.text.trim();
 
+  // Quién anda por el chat, para poder retarle a un duelo. Incluye al dueño
+  // del canal; los bots no.
+  if (!config.ignoredLogins.includes(viewer.login)) loot.recordarVisto(viewer);
+
   // Los comandos de control se atienden antes que nada: tienen que funcionar
   // aunque el resto del sistema esté apagado.
   const control = matchControlCommand(text, viewer);
@@ -164,11 +169,13 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
     return;
   }
 
-  // !inventario: como !incomoda, también para el dueño del canal.
-  if (loot.COMANDO_INVENTARIO.test(text)) {
+  // Comandos del Loot (!inventario, !duelo...): como !incomoda, también para
+  // el dueño del canal, que así puede probarlos y aceptar duelos.
+  const comandoLoot = lootComandos.buscar(text);
+  if (comandoLoot) {
     if (config.ignoredLogins.includes(viewer.login)) return;
     if (!isIgnored(viewer)) users.touch(viewer);
-    await engine.run(loot.inventario, { viewer, trigger: 'command' });
+    await engine.run(comandoLoot.def, { viewer, trigger: 'command', args: comandoLoot.args });
     return;
   }
 

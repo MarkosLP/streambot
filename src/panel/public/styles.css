@@ -579,7 +579,11 @@ strong.ui {
 .botines li:first-child, .mochilas li:first-child { border-top: 0; padding-top: 0; }
 .botines .quien { font-weight: 600; margin-left: auto; white-space: nowrap; }
 .botines .dato, .mochilas .dato { color: var(--texto-3); font-size: 0.8rem; white-space: nowrap; }
-.mochilas strong { margin-right: auto; }
+.mochila-quien { display: grid; margin-right: auto; min-width: 0; }
+.mochila-quien .dato { white-space: normal; }
+.titulo-loot { color: var(--oro); font-size: 0.78rem; font-weight: 600; }
+.comandos-loot { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; font-size: 0.85rem; color: var(--texto-2); }
+.comandos-loot li { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline; }
 .puesto {
   display: grid; place-items: center; width: 24px; height: 24px; flex: none; border-radius: 50%;
   font-family: var(--titulos); font-weight: 700; font-size: 0.8rem; background: var(--tarjeta-2); color: var(--texto-2);

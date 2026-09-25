@@ -60,6 +60,8 @@ export function olvidar(twitchId: string): Borrado {
   const streaks = db.prepare('DELETE FROM streaks WHERE twitch_id = ?').run(twitchId);
   // La mochila del Loot del chat también es "algo suyo".
   const loot = db.prepare('DELETE FROM loot WHERE twitch_id = ?').run(twitchId);
+  db.prepare('DELETE FROM coleccion WHERE twitch_id = ?').run(twitchId);
+  db.prepare('DELETE FROM duelos WHERE twitch_id = ?').run(twitchId);
 
   const borrado: Borrado = {
     memories: Number(memories.changes),

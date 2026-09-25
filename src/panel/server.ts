@@ -17,7 +17,8 @@ import * as obsSetup from './obs-setup.js';
 import * as importar from './importar.js';
 import * as loot from '../interactions/loot/index.js';
 import * as lootDb from '../data/loot.js';
-import { PROBABILIDADES, tirar } from '../interactions/loot/objetos.js';
+import * as lootComandos from '../interactions/loot/comandos.js';
+import { MOCHILA_MAX, PROBABILIDADES, tirar } from '../interactions/loot/objetos.js';
 import * as cooldowns from '../core/cooldowns.js';
 import { conObs, type PedirObs } from '../transport/obs.js';
 
@@ -219,6 +220,8 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       probabilidades: PROBABILIDADES,
       recientes: lootDb.recientes(25),
       mochilas: lootDb.mochilas(10),
+      comandos: lootComandos.LISTA,
+      mochilaMax: MOCHILA_MAX,
     });
   }
 

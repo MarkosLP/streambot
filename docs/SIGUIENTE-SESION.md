@@ -20,6 +20,8 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 3. En **Loot**, usa **Tirada de prueba** para ver cómo pinta, y canjea tú el Cofre del tesoro para ver el mensaje (y, con suerte, el Legendario).
 4. En el primer directo: comprobar que cae el cofre gratis. Si arrancas el bot con el directo empezado, pulsa **El directo ya ha empezado** en la pestaña Loot.
 
+**Loot, ampliado (25 sep, última hora):** cada cofre saca banner en OBS con el color de su rareza (fuente `FX Botin`), también las tiradas de prueba. Mochila de 20 (lo nuevo sustituye a lo peor si es igual o mejor), `!forjar` (3 → 1 de la siguiente rareza), `!poder`, `!duelo nombre` (20-80 %), `!presumir` (sale en OBS), `!coleccion` con títulos por rareza completa, y `!loot` de ayuda. Sin probar aún con un segundo espectador: usar `crid4n` desde el móvil.
+
 **Pendiente:** Lag y Terremoto esperan a los plugins Freeze Filter y Move de OBS. Retos, predicciones y contador de wipes siguen en la lista.
 
 ---

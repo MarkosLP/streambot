@@ -11,7 +11,7 @@ import type { Ctx, Interaction } from '../../core/interaction.js';
 import * as interactionLog from '../../data/interactions.js';
 import * as lootDb from '../../data/loot.js';
 import * as streams from '../../data/streams.js';
-import { ESTILO, RAREZAS, etiqueta, tirar, type Azar, type Botin } from './objetos.js';
+import { ESTILO, MOCHILA_MAX, RAREZAS, etiqueta, tirar, type Azar, type Botin } from './objetos.js';
 
 /**
  * Loot del chat.
@@ -50,6 +50,24 @@ export function registrarActividad(viewer: Viewer, now = Date.now()): void {
   actividad.set(viewer.id, { viewer, at: now });
 }
 
+/**
+ * Todo el que escribe, INCLUIDO el dueño del canal. No recibe cofres (para eso
+ * está `actividad`), pero sí se le puede retar a un duelo.
+ */
+const vistos = new Map<string, { viewer: Viewer; at: number }>();
+
+export function recordarVisto(viewer: Viewer, now = Date.now()): void {
+  vistos.set(viewer.login.toLowerCase(), { viewer, at: now });
+}
+
+/** Alguien que ha escrito en la ventana de actividad, buscado por su login. */
+export function buscarPresente(login: string, now = Date.now()): Viewer | null {
+  const v = vistos.get(login.replace(/^@/, '').toLowerCase());
+  if (!v || v.at < now - config.loot.minutosActividad * 60_000) return null;
+  if (consent.haPedidoOlvido(v.viewer.id)) return null;
+  return v.viewer;
+}
+
 /** Quien ha escrito dentro de la ventana de actividad, y no ha pedido el olvido. */
 export function aventureros(now = Date.now()): Viewer[] {
   const limite = now - config.loot.minutosActividad * 60_000;
@@ -69,7 +87,7 @@ export function aventureros(now = Date.now()): Viewer[] {
 // El botín en pantalla
 // ---------------------------------------------------------------------------
 
-export type OrigenPantalla = 'cofre' | 'oro' | 'panel' | 'prueba';
+export type OrigenPantalla = 'cofre' | 'oro' | 'panel' | 'prueba' | 'forja' | 'presumir';
 export type Pantalla = (quien: string, botin: Botin, origen: OrigenPantalla) => Promise<void>;
 let pantalla: Pantalla | null = null;
 let fila: Promise<void> = Promise.resolve();
@@ -106,6 +124,30 @@ export function enPantalla(quien: string, botin: Botin, origen: OrigenPantalla):
 export interface Reparto {
   viewer: Viewer;
   botin: Botin;
+  /** Qué pasó al meterlo en la mochila. Sin él, se da por guardado sin más. */
+  resultado?: lootDb.Resultado;
+}
+
+/** `crid4n «Cazatesoros»`: el nombre con su título, si lo tiene. */
+export function conTitulo(viewer: Viewer): string {
+  const t = lootDb.titulo(viewer.id);
+  return t ? `${viewer.displayName} «${t}»` : viewer.displayName;
+}
+
+/** Lo que hay que contar además del objeto: mochila llena, lo que se tiró. */
+export function notaMochila(r?: lootDb.Resultado): string {
+  if (!r) return '';
+  if (!r.guardado) return ' (mochila llena: se queda en el suelo)';
+  if (r.sustituido) return ` (tira ${etiqueta(r.sustituido)} para hacer sitio)`;
+  return '';
+}
+
+/** `🏆 crid4n gana el título «Cazatesoros»`, si alguien lo acaba de ganar. */
+function anunciosDeTitulo(reparto: Reparto[]): string {
+  return reparto
+    .filter((r) => r.resultado?.tituloNuevo)
+    .map((r) => ` · 🏆 ${r.viewer.displayName} completa una colección: «${r.resultado!.tituloNuevo}»`)
+    .join('');
 }
 
 /**
@@ -118,19 +160,20 @@ export interface Reparto {
 export function componerCofre(reparto: Reparto[]): string {
   const hayLegendario = reparto.some((r) => r.botin.rareza === 'legendario');
   const inicio = hayLegendario ? '✨ ¡Cofre LEGENDARIO! ' : '🎁 ¡Ha caído un cofre! ';
-  const partes = reparto.map((r) => `${r.viewer.displayName} → ${etiqueta(r.botin)}`);
+  const partes = reparto.map((r) => `${conTitulo(r.viewer)} → ${etiqueta(r.botin)}${notaMochila(r.resultado)}`);
+  const titulos = anunciosDeTitulo(reparto);
 
   let texto = inicio;
   for (let i = 0; i < partes.length; i++) {
     const siguiente = (i === 0 ? '' : ' · ') + partes[i];
     const resto = partes.length - i - 1;
     const cola = resto > 0 ? ` · y ${resto} más (!inventario)` : '';
-    if ((texto + siguiente + cola).length > MAX_MESSAGE_LENGTH) {
+    if ((texto + siguiente + cola + titulos).length > MAX_MESSAGE_LENGTH) {
       return `${texto} · y ${partes.length - i} más (!inventario)`;
     }
     texto += siguiente;
   }
-  return texto;
+  return texto + titulos;
 }
 
 export type ResultadoCofre =
@@ -145,10 +188,12 @@ export async function soltarCofre(
     return { ok: false, motivo: `nadie ha escrito en el chat en los últimos ${config.loot.minutosActividad} minutos` };
   }
 
-  const reparto = gente.map((viewer) => ({ viewer, botin: tirar('cofre', azar) }));
   // Se guarda ANTES de anunciar: si el mensaje no sale (tope por hora, un
   // corte), el botín ya es de quien le tocó y lo verá en !inventario.
-  for (const r of reparto) lootDb.guardar(r.viewer.id, r.viewer.displayName, r.botin, origen);
+  const reparto: Reparto[] = gente.map((viewer) => {
+    const botin = tirar('cofre', azar);
+    return { viewer, botin, resultado: lootDb.dar(viewer.id, viewer.displayName, botin, origen) };
+  });
 
   const outcome = await send({ text: componerCofre(reparto), reason: NAME });
   interactionLog.record({
@@ -179,11 +224,12 @@ export const cofreOro: Interaction<CtxCofreOro> = {
     const botin = tirar('oro', ctx.azar);
     // Quien pidió el olvido abre su cofre igual, pero no se le guarda nada.
     const guarda = !consent.haPedidoOlvido(ctx.viewer.id);
-    if (guarda) lootDb.guardar(ctx.viewer.id, ctx.viewer.displayName, botin, 'oro');
+    const resultado = guarda ? lootDb.dar(ctx.viewer.id, ctx.viewer.displayName, botin, 'oro') : undefined;
     enPantalla(ctx.viewer.displayName, botin, 'oro');
     const brillo = botin.rareza === 'legendario' ? ' ✨✨✨' : '';
+    const titulo = resultado?.tituloNuevo ? ` · 🏆 ¡Colección completa: «${resultado.tituloNuevo}»!` : '';
     return {
-      text: `🗝️ @${ctx.viewer.displayName} abre un Cofre del tesoro → ${etiqueta(botin)}${brillo}`,
+      text: `🗝️ @${ctx.viewer.displayName} abre un Cofre del tesoro → ${etiqueta(botin)}${brillo}${notaMochila(resultado)}${titulo}`,
       allowedMentions: [ctx.viewer.login],
       detail: (o) => (o.sent ? `${botin.rareza}: ${botin.objeto}${guarda ? '' : ' (sin guardar)'}` : `${o.rejection}: ${o.detail}`),
     };
@@ -206,7 +252,6 @@ export const channelPointBinding = {
 // !inventario
 // ---------------------------------------------------------------------------
 
-export const COMANDO_INVENTARIO = /^!(inventario|inv|mochila)\b/i;
 
 export function componerInventario(displayName: string, inv: lootDb.Inventario): string {
   if (inv.total === 0) {
@@ -216,7 +261,7 @@ export function componerInventario(displayName: string, inv: lootDb.Inventario):
     .map((r) => `${inv.porRareza[r]} ${ESTILO[r].emoji}`)
     .join(' ');
   const mejor = inv.mejor ? ` · Tu mejor pieza: ${etiqueta(inv.mejor)}` : '';
-  return `@${displayName} 🎒 ${inv.total} objeto${inv.total === 1 ? '' : 's'}: ${cuenta}${mejor}`;
+  return `@${displayName} 🎒 ${inv.total}/${MOCHILA_MAX}: ${cuenta} · ⚔️ Poder ${inv.poder}${mejor}`;
 }
 
 export const inventario: Interaction<Ctx> = {
@@ -301,6 +346,7 @@ export function estado(now = Date.now()) {
 /** Solo para tests. */
 export function reset(): void {
   actividad.clear();
+  vistos.clear();
   parar();
   ultimoCofre = null;
   pantalla = null;

@@ -127,7 +127,10 @@
 <script>
   // Todo como texto, nunca como HTML: el nombre lo elige cada espectador.
   const RANGOS = { comun: 'COMÚN', raro: '◆ RARO ◆', epico: '✦ ÉPICO ✦', legendario: '★ LEGENDARIO ★' };
-  const COFRES = { cofre: '🎁 Cofre abierto', oro: '🗝️ Cofre del tesoro', panel: '🎁 Cofre abierto', prueba: '🎁 Tirada de prueba' };
+  const COFRES = {
+    cofre: '🎁 Cofre abierto', oro: '🗝️ Cofre del tesoro', panel: '🎁 Cofre abierto',
+    prueba: '🎁 Tirada de prueba', forja: '🔨 Recién forjado', presumir: '💪 Mirad lo que tengo',
+  };
 
   const q = new URLSearchParams(location.search);
   const rareza = RANGOS[q.get('rareza')] ? q.get('rareza') : 'legendario';
@@ -140,7 +143,7 @@
   if (item) document.getElementById('objeto').textContent = item;
   if (user) {
     const quien = document.getElementById('quien');
-    quien.textContent = 'para ';
+    quien.textContent = q.get('origen') === 'presumir' ? 'de ' : 'para ';
     const b = document.createElement('b');
     b.textContent = user;
     quien.append(b);

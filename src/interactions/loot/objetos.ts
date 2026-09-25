@@ -100,6 +100,34 @@ export const OBJETOS: Record<Rareza, string[]> = {
   ],
 };
 
+/** Objetos que caben en una mochila (decidido el 25 sep 2026). */
+export const MOCHILA_MAX = 20;
+
+/** Cuánto poder da cada objeto. Un Legendario vale lo que 20 Comunes. */
+export const PODER: Record<Rareza, number> = { comun: 1, raro: 3, epico: 8, legendario: 20 };
+
+/** Cuántos objetos de una rareza se funden en uno de la siguiente. */
+export const FORJA_CANTIDAD = 3;
+
+export function siguienteRareza(r: Rareza): Rareza | null {
+  const i = RAREZAS.indexOf(r);
+  return i < RAREZAS.length - 1 ? RAREZAS[i + 1]! : null;
+}
+
+/** Orden para comparar: más alto, mejor. */
+export const NIVEL: Record<Rareza, number> = { comun: 1, raro: 2, epico: 3, legendario: 4 };
+
+/**
+ * El título que da completar la colección de una rareza (todos sus objetos
+ * distintos, alguna vez). Se enseña el más alto que tengas.
+ */
+export const TITULOS: Record<Rareza, string> = {
+  comun: 'Trotamundos',
+  raro: 'Cazatesoros',
+  epico: 'Señor del Botín',
+  legendario: 'Leyenda Viviente',
+};
+
 /** Un número entre 0 (incluido) y 1 (excluido). Se inyecta en los tests. */
 export type Azar = () => number;
 
