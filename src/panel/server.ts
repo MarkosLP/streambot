@@ -46,7 +46,7 @@ import type { AccionSB, EstadoConexion } from '../transport/streamerbot.js';
 export interface PuertoStreamerbot {
   estado: () => EstadoConexion;
   acciones: () => Promise<AccionSB[]>;
-  ejecutarAccion: (id: string) => Promise<void>;
+  ejecutarAccion: (id: string, args?: Record<string, unknown>) => Promise<void>;
 }
 
 const PUBLICOS: Record<string, { archivo: string; tipo: string }> = {
@@ -233,7 +233,14 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
 
   const ejecutar = /^POST \/api\/acciones\/([\w-]+)\/ejecutar$/.exec(ruta);
   if (ejecutar) {
-    await sb.ejecutarAccion(ejecutar[1]);
+    // Como si lo hubieras canjeado tú: sin esto, un %user% en la acción sale
+    // tal cual en el chat, porque al probar no hay nadie que haya canjeado.
+    const login = config.broadcasterLogin;
+    await sb.ejecutarAccion(ejecutar[1], {
+      user: login.charAt(0).toUpperCase() + login.slice(1),
+      userName: login,
+      desdePanel: true,
+    });
     log.info(`Panel: acción ${ejecutar[1]} ejecutada a mano.`);
     return json(res, 200, { ok: true });
   }

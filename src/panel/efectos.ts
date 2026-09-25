@@ -219,7 +219,7 @@ export function guia(e: Efecto): Fase[] {
       pasos: [
         'Ve a la pestaña **Actions** (acciones). Clic derecho en la lista de la izquierda → **Add**.',
         `**Name** (nombre): \`${nombreTecleable(e)}\`. **Group** (grupo): \`Efectos\`, para tenerlas todas juntas. Pulsa **OK**.`,
-        `Con la acción seleccionada, abajo a la izquierda está **Triggers** (disparadores). Clic derecho → **Twitch** → **Channel Reward** → **Reward Redemption** (canje de recompensa). En **Reward** elige \`${e.recompensa}\` y pulsa **OK**.`,
+        `Con la acción seleccionada, a la derecha está **Triggers** (disparadores). En su buscador, **Search to add trigger…**, escribe \`Reward Redemption\` y elige **Twitch → Channel Reward → Reward Redemption** (canje de recompensa). En **Reward** elige \`${e.recompensa}\` y pulsa **OK**.`,
       ],
       nota: 'El nombre tiene que ser exactamente ese: es como este panel sabe que el efecto está montado. El disparador es el "cuándo": cada vez que alguien canjee la recompensa, se ejecuta la acción.',
     },
@@ -227,7 +227,7 @@ export function guia(e: Efecto): Fase[] {
       donde: 'Streamer.bot',
       titulo: 'Di qué pasa al canjearla',
       pasos: [
-        'Abajo a la derecha está **Sub-Actions** (lo que hace la acción). Cada paso de aquí se añade con clic derecho ahí, en este orden:',
+        'Debajo está **Sub-Actions** (lo que hace la acción). Cada paso se añade escribiendo su nombre en el buscador **Search to add sub-action…** y eligiéndolo en la lista. En este orden:',
         ...e.subacciones.pasos,
       ],
       nota: [
@@ -240,7 +240,7 @@ export function guia(e: Efecto): Fase[] {
       titulo: 'Pruébalo',
       pasos: [
         'Vuelve a este panel. En unos segundos este efecto pasará a **Montado** y se encenderá el botón **Probar**.',
-        'Pulsa **Probar**: lanza el efecto sin gastar puntos. Ajusta el volumen en Streamer.bot hasta que te guste.',
+        'Pulsa **Probar**: lanza el efecto sin gastar puntos, como si lo hubieras canjeado tú (`%user%` sale con tu nombre). Ajusta el volumen en Streamer.bot hasta que te guste.',
         'Por último, canjéalo de verdad desde tu canal. Así compruebas también que el disparador funciona.',
       ],
       nota: 'Si Probar funciona pero el canje de verdad no, casi siempre es el disparador: revisa que en Reward esté elegida la recompensa correcta.',

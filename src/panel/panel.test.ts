@@ -25,6 +25,7 @@ import { EFECTOS, mismoNombre } from './efectos.js';
 let server: Server;
 let puerto: number;
 let ejecutadas: string[] = [];
+let ultimosArgs: Record<string, unknown> | undefined;
 let enviados: string[] = [];
 
 const sbFalso: PuertoStreamerbot = {
@@ -34,8 +35,9 @@ const sbFalso: PuertoStreamerbot = {
     { id: 'a2', name: 'Efecto — Baile del chat', group: 'Efectos', enabled: true },
     { id: 'a3', name: 'Otra cosa', group: '', enabled: true },
   ],
-  ejecutarAccion: async (id) => {
+  ejecutarAccion: async (id, args) => {
     ejecutadas.push(id);
+    ultimosArgs = args;
   },
 };
 
@@ -278,6 +280,12 @@ describe('efectos', () => {
     const r = await post('/api/acciones/a1/ejecutar');
     assert.equal(r.status, 200);
     assert.deepEqual(ejecutadas, ['a1']);
+  });
+
+  test('al probar, la acción recibe un usuario: %user% no sale tal cual en el chat', async () => {
+    await post('/api/acciones/a1/ejecutar');
+    assert.equal(ultimosArgs?.user, 'Crid4m');
+    assert.equal(ultimosArgs?.userName, 'crid4m');
   });
 });
 

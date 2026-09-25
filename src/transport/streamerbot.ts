@@ -217,9 +217,9 @@ export async function acciones(): Promise<AccionSB[]> {
  * al BOT en el chat, y esto lo pulsas tú a mano desde el panel para probar
  * un efecto. Si la Action escribe en el chat, eso lo hace Streamer.bot.
  */
-export async function ejecutarAccion(id: string): Promise<void> {
+export async function ejecutarAccion(id: string, args: Record<string, unknown> = {}): Promise<void> {
   if (!client || !connected) throw new Error('no hay conexión con Streamer.bot');
-  const response = await client.doAction({ id });
+  const response = await client.doAction({ id }, args);
   if (response?.status !== 'ok') {
     throw new Error(`Streamer.bot no ejecutó la acción: ${(response as any)?.error ?? 'sin detalle'}`);
   }
