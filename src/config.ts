@@ -92,6 +92,16 @@ export const config = {
     port: int('PANEL_PORT', 7070),
   },
 
+  /**
+   * WebSocket de OBS. Solo lo usa el panel para crear las fuentes y filtros
+   * de los efectos; el directo lo lleva Streamer.bot con su propia conexión.
+   * En OBS: Herramientas → Configuración del servidor WebSocket.
+   */
+  obs: {
+    url: str('OBS_WS_URL', 'ws://127.0.0.1:4455'),
+    password: str('OBS_WS_PASSWORD', ''),
+  },
+
   logLevel: levelRaw as LogLevel,
   captureRawEvents: bool('CAPTURE_RAW_EVENTS', true),
   broadcasterLogin: str('BROADCASTER_LOGIN', 'crid4m').toLowerCase(),

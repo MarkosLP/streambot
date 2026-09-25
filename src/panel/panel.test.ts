@@ -10,7 +10,8 @@ import * as review from '../core/review.js';
 import * as policy from '../core/policy.js';
 import { setSender } from '../core/output.js';
 import * as revision from './revision.js';
-import { crearServidor, type PuertoStreamerbot } from './server.js';
+import { crearServidor, type PuertoStreamerbot, type ConObs } from './server.js';
+import { ErrorObs, autenticacion } from '../transport/obs.js';
 import { EFECTOS, mismoNombre } from './efectos.js';
 
 /**
@@ -36,6 +37,80 @@ const sbFalso: PuertoStreamerbot = {
   ejecutarAccion: async (id) => {
     ejecutadas.push(id);
   },
+};
+
+/**
+ * Un OBS de mentira, en memoria: lo justo de obs-websocket para preparar
+ * efectos. `obsCaido` simula que OBS está cerrado.
+ */
+let obsCaido = false;
+let obs: {
+  plugins: string[];
+  entradas: { inputName: string; inputKind: string; settings: any }[];
+  items: Record<string, { sourceName: string; sceneItemId: number; enabled: boolean }[]>;
+  filtros: Record<string, { filterName: string; kind: string; settings: any; enabled: boolean }[]>;
+};
+
+function reiniciarObs() {
+  obsCaido = false;
+  obs = {
+    plugins: ['color_filter_v2'],
+    entradas: [
+      { inputName: 'Juego', inputKind: 'game_capture', settings: {} },
+      { inputName: 'Micro', inputKind: 'wasapi_input_capture', settings: {} },
+    ],
+    items: { 'Escena juego': [{ sourceName: 'Juego', sceneItemId: 1, enabled: true }], Charla: [] },
+    filtros: { Juego: [] },
+  };
+}
+
+const obsFalso: ConObs = async (trabajo) => {
+  if (obsCaido) throw new ErrorObs('No se pudo conectar con OBS');
+  let id = 100;
+  const yaExiste = () => new ErrorObs('ya existe', 601);
+  return trabajo(async (tipo: string, d: any = {}): Promise<any> => {
+    switch (tipo) {
+      case 'GetSceneList':
+        return { scenes: Object.keys(obs.items).reverse().map((sceneName) => ({ sceneName })), currentProgramSceneName: 'Escena juego' };
+      case 'GetInputList':
+        return { inputs: obs.entradas.map(({ inputName, inputKind }) => ({ inputName, inputKind })) };
+      case 'GetSourceFilterKindList':
+        return { sourceFilterKinds: obs.plugins };
+      case 'GetSourceFilterList':
+        return { filters: obs.filtros[d.sourceName] ?? [] };
+      case 'CreateInput':
+        if (obs.entradas.some((e) => e.inputName === d.inputName)) throw yaExiste();
+        obs.entradas.push({ inputName: d.inputName, inputKind: d.inputKind, settings: d.inputSettings });
+        obs.items[d.sceneName].push({ sourceName: d.inputName, sceneItemId: ++id, enabled: d.sceneItemEnabled });
+        return {};
+      case 'SetInputSettings':
+        obs.entradas.find((e) => e.inputName === d.inputName)!.settings = d.inputSettings;
+        return {};
+      case 'GetSceneItemList':
+        return { sceneItems: obs.items[d.sceneName] };
+      case 'SetSceneItemEnabled':
+        obs.items[d.sceneName].find((i) => i.sceneItemId === d.sceneItemId)!.enabled = d.sceneItemEnabled;
+        return {};
+      case 'CreateSceneItem':
+        obs.items[d.sceneName].push({ sourceName: d.sourceName, sceneItemId: ++id, enabled: d.sceneItemEnabled });
+        return { sceneItemId: id };
+      case 'CreateSourceFilter': {
+        if (!obs.plugins.includes(d.filterKind)) throw new ErrorObs('tipo de filtro desconocido', 605);
+        const lista = obs.filtros[d.sourceName];
+        if (lista.some((f) => f.filterName === d.filterName)) throw yaExiste();
+        lista.push({ filterName: d.filterName, kind: d.filterKind, settings: d.filterSettings, enabled: true });
+        return {};
+      }
+      case 'SetSourceFilterSettings':
+        obs.filtros[d.sourceName].find((f) => f.filterName === d.filterName)!.settings = d.filterSettings;
+        return {};
+      case 'SetSourceFilterEnabled':
+        obs.filtros[d.sourceName].find((f) => f.filterName === d.filterName)!.enabled = d.filterEnabled;
+        return {};
+      default:
+        throw new Error(`el OBS de mentira no sabe hacer ${tipo}`);
+    }
+  });
 };
 
 /** Petición cruda: fetch no deja cambiar la cabecera Host, y hay que probarla. */
@@ -79,7 +154,7 @@ const post = (ruta: string, cuerpo: unknown = {}) =>
 
 before(async () => {
   configureDatabase(':memory:');
-  server = crearServidor(sbFalso);
+  server = crearServidor(sbFalso, obsFalso);
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
   puerto = (server.address() as AddressInfo).port;
 });
@@ -92,6 +167,7 @@ beforeEach(() => {
   ajustes.reset();
   policy.reset();
   revision.reset();
+  reiniciarObs();
   ejecutadas = [];
   enviados = [];
   setSender(async (t) => {
@@ -292,5 +368,87 @@ describe('revisión desde el panel', () => {
 
     assert.deepEqual(await veredicto, { approved: true });
     assert.equal(senal!.aborted, true);
+  });
+});
+
+describe('preparar OBS', () => {
+  const preparar = (cuerpo: unknown) => post('/api/obs/preparar', cuerpo);
+
+  test('enseña las escenas en el orden de OBS y solo las fuentes que pueden ser el juego', async () => {
+    const { body } = await pedir('GET', '/api/obs?fuente=Juego');
+    assert.equal(body.conectado, true);
+    assert.deepEqual(body.escenas, ['Escena juego', 'Charla']);
+    assert.deepEqual(body.fuentes.map((f: any) => f.nombre), ['Juego']);
+    assert.deepEqual(body.existe, { pocion: false, maldicion: false, lag: false });
+    assert.equal(body.pluginFreeze, false);
+  });
+
+  test('sin OBS, el panel lo dice y no falla', async () => {
+    obsCaido = true;
+    const { status, body } = await pedir('GET', '/api/obs');
+    assert.equal(status, 200);
+    assert.equal(body.conectado, false);
+    assert.match(body.motivo, /OBS/);
+  });
+
+  test('la poción se crea OCULTA y apuntando al overlay de la biblioteca', async () => {
+    const r = await preparar({ escena: 'Escena juego', efectos: ['pocion'] });
+    assert.equal(r.body.resultados[0].ok, true);
+    const fuente = obs.entradas.find((e) => e.inputName === 'FX Pocion')!;
+    assert.equal(fuente.inputKind, 'browser_source');
+    assert.match(fuente.settings.local_file, /biblioteca[\\/]overlays[\\/]pocion\.html$/);
+    assert.equal(fuente.settings.shutdown, true);
+    assert.equal(obs.items['Escena juego'].find((i) => i.sourceName === 'FX Pocion')!.enabled, false);
+  });
+
+  test('pulsar dos veces no duplica nada', async () => {
+    await preparar({ escena: 'Escena juego', fuente: 'Juego', efectos: ['pocion', 'maldicion'] });
+    const r = await preparar({ escena: 'Escena juego', fuente: 'Juego', efectos: ['pocion', 'maldicion'] });
+    assert.ok(r.body.resultados.every((x: any) => x.ok));
+    assert.equal(obs.entradas.filter((e) => e.inputName === 'FX Pocion').length, 1);
+    assert.equal(obs.items['Escena juego'].filter((i) => i.sourceName === 'FX Pocion').length, 1);
+    assert.equal(obs.filtros.Juego.filter((f) => f.filterName === 'FX Maldicion').length, 1);
+  });
+
+  test('si la poción ya existe en otra escena, se añade a esta sin duplicar la fuente', async () => {
+    await preparar({ escena: 'Charla', efectos: ['pocion'] });
+    await preparar({ escena: 'Escena juego', efectos: ['pocion'] });
+    assert.equal(obs.entradas.filter((e) => e.inputName === 'FX Pocion').length, 1);
+    assert.equal(obs.items['Escena juego'].find((i) => i.sourceName === 'FX Pocion')!.enabled, false);
+  });
+
+  test('la maldición queda en blanco y negro y APAGADA', async () => {
+    await preparar({ fuente: 'Juego', efectos: ['maldicion'] });
+    const filtro = obs.filtros.Juego.find((f) => f.filterName === 'FX Maldicion')!;
+    assert.equal(filtro.kind, 'color_filter_v2');
+    assert.equal(filtro.settings.saturation, -1);
+    assert.equal(filtro.enabled, false);
+  });
+
+  test('el lag sin su plugin explica qué falta, y lo demás sigue adelante', async () => {
+    const r = await preparar({ escena: 'Escena juego', fuente: 'Juego', efectos: ['lag', 'maldicion'] });
+    const [lag, maldicion] = r.body.resultados;
+    assert.equal(lag.ok, false);
+    assert.match(lag.mensaje, /Freeze Filter/);
+    assert.equal(maldicion.ok, true);
+  });
+
+  test('sin escena o sin fuente, lo dice en vez de adivinar', async () => {
+    const r = await preparar({ efectos: ['pocion', 'maldicion'] });
+    assert.deepEqual(r.body.resultados.map((x: any) => x.ok), [false, false]);
+    assert.equal(obs.entradas.some((e) => e.inputName === 'FX Pocion'), false);
+  });
+
+  test('exige X-Panel y rechaza efectos inventados', async () => {
+    assert.equal((await pedir('POST', '/api/obs/preparar', { cuerpo: { efectos: ['pocion'] } })).status, 403);
+    assert.equal((await preparar({ efectos: ['borrar-todo'] })).status, 400);
+    assert.equal((await preparar({ efectos: [] })).status, 400);
+  });
+
+  test('la autenticación sigue la receta de obs-websocket', () => {
+    const a = autenticacion('secreto', 'sal', 'reto');
+    assert.equal(a, autenticacion('secreto', 'sal', 'reto'));
+    assert.notEqual(a, autenticacion('otro', 'sal', 'reto'));
+    assert.match(a, /^[A-Za-z0-9+/]{43}=$/);
   });
 });

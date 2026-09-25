@@ -92,7 +92,7 @@ function duracion(desdeIso) {
 // ---------------------------------------------------------------------------
 
 const cargadores = {
-  efectos: cargarEfectos,
+  efectos: () => { cargarEfectos(); cargarObs(); },
   biblioteca: cargarBiblioteca,
   interacciones: cargarInteracciones,
   espectadores: cargarEspectadores,
@@ -554,6 +554,7 @@ function abrirGuia(e) {
             h('span', { class: 'fase-num' }, String(i + 1)),
             h('h3', {}, f.titulo),
             h('span', { class: `donde ${d.clase}` }, d.texto)),
+          f.atajo && h('p', { class: 'fase-atajo' }, '⚡ ', textoGuia(f.atajo, e)),
           h('ol', { class: 'pasos' }, f.pasos.map((p) => h('li', {}, textoGuia(p, e)))),
           f.nota && h('p', { class: 'fase-nota' }, textoGuia(f.nota, e)));
       })),
@@ -584,7 +585,118 @@ function filaMaterial(m) {
   );
 }
 
-$('r-efectos').addEventListener('click', cargarEfectos);
+$('r-efectos').addEventListener('click', () => { cargarEfectos(); cargarObs(); });
+
+// ---------------------------------------------------------------------------
+// Preparar OBS
+// ---------------------------------------------------------------------------
+
+const PREPARABLES = [
+  { id: 'pocion', titulo: 'Poción de vida', que: 'Fuente «FX Pocion» con el overlay, oculta', necesita: 'escena' },
+  { id: 'maldicion', titulo: 'Maldición', que: 'Filtro «FX Maldicion» en blanco y negro, apagado', necesita: 'fuente' },
+  { id: 'lag', titulo: 'Lag', que: 'Filtro «FX Lag» que congela la imagen, apagado', necesita: 'fuente', plugin: true },
+];
+
+// Lo que elegiste la última vez, para no tener que volver a elegirlo.
+const obsElegido = { escena: '', fuente: '' };
+try { Object.assign(obsElegido, JSON.parse(localStorage.getItem('panel-obs') || '{}')); } catch { /* nada */ }
+
+async function cargarObs() {
+  let datos;
+  try {
+    const q = obsElegido.fuente ? `?fuente=${encodeURIComponent(obsElegido.fuente)}` : '';
+    datos = await api(`/api/obs${q}`);
+  } catch (err) {
+    datos = { conectado: false, motivo: err.message === 'no existe' ? 'Reinicia el bot para usar esto (Ctrl+C y npm start).' : err.message };
+  }
+  pintarObs(datos);
+}
+
+function pintarObs(d) {
+  const estado = $('obs-estado');
+  estado.className = `nota ${d.conectado ? 'ok' : 'mal'}`;
+  estado.textContent = d.conectado ? '● Conectado a OBS' : '● Sin conexión con OBS';
+
+  if (!d.conectado) {
+    $('obs-cuerpo').replaceChildren(
+      h('p', { class: 'obs-motivo' }, d.motivo),
+      h('ol', { class: 'pasos obs-ayuda' },
+        h('li', {}, 'En OBS: ', h('strong', { class: 'ui' }, 'Herramientas'), ' → ', h('strong', { class: 'ui' }, 'Configuración del servidor WebSocket'), '. Comprueba que está activado.'),
+        h('li', {}, 'Pulsa ', h('strong', { class: 'ui' }, 'Mostrar información de conexión'), ' y copia la contraseña.'),
+        h('li', {}, 'Pégala en el ', h('code', {}, '.env'), ' como ', chipCopiar('OBS_WS_PASSWORD=', 'OBS_WS_PASSWORD='), ' y reinicia el bot.'),
+      ),
+      h('button', { class: 'boton pequeno', type: 'button', onclick: cargarObs }, 'Volver a comprobar'),
+    );
+    return;
+  }
+
+  if (!d.escenas.includes(obsElegido.escena)) obsElegido.escena = d.escenaActual || d.escenas[0] || '';
+  if (!d.fuentes.some((f) => f.nombre === obsElegido.fuente)) {
+    obsElegido.fuente = d.fuentes[0]?.nombre || '';
+    // Se preguntó sin fuente (o con una que ya no existe): hay que volver a
+    // preguntar con la buena para saber qué filtros tiene ya.
+    if (obsElegido.fuente) return cargarObs();
+  }
+
+  const selector = (clave, etiqueta, opciones, ayuda) => h('label', { class: 'campo' },
+    h('span', {}, etiqueta),
+    h('select', {
+      onchange: (ev) => {
+        obsElegido[clave] = ev.target.value;
+        try { localStorage.setItem('panel-obs', JSON.stringify(obsElegido)); } catch { /* nada */ }
+        if (clave === 'fuente') cargarObs();
+      },
+    }, opciones.map((o) => h('option', { value: o, selected: o === obsElegido[clave] }, o))),
+    h('small', {}, ayuda));
+
+  const marcas = PREPARABLES.map((p) => {
+    const sinPlugin = p.plugin && d.pluginFreeze === false;
+    const existe = d.existe[p.id];
+    return h('label', { class: `preparable ${sinPlugin ? 'bloqueado' : ''}` },
+      h('input', { type: 'checkbox', value: p.id, checked: !sinPlugin && existe !== true, disabled: sinPlugin }),
+      h('span', {},
+        h('strong', {}, p.titulo),
+        h('small', {}, sinPlugin ? 'Falta el plugin Freeze Filter. Instálalo y vuelve aquí.' : p.que)),
+      existe === true && h('span', { class: 'chip ok' }, 'Ya está'),
+    );
+  });
+
+  const resultados = h('ul', { class: 'obs-resultados' });
+
+  const boton = h('button', {
+    class: 'boton primario',
+    type: 'button',
+    onclick: async () => {
+      const efectos = [...$('obs-cuerpo').querySelectorAll('.preparable input:checked')].map((i) => i.value);
+      if (!efectos.length) return tostada('Marca al menos uno', true);
+      boton.disabled = true;
+      try {
+        const r = await api('/api/obs/preparar', { escena: obsElegido.escena, fuente: obsElegido.fuente, efectos });
+        resultados.replaceChildren(...r.resultados.map((x) =>
+          h('li', { class: x.ok ? 'ok' : 'mal' }, x.ok ? '✓ ' : '✕ ', x.mensaje)));
+        const bien = r.resultados.filter((x) => x.ok).length;
+        tostada(bien === r.resultados.length ? 'OBS preparado' : `${bien} de ${r.resultados.length} preparados`, bien < r.resultados.length);
+        setTimeout(cargarObs, 400);
+      } catch (err) {
+        tostada(err.message, true);
+      } finally {
+        boton.disabled = false;
+      }
+    },
+  }, 'Preparar en OBS');
+
+  $('obs-cuerpo').replaceChildren(
+    h('p', { class: 'nota' }, 'Crea en OBS lo que necesitan los efectos, así te ahorras la fase «Prepara OBS» de cada guía. Todo se crea oculto o apagado. Puedes pulsarlo las veces que quieras: si algo ya existe, lo actualiza en vez de duplicarlo.'),
+    h('div', { class: 'obs-campos' },
+      selector('escena', 'Escena del juego', d.escenas, 'Donde aparecerá la poción.'),
+      d.fuentes.length
+        ? selector('fuente', 'Fuente del juego', d.fuentes.map((f) => f.nombre), 'La captura del juego: ahí van los filtros.')
+        : h('p', { class: 'aviso' }, 'No encuentro ninguna captura de juego, de ventana o de pantalla en OBS.')),
+    h('div', { class: 'preparables' }, marcas),
+    h('div', { class: 'obs-pie' }, boton, h('span', { class: 'nota' }, 'Mejor hazlo sin estar en directo: al crear un filtro, OBS lo enciende un instante antes de que el panel lo apague.')),
+    resultados,
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Biblioteca

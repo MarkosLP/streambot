@@ -24,6 +24,8 @@ export interface Bloque {
 export interface Fase extends Bloque {
   donde: 'Streamer.bot' | 'OBS' | 'Panel';
   titulo: string;
+  /** Si el panel puede hacer esta fase solo, cómo. Va antes de los pasos. */
+  atajo?: string;
 }
 
 export interface Efecto {
@@ -198,7 +200,17 @@ export function guia(e: Efecto): Fase[] {
     },
   ];
 
-  if (e.obs) fases.push({ donde: 'OBS', titulo: 'Prepara OBS', ...e.obs });
+  if (e.obs) {
+    fases.push({
+      donde: 'OBS',
+      titulo: 'Prepara OBS',
+      ...e.obs,
+      // Lo que sabe crear el panel solo (src/panel/obs-setup.ts).
+      ...(['pocion', 'maldicion', 'lag'].includes(e.id) && {
+        atajo: 'Atajo: cierra esta guía y usa **Preparar en OBS**, arriba en esta misma pestaña. Hace esta fase por ti; luego sigue por la siguiente.',
+      }),
+    });
+  }
 
   fases.push(
     {

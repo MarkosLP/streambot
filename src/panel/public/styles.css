@@ -461,6 +461,11 @@ strong.ui {
   padding: 1px 6px; border-radius: 5px; background: var(--tarjeta-2); border: 1px solid var(--borde-2);
   white-space: nowrap;
 }
+.fase-atajo {
+  margin: 0 0 10px; padding: 9px 12px; border-radius: 8px; font-size: 0.86rem;
+  color: var(--verde); background: color-mix(in srgb, var(--verde) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--verde) 40%, transparent);
+}
 .fase-nota {
   margin: 10px 0 0; padding: 9px 12px; border-left: 3px solid var(--oro); border-radius: 0 8px 8px 0;
   background: color-mix(in srgb, var(--oro) 7%, transparent); color: var(--texto-2); font-size: 0.85rem; line-height: 1.6;
@@ -482,6 +487,42 @@ strong.ui {
   border-top: 1px solid var(--borde); background: var(--tarjeta-2);
 }
 .guia-pie .nota { margin-right: auto; }
+
+/* ---------- Preparar OBS ---------- */
+
+.nota.ok { color: var(--verde); }
+.obs-prep { display: grid; gap: 0; }
+.obs-prep > header { margin-bottom: 10px; }
+#obs-cuerpo { display: grid; gap: 14px; }
+#obs-cuerpo > .boton { justify-self: start; }
+.obs-motivo { margin: 0; color: var(--rojo); }
+.obs-ayuda { color: var(--texto-2); }
+.obs-campos { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.campo { display: grid; gap: 4px; font-size: 0.85rem; }
+.campo > span { font-weight: 600; }
+.campo small { color: var(--texto-3); }
+.campo select {
+  padding: 9px 12px; border-radius: 9px; border: 1px solid var(--borde-2);
+  background: var(--fondo); color: var(--texto); font: inherit;
+}
+.campo select:focus { outline: none; border-color: var(--oro); }
+.preparables { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.preparable {
+  display: flex; align-items: flex-start; gap: 10px; padding: 12px; cursor: pointer;
+  border: 1px solid var(--borde); border-radius: 12px; background: var(--tarjeta-2);
+}
+.preparable:has(input:checked) { border-color: color-mix(in srgb, var(--oro) 60%, transparent); }
+.preparable input { accent-color: var(--oro); margin-top: 3px; }
+.preparable > span:nth-of-type(1) { display: grid; margin-right: auto; }
+.preparable small { color: var(--texto-2); font-size: 0.8rem; }
+.preparable.bloqueado { opacity: 0.6; cursor: not-allowed; }
+.preparable.bloqueado small { color: var(--ambar); }
+.obs-pie { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.obs-pie .nota { flex: 1; min-width: 240px; font-size: 0.8rem; }
+.obs-resultados { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 0.86rem; }
+.obs-resultados:empty { display: none; }
+.obs-resultados .ok { color: var(--verde); }
+.obs-resultados .mal { color: var(--rojo); }
 
 /* ---------- Material de cada efecto ---------- */
 

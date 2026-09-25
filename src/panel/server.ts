@@ -13,6 +13,11 @@ import * as revision from './revision.js';
 import * as datos from './datos.js';
 import { EFECTOS, PREFIJO_ACCION, guia, mismoNombre } from './efectos.js';
 import * as biblioteca from './biblioteca.js';
+import * as obsSetup from './obs-setup.js';
+import { conObs, type PedirObs } from '../transport/obs.js';
+
+/** Abre una conexión con OBS para un trabajo. Se inyecta para probarlo sin OBS. */
+export type ConObs = <T>(trabajo: (pedir: PedirObs) => Promise<T>) => Promise<T>;
 import type { AccionSB, EstadoConexion } from '../transport/streamerbot.js';
 
 /**
@@ -63,9 +68,9 @@ class ErrorHttp extends Error {
   }
 }
 
-export function crearServidor(sb: PuertoStreamerbot): Server {
+export function crearServidor(sb: PuertoStreamerbot, obs: ConObs = conObs): Server {
   const server = createServer((req, res) => {
-    atender(server, sb, req, res).catch((err) => {
+    atender(server, sb, obs, req, res).catch((err) => {
       const status = err instanceof ErrorHttp ? err.status : 500;
       if (status === 500) log.error(`Panel: ${String(err)}`);
       json(res, status, { error: err instanceof Error ? err.message : String(err) });
@@ -94,7 +99,7 @@ export async function arrancar(sb: PuertoStreamerbot): Promise<Server | null> {
 
 // ---------------------------------------------------------------------------
 
-async function atender(server: Server, sb: PuertoStreamerbot, req: IncomingMessage, res: ServerResponse) {
+async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: IncomingMessage, res: ServerResponse) {
   const puerto = (server.address() as AddressInfo).port;
   const permitidos = [`127.0.0.1:${puerto}`, `localhost:${puerto}`];
 
@@ -193,6 +198,32 @@ async function atender(server: Server, sb: PuertoStreamerbot, req: IncomingMessa
   if (ruta === 'GET /api/acciones') return json(res, 200, await sb.acciones());
 
   if (ruta === 'GET /api/biblioteca') return json(res, 200, await biblioteca.listar());
+
+  if (ruta === 'GET /api/obs') {
+    const fuente = url.searchParams.get('fuente') || undefined;
+    try {
+      return json(res, 200, { conectado: true, ...(await obs((pedir) => obsSetup.estado(pedir, fuente))) });
+    } catch (err) {
+      // Sin OBS no es un error del panel: se enseña el motivo y ya.
+      return json(res, 200, { conectado: false, motivo: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  if (ruta === 'POST /api/obs/preparar') {
+    const { escena, fuente, efectos } = await cuerpo(req);
+    const validos = Object.keys(obsSetup.PREPARABLES);
+    if (!Array.isArray(efectos) || !efectos.length || !efectos.every((e) => validos.includes(e))) {
+      throw new ErrorHttp(400, 'efectos no válidos');
+    }
+    const texto = (v: unknown) => (typeof v === 'string' && v.trim() ? v : undefined);
+    const resultados = await obs((pedir) =>
+      obsSetup.preparar(pedir, { escena: texto(escena), fuente: texto(fuente), efectos: efectos as obsSetup.Preparable[] }),
+    ).catch((err) => {
+      throw new ErrorHttp(502, err instanceof Error ? err.message : String(err));
+    });
+    for (const r of resultados) log[r.ok ? 'info' : 'warn'](`Panel → OBS: ${r.mensaje}`);
+    return json(res, 200, { resultados });
+  }
 
   if (ruta === 'POST /api/biblioteca/abrir') {
     const { seccion } = await cuerpo(req);
