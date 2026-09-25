@@ -632,6 +632,7 @@ async function cargarLoot() {
   ficha('l-ultimo', '', d.ultimoCofre ? hace(d.ultimoCofre) : 'Ninguno', d.ultimoCofre ? hora(d.ultimoCofre) : 'desde que arrancó el bot');
   ficha('l-directo', d.directo ? 'vivo' : '', d.directo ? 'En marcha' : 'Sin directo', d.directo ? 'Los cofres pueden caer' : 'Sin directo no caen cofres');
   $('l-sin-directo').hidden = d.directo;
+  $('l-con-directo').hidden = !d.directo;
 
   $('l-recientes').replaceChildren(...(d.recientes.length
     ? d.recientes.map((f) => h('li', {},
@@ -712,13 +713,33 @@ for (const [id, tipo] of [['l-prueba', 'cofre'], ['l-prueba-oro', 'oro']]) {
   });
 }
 
-$('l-marcar-directo').addEventListener('click', async () => {
+for (const [id, abierto, texto] of [
+  ['l-marcar-directo', true, 'Directo marcado como en marcha'],
+  ['l-terminar-directo', false, 'Directo terminado: no caerán cofres hasta el próximo'],
+]) {
+  $(id).addEventListener('click', async () => {
+    try {
+      await api('/api/loot/directo', { abierto });
+      tostada(texto);
+      cargarLoot();
+      refrescar();
+    } catch (err) {
+      tostada(err.message, true);
+    }
+  });
+}
+
+$('l-banner').addEventListener('click', async (e) => {
+  const boton = e.currentTarget;
+  boton.disabled = true;
+  tostada('✨ Mira tu OBS: el banner sale 8 segundos');
   try {
-    await api('/api/loot/directo', {});
-    tostada('Directo marcado como en marcha');
-    cargarLoot();
+    const r = await api('/api/loot/legendario-prueba', {});
+    tostada(`Banner mostrado: ${r.objeto}`);
   } catch (err) {
     tostada(err.message, true);
+  } finally {
+    boton.disabled = false;
   }
 });
 

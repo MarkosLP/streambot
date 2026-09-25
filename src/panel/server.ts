@@ -17,7 +17,8 @@ import * as obsSetup from './obs-setup.js';
 import * as importar from './importar.js';
 import * as loot from '../interactions/loot/index.js';
 import * as lootDb from '../data/loot.js';
-import { PROBABILIDADES, tirar } from '../interactions/loot/objetos.js';
+import { OBJETOS, PROBABILIDADES, tirar } from '../interactions/loot/objetos.js';
+import * as cooldowns from '../core/cooldowns.js';
 import { conObs, type PedirObs } from '../transport/obs.js';
 
 /** Abre una conexión con OBS para un trabajo. Se inyecta para probarlo sin OBS. */
@@ -229,6 +230,10 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   }
 
   if (ruta === 'POST /api/loot/soltar') {
+    // Un cofre a mano sale al chat: sin freno, pulsar deprisa sería spam.
+    const falta = cooldowns.remaining('panel:soltar-cofre', 60_000);
+    if (falta > 0) throw new ErrorHttp(429, `Espera ${Math.ceil(falta / 1000)} s para soltar otro cofre`);
+    cooldowns.tryConsume('panel:soltar-cofre', 60_000);
     const r = await loot.soltarCofre({ origen: 'panel' });
     if (!r.ok) throw new ErrorHttp(409, r.motivo);
     return json(res, 200, { enviado: r.enviado, reparto: r.reparto.map((x) => ({ quien: x.viewer.displayName, ...x.botin })) });
@@ -242,9 +247,23 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
 
   // Si arrancaste el bot con el directo ya empezado, Twitch no vuelve a
   // avisar de que empezó, y sin directo abierto no caen cofres.
+  // Y al revés: si el aviso de fin de directo no llegó, o lo marcaste para
+  // probar, se cierra a mano. Sin esto se quedaba "en directo" para siempre.
   if (ruta === 'POST /api/loot/directo') {
-    streams.open();
+    const { abierto } = await cuerpo(req);
+    if (abierto === false) streams.close();
+    else streams.open();
     return json(res, 200, { ok: true });
+  }
+
+  // El banner del Legendario en OBS, a demanda, para verlo sin esperar a la suerte.
+  if (ruta === 'POST /api/loot/legendario-prueba') {
+    const objeto = OBJETOS.legendario[Math.floor(Math.random() * OBJETOS.legendario.length)]!;
+    const quien = config.broadcasterLogin.charAt(0).toUpperCase() + config.broadcasterLogin.slice(1);
+    await obs((pedir) => obsSetup.mostrarLegendario(pedir, quien, objeto)).catch((err) => {
+      throw new ErrorHttp(502, err instanceof Error ? err.message : String(err));
+    });
+    return json(res, 200, { objeto });
   }
 
   if (ruta === 'GET /api/biblioteca') return json(res, 200, await biblioteca.listar());

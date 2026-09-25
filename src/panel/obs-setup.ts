@@ -135,7 +135,10 @@ async function prepararUno(
       // OBS" suena en el directo como una fuente más del mezclador.
       : { ...comunes, is_local_file: false, url: urlLegendario(), reroute_audio: true };
     try {
-      await pedir('CreateInput', { sceneName: escena, inputName: nombre, inputKind: 'browser_source', inputSettings: ajustes, sceneItemEnabled: false });
+      const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateInput', {
+        sceneName: escena, inputName: nombre, inputKind: 'browser_source', inputSettings: ajustes, sceneItemEnabled: false,
+      });
+      await pantallaCompleta(pedir, escena, sceneItemId);
       return `Fuente «${nombre}» creada en «${escena}», oculta.`;
     } catch (err) {
       if (!(err instanceof ErrorObs) || err.codigo !== YA_EXISTE) throw err;
@@ -147,7 +150,8 @@ async function prepararUno(
         await pedir('SetSceneItemEnabled', { sceneName: escena, sceneItemId: item.sceneItemId, sceneItemEnabled: false });
         return `«${nombre}» ya existía en «${escena}»: actualizada y oculta.`;
       }
-      await pedir('CreateSceneItem', { sceneName: escena, sourceName: nombre, sceneItemEnabled: false });
+      const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: nombre, sceneItemEnabled: false });
+      await pantallaCompleta(pedir, escena, sceneItemId);
       return `«${nombre}» ya existía: actualizada y añadida a «${escena}», oculta.`;
     }
   }
@@ -173,6 +177,22 @@ async function prepararUno(
   // puesto. Da tiempo a un parpadeo de milisegundos; mejor prepararlo sin emitir.
   await pedir('SetSourceFilterEnabled', { sourceName: fuente, filterName: nombre, filterEnabled: false });
   return `Filtro «${nombre}» listo en «${fuente}», apagado.`;
+}
+
+/**
+ * Coloca una fuente recién creada ocupando todo el lienzo. Los overlays miden
+ * 1920×1080 y colocan su contenido dentro; si la fuente queda más pequeña o
+ * movida, el banner sale diminuto en una esquina.
+ *
+ * Solo se hace al CREARLA: si ya existía y la has movido tú, se respeta.
+ */
+async function pantallaCompleta(pedir: PedirObs, escena: string, sceneItemId: number): Promise<void> {
+  const v = await pedir<{ baseWidth: number; baseHeight: number }>('GetVideoSettings');
+  await pedir('SetSceneItemTransform', {
+    sceneName: escena,
+    sceneItemId,
+    sceneItemTransform: { positionX: 0, positionY: 0, rotation: 0, alignment: 5, scaleX: v.baseWidth / 1920, scaleY: v.baseHeight / 1080 },
+  });
 }
 
 /** Dónde está una fuente: la primera escena que la contenga. */

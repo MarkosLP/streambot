@@ -53,6 +53,7 @@ let obs: {
   entradas: { inputName: string; inputKind: string; settings: any }[];
   items: Record<string, { sourceName: string; sceneItemId: number; enabled: boolean }[]>;
   filtros: Record<string, { filterName: string; kind: string; settings: any; enabled: boolean }[]>;
+  transformes: Record<number, any>;
 };
 
 function reiniciarObs() {
@@ -65,6 +66,7 @@ function reiniciarObs() {
     ],
     items: { 'Escena juego': [{ sourceName: 'Juego', sceneItemId: 1, enabled: true }], Charla: [] },
     filtros: { Juego: [] },
+    transformes: {},
   };
 }
 
@@ -86,7 +88,7 @@ const obsFalso: ConObs = async (trabajo) => {
         if (obs.entradas.some((e) => e.inputName === d.inputName)) throw yaExiste();
         obs.entradas.push({ inputName: d.inputName, inputKind: d.inputKind, settings: d.inputSettings });
         obs.items[d.sceneName].push({ sourceName: d.inputName, sceneItemId: ++id, enabled: d.sceneItemEnabled });
-        return {};
+        return { sceneItemId: id };
       case 'SetInputSettings':
         obs.entradas.find((e) => e.inputName === d.inputName)!.settings = d.inputSettings;
         return {};
@@ -98,6 +100,11 @@ const obsFalso: ConObs = async (trabajo) => {
       case 'CreateSceneItem':
         obs.items[d.sceneName].push({ sourceName: d.sourceName, sceneItemId: ++id, enabled: d.sceneItemEnabled });
         return { sceneItemId: id };
+      case 'GetVideoSettings':
+        return { baseWidth: 2560, baseHeight: 1440 };
+      case 'SetSceneItemTransform':
+        obs.transformes[d.sceneItemId] = d.sceneItemTransform;
+        return {};
       case 'CreateSourceFilter': {
         if (!obs.plugins.includes(d.filterKind)) throw new ErrorObs('tipo de filtro desconocido', 605);
         const lista = obs.filtros[d.sourceName];
@@ -409,6 +416,22 @@ describe('preparar OBS', () => {
     assert.match(fuente.settings.local_file, /biblioteca[\\/]overlays[\\/]pocion\.html$/);
     assert.equal(fuente.settings.shutdown, true);
     assert.equal(obs.items['Escena juego'].find((i) => i.sourceName === 'FX Pocion')!.enabled, false);
+  });
+
+  test('una fuente nueva ocupa todo el lienzo, sea del tamaño que sea', async () => {
+    await preparar({ escena: 'Escena juego', efectos: ['pocion'] });
+    const id = obs.items['Escena juego'].find((i) => i.sourceName === 'FX Pocion')!.sceneItemId;
+    const t = obs.transformes[id];
+    assert.equal(t.positionX, 0);
+    assert.equal(t.scaleX, 2560 / 1920);
+    assert.equal(t.scaleY, 1440 / 1080);
+  });
+
+  test('si ya existía, no se le toca la posición: la puedes haber movido tú', async () => {
+    await preparar({ escena: 'Escena juego', efectos: ['pocion'] });
+    obs.transformes = {};
+    await preparar({ escena: 'Escena juego', efectos: ['pocion'] });
+    assert.deepEqual(obs.transformes, {});
   });
 
   test('pulsar dos veces no duplica nada', async () => {

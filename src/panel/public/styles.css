@@ -534,6 +534,9 @@ strong.ui {
 .loot-acciones { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .loot-acciones .separador { flex: 1; min-width: 12px; }
 .loot-acciones .nota { font-size: 0.8rem; }
+.loot-obs { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--borde); }
+.l-con-directo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: -6px 0 0; }
+.l-con-directo[hidden] { display: none; }
 .loot-prueba { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .loot-prueba:empty { display: none; }
 .revelado {
