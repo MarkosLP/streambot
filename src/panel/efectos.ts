@@ -35,6 +35,10 @@ export interface Efecto {
   accion: string;
   coste: number;
   cooldownSeg: number;
+  /** Canjes como máximo por directo, entre todos. null = sin límite. */
+  maxPorDirecto: number | null;
+  /** Canjes como máximo por persona y directo. */
+  maxPorPersona: number | null;
   queHace: string;
   /** null = nada más que OBS y Streamer.bot. */
   necesita: string | null;
@@ -65,8 +69,10 @@ export const EFECTOS: Efecto[] = [
   efecto({
     id: 'grito',
     recompensa: 'Grito de guerra',
-    coste: 300,
-    cooldownSeg: 60,
+    coste: 750,
+    cooldownSeg: 600,
+    maxPorDirecto: 4,
+    maxPorPersona: 1,
     queHace: 'Suena un grito de guerra: tambores y un cuerno.',
     necesita: null,
     material: ['sonidos/grito-de-guerra.wav'],
@@ -82,8 +88,10 @@ export const EFECTOS: Efecto[] = [
   efecto({
     id: 'pocion',
     recompensa: 'Poción de vida',
-    coste: 300,
-    cooldownSeg: 300,
+    coste: 500,
+    cooldownSeg: 600,
+    maxPorDirecto: null,
+    maxPorPersona: 2,
     queHace: 'Aparece "¡Bebe agua!" en pantalla 5 segundos, con un frasco animado.',
     necesita: null,
     material: ['overlays/pocion.html', 'sonidos/pocion.wav'],
@@ -111,8 +119,10 @@ export const EFECTOS: Efecto[] = [
   efecto({
     id: 'maldicion',
     recompensa: 'Maldición',
-    coste: 800,
-    cooldownSeg: 300,
+    coste: 2500,
+    cooldownSeg: 1200,
+    maxPorDirecto: 2,
+    maxPorPersona: 1,
     queHace: 'La pantalla se queda en blanco y negro 30 segundos.',
     necesita: null,
     material: ['sonidos/maldicion.wav'],
@@ -138,8 +148,10 @@ export const EFECTOS: Efecto[] = [
   efecto({
     id: 'terremoto',
     recompensa: 'Terremoto',
-    coste: 1000,
-    cooldownSeg: 300,
+    coste: 3000,
+    cooldownSeg: 1200,
+    maxPorDirecto: 2,
+    maxPorPersona: 1,
     queHace: 'La cámara tiembla 5 segundos.',
     necesita: 'Plugin Move (Exeldro)',
     material: ['sonidos/terremoto.wav'],
@@ -159,8 +171,10 @@ export const EFECTOS: Efecto[] = [
   efecto({
     id: 'lag',
     recompensa: 'Lag',
-    coste: 1500,
-    cooldownSeg: 600,
+    coste: 5000,
+    cooldownSeg: 1800,
+    maxPorDirecto: 1,
+    maxPorPersona: 1,
     queHace: 'La imagen del juego se congela 5 segundos, como si fuera lag de verdad.',
     necesita: 'Plugin Freeze Filter (Exeldro)',
     material: ['sonidos/lag.wav'],
@@ -183,6 +197,18 @@ export const EFECTOS: Efecto[] = [
   }),
 ];
 
+/**
+ * Los límites por directo: son lo que de verdad frena el spam, más que el
+ * precio (decidido el 25 sep 2026). Twitch los trae de serie.
+ */
+function limites(e: Efecto): string {
+  const partes = [
+    e.maxPorDirecto !== null && `**Max Per Stream** (máximo por directo): \`${e.maxPorDirecto}\``,
+    e.maxPorPersona !== null && `**Max Per User Per Stream** (máximo por persona y directo): \`${e.maxPorPersona}\``,
+  ].filter(Boolean);
+  return partes.length ? `Límites: ${partes.join('. ')}.` : 'Sin límite por directo: basta con el tiempo de espera.';
+}
+
 /** La guía completa de un efecto, en el orden en que se hace. */
 export function guia(e: Efecto): Fase[] {
   const fases: Fase[] = [
@@ -193,6 +219,7 @@ export function guia(e: Efecto): Fase[] {
         'Ve a la pestaña **Platforms** (plataformas) → **Twitch** → **Channel Point Rewards** (recompensas de puntos de canal).',
         'Clic derecho en la lista → **Add** (añadir).',
         `**Title** (nombre): \`${e.recompensa}\`. **Cost** (coste): \`${e.coste}\`. **Global Cooldown** (tiempo entre canjes): \`${e.cooldownSeg}\` segundos.`,
+        limites(e),
         'Marca **Skip Queue** (saltar la cola) y comprueba que **Enabled** (activa) está marcada.',
         'Pulsa **OK**. Si abres tu canal en Twitch, ya debería salir entre las recompensas.',
       ],

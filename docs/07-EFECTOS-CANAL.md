@@ -34,9 +34,14 @@ tiempo viendo más el cofre que hay que reclamar). Con pocos espectadores,
 
 | Nivel | Coste | Para qué |
 |---|---:|---|
-| Barato | 300 | Se puede usar en el primer directo |
-| Medio | 800 – 1.500 | Algo que se ahorra durante un par de directos |
-| Caro | 3.000+ | Retos (punto 3 del plan, más adelante) |
+| Barato | 500 – 750 | Algo que se usa una vez por directo |
+| Medio | 1.500 – 2.500 | Algo que se ahorra durante un par de directos |
+| Caro | 3.000 – 5.000 | Algo especial, de vez en cuando |
+
+**Revisado el 25 sep 2026:** los precios de arranque (300-1.500) invitaban al
+spam. Lo que de verdad lo frena son los límites de Twitch: tiempo de espera,
+máximo por directo y máximo por persona y directo. El precio decide lo especial
+que se siente cada canje.
 
 ---
 
@@ -47,11 +52,12 @@ necesitan un plugin gratuito.
 
 | # | Recompensa | Coste | Cooldown | Qué pasa | Necesita |
 |---|---|---:|---|---|---|
-| 1 | **Grito de guerra** | 300 | 1 min | Suena un sonido | Nada |
-| 2 | **Poción de vida** | 300 | 5 min | Aparece "¡Bebe agua!" 5 s en pantalla | Nada |
-| 3 | **Maldición** | 800 | 5 min | La pantalla se queda en blanco y negro 30 s | Nada |
-| 4 | **Terremoto** | 1.000 | 5 min | La cámara tiembla 5 s | Plugin *Move* |
-| 5 | **Lag** | 1.500 | 10 min | La imagen se congela 5 s | Plugin *Freeze Filter* |
+| 1 | **Grito de guerra** | 750 | 10 min · máx. 4 por directo, 1 por persona | Suena un sonido | Nada |
+| 2 | **Poción de vida** | 500 | 10 min · máx. 2 por persona | Aparece "¡Bebe agua!" 5 s en pantalla | Nada |
+| 3 | **Maldición** | 2.500 | 20 min · máx. 2 por directo, 1 por persona | La pantalla se queda en blanco y negro 30 s | Nada |
+| 4 | **Terremoto** | 3.000 | 20 min · máx. 2 por directo, 1 por persona | La cámara tiembla 5 s | Plugin *Move* |
+| 5 | **Lag** | 5.000 | 30 min · máx. 1 por directo | La imagen se congela 5 s | Plugin *Freeze Filter* |
+| — | **Cofre del tesoro** | 1.500 | 5 min · máx. 2 por persona | Abre un cofre del Loot | Nada (lo abre el bot) |
 
 Los plugins 4 y 5 son de Exeldro, gratuitos y de uso muy extendido. Déjalos para
 cuando los tres primeros funcionen.

@@ -67,9 +67,9 @@ function hace(iso) {
 
 // Rareza por coste: las mismas que usará el Loot del chat.
 function rareza(coste) {
-  if (coste >= 1500) return { clase: 'r-legendario', nombre: 'Legendario' };
-  if (coste >= 1000) return { clase: 'r-epico', nombre: 'Épico' };
-  if (coste >= 800) return { clase: 'r-raro', nombre: 'Raro' };
+  if (coste >= 5000) return { clase: 'r-legendario', nombre: 'Legendario' };
+  if (coste >= 2500) return { clase: 'r-epico', nombre: 'Épico' };
+  if (coste >= 750) return { clase: 'r-raro', nombre: 'Raro' };
   return { clase: 'r-comun', nombre: 'Común' };
 }
 
@@ -667,7 +667,7 @@ async function cargarLoot() {
   $('l-montar').replaceChildren(
     h('li', {}, 'Los cofres gratis no necesitan nada: caen solos durante el directo.'),
     h('li', {}, 'Cofre del tesoro: crea en Streamer.bot la recompensa ', chipCopiar('Cofre del tesoro', 'Cofre del tesoro'),
-      ' con coste ', chipCopiar('500', '500'), ' y ', h('strong', { class: 'ui' }, 'Skip Queue'),
+      ' con coste ', chipCopiar('1500', '1500'), ', espera de 5 min, máximo 2 por persona y directo, y ', h('strong', { class: 'ui' }, 'Skip Queue'),
       '. No hace falta ninguna acción: la abre el bot.'),
     h('li', {}, 'Banner en pantalla: en ', h('strong', { class: 'ui' }, 'Efectos'), ' → ', h('strong', { class: 'ui' }, 'Preparar en OBS'),
       ', marca ', h('strong', { class: 'ui' }, 'Banner del Loot'), '. Lo enseña el bot con cada cofre.'),
