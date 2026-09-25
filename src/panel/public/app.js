@@ -461,7 +461,7 @@ function tarjetaEfecto(e) {
         h('span', {}, `· cooldown ${cooldownTexto(e.cooldownSeg)}`),
         e.necesita && h('span', { class: 'chip plugin' }, e.necesita),
       ),
-      e.material.length > 0 && h('div', { class: 'material' }, e.material.map(filaMaterial)),
+      e.material?.length > 0 && h('div', { class: 'material' }, e.material.map(filaMaterial)),
       h('details', { open: e.montado === false && !e.necesita },
         h('summary', {}, 'Cómo montarlo'),
         h('ol', {}, pasos.map((p) => h('li', {}, p))),
@@ -594,7 +594,8 @@ async function cargarBiblioteca() {
   try {
     lib = await api('/api/biblioteca');
   } catch (err) {
-    tostada(err.message, true);
+    // 404 = el bot arrancó antes de que existiera la biblioteca.
+    tostada(err.message === 'no existe' ? 'Reinicia el bot para ver la Biblioteca (Ctrl+C y npm start)' : err.message, true);
     return;
   }
 
