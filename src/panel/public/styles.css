@@ -394,6 +394,89 @@ input[type="search"]:focus, .chat input:focus { outline: none; border-color: var
 .efecto li::marker { color: var(--oro); font-family: var(--titulos); font-weight: 700; }
 .efecto .pie { margin-top: auto; display: flex; gap: 8px; }
 
+/* ---------- Material de cada efecto ---------- */
+
+.material { display: grid; gap: 6px; }
+.fila-material {
+  display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 6px;
+  border-radius: 10px; background: var(--tarjeta-2); border: 1px solid var(--borde); font-size: 0.85rem;
+}
+.fila-material.falta { border-style: dashed; }
+.nombre-material { margin-right: auto; font-family: "Cascadia Code", ui-monospace, Consolas, monospace; font-size: 0.8rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tipo-material { display: grid; place-items: center; width: 28px; height: 28px; flex: none; color: var(--texto-3); }
+
+/* ---------- Biblioteca ---------- */
+
+.escuchar {
+  --t: 40px;
+  display: grid; place-items: center; flex: none; width: var(--t); height: var(--t); border-radius: 50%;
+  border: 1px solid var(--oro-oscuro); cursor: pointer; color: #2a1c02;
+  background: linear-gradient(180deg, var(--oro-claro), var(--oro));
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+.escuchar.pequeno { --t: 28px; }
+.escuchar:hover { box-shadow: 0 0 0 4px color-mix(in srgb, var(--oro) 22%, transparent); }
+.escuchar:active { transform: scale(0.94); }
+/* Triángulo de play; cuadrado de stop mientras suena. */
+.escuchar::before {
+  content: ""; width: 0; height: 0; margin-left: 3px;
+  border-left: calc(var(--t) * 0.3) solid currentColor;
+  border-top: calc(var(--t) * 0.19) solid transparent;
+  border-bottom: calc(var(--t) * 0.19) solid transparent;
+}
+.escuchar.sonando { animation: sonando 1s ease-in-out infinite; }
+.escuchar.sonando::before {
+  margin: 0; border: 0; width: calc(var(--t) * 0.3); height: calc(var(--t) * 0.3); border-radius: 2px; background: currentColor;
+}
+@keyframes sonando { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--oro) 18%, transparent); } }
+
+.copiar { flex: none; }
+.copiar.hecho { color: var(--verde); border-color: var(--verde); }
+
+.lista-sonidos {
+  display: grid; border: 1px solid var(--borde); border-radius: var(--radio);
+  background: var(--tarjeta); box-shadow: var(--sombra); overflow: hidden;
+}
+.sonido { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-top: 1px solid var(--borde); }
+.sonido:first-child { border-top: 0; }
+.sonido:hover { background: color-mix(in srgb, var(--tarjeta-2) 60%, transparent); }
+.sonido-info { display: flex; flex-direction: column; min-width: 0; margin-right: auto; }
+.sonido-info strong { font-family: "Cascadia Code", ui-monospace, Consolas, monospace; font-size: 0.86rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sonido-meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.78rem; color: var(--texto-3); }
+.usado { color: var(--oro); }
+.usado.libre { color: var(--texto-3); }
+.dato { font-variant-numeric: tabular-nums; }
+.dato:empty { display: none; }
+
+.lista-overlays, .lista-imagenes { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+.lista-imagenes { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.overlay, .imagen {
+  border: 1px solid var(--borde); border-radius: var(--radio); overflow: hidden;
+  background: var(--tarjeta); box-shadow: var(--sombra);
+}
+/* Fondo de cuadros: así se ve qué es transparente. */
+.overlay-vista, .imagen-vista {
+  position: relative; aspect-ratio: 16 / 9; overflow: hidden;
+  background: repeating-conic-gradient(#1c2130 0% 25%, #151924 0% 50%) 0 0 / 20px 20px;
+  border-bottom: 1px solid var(--borde);
+}
+.imagen-vista { aspect-ratio: 4 / 3; display: grid; place-items: center; padding: 12px; }
+.imagen-vista img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.overlay-vista iframe {
+  position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; border: 0; pointer-events: none;
+  /* Si no coincide con el del overlay, el navegador le pinta fondo blanco. */
+  color-scheme: light;
+  transform-origin: 0 0; transform: scale(var(--escala, 0.2));
+}
+.overlay-pie { display: flex; align-items: center; gap: 8px; padding: 10px 12px; }
+
+.vacio-biblioteca {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 18px 20px; border: 1px dashed var(--borde-2); border-radius: var(--radio); color: var(--texto-2);
+}
+.vacio-biblioteca p { margin: 0; }
+
 /* ---------- Tablas ---------- */
 
 .tabla-envoltorio { overflow-x: auto; border: 1px solid var(--borde); border-radius: var(--radio); background: var(--tarjeta); box-shadow: var(--sombra); }

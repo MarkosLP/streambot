@@ -12,6 +12,7 @@ import { budget } from '../services/ai/index.js';
 import * as revision from './revision.js';
 import * as datos from './datos.js';
 import { EFECTOS, PREFIJO_ACCION, mismoNombre } from './efectos.js';
+import * as biblioteca from './biblioteca.js';
 import type { AccionSB, EstadoConexion } from '../transport/streamerbot.js';
 
 /**
@@ -123,6 +124,22 @@ async function atender(server: Server, sb: PuertoStreamerbot, req: IncomingMessa
     return;
   }
 
+  if (metodo === 'GET' && url.pathname.startsWith('/biblioteca/')) {
+    const archivo = biblioteca.resolver(url.pathname);
+    const contenido = archivo && (await readFile(archivo.ruta).catch(() => null));
+    if (!archivo || !contenido) throw new ErrorHttp(404, 'no existe');
+    res.writeHead(200, {
+      'Content-Type': archivo.tipo,
+      'Content-Length': contenido.length,
+      'Cache-Control': 'no-store',
+      // Un overlay es una página con scripts. Así corre en un origen propio
+      // y no puede usar el panel aunque se abra directamente.
+      'Content-Security-Policy': 'sandbox allow-scripts',
+    });
+    res.end(contenido);
+    return;
+  }
+
   const ruta = `${metodo} ${url.pathname}`;
 
   if (ruta === 'GET /api/estado') {
@@ -175,6 +192,14 @@ async function atender(server: Server, sb: PuertoStreamerbot, req: IncomingMessa
 
   if (ruta === 'GET /api/acciones') return json(res, 200, await sb.acciones());
 
+  if (ruta === 'GET /api/biblioteca') return json(res, 200, await biblioteca.listar());
+
+  if (ruta === 'POST /api/biblioteca/abrir') {
+    const { seccion } = await cuerpo(req);
+    biblioteca.abrirCarpeta(typeof seccion === 'string' ? (seccion as biblioteca.Seccion) : undefined);
+    return json(res, 200, { ok: true });
+  }
+
   const ejecutar = /^POST \/api\/acciones\/([\w-]+)\/ejecutar$/.exec(ruta);
   if (ejecutar) {
     await sb.ejecutarAccion(ejecutar[1]);
@@ -213,12 +238,23 @@ async function efectos(sb: PuertoStreamerbot) {
     // Sin Streamer.bot el catálogo se enseña igual, sin saber qué está montado.
   }
 
+  const lib = await biblioteca.listar();
+  const enBiblioteca = (m: string) => {
+    const [seccion, nombre] = m.split('/') as [biblioteca.Seccion, string];
+    return lib[seccion]?.find((a) => a.nombre === nombre) ?? null;
+  };
+
   return {
     conectado: acciones !== null,
     prefijo: PREFIJO_ACCION,
     efectos: EFECTOS.map((e) => {
       const accion = acciones?.find((a) => mismoNombre(a.name, e.accion)) ?? null;
-      return { ...e, montado: acciones === null ? null : accion !== null, accionId: accion?.id ?? null };
+      return {
+        ...e,
+        material: e.material.map((m) => ({ id: m, archivo: enBiblioteca(m) })),
+        montado: acciones === null ? null : accion !== null,
+        accionId: accion?.id ?? null,
+      };
     }),
     // Las Actions del grupo de efectos que no están en el catálogo: las que
     // hayas creado por tu cuenta. Se enseñan para que también puedas probarlas.

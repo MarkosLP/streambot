@@ -43,6 +43,10 @@
         <svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>
         Efectos
       </button>
+      <button role="tab" data-tab="biblioteca">
+        <svg viewBox="0 0 24 24"><path d="M4 4h4v16H4zM10 4h4v16h-4zM15.5 5.2l3.9-1 3.6 14.6-3.9 1z"/></svg>
+        Biblioteca
+      </button>
       <button role="tab" data-tab="interacciones">
         <svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
         Interacciones
@@ -180,6 +184,36 @@
       </div>
       <div class="efectos" id="efectos"></div>
       <div id="efectos-extra"></div>
+    </section>
+
+    <!-- BIBLIOTECA -->
+    <section class="vista" id="v-biblioteca" hidden>
+      <header class="cabecera-vista">
+        <div>
+          <p class="antetitulo">Sonidos, overlays e imágenes</p>
+          <h1>Biblioteca</h1>
+          <p class="nota">Copia la ruta y pégala en Streamer.bot u OBS. Lo que metas en la carpeta aparece aquí.</p>
+        </div>
+        <div class="acciones-cabecera">
+          <button class="boton" id="b-abrir" type="button">Abrir carpeta</button>
+          <button class="boton" id="r-biblioteca" type="button">Actualizar</button>
+        </div>
+      </header>
+
+      <section class="bloque">
+        <header class="bloque-cabecera"><h2>Sonidos</h2><span class="nota" id="n-sonidos"></span></header>
+        <div class="lista-sonidos" id="b-sonidos"></div>
+      </section>
+
+      <section class="bloque">
+        <header class="bloque-cabecera"><h2>Overlays</h2><span class="nota">En OBS: Fuente → Navegador → Archivo local, 1920×1080</span></header>
+        <div class="lista-overlays" id="b-overlays"></div>
+      </section>
+
+      <section class="bloque">
+        <header class="bloque-cabecera"><h2>Imágenes</h2><span class="nota">PNG, GIF, WebP o JPG</span></header>
+        <div class="lista-imagenes" id="b-imagenes"></div>
+      </section>
     </section>
 
     <!-- INTERACCIONES -->

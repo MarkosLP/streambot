@@ -1,0 +1,150 @@
+<!doctype html>
+<!--
+  Overlay "Poción de vida" para OBS.
+
+  En OBS: Fuente → Navegador → marca "Archivo local" y elige este archivo.
+  Ancho 1920, alto 1080. Marca "Apagar la fuente cuando no esté visible":
+  así la animación vuelve a empezar cada vez que Streamer.bot la enseña.
+
+  Dura 5 segundos, lo mismo que el Delay de la Action.
+  Opcional: pocion.html?user=Nombre pone "Cortesía de Nombre" debajo.
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Poción de vida</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&display=swap">
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+  body { font-family: "Chakra Petch", "Segoe UI", sans-serif; }
+
+  .escena {
+    position: absolute; left: 50%; top: 58%;
+    display: flex; align-items: center; gap: 36px;
+    transform: translate(-50%, -50%);
+    animation: entra 0.65s cubic-bezier(.2, 1.6, .4, 1) both, sale 0.6s ease-in 4.4s forwards;
+  }
+  @keyframes entra { from { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(-8deg); } }
+  @keyframes sale { to { opacity: 0; transform: translate(-50%, -80%) scale(0.9); } }
+
+  /* ---------- Frasco ---------- */
+  .frasco { position: relative; width: 230px; height: 300px; animation: flota 2.2s ease-in-out 0.65s infinite; }
+  @keyframes flota { 50% { transform: translateY(-14px) rotate(3deg); } }
+  .frasco::before {
+    content: ""; position: absolute; inset: -60px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 60, 90, 0.55), rgba(255, 60, 90, 0) 65%);
+    animation: pulso 1.1s ease-in-out infinite;
+  }
+  @keyframes pulso { 50% { transform: scale(1.12); opacity: 0.7; } }
+  .frasco svg { position: relative; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 12px 24px rgba(0,0,0,.5)); }
+  .ola { animation: ola 1.6s linear infinite; }
+  @keyframes ola { to { transform: translateX(-120px); } }
+
+  .burbuja {
+    position: absolute; bottom: 60px; width: 14px; height: 14px; border-radius: 50%;
+    background: rgba(255, 220, 230, 0.8); animation: sube 1.6s ease-in infinite;
+  }
+  @keyframes sube { from { transform: translateY(0) scale(.6); opacity: 1; } to { transform: translateY(-150px) scale(1); opacity: 0; } }
+
+  /* ---------- Texto ---------- */
+  .texto { display: flex; flex-direction: column; gap: 6px; }
+  .titulo {
+    font-size: 150px; font-weight: 700; line-height: .95; letter-spacing: .01em;
+    background: linear-gradient(180deg, #ffffff 0%, #ffe3a3 45%, #f0b93a 70%, #b77c10 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    -webkit-text-stroke: 3px #3a2204;
+    filter: drop-shadow(0 6px 0 #3a2204) drop-shadow(0 0 30px rgba(240, 185, 58, .55));
+    white-space: nowrap;
+  }
+  .sub {
+    display: flex; align-items: center; gap: 18px;
+    font-size: 40px; font-weight: 600; color: #fff; text-shadow: 0 3px 0 #000, 0 0 12px rgba(0,0,0,.8);
+  }
+  .pv {
+    color: #6dff9c; font-size: 52px; font-weight: 700;
+    text-shadow: 0 3px 0 #06381a, 0 0 18px rgba(80, 255, 140, .8);
+    animation: pv 1.2s ease-out 0.5s both;
+  }
+  @keyframes pv { from { opacity: 0; transform: translateY(30px) scale(.6); } 60% { transform: translateY(-6px) scale(1.1); } }
+  .cortesia { color: #ffe3a3; }
+
+  /* ---------- Chispas ---------- */
+  .chispa {
+    position: absolute; width: 10px; height: 10px; background: #fff3c4; border-radius: 2px;
+    box-shadow: 0 0 12px #ffd976, 0 0 24px #f0b93a;
+    transform: rotate(45deg); animation: chispa 1.4s ease-out infinite; opacity: 0;
+  }
+  @keyframes chispa {
+    0% { opacity: 0; transform: rotate(45deg) scale(.2); }
+    30% { opacity: 1; transform: rotate(45deg) scale(1.2); }
+    100% { opacity: 0; transform: translateY(-60px) rotate(45deg) scale(.3); }
+  }
+</style>
+</head>
+<body>
+  <div class="escena">
+    <div class="frasco">
+      <svg viewBox="0 0 230 300" aria-hidden="true">
+        <defs>
+          <clipPath id="interior"><path d="M90 70 V100 C40 118 20 160 20 200 A95 95 0 0 0 210 200 C210 160 190 118 140 100 V70 Z"/></clipPath>
+          <linearGradient id="liquido" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ff5577"/>
+            <stop offset="1" stop-color="#a0102e"/>
+          </linearGradient>
+          <linearGradient id="vidrio" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#fff" stop-opacity=".35"/>
+            <stop offset=".25" stop-color="#fff" stop-opacity=".05"/>
+            <stop offset=".8" stop-color="#fff" stop-opacity="0"/>
+            <stop offset="1" stop-color="#fff" stop-opacity=".2"/>
+          </linearGradient>
+        </defs>
+        <!-- líquido con ola -->
+        <g clip-path="url(#interior)">
+          <rect x="0" y="0" width="230" height="300" fill="#2a0a12" opacity=".55"/>
+          <g class="ola">
+            <path d="M0 150 Q30 136 60 150 T120 150 T180 150 T240 150 T300 150 T360 150 V300 H0 Z" fill="url(#liquido)"/>
+          </g>
+        </g>
+        <!-- vidrio -->
+        <path d="M90 70 V100 C40 118 20 160 20 200 A95 95 0 0 0 210 200 C210 160 190 118 140 100 V70 Z"
+              fill="url(#vidrio)" stroke="#fbe9ee" stroke-opacity=".85" stroke-width="6" stroke-linejoin="round"/>
+        <path d="M48 170 C44 190 46 222 62 244" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="8" stroke-linecap="round"/>
+        <!-- boca y corcho -->
+        <rect x="80" y="58" width="70" height="16" rx="6" fill="#e9d3d8" stroke="#6b3a45" stroke-width="3"/>
+        <path d="M92 58 L96 22 Q115 12 134 22 L138 58 Z" fill="#b07a45" stroke="#5b3718" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M102 30 H128 M100 44 H130" stroke="#5b3718" stroke-width="3" stroke-linecap="round" opacity=".5"/>
+      </svg>
+      <span class="burbuja" style="left: 80px; animation-delay: 0s"></span>
+      <span class="burbuja" style="left: 120px; width: 10px; height: 10px; animation-delay: .5s"></span>
+      <span class="burbuja" style="left: 150px; width: 8px; height: 8px; animation-delay: .9s"></span>
+      <span class="burbuja" style="left: 100px; width: 12px; height: 12px; animation-delay: 1.2s"></span>
+    </div>
+
+    <div class="texto">
+      <div class="titulo">¡BEBE AGUA!</div>
+      <div class="sub">
+        <span class="pv">+100 PV</span>
+        <span id="cortesia">Poción de vida</span>
+      </div>
+    </div>
+
+    <span class="chispa" style="left: -20px; top: 20px; animation-delay: .7s"></span>
+    <span class="chispa" style="left: 250px; top: -30px; animation-delay: 1s"></span>
+    <span class="chispa" style="left: 620px; top: -40px; animation-delay: 1.3s"></span>
+    <span class="chispa" style="left: 980px; top: 10px; animation-delay: .85s"></span>
+    <span class="chispa" style="left: 820px; top: 230px; animation-delay: 1.6s"></span>
+    <span class="chispa" style="left: 40px; top: 280px; animation-delay: 1.9s"></span>
+  </div>
+
+<script>
+  // ?user=Nombre → "Cortesía de Nombre". Siempre como texto, nunca como HTML.
+  const user = new URLSearchParams(location.search).get('user');
+  if (user) {
+    const el = document.getElementById('cortesia');
+    el.textContent = `Cortesía de ${user.slice(0, 25)}`;
+    el.className = 'cortesia';
+  }
+</script>
+</body>
+</html>

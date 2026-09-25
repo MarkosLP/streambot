@@ -43,7 +43,7 @@ function pedir(
   metodo: string,
   ruta: string,
   { cuerpo, cabeceras = {} }: { cuerpo?: unknown; cabeceras?: Record<string, string> } = {},
-): Promise<{ status: number; body: any }> {
+): Promise<{ status: number; body: any; headers: Record<string, any> }> {
   return new Promise((resolve, reject) => {
     const datos = cuerpo === undefined ? undefined : JSON.stringify(cuerpo);
     const req = request(
@@ -64,7 +64,7 @@ function pedir(
           } catch {
             /* HTML */
           }
-          resolve({ status: res.statusCode ?? 0, body });
+          resolve({ status: res.statusCode ?? 0, body, headers: res.headers });
         });
       },
     );
@@ -202,6 +202,48 @@ describe('efectos', () => {
     const r = await post('/api/acciones/a1/ejecutar');
     assert.equal(r.status, 200);
     assert.deepEqual(ejecutadas, ['a1']);
+  });
+});
+
+describe('biblioteca', () => {
+  test('todo el material del catálogo existe en la biblioteca', async () => {
+    const { body } = await pedir('GET', '/api/efectos');
+    const faltan = body.efectos.flatMap((e: any) => e.material.filter((m: any) => !m.archivo).map((m: any) => m.id));
+    assert.deepEqual(faltan, [], 'falta material: ¿has ejecutado npm run sonidos?');
+  });
+
+  test('lista los archivos con su ruta y quién los usa', async () => {
+    const { body } = await pedir('GET', '/api/biblioteca');
+    const grito = body.sonidos.find((s: any) => s.nombre === 'grito-de-guerra.wav');
+    assert.ok(grito);
+    assert.deepEqual(grito.usadoPor, ['Grito de guerra']);
+    assert.match(grito.ruta, /biblioteca[\\/]sonidos[\\/]grito-de-guerra\.wav$/);
+  });
+
+  test('sirve un sonido con su tipo y encerrado en sandbox', async () => {
+    const r = await pedir('GET', '/biblioteca/sonidos/grito-de-guerra.wav');
+    assert.equal(r.status, 200);
+    assert.equal(r.headers['content-type'], 'audio/wav');
+    assert.equal(r.headers['content-security-policy'], 'sandbox allow-scripts');
+  });
+
+  test('no sirve nada fuera de sus carpetas', async () => {
+    for (const ruta of [
+      '/biblioteca/sonidos/..%2F..%2F.env',
+      '/biblioteca/sonidos/%2E%2E%5C%2E%2E%5C.env',
+      '/biblioteca/../.env',
+      '/biblioteca/secretos/grito-de-guerra.wav',
+      '/biblioteca/sonidos/grito-de-guerra.exe',
+      '/biblioteca/sonidos/sub/grito-de-guerra.wav',
+    ]) {
+      const r = await pedir('GET', ruta);
+      assert.notEqual(r.status, 200, ruta);
+    }
+  });
+
+  test('abrir la carpeta exige X-Panel, como todo lo que hace algo', async () => {
+    const r = await pedir('POST', '/api/biblioteca/abrir', { cuerpo: {} });
+    assert.equal(r.status, 403);
   });
 });
 

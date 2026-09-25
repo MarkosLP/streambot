@@ -96,7 +96,8 @@ rápido.
 3. En **Triggers** (abajo a la izquierda): clic derecho → **Twitch → Channel Reward
    → Reward Redemption**, y elige `Grito de guerra`.
 4. En **Sub-Actions** (abajo a la derecha): clic derecho → **Core → Sounds → Play
-   Sound**. Elige el archivo y ajusta el volumen.
+   Sound**. El archivo es `biblioteca/sonidos/grito-de-guerra.wav`: en la pestaña
+   **Biblioteca** del panel tienes el botón **Copiar ruta**. Ajusta el volumen.
 5. Opcional, otro sub-action: **Twitch → Chat → Send Message to Channel** con el
    texto `%user% lanza un grito de guerra ⚔️`.
 
@@ -112,17 +113,27 @@ verdad canjeándola desde tu canal.
 La recompensa se crea igual que en 5.1 en todos los casos. Solo cambian los
 sub-actions.
 
+Todos llevan su sonido en `biblioteca/sonidos/` (se generan con `npm run
+sonidos`). Pon el **Play Sound** como primer sub-action, antes que lo visual.
+
 ### 6.1 Poción de vida
 
 **En OBS, una vez:**
-1. En la escena del juego, añade una fuente **Imagen** (o un GIF) con el texto
-   "¡Bebe agua!". Llámala `FX Pocion`.
-2. Colócala donde quieras y **ocúltala** (el icono del ojo).
+1. En la escena del juego, añade una fuente **Navegador**. Llámala `FX Pocion`.
+2. Marca **Archivo local** y elige `biblioteca/overlays/pocion.html`. Ancho
+   `1920`, alto `1080`.
+3. Marca **Apagar la fuente cuando no esté visible**. Así la animación empieza
+   de cero cada vez que aparece.
+4. **Ocúltala** (el icono del ojo).
+
+El overlay dura 5 segundos, lo mismo que el Delay. Si le añades `?user=Nombre`
+al final de la ruta, pone "Cortesía de Nombre".
 
 **Sub-actions:**
-1. **OBS → Sources → Set Source Visibility** → escena del juego, `FX Pocion`, **Visible**.
-2. **Core → Delay** → `5000` ms.
-3. **OBS → Sources → Set Source Visibility** → `FX Pocion`, **Hidden**.
+1. **Core → Sounds → Play Sound** → `pocion.wav`.
+2. **OBS → Sources → Set Source Visibility** → escena del juego, `FX Pocion`, **Visible**.
+3. **Core → Delay** → `5000` ms.
+4. **OBS → Sources → Set Source Visibility** → `FX Pocion`, **Hidden**.
 
 ### 6.2 Maldición
 

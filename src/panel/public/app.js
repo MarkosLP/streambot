@@ -93,6 +93,7 @@ function duracion(desdeIso) {
 
 const cargadores = {
   efectos: cargarEfectos,
+  biblioteca: cargarBiblioteca,
   interacciones: cargarInteracciones,
   espectadores: cargarEspectadores,
 };
@@ -103,7 +104,8 @@ function irA(tab) {
   }
   for (const v of document.querySelectorAll('.vista')) v.hidden = v.id !== `v-${tab}`;
   try { localStorage.setItem('panel-tab', tab); } catch { /* sin almacenamiento, da igual */ }
-  if (location.hash !== `#${tab}`) history.replaceState(null, '', `#${tab}`);
+  // "#/efectos" y no "#efectos": hay elementos con esos ids y el navegador saltaría a ellos.
+  if (location.hash !== `#/${tab}`) history.replaceState(null, '', `#/${tab}`);
   cargadores[tab]?.();
 }
 
@@ -459,6 +461,7 @@ function tarjetaEfecto(e) {
         h('span', {}, `· cooldown ${cooldownTexto(e.cooldownSeg)}`),
         e.necesita && h('span', { class: 'chip plugin' }, e.necesita),
       ),
+      e.material.length > 0 && h('div', { class: 'material' }, e.material.map(filaMaterial)),
       h('details', { open: e.montado === false && !e.necesita },
         h('summary', {}, 'Cómo montarlo'),
         h('ol', {}, pasos.map((p) => h('li', {}, p))),
@@ -468,7 +471,179 @@ function tarjetaEfecto(e) {
   );
 }
 
+function filaMaterial(m) {
+  const nombre = m.id.split('/').pop();
+  const esSonido = m.id.startsWith('sonidos/');
+  if (!m.archivo) {
+    return h('div', { class: 'fila-material falta' },
+      h('span', { class: 'tipo-material' }, esSonido ? '♪' : '▣'),
+      h('span', { class: 'nombre-material' }, nombre),
+      h('span', { class: 'chip falta' }, 'Falta en la biblioteca'));
+  }
+  return h('div', { class: 'fila-material' },
+    esSonido
+      ? botonEscuchar(m.archivo.url, 'pequeno')
+      : h('span', { class: 'tipo-material' }, '▣'),
+    h('span', { class: 'nombre-material' }, nombre),
+    botonCopiar(m.archivo.ruta),
+  );
+}
+
 $('r-efectos').addEventListener('click', cargarEfectos);
+
+// ---------------------------------------------------------------------------
+// Biblioteca
+// ---------------------------------------------------------------------------
+
+async function copiar(texto) {
+  try {
+    await navigator.clipboard.writeText(texto);
+  } catch {
+    // Sin permiso de portapapeles: el truco de siempre.
+    const area = h('textarea', { style: 'position:fixed;opacity:0' });
+    area.value = texto;
+    document.body.append(area);
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+  }
+}
+
+function botonCopiar(ruta, texto = 'Copiar ruta') {
+  const el = h('button', {
+    class: 'boton pequeno copiar',
+    type: 'button',
+    title: ruta,
+    onclick: async () => {
+      await copiar(ruta);
+      el.textContent = '✓ Copiada';
+      el.classList.add('hecho');
+      setTimeout(() => { el.textContent = texto; el.classList.remove('hecho'); }, 1600);
+    },
+  }, texto);
+  return el;
+}
+
+// Un solo reproductor para todo el panel: pulsar otro sonido corta el anterior.
+const reproductor = new Audio();
+let botonSonando = null;
+
+reproductor.addEventListener('ended', () => marcarSonando(null));
+
+function marcarSonando(boton) {
+  if (botonSonando) {
+    botonSonando.classList.remove('sonando');
+    botonSonando.setAttribute('aria-label', 'Escuchar');
+  }
+  botonSonando = boton;
+  if (boton) {
+    boton.classList.add('sonando');
+    boton.setAttribute('aria-label', 'Parar');
+  }
+}
+
+function botonEscuchar(url, tamano = '') {
+  const el = h('button', {
+    class: `escuchar ${tamano}`,
+    type: 'button',
+    'aria-label': 'Escuchar',
+    onclick: () => {
+      if (botonSonando === el) {
+        reproductor.pause();
+        marcarSonando(null);
+        return;
+      }
+      reproductor.src = url;
+      reproductor.currentTime = 0;
+      reproductor.play().catch((err) => tostada(`No se pudo reproducir: ${err.message}`, true));
+      marcarSonando(el);
+    },
+  });
+  return el;
+}
+
+const tamano = (bytes) => (bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
+
+function vacioBiblioteca(seccion, texto) {
+  return h('div', { class: 'vacio-biblioteca' },
+    h('p', {}, texto),
+    h('button', { class: 'boton pequeno', type: 'button', onclick: () => abrirCarpeta(seccion) }, `Abrir biblioteca/${seccion}`));
+}
+
+async function abrirCarpeta(seccion) {
+  try {
+    await api('/api/biblioteca/abrir', seccion ? { seccion } : {});
+  } catch (err) {
+    tostada(err.message, true);
+  }
+}
+
+function usadoEn(lista) {
+  return lista.length
+    ? h('span', { class: 'usado' }, 'Usado en ', lista.join(', '))
+    : h('span', { class: 'usado libre' }, 'Sin usar');
+}
+
+// Los overlays miden 1920×1080: la vista previa los encoge al ancho de la tarjeta.
+const escalarOverlay = new ResizeObserver((entradas) => {
+  for (const e of entradas) e.target.style.setProperty('--escala', String(e.contentRect.width / 1920));
+});
+
+async function cargarBiblioteca() {
+  let lib;
+  try {
+    lib = await api('/api/biblioteca');
+  } catch (err) {
+    tostada(err.message, true);
+    return;
+  }
+
+  $('n-sonidos').textContent = lib.sonidos.length ? `${lib.sonidos.length} archivos · se regeneran con npm run sonidos` : '';
+  $('b-sonidos').replaceChildren(...(lib.sonidos.length
+    ? lib.sonidos.map((s) => {
+      const duracion = h('span', { class: 'dato' }, s.duracionSeg ? `${s.duracionSeg.toFixed(1)} s` : '');
+      if (!s.duracionSeg) {
+        const meta = new Audio();
+        meta.preload = 'metadata';
+        meta.addEventListener('loadedmetadata', () => {
+          if (Number.isFinite(meta.duration)) duracion.textContent = `${meta.duration.toFixed(1)} s`;
+        });
+        meta.src = s.url;
+      }
+      return h('div', { class: 'sonido' },
+        botonEscuchar(s.url),
+        h('div', { class: 'sonido-info' },
+          h('strong', {}, s.nombre),
+          h('span', { class: 'sonido-meta' }, usadoEn(s.usadoPor), duracion, h('span', { class: 'dato' }, tamano(s.bytes)))),
+        botonCopiar(s.ruta));
+    })
+    : [vacioBiblioteca('sonidos', 'No hay sonidos. Genera los de los efectos con npm run sonidos, o mete los tuyos.')]));
+
+  $('b-overlays').replaceChildren(...(lib.overlays.length
+    ? lib.overlays.map((o) => {
+      const marco = h('iframe', { src: o.url, sandbox: 'allow-scripts', title: o.nombre, tabindex: '-1' });
+      const vista = h('div', { class: 'overlay-vista' }, marco);
+      escalarOverlay.observe(vista);
+      return h('article', { class: 'overlay' },
+        vista,
+        h('div', { class: 'overlay-pie' },
+          h('div', { class: 'sonido-info' }, h('strong', {}, o.nombre), h('span', { class: 'sonido-meta' }, usadoEn(o.usadoPor))),
+          h('button', { class: 'boton pequeno', type: 'button', onclick: () => { marco.src = o.url; } }, '↻ Repetir'),
+          botonCopiar(o.ruta)));
+    })
+    : [vacioBiblioteca('overlays', 'No hay overlays todavía.')]));
+
+  $('b-imagenes').replaceChildren(...(lib.imagenes.length
+    ? lib.imagenes.map((i) => h('article', { class: 'imagen' },
+      h('div', { class: 'imagen-vista' }, h('img', { src: i.url, alt: i.nombre, loading: 'lazy' })),
+      h('div', { class: 'overlay-pie' },
+        h('div', { class: 'sonido-info' }, h('strong', {}, i.nombre), h('span', { class: 'sonido-meta' }, h('span', { class: 'dato' }, tamano(i.bytes)))),
+        botonCopiar(i.ruta))))
+    : [vacioBiblioteca('imagenes', 'Aquí irán los iconos de las recompensas y las imágenes de los efectos.')]));
+}
+
+$('r-biblioteca').addEventListener('click', cargarBiblioteca);
+$('b-abrir').addEventListener('click', () => abrirCarpeta());
 
 // ---------------------------------------------------------------------------
 // Interacciones
@@ -554,7 +729,7 @@ $('r-espectadores').addEventListener('click', cargarEspectadores);
 // Arranque
 // ---------------------------------------------------------------------------
 
-let inicial = location.hash.slice(1);
+let inicial = location.hash.replace(/^#\/?/, '');
 if (!inicial) {
   try { inicial = localStorage.getItem('panel-tab') || 'directo'; } catch { inicial = 'directo'; }
 }
