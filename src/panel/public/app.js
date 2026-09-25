@@ -94,6 +94,7 @@ function duracion(desdeIso) {
 const cargadores = {
   efectos: () => { cargarEfectos(); cargarObs(); },
   biblioteca: cargarBiblioteca,
+  loot: cargarLoot,
   interacciones: cargarInteracciones,
   espectadores: cargarEspectadores,
 };
@@ -590,6 +591,131 @@ function filaMaterial(m) {
 $('r-efectos').addEventListener('click', () => { cargarEfectos(); cargarObs(); });
 
 // ---------------------------------------------------------------------------
+// Loot
+// ---------------------------------------------------------------------------
+
+const RAREZA_LOOT = {
+  comun: { clase: 'r-comun', nombre: 'Común' },
+  raro: { clase: 'r-raro', nombre: 'Raro' },
+  epico: { clase: 'r-epico', nombre: 'Épico' },
+  legendario: { clase: 'r-legendario', nombre: 'Legendario' },
+};
+const ORIGEN = { cofre: 'cofre', oro: 'Cofre del tesoro', panel: 'desde el panel' };
+
+function mmss(seg) {
+  const m = Math.floor(seg / 60);
+  return m >= 1 ? `${m} min ${String(seg % 60).padStart(2, '0')} s` : `${seg} s`;
+}
+
+function pildoraBotin(b) {
+  const r = RAREZA_LOOT[b.rareza];
+  return h('span', { class: `botin ${r.clase}` }, h('span', { class: 'gema' }), b.objeto);
+}
+
+async function cargarLoot() {
+  let d;
+  try {
+    d = await api('/api/loot');
+  } catch (err) {
+    tostada(err.message === 'no existe' ? 'Reinicia el bot para ver el Loot (Ctrl+C y npm start)' : err.message, true);
+    return;
+  }
+
+  if (document.activeElement !== $('loot-activo')) $('loot-activo').checked = d.activo;
+  $('loot-activo-texto').textContent = d.activo ? 'Loot activo' : 'Loot apagado';
+
+  const esperando = !d.activo ? 'Loot apagado' : !d.directo ? 'Esperando al directo' : null;
+  ficha('l-proximo', esperando ? '' : 'oro', esperando ?? (d.proximoEnSeg !== null ? mmss(d.proximoEnSeg) : '—'),
+    esperando ? 'No caerá ninguno hasta entonces' : 'Al azar entre 20 y 30 min');
+  ficha('l-aventureros', d.aventureros.length ? 'ok' : '', String(d.aventureros.length),
+    d.aventureros.length ? d.aventureros.join(', ') : `Nadie ha escrito en ${d.minutosActividad} min`);
+  ficha('l-ultimo', '', d.ultimoCofre ? hace(d.ultimoCofre) : 'Ninguno', d.ultimoCofre ? hora(d.ultimoCofre) : 'desde que arrancó el bot');
+  ficha('l-directo', d.directo ? 'vivo' : '', d.directo ? 'En marcha' : 'Sin directo', d.directo ? 'Los cofres pueden caer' : 'Sin directo no caen cofres');
+  $('l-sin-directo').hidden = d.directo;
+
+  $('l-recientes').replaceChildren(...(d.recientes.length
+    ? d.recientes.map((f) => h('li', {},
+      pildoraBotin(f),
+      h('span', { class: 'quien' }, f.display_name),
+      h('span', { class: 'dato' }, `${ORIGEN[f.origen] || f.origen} · ${hace(f.at)}`)))
+    : [h('li', { class: 'vacio-lista' }, 'Todavía no ha caído nada. El primer cofre llegará en el próximo directo.')]));
+
+  $('l-mochilas').replaceChildren(...(d.mochilas.length
+    ? d.mochilas.map((m, i) => h('li', {},
+      h('span', { class: 'puesto' }, String(i + 1)),
+      h('strong', {}, m.display_name),
+      h('span', { class: 'dato' }, `${m.total} objetos`),
+      m.legendarios > 0 && h('span', { class: 'botin r-legendario' }, h('span', { class: 'gema' }), `${m.legendarios}`),
+      m.epicos > 0 && h('span', { class: 'botin r-epico' }, h('span', { class: 'gema' }), `${m.epicos}`)))
+    : [h('li', { class: 'vacio-lista' }, 'Aún no hay mochilas.')]));
+
+  $('l-probs').replaceChildren(
+    h('thead', {}, h('tr', {}, h('th', {}, 'Rareza'), h('th', {}, 'Cofre gratis'), h('th', {}, 'Cofre del tesoro'))),
+    h('tbody', {}, Object.keys(RAREZA_LOOT).map((r) => h('tr', {},
+      h('td', {}, h('span', { class: `botin ${RAREZA_LOOT[r].clase}` }, h('span', { class: 'gema' }), RAREZA_LOOT[r].nombre)),
+      h('td', { class: 'num' }, `${d.probabilidades.cofre[r]} %`),
+      h('td', { class: 'num' }, `${d.probabilidades.oro[r]} %`)))),
+  );
+
+  $('l-montar').replaceChildren(
+    h('li', {}, 'Los cofres gratis no necesitan nada: caen solos durante el directo.'),
+    h('li', {}, 'Cofre del tesoro: crea en Streamer.bot la recompensa ', chipCopiar('Cofre del tesoro', 'Cofre del tesoro'),
+      ' con coste ', chipCopiar('500', '500'), ' y ', h('strong', { class: 'ui' }, 'Skip Queue'),
+      '. No hace falta ninguna acción: la abre el bot.'),
+    h('li', {}, 'Banner del Legendario: en ', h('strong', { class: 'ui' }, 'Efectos'), ' → ', h('strong', { class: 'ui' }, 'Preparar en OBS'),
+      ', marca ', h('strong', { class: 'ui' }, 'Loot Legendario'), '. Lo enseña el bot solo.'),
+  );
+}
+
+$('loot-activo').addEventListener('change', async (e) => {
+  const valor = e.target.checked;
+  try {
+    await api('/api/loot/ajustes', { activo: valor });
+    tostada(valor ? 'Loot activado' : 'Loot apagado: no caerán cofres');
+    cargarLoot();
+  } catch (err) {
+    e.target.checked = !valor;
+    tostada(err.message, true);
+  }
+});
+
+$('l-soltar').addEventListener('click', async () => {
+  try {
+    const r = await api('/api/loot/soltar', {});
+    tostada(r.enviado ? `Cofre para ${r.reparto.length}` : 'Cofre repartido, pero el mensaje no salió al chat', !r.enviado);
+    cargarLoot();
+  } catch (err) {
+    tostada(err.message, true);
+  }
+});
+
+for (const [id, tipo] of [['l-prueba', 'cofre'], ['l-prueba-oro', 'oro']]) {
+  $(id).addEventListener('click', async () => {
+    try {
+      const b = await api('/api/loot/prueba', { tipo });
+      const caja = $('l-resultado-prueba');
+      caja.prepend(h('span', { class: 'prueba-item' }, tipo === 'oro' ? '🗝️ ' : '🎁 ', pildoraBotin(b)));
+      while (caja.children.length > 8) caja.lastChild.remove();
+    } catch (err) {
+      tostada(err.message, true);
+    }
+  });
+}
+
+$('l-marcar-directo').addEventListener('click', async () => {
+  try {
+    await api('/api/loot/directo', {});
+    tostada('Directo marcado como en marcha');
+    cargarLoot();
+  } catch (err) {
+    tostada(err.message, true);
+  }
+});
+
+// La cuenta atrás se refresca sola mientras miras la pestaña.
+setInterval(() => { if (!$('v-loot').hidden) cargarLoot(); }, 5000);
+
+// ---------------------------------------------------------------------------
 // Importar en Streamer.bot
 // ---------------------------------------------------------------------------
 
@@ -674,6 +800,7 @@ const PREPARABLES = [
   { id: 'pocion', titulo: 'Poción de vida', que: 'Fuente «FX Pocion» con el overlay, oculta', necesita: 'escena' },
   { id: 'maldicion', titulo: 'Maldición', que: 'Filtro «FX Maldicion» en blanco y negro, apagado', necesita: 'fuente' },
   { id: 'lag', titulo: 'Lag', que: 'Filtro «FX Lag» que congela la imagen, apagado', necesita: 'fuente', plugin: true },
+  { id: 'legendario', titulo: 'Loot Legendario', que: 'Fuente «FX Legendario» con el banner del botín, oculta', necesita: 'escena' },
 ];
 
 // Lo que elegiste la última vez, para no tener que volver a elegirlo.

@@ -524,6 +524,52 @@ strong.ui {
 .obs-resultados .ok { color: var(--verde); }
 .obs-resultados .mal { color: var(--rojo); }
 
+/* ---------- Loot ---------- */
+
+.interruptor-loot {
+  display: flex; align-items: center; gap: 12px; cursor: pointer; font-weight: 600;
+  padding: 10px 14px; border-radius: 12px; border: 1px solid var(--borde-2); background: var(--tarjeta);
+}
+#v-loot .aviso { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.loot-acciones { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.loot-acciones .separador { flex: 1; min-width: 12px; }
+.loot-acciones .nota { font-size: 0.8rem; }
+.loot-prueba { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.loot-prueba:empty { display: none; }
+.prueba-item { display: inline-flex; align-items: center; gap: 4px; animation: aparece 0.35s ease-out; }
+@keyframes aparece { from { opacity: 0; transform: translateY(-4px); } }
+
+/* Un objeto: su nombre con una gema del color de su rareza. */
+.botin {
+  display: inline-flex; align-items: center; gap: 7px; min-width: 0;
+  padding: 3px 10px 3px 8px; border-radius: 999px; font-weight: 600; font-size: 0.86rem;
+  color: color-mix(in srgb, var(--rareza, var(--comun)) 75%, var(--texto));
+  background: color-mix(in srgb, var(--rareza, var(--comun)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rareza, var(--comun)) 40%, transparent);
+}
+.gema {
+  width: 9px; height: 9px; flex: none; transform: rotate(45deg); border-radius: 2px;
+  background: var(--rareza, var(--comun)); box-shadow: 0 0 8px var(--rareza, var(--comun));
+}
+.botin.r-legendario { box-shadow: 0 0 14px -2px color-mix(in srgb, var(--legendario) 60%, transparent); }
+
+.botines, .mochilas { list-style: none; margin: 0; padding: 0; display: grid; }
+.botines li, .mochilas li {
+  display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--borde); min-width: 0;
+}
+.botines li:first-child, .mochilas li:first-child { border-top: 0; padding-top: 0; }
+.botines .quien { font-weight: 600; margin-left: auto; white-space: nowrap; }
+.botines .dato, .mochilas .dato { color: var(--texto-3); font-size: 0.8rem; white-space: nowrap; }
+.mochilas strong { margin-right: auto; }
+.puesto {
+  display: grid; place-items: center; width: 24px; height: 24px; flex: none; border-radius: 50%;
+  font-family: var(--titulos); font-weight: 700; font-size: 0.8rem; background: var(--tarjeta-2); color: var(--texto-2);
+}
+.mochilas li:first-child .puesto { background: var(--oro); color: #2a1c02; }
+.vacio-lista { color: var(--texto-3); justify-content: center; padding: 18px 0 !important; }
+.probs { font-size: 0.86rem; }
+.probs th, .probs td { padding: 8px 10px; }
+
 /* ---------- Importar ---------- */
 
 #importar-cuerpo { display: grid; gap: 14px; }

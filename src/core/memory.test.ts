@@ -168,7 +168,7 @@ describe('consentimiento', () => {
 
       const borrado = consent.olvidar('id-pepe');
 
-      assert.deepEqual(borrado, { memories: 1, interactions: 1, users: 1, streaks: 1 });
+      assert.deepEqual(borrado, { memories: 1, interactions: 1, users: 1, streaks: 1, loot: 0 });
 
       // La comprobación que pide el criterio: se consulta la BD, no se supone.
       const cuenta = (tabla: string) =>

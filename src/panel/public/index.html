@@ -43,6 +43,10 @@
         <svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>
         Efectos
       </button>
+      <button role="tab" data-tab="loot">
+        <svg viewBox="0 0 24 24"><path d="M3 10a5 5 0 0 1 5-5h8a5 5 0 0 1 5 5v9H3zM3 12h18M10 12v3h4v-3"/></svg>
+        Loot
+      </button>
       <button role="tab" data-tab="biblioteca">
         <svg viewBox="0 0 24 24"><path d="M4 4h4v16H4zM10 4h4v16h-4zM15.5 5.2l3.9-1 3.6 14.6-3.9 1z"/></svg>
         Biblioteca
@@ -200,6 +204,67 @@
       </article>
       <div class="efectos" id="efectos"></div>
       <div id="efectos-extra"></div>
+    </section>
+
+    <!-- LOOT -->
+    <section class="vista" id="v-loot" hidden>
+      <header class="cabecera-vista">
+        <div>
+          <p class="antetitulo">Botín para quien está en el chat</p>
+          <h1>Loot</h1>
+          <p class="nota">Cada 20-30 minutos de directo cae un cofre para quien haya escrito hace poco. Y con Oro, el Cofre del tesoro.</p>
+        </div>
+        <label class="interruptor-loot">
+          <span id="loot-activo-texto">Loot activo</span>
+          <input type="checkbox" class="toggle" id="loot-activo">
+        </label>
+      </header>
+
+      <div class="stats">
+        <div class="stat oro" id="l-proximo"><span class="stat-etiqueta">Próximo cofre</span><span class="stat-valor">—</span><span class="stat-sub"></span></div>
+        <div class="stat" id="l-aventureros"><span class="stat-etiqueta">Aventureros activos</span><span class="stat-valor">—</span><span class="stat-sub"></span></div>
+        <div class="stat" id="l-ultimo"><span class="stat-etiqueta">Último cofre</span><span class="stat-valor">—</span><span class="stat-sub"></span></div>
+        <div class="stat" id="l-directo"><span class="stat-etiqueta">Directo</span><span class="stat-valor">—</span><span class="stat-sub"></span></div>
+      </div>
+
+      <div class="aviso" id="l-sin-directo" hidden>
+        Sin directo abierto no caen cofres. Si arrancaste el bot con el directo ya empezado, Twitch no vuelve a avisar:
+        <button class="boton pequeno" id="l-marcar-directo" type="button">El directo ya ha empezado</button>
+      </div>
+
+      <article class="tarjeta">
+        <header><h2>Acciones</h2></header>
+        <div class="loot-acciones">
+          <button class="boton primario" id="l-soltar" type="button">🎁 Soltar cofre ahora</button>
+          <span class="nota">Sale en el chat, para quien esté activo.</span>
+          <span class="separador"></span>
+          <button class="boton" id="l-prueba" type="button">Tirada de prueba</button>
+          <button class="boton" id="l-prueba-oro" type="button">🗝️ Prueba de Cofre del tesoro</button>
+          <span class="nota">Solo aquí: ni se guarda ni sale al chat.</span>
+        </div>
+        <div class="loot-prueba" id="l-resultado-prueba"></div>
+      </article>
+
+      <div class="dos-col">
+        <article class="tarjeta">
+          <header><h2>Últimos botines</h2></header>
+          <ol class="botines" id="l-recientes"></ol>
+        </article>
+        <div class="columna">
+          <article class="tarjeta">
+            <header><h2>Mochilas</h2><span class="nota">Las mejores</span></header>
+            <ol class="mochilas" id="l-mochilas"></ol>
+          </article>
+          <article class="tarjeta">
+            <header><h2>Probabilidades</h2></header>
+            <table class="tabla probs" id="l-probs"></table>
+          </article>
+          <article class="tarjeta">
+            <header><h2>Montarlo</h2></header>
+            <ol class="pasos" id="l-montar"></ol>
+          </article>
+        </div>
+      </div>
     </section>
 
     <!-- BIBLIOTECA -->

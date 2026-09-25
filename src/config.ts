@@ -232,6 +232,25 @@ export const config = {
     maxQuestionLength: int('PREGUNTA_IA_MAX_INPUT', 300),
   },
 
+  /**
+   * Loot del chat. Tiene su propio interruptor, separado de las espontáneas:
+   * anunciar un cofre es el bot hablando solo, pero es un juego que eliges
+   * activar, no un saludo.
+   */
+  loot: {
+    activo: bool('LOOT_ACTIVO', true),
+    /** Entre cofre y cofre, al azar dentro de este margen (decidido: 20-30 min). */
+    minutosMin: int('LOOT_MINUTOS_MIN', 20),
+    minutosMax: int('LOOT_MINUTOS_MAX', 30),
+    /** Solo recibe botín quien ha escrito en el chat en estos últimos minutos. */
+    minutosActividad: int('LOOT_MINUTOS_ACTIVIDAD', 15),
+    /** El Cofre del tesoro que se compra con Oro. */
+    cofreRewardId: str('LOOT_COFRE_REWARD_ID', ''),
+    cofreRewardTitle: str('LOOT_COFRE_REWARD_TITLE', 'Cofre del tesoro'),
+    /** !inventario, por persona. */
+    inventarioCooldownMs: int('LOOT_INVENTARIO_COOLDOWN_MS', 60_000),
+  },
+
   /** #10 Pregunta Incómoda (docs/02 § 3, interacción 10). */
   preguntaIncomoda: {
     rewardId: str('PREGUNTA_INCOMODA_REWARD_ID', ''),

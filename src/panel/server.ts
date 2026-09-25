@@ -15,6 +15,9 @@ import { EFECTOS, PREFIJO_ACCION, guia, mismoNombre } from './efectos.js';
 import * as biblioteca from './biblioteca.js';
 import * as obsSetup from './obs-setup.js';
 import * as importar from './importar.js';
+import * as loot from '../interactions/loot/index.js';
+import * as lootDb from '../data/loot.js';
+import { PROBABILIDADES, tirar } from '../interactions/loot/objetos.js';
 import { conObs, type PedirObs } from '../transport/obs.js';
 
 /** Abre una conexión con OBS para un trabajo. Se inyecta para probarlo sin OBS. */
@@ -208,6 +211,41 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   }
 
   if (ruta === 'GET /api/acciones') return json(res, 200, await sb.acciones());
+
+  if (ruta === 'GET /api/loot') {
+    return json(res, 200, {
+      ...loot.estado(),
+      probabilidades: PROBABILIDADES,
+      recientes: lootDb.recientes(25),
+      mochilas: lootDb.mochilas(10),
+    });
+  }
+
+  if (ruta === 'POST /api/loot/ajustes') {
+    const { activo } = await cuerpo(req);
+    if (typeof activo !== 'boolean') throw new ErrorHttp(400, 'activo tiene que ser true o false');
+    ajustes.setLootActivo(activo, 'desde el panel');
+    return json(res, 200, { ok: true });
+  }
+
+  if (ruta === 'POST /api/loot/soltar') {
+    const r = await loot.soltarCofre({ origen: 'panel' });
+    if (!r.ok) throw new ErrorHttp(409, r.motivo);
+    return json(res, 200, { enviado: r.enviado, reparto: r.reparto.map((x) => ({ quien: x.viewer.displayName, ...x.botin })) });
+  }
+
+  // Una tirada de mentira: ni se guarda ni sale al chat. Para ver cómo pinta.
+  if (ruta === 'POST /api/loot/prueba') {
+    const { tipo } = await cuerpo(req);
+    return json(res, 200, tirar(tipo === 'oro' ? 'oro' : 'cofre'));
+  }
+
+  // Si arrancaste el bot con el directo ya empezado, Twitch no vuelve a
+  // avisar de que empezó, y sin directo abierto no caen cofres.
+  if (ruta === 'POST /api/loot/directo') {
+    streams.open();
+    return json(res, 200, { ok: true });
+  }
 
   if (ruta === 'GET /api/biblioteca') return json(res, 200, await biblioteca.listar());
 

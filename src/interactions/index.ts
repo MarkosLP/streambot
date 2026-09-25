@@ -1,6 +1,7 @@
 import type { ViewerRedeemEvent } from '../core/events.js';
 import * as preguntaIa from './pregunta-ia.js';
 import * as preguntaIncomoda from './pregunta-incomoda.js';
+import * as loot from './loot/index.js';
 
 /**
  * Registro de interacciones de Channel Point.
@@ -21,4 +22,5 @@ export interface ChannelPointBinding {
 export const channelPoint: ChannelPointBinding[] = [
   preguntaIa.channelPointBinding,
   preguntaIncomoda.channelPointBinding,
+  loot.channelPointBinding,
 ];

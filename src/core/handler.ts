@@ -22,6 +22,7 @@ import * as rachas from '../interactions/rachas.js';
 import * as bienvenidaVuelta from '../interactions/bienvenida-vuelta.js';
 import * as preguntaIa from '../interactions/pregunta-ia.js';
 import * as preguntaIncomoda from '../interactions/pregunta-incomoda.js';
+import * as loot from '../interactions/loot/index.js';
 import * as registry from '../interactions/index.js';
 import { budget } from '../services/ai/index.js';
 
@@ -163,6 +164,14 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
     return;
   }
 
+  // !inventario: como !incomoda, también para el dueño del canal.
+  if (loot.COMANDO_INVENTARIO.test(text)) {
+    if (config.ignoredLogins.includes(viewer.login)) return;
+    if (!isIgnored(viewer)) users.touch(viewer);
+    await engine.run(loot.inventario, { viewer, trigger: 'command' });
+    return;
+  }
+
   if (isIgnored(viewer)) {
     log.debug(`${viewer.login} está en la lista de ignorados.`);
     return;
@@ -182,6 +191,10 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   // `previousLastSeen` se captura AQUÍ porque esta llamada machaca last_seen.
   // Después de esta línea ya no hay forma de saber cuánto llevaba sin venir.
   const { isNew, previousLastSeen } = users.touch(viewer);
+
+  // Estar hablando es lo que hace que te toque un cofre del Loot. Va antes
+  // del corte de las espontáneas: el Loot tiene su propio interruptor.
+  loot.registrarActividad(viewer);
 
   // A partir de aquí el bot hablaría sin que nadie se lo pida. Con las
   // interacciones espontáneas apagadas, solo responde a comandos.

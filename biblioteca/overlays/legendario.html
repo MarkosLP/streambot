@@ -1,0 +1,129 @@
+<!doctype html>
+<!--
+  Overlay "Loot Legendario" para OBS.
+
+  NO se monta a mano: lo crea "Preparar en OBS" (fuente FX Legendario) y lo
+  enseña el propio bot cuando a alguien le cae un Legendario, con su nombre y
+  el del objeto en la dirección:
+
+    legendario.html?user=Nombre&item=Espada%20del%20Amanecer%20Eterno
+
+  Dura 8 segundos. La fanfarria suena solo si viene ?user= (un Legendario de
+  verdad): así la vista previa del panel no se pone a sonar sola.
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Loot Legendario</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&display=swap">
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+  body { font-family: "Chakra Petch", "Segoe UI", sans-serif; }
+
+  .escena {
+    position: absolute; left: 50%; top: 42%; width: 1200px; height: 520px;
+    transform: translate(-50%, -50%);
+    animation: entra 0.8s cubic-bezier(.2, 1.4, .4, 1) both, sale 0.7s ease-in 7.2s forwards;
+  }
+  @keyframes entra { from { opacity: 0; transform: translate(-50%, -50%) scale(0.4); } }
+  @keyframes sale { to { opacity: 0; transform: translate(-50%, -60%) scale(1.05); } }
+
+  /* Rayos de luz girando detrás. */
+  .rayos {
+    position: absolute; left: 50%; top: 50%; width: 1400px; height: 1400px; margin: -700px 0 0 -700px;
+    background: repeating-conic-gradient(from 0deg, rgba(255, 190, 80, .28) 0deg 6deg, rgba(255, 190, 80, 0) 6deg 20deg);
+    -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 60%);
+    mask-image: radial-gradient(circle, #000 0%, transparent 60%);
+    animation: gira 14s linear infinite;
+  }
+  @keyframes gira { to { transform: rotate(360deg); } }
+
+  .halo {
+    position: absolute; inset: 60px 120px;
+    background: radial-gradient(ellipse at center, rgba(255, 154, 46, .55), rgba(255, 154, 46, 0) 65%);
+    animation: pulso 1.2s ease-in-out infinite;
+  }
+  @keyframes pulso { 50% { opacity: .6; transform: scale(1.06); } }
+
+  .placa {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 1040px; padding: 38px 60px 42px; box-sizing: border-box; text-align: center;
+    background: linear-gradient(180deg, rgba(38, 20, 4, .92), rgba(16, 9, 2, .94));
+    border: 4px solid #ffb347; border-radius: 22px;
+    box-shadow: 0 0 0 3px #5c3408, 0 0 60px rgba(255, 154, 46, .7), inset 0 0 40px rgba(255, 154, 46, .25);
+  }
+  .placa::before, .placa::after {
+    content: "◆"; position: absolute; top: 50%; transform: translateY(-50%);
+    color: #ffb347; font-size: 40px; text-shadow: 0 0 16px #ff9a2e;
+  }
+  .placa::before { left: 20px; }
+  .placa::after { right: 20px; }
+
+  .rango {
+    font-size: 34px; font-weight: 700; letter-spacing: .5em; color: #ffcf7a;
+    text-shadow: 0 0 18px rgba(255, 154, 46, .9);
+    animation: parpadeo 1.6s ease-in-out infinite;
+  }
+  @keyframes parpadeo { 50% { opacity: .7; } }
+
+  .objeto {
+    margin: 10px 0 12px; font-size: 84px; font-weight: 700; line-height: 1.02;
+    background: linear-gradient(180deg, #fff9e6 0%, #ffd976 40%, #ff9a2e 75%, #c25a00 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    -webkit-text-stroke: 2px #3a1c02;
+    filter: drop-shadow(0 5px 0 #2a1402) drop-shadow(0 0 26px rgba(255, 154, 46, .7));
+  }
+  .quien { font-size: 38px; font-weight: 600; color: #fff; text-shadow: 0 3px 0 #000, 0 0 12px rgba(0,0,0,.8); }
+  .quien b { color: #ffcf7a; }
+
+  .chispa {
+    position: absolute; width: 12px; height: 12px; border-radius: 2px; background: #fff3c4;
+    box-shadow: 0 0 14px #ffd976, 0 0 30px #ff9a2e; opacity: 0;
+    animation: chispa 1.8s ease-out infinite;
+  }
+  @keyframes chispa {
+    0% { opacity: 0; transform: translateY(20px) rotate(45deg) scale(.2); }
+    25% { opacity: 1; transform: translateY(0) rotate(45deg) scale(1.3); }
+    100% { opacity: 0; transform: translateY(-120px) rotate(45deg) scale(.3); }
+  }
+</style>
+</head>
+<body>
+  <div class="escena">
+    <div class="rayos"></div>
+    <div class="halo"></div>
+    <div class="placa">
+      <div class="rango">★ LEGENDARIO ★</div>
+      <div class="objeto" id="objeto">Espada del Amanecer Eterno</div>
+      <div class="quien" id="quien">para <b>el chat</b></div>
+    </div>
+    <span class="chispa" style="left: 60px; top: 80px; animation-delay: .6s"></span>
+    <span class="chispa" style="left: 300px; top: 20px; animation-delay: 1.1s"></span>
+    <span class="chispa" style="left: 580px; top: 0; animation-delay: .9s"></span>
+    <span class="chispa" style="left: 880px; top: 30px; animation-delay: 1.4s"></span>
+    <span class="chispa" style="left: 1120px; top: 90px; animation-delay: .7s"></span>
+    <span class="chispa" style="left: 1080px; top: 420px; animation-delay: 1.7s"></span>
+    <span class="chispa" style="left: 120px; top: 440px; animation-delay: 2s"></span>
+    <span class="chispa" style="left: 620px; top: 490px; animation-delay: 1.3s"></span>
+  </div>
+
+<script>
+  // Todo como texto, nunca como HTML: el nombre lo elige cada espectador.
+  const q = new URLSearchParams(location.search);
+  const user = (q.get('user') || '').slice(0, 25);
+  const item = (q.get('item') || '').slice(0, 60);
+  if (item) document.getElementById('objeto').textContent = item;
+  if (user) {
+    const quien = document.getElementById('quien');
+    quien.textContent = 'para ';
+    const b = document.createElement('b');
+    b.textContent = user;
+    quien.append(b);
+    const fanfarria = new Audio('../sonidos/legendario.wav');
+    fanfarria.volume = 0.8;
+    fanfarria.play().catch(() => {});
+  }
+</script>
+</body>
+</html>

@@ -1,6 +1,26 @@
-# Dónde lo dejamos — 25 sep 2026
+# Dónde lo dejamos — 25 sep 2026 (noche)
 
-Traspaso para la próxima sesión. **Lo primero de todo está en la sección 0.**
+Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.**
+
+---
+
+## 00. Lo que se hizo el 25 sep, y lo primero de la próxima vez
+
+**Hecho y comprobado en tu PC:**
+- Panel rediseñado: botonera de efectos, Biblioteca (sonidos y overlays con vista previa y ruta), guías de montaje en español.
+- Sonidos generados por síntesis (`npm run sonidos`) y overlay de la poción.
+- **Preparar en OBS**: el panel crea `FX Pocion`, `FX Maldicion`, `FX Lag` y `FX Legendario`. OBS 32.2.2, escena `EMPEZAMOS`, juego en `Captura de ventana`.
+- **Importar en Streamer.bot**: el panel genera el código de Import. El formato sale de exportaciones reales (`src/panel/muestras-streamerbot/`).
+- **Montados y probados**: Grito de guerra, Poción de vida (vista en OBS: visible 5,2 s) y Maldición.
+- **Loot del chat** construido (sin probar aún en un directo): cofre cada 20-30 min para quien haya escrito en los últimos 15 min, Cofre del tesoro por 500 de Oro, `!inventario`/`!mochila`/`!inv`, banner Legendario en OBS con fanfarria, pestaña Loot en el panel. `!olvidame` vacía la mochila.
+
+**Lo primero de la próxima vez:**
+1. Reinicia el bot. En **Efectos → Preparar en OBS**, marca **Loot Legendario**.
+2. Crea en Streamer.bot la recompensa **Cofre del tesoro** (500, Skip Queue). No lleva acción: la abre el bot.
+3. En **Loot**, usa **Tirada de prueba** para ver cómo pinta, y canjea tú el Cofre del tesoro para ver el mensaje (y, con suerte, el Legendario).
+4. En el primer directo: comprobar que cae el cofre gratis. Si arrancas el bot con el directo empezado, pulsa **El directo ya ha empezado** en la pestaña Loot.
+
+**Pendiente:** Lag y Terremoto esperan a los plugins Freeze Filter y Move de OBS. Retos, predicciones y contador de wipes siguen en la lista.
 
 ---
 

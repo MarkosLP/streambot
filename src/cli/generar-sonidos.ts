@@ -396,6 +396,34 @@ function lag(): Senal {
   return masterizar(total, 1);
 }
 
+/**
+ * Fanfarria del Loot Legendario: "ta-ta-TAAA" de metales, redoble de tambores
+ * y campanas por encima. Tiene que sonar a que ha pasado algo gordo.
+ */
+function legendario(): Senal {
+  const total = vacio(5.2);
+  const G3 = 196, C4 = 261.63, E4 = 329.63, G4 = 392, C5 = 523.25;
+
+  // Redoble que crece hasta el golpe.
+  for (let i = 0; i < 10; i++) mezclar(total, tambor(150, 70, 0.4), i * 0.055, 0.25 + i * 0.05);
+  mezclar(total, tambor(120, 42, 1.4), 0.58, 1.1);
+
+  // Ta-ta: dos notas cortas. TAAA: el acorde mayor, largo.
+  const nota = (en: number, seg: number, f: number, g: number) => {
+    mezclar(total, cuerno(seg, () => f), en, g);
+    mezclar(total, cuerno(seg, () => f, 0.004), en + 0.01, g * 0.7);
+  };
+  nota(0.6, 0.32, G3 * 2, 0.35);
+  nota(0.92, 0.32, G3 * 2, 0.35);
+  for (const [f, g] of [[C4, 0.4], [E4, 0.3], [G4, 0.3], [C5, 0.22]] as const) nota(1.26, 3.1, f, g);
+  mezclar(total, cuerno(3.1, () => C4 / 2), 1.26, 0.35);
+  mezclar(total, tambor(125, 44, 1.4), 1.26, 1);
+
+  // Campanas y brillo.
+  [2093, 2637, 3136, 4186].forEach((f, i) => mezclar(total, campana(f, 2.2), 1.3 + i * 0.09, 0.14));
+  return masterizar(reverb(total, 0.4, 2.2), 1.4);
+}
+
 // ---------------------------------------------------------------------------
 
 const SONIDOS: Record<string, () => Senal> = {
@@ -404,6 +432,9 @@ const SONIDOS: Record<string, () => Senal> = {
   maldicion,
   terremoto,
   lag,
+  // Los nuevos, SIEMPRE al final: el azar lleva semilla y es compartido, así
+  // que uno nuevo delante cambiaría todos los que ya tienes montados.
+  legendario,
 };
 
 mkdirSync(DESTINO, { recursive: true });

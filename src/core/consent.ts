@@ -27,6 +27,7 @@ export interface Borrado {
   interactions: number;
   users: number;
   streaks: number;
+  loot: number;
 }
 
 /** ¿Esta persona ha pedido que no la recordemos? */
@@ -57,12 +58,15 @@ export function olvidar(twitchId: string): Borrado {
   const interactions = db.prepare('DELETE FROM interactions WHERE twitch_id = ?').run(twitchId);
   const users = db.prepare('DELETE FROM users WHERE twitch_id = ?').run(twitchId);
   const streaks = db.prepare('DELETE FROM streaks WHERE twitch_id = ?').run(twitchId);
+  // La mochila del Loot del chat también es "algo suyo".
+  const loot = db.prepare('DELETE FROM loot WHERE twitch_id = ?').run(twitchId);
 
   const borrado: Borrado = {
     memories: Number(memories.changes),
     interactions: Number(interactions.changes),
     users: Number(users.changes),
     streaks: Number(streaks.changes),
+    loot: Number(loot.changes),
   };
 
   log.info(

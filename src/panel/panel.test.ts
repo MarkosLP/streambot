@@ -13,6 +13,7 @@ import * as revision from './revision.js';
 import { crearServidor, type PuertoStreamerbot, type ConObs } from './server.js';
 import { ErrorObs, autenticacion } from '../transport/obs.js';
 import { descodificar } from './importar.js';
+import { mostrarLegendario } from './obs-setup.js';
 import { EFECTOS, mismoNombre } from './efectos.js';
 
 /**
@@ -388,7 +389,7 @@ describe('preparar OBS', () => {
     assert.equal(body.conectado, true);
     assert.deepEqual(body.escenas, ['Escena juego', 'Charla']);
     assert.deepEqual(body.fuentes.map((f: any) => f.nombre), ['Juego']);
-    assert.deepEqual(body.existe, { pocion: false, maldicion: false, lag: false });
+    assert.deepEqual(body.existe, { pocion: false, legendario: false, maldicion: false, lag: false });
     assert.equal(body.pluginFreeze, false);
   });
 
@@ -476,5 +477,37 @@ describe('código para importar', () => {
     assert.equal((await pedir('GET', '/api/efectos/importar?ids=pocion&fuente=x')).status, 400);
     assert.equal((await pedir('GET', '/api/efectos/importar?ids=terremoto&escena=a&fuente=b')).status, 400);
     assert.equal((await pedir('GET', '/api/efectos/importar?escena=a&fuente=b')).status, 400);
+  });
+});
+
+describe('banner del Loot Legendario', () => {
+  test('Preparar OBS crea FX Legendario oculto, servido por el panel y con su audio en OBS', async () => {
+    const r = await post('/api/obs/preparar', { escena: 'Escena juego', efectos: ['legendario'] });
+    assert.equal(r.body.resultados[0].ok, true);
+    const fuente = obs.entradas.find((e) => e.inputName === 'FX Legendario')!;
+    assert.equal(fuente.settings.is_local_file, false);
+    assert.match(fuente.settings.url, /^http:\/\/127\.0\.0\.1:\d+\/biblioteca\/overlays\/legendario\.html$/);
+    assert.equal(fuente.settings.reroute_audio, true);
+    assert.equal(obs.items['Escena juego'].find((i) => i.sourceName === 'FX Legendario')!.enabled, false);
+  });
+
+  test('al caer uno, se enseña con el nombre y el objeto y se vuelve a esconder', async () => {
+    await post('/api/obs/preparar', { escena: 'Escena juego', efectos: ['legendario'] });
+    const visto: boolean[] = [];
+    await obsFalso((pedir) =>
+      mostrarLegendario(pedir, 'Pepe & Cía', 'Ala del Fénix', {
+        esperar: async () => {
+          visto.push(obs.items['Escena juego'].find((i) => i.sourceName === 'FX Legendario')!.enabled);
+        },
+      }),
+    );
+    const fuente = obs.entradas.find((e) => e.inputName === 'FX Legendario')!;
+    assert.match(fuente.settings.url, /\?user=Pepe%20%26%20C%C3%ADa&item=Ala%20del%20F%C3%A9nix$/);
+    assert.deepEqual(visto, [true], 'visible mientras espera');
+    assert.equal(obs.items['Escena juego'].find((i) => i.sourceName === 'FX Legendario')!.enabled, false);
+  });
+
+  test('sin la fuente creada, lo dice en vez de fallar a medias', async () => {
+    await assert.rejects(obsFalso((pedir) => mostrarLegendario(pedir, 'pepe', 'x', { esperar: async () => {} })), /Preparar en OBS/);
   });
 });

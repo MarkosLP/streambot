@@ -13,6 +13,9 @@ import * as streamerbot from './transport/streamerbot.js';
 import { connect, disconnect, sendChat } from './transport/streamerbot.js';
 import * as panel from './panel/server.js';
 import { aprobadorPanel } from './panel/revision.js';
+import * as loot from './interactions/loot/index.js';
+import { mostrarLegendario } from './panel/obs-setup.js';
+import { conObs } from './transport/obs.js';
 import type { Server } from 'node:http';
 
 let panelServer: Server | null = null;
@@ -76,12 +79,24 @@ async function main(): Promise<void> {
 
   await connect();
 
+  // Loot del chat. El banner del Legendario va a OBS en fila: si caen dos
+  // seguidos, el segundo espera a que termine el primero en vez de pisarlo.
+  let fila: Promise<void> = Promise.resolve();
+  loot.setAlLegendario((quien, botin) => {
+    fila = fila.then(() => conObs((pedir) => mostrarLegendario(pedir, quien, botin.objeto))).catch((err) => {
+      log.warn(`Loot: el Legendario de ${quien} no salió en OBS (${err instanceof Error ? err.message : String(err)}).`);
+    });
+    return fila;
+  });
+  loot.arrancar();
+
   log.info('Escuchando. Ctrl+C para salir.');
 }
 
 async function shutdown(signal: string): Promise<void> {
   log.info(`Recibido ${signal}. Cerrando...`);
   try {
+    loot.parar();
     panelServer?.close();
     await disconnect();
     closeApprover();

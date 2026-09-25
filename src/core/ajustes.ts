@@ -17,6 +17,7 @@ import { log } from './logger.js';
 
 let espontaneas: boolean = config.interaccionesEspontaneas;
 let revision: boolean = config.reviewMode;
+let loot: boolean = config.loot.activo;
 
 export function interaccionesEspontaneas(): boolean {
   return espontaneas;
@@ -24,6 +25,17 @@ export function interaccionesEspontaneas(): boolean {
 
 export function modoRevision(): boolean {
   return revision;
+}
+
+/** ¿Caen cofres del Loot del chat? Es independiente de las espontáneas. */
+export function lootActivo(): boolean {
+  return loot;
+}
+
+export function setLootActivo(valor: boolean, quien: string): void {
+  if (loot === valor) return;
+  loot = valor;
+  log.warn(`Loot del chat ${valor ? 'ACTIVADO' : 'DESACTIVADO'} — ${quien}.`);
 }
 
 export function setInteraccionesEspontaneas(valor: boolean, quien: string): void {
@@ -42,4 +54,5 @@ export function setModoRevision(valor: boolean, quien: string): void {
 export function reset(): void {
   espontaneas = config.interaccionesEspontaneas;
   revision = config.reviewMode;
+  loot = config.loot.activo;
 }
