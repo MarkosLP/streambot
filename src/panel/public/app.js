@@ -340,6 +340,8 @@ async function cargarEfectos() {
     $('efectos-sin-sb').hidden = datos.conectado;
     $('efectos').replaceChildren(...datos.efectos.map(tarjetaEfecto));
     pintarBotonera(datos);
+    datosEfectos = datos;
+    pintarImportar();
     // #/efectos/grito abre directamente la guía de ese efecto.
     if (guiaPendiente) {
       const e = datos.efectos.find((x) => x.id === guiaPendiente);
@@ -588,6 +590,83 @@ function filaMaterial(m) {
 $('r-efectos').addEventListener('click', () => { cargarEfectos(); cargarObs(); });
 
 // ---------------------------------------------------------------------------
+// Importar en Streamer.bot
+// ---------------------------------------------------------------------------
+
+const IMPORTABLES = ['grito', 'pocion', 'maldicion', 'lag'];
+let datosEfectos = null;
+let obsConectado = null;
+let obsSinFreeze = false;
+// Lo que marcas se respeta aunque la lista se repinte cada 15 segundos.
+const importarMarcados = new Map();
+// Los pasos que salen al copiar: sobreviven al repintado.
+const pasosImportar = h('ol', { class: 'pasos importar-pasos' });
+
+function pintarImportar() {
+  const cuerpo = $('importar-cuerpo');
+  if (!cuerpo || !datosEfectos) return;
+  const efectos = datosEfectos.efectos.filter((e) => IMPORTABLES.includes(e.id));
+
+  const faltaObs = !obsElegido.escena || !obsElegido.fuente;
+  const marcas = efectos.map((e) => {
+    const sinPlugin = e.id === 'lag' && obsSinFreeze;
+    const marcado = importarMarcados.has(e.id) ? importarMarcados.get(e.id) : !e.montado && !sinPlugin;
+    return h('label', { class: 'preparable' },
+      h('input', {
+        type: 'checkbox', value: e.id, checked: marcado,
+        onchange: (ev) => importarMarcados.set(e.id, ev.target.checked),
+      }),
+      h('span', {},
+        h('strong', {}, `${icono(e.id)} ${e.recompensa}`),
+        h('small', {}, e.montado ? 'Ya la tienes: si la importas, saldrá repetida.'
+          : sinPlugin ? 'Necesita el plugin Freeze Filter. Impórtala cuando lo tengas.' : e.queHace)),
+      e.montado && h('span', { class: 'chip ok' }, 'Montado'),
+    );
+  });
+
+  const pasos = pasosImportar;
+  const boton = h('button', {
+    class: 'boton primario',
+    type: 'button',
+    disabled: faltaObs,
+    onclick: async () => {
+      const ids = [...cuerpo.querySelectorAll('.preparable input:checked')].map((i) => i.value);
+      if (!ids.length) return tostada('Marca al menos uno', true);
+      try {
+        const q = new URLSearchParams({ ids: ids.join(','), escena: obsElegido.escena, fuente: obsElegido.fuente });
+        const { codigo } = await api(`/api/efectos/importar?${q}`);
+        await copiar(codigo);
+        tostada('Código copiado. Ahora, Import en Streamer.bot');
+        const elegidos = efectos.filter((e) => ids.includes(e.id));
+        pasos.replaceChildren(
+          h('li', {}, 'En Streamer.bot, pulsa ', h('strong', { class: 'ui' }, 'Import'), ' (arriba a la izquierda).'),
+          h('li', {}, 'Pega el código en ', h('strong', { class: 'ui' }, 'Import String'), ' y pulsa ', h('strong', { class: 'ui' }, 'Import'), '. Aparecerán en el grupo «Efectos».'),
+          h('li', {}, 'Crea las recompensas en ', h('strong', { class: 'ui' }, 'Platforms'), ' → ', h('strong', { class: 'ui' }, 'Twitch'), ' → ', h('strong', { class: 'ui' }, 'Channel Point Rewards'), ', con ', h('strong', { class: 'ui' }, 'Skip Queue'), ' marcado:',
+            h('ul', { class: 'recompensas' }, elegidos.map((e) => h('li', {},
+              chipCopiar(e.recompensa, e.recompensa), ` · coste ${e.coste} · cooldown ${e.cooldownSeg} s`)))),
+          h('li', {}, 'En cada acción importada, añade su disparador: ', h('strong', { class: 'ui' }, 'Search to add trigger…'), ' → ', h('strong', { class: 'ui' }, 'Reward Redemption'), ' → su recompensa.'),
+          h('li', {}, 'Vuelve aquí: pasarán a ', h('strong', { class: 'ui' }, 'Montado'), ' y podrás ', h('strong', { class: 'ui' }, 'Probar'), 'las.'),
+        );
+      } catch (err) {
+        tostada(err.message, true);
+      }
+    },
+  }, 'Copiar código para Import');
+
+  cuerpo.replaceChildren(
+    h('p', { class: 'nota' }, 'Genera las acciones de Streamer.bot con todas sus sub-acciones ya puestas: sonido, OBS, esperas y mensaje. Solo tendrás que crear las recompensas y elegir el disparador de cada una.'),
+    faltaObs
+      ? h('p', { class: 'aviso' }, obsConectado === false
+        ? 'Conecta OBS arriba: el código necesita saber tu escena y tu fuente del juego.'
+        : 'Elige arriba la escena y la fuente del juego.')
+      : h('p', { class: 'nota' }, 'Usará la escena ', h('strong', {}, obsElegido.escena), ' y la fuente ', h('strong', {}, obsElegido.fuente), ', las mismas de «Preparar OBS».'),
+    h('div', { class: 'preparables' }, marcas),
+    h('div', { class: 'obs-pie' }, boton, h('span', { class: 'nota' }, 'El Terremoto no está: se genera cuando tengas el plugin y lo configuremos.')),
+    pasos,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Preparar OBS
 // ---------------------------------------------------------------------------
 
@@ -613,6 +692,8 @@ async function cargarObs() {
 }
 
 function pintarObs(d) {
+  obsConectado = d.conectado;
+  obsSinFreeze = d.conectado && d.pluginFreeze === false;
   const estado = $('obs-estado');
   estado.className = `nota ${d.conectado ? 'ok' : 'mal'}`;
   estado.textContent = d.conectado ? '● Conectado a OBS' : '● Sin conexión con OBS';
@@ -627,6 +708,7 @@ function pintarObs(d) {
       ),
       h('button', { class: 'boton pequeno', type: 'button', onclick: cargarObs }, 'Volver a comprobar'),
     );
+    pintarImportar();
     return;
   }
 
@@ -645,6 +727,7 @@ function pintarObs(d) {
         obsElegido[clave] = ev.target.value;
         try { localStorage.setItem('panel-obs', JSON.stringify(obsElegido)); } catch { /* nada */ }
         if (clave === 'fuente') cargarObs();
+        pintarImportar();
       },
     }, opciones.map((o) => h('option', { value: o, selected: o === obsElegido[clave] }, o))),
     h('small', {}, ayuda));
@@ -696,6 +779,7 @@ function pintarObs(d) {
     h('div', { class: 'obs-pie' }, boton, h('span', { class: 'nota' }, 'Mejor hazlo sin estar en directo: al crear un filtro, OBS lo enciende un instante antes de que el panel lo apague.')),
     resultados,
   );
+  pintarImportar();
 }
 
 // ---------------------------------------------------------------------------

@@ -12,6 +12,7 @@ import { setSender } from '../core/output.js';
 import * as revision from './revision.js';
 import { crearServidor, type PuertoStreamerbot, type ConObs } from './server.js';
 import { ErrorObs, autenticacion } from '../transport/obs.js';
+import { descodificar } from './importar.js';
 import { EFECTOS, mismoNombre } from './efectos.js';
 
 /**
@@ -458,5 +459,22 @@ describe('preparar OBS', () => {
     assert.equal(a, autenticacion('secreto', 'sal', 'reto'));
     assert.notEqual(a, autenticacion('otro', 'sal', 'reto'));
     assert.match(a, /^[A-Za-z0-9+/]{43}=$/);
+  });
+});
+
+describe('código para importar', () => {
+  test('genera el código con la escena y la fuente elegidas', async () => {
+    const { status, body } = await pedir('GET', '/api/efectos/importar?ids=pocion,maldicion&escena=EMPEZAMOS&fuente=Captura%20de%20ventana');
+    assert.equal(status, 200);
+    const datos = descodificar(body.codigo);
+    assert.equal(datos.data.actions.length, 2);
+    assert.equal(datos.data.actions[0].subActions[1].sceneName, 'EMPEZAMOS');
+    assert.equal(datos.data.actions[1].subActions[1].sourceName, 'Captura de ventana');
+  });
+
+  test('sin escena o con efectos inventados, no genera nada', async () => {
+    assert.equal((await pedir('GET', '/api/efectos/importar?ids=pocion&fuente=x')).status, 400);
+    assert.equal((await pedir('GET', '/api/efectos/importar?ids=terremoto&escena=a&fuente=b')).status, 400);
+    assert.equal((await pedir('GET', '/api/efectos/importar?escena=a&fuente=b')).status, 400);
   });
 });

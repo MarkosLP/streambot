@@ -524,6 +524,18 @@ strong.ui {
 .obs-resultados .ok { color: var(--verde); }
 .obs-resultados .mal { color: var(--rojo); }
 
+/* ---------- Importar ---------- */
+
+#importar-cuerpo { display: grid; gap: 14px; }
+#importar-cuerpo > p { margin: 0; }
+.importar-pasos:empty { display: none; }
+.importar-pasos {
+  padding: 14px 14px 14px 34px; border-radius: 12px;
+  background: color-mix(in srgb, var(--verde) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--verde) 35%, transparent);
+}
+.recompensas { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; color: var(--texto-2); }
+
 /* ---------- Material de cada efecto ---------- */
 
 .material { display: grid; gap: 6px; }

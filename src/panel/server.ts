@@ -14,6 +14,7 @@ import * as datos from './datos.js';
 import { EFECTOS, PREFIJO_ACCION, guia, mismoNombre } from './efectos.js';
 import * as biblioteca from './biblioteca.js';
 import * as obsSetup from './obs-setup.js';
+import * as importar from './importar.js';
 import { conObs, type PedirObs } from '../transport/obs.js';
 
 /** Abre una conexión con OBS para un trabajo. Se inyecta para probarlo sin OBS. */
@@ -194,6 +195,17 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   if (olvido) return json(res, 200, consent.olvidar(olvido[1]));
 
   if (ruta === 'GET /api/efectos') return json(res, 200, await efectos(sb));
+
+  if (ruta === 'GET /api/efectos/importar') {
+    const ids = (url.searchParams.get('ids') ?? '').split(',').filter(Boolean);
+    const escena = url.searchParams.get('escena') ?? '';
+    const fuente = url.searchParams.get('fuente') ?? '';
+    if (!ids.length || !ids.every((id) => (importar.IMPORTABLES as readonly string[]).includes(id))) {
+      throw new ErrorHttp(400, 'efectos no válidos');
+    }
+    if (!escena || !fuente) throw new ErrorHttp(400, 'falta la escena o la fuente del juego');
+    return json(res, 200, { codigo: importar.codigoImportacion(ids as importar.Importable[], { escena, fuente }) });
+  }
 
   if (ruta === 'GET /api/acciones') return json(res, 200, await sb.acciones());
 
