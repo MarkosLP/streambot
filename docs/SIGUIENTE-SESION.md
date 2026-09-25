@@ -1,28 +1,53 @@
-# Dónde lo dejamos — 25 sep 2026 (noche)
+# Dónde lo dejamos — 26 sep 2026 (madrugada)
 
 Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.**
 
 ---
 
-## 00. Lo que se hizo el 25 sep, y lo primero de la próxima vez
+## 00. Estado a 26 sep, y lo primero de la próxima vez
 
-**Hecho y comprobado en tu PC:**
-- Panel rediseñado: botonera de efectos, Biblioteca (sonidos y overlays con vista previa y ruta), guías de montaje en español.
-- Sonidos generados por síntesis (`npm run sonidos`) y overlay de la poción.
-- **Preparar en OBS**: el panel crea `FX Pocion`, `FX Maldicion`, `FX Lag` y `FX Legendario`. OBS 32.2.2, escena `EMPEZAMOS`, juego en `Captura de ventana`.
+### Lo que hay, hecho y guardado (371 tests, 0 fallos)
+
+**Panel** (http://127.0.0.1:7070): botonera de efectos, pestañas Efectos, **Loot**, Biblioteca, Interacciones, Espectadores y Registro. Guías de montaje en español, por fases.
+
+**Efectos con Oro**, montados y probados en tu PC: Grito de guerra, Poción de vida y Maldición. Lag y Terremoto esperan a los plugins Freeze Filter y Move de OBS.
+- **Preparar en OBS** crea `FX Pocion`, `FX Maldicion`, `FX Lag` y `FX Botin`, ocultos o apagados y a pantalla completa. OBS 32.2.2, escena `EMPEZAMOS`, juego en `Captura de ventana`.
 - **Importar en Streamer.bot**: el panel genera el código de Import. El formato sale de exportaciones reales (`src/panel/muestras-streamerbot/`).
-- **Montados y probados**: Grito de guerra, Poción de vida (vista en OBS: visible 5,2 s) y Maldición.
-- **Loot del chat** construido (sin probar aún en un directo): cofre cada 20-30 min para quien haya escrito en los últimos 15 min, Cofre del tesoro por 500 de Oro, `!inventario`/`!mochila`/`!inv`, banner Legendario en OBS con fanfarria, pestaña Loot en el panel. `!olvidame` vacía la mochila.
 
-**Lo primero de la próxima vez:**
-1. Reinicia el bot. En **Efectos → Preparar en OBS**, marca **Loot Legendario**.
-2. Crea en Streamer.bot la recompensa **Cofre del tesoro** (500, Skip Queue). No lleva acción: la abre el bot.
-3. En **Loot**, usa **Tirada de prueba** para ver cómo pinta, y canjea tú el Cofre del tesoro para ver el mensaje (y, con suerte, el Legendario).
-4. En el primer directo: comprobar que cae el cofre gratis. Si arrancas el bot con el directo empezado, pulsa **El directo ya ha empezado** en la pestaña Loot.
+**Loot del chat** (sin probar aún en un directo de verdad):
+- Cofre cada 20-30 min para quien haya escrito en los últimos 15 min. **Cofre del tesoro** con Oro (lo abre el bot, no lleva acción en Streamer.bot).
+- Banner en OBS para **cada** botín, con el color de su rareza. Las tiradas de prueba del panel también salen en OBS.
+- Mochila de 20. `!inventario` `!poder` `!duelo nombre` `!forjar` `!presumir` `!coleccion` `!purificar` `!loot`. Títulos por completar una rareza.
+- **Efectos conectados**: Grito de guerra → cofre de guerra en 1-2 min (solo armas). Maldición → objeto maldito (poder doble; se pierde al perder un duelo). Poción de vida → `!purificar`.
 
-**Loot, ampliado (25 sep, última hora):** cada cofre saca banner en OBS con el color de su rareza (fuente `FX Botin`), también las tiradas de prueba. Mochila de 20 (lo nuevo sustituye a lo peor si es igual o mejor), `!forjar` (3 → 1 de la siguiente rareza), `!poder`, `!duelo nombre` (20-80 %), `!presumir` (sale en OBS), `!coleccion` con títulos por rareza completa, y `!loot` de ayuda. Sin probar aún con un segundo espectador: usar `crid4n` desde el móvil.
+**Iconos de Twitch** en `biblioteca/imagenes/twitch/`: moneda Oro (18/36/72) y uno por recompensa (28/56/112). Fuente en `docs/iconos/`.
 
-**Pendiente:** Lag y Terremoto esperan a los plugins Freeze Filter y Move de OBS. Retos, predicciones y contador de wipes siguen en la lista.
+### Precios y límites acordados
+
+| Recompensa | Coste | Espera (s) | Máx. por directo | Máx. por persona |
+|---|---:|---:|---:|---:|
+| Poción de vida | 500 | 600 | — | 2 |
+| Grito de guerra | 750 | 600 | 4 | 1 |
+| Cofre del tesoro | 1.500 | 300 | — | 2 |
+| Maldición | 2.500 | 1200 | 2 | 1 |
+| Terremoto | 3.000 | 1200 | 2 | 1 |
+| Lag | 5.000 | 1800 | 1 | 1 |
+
+### Lo primero de la próxima vez
+
+1. **Reinicia el bot** (sin estar en directo): trae los efectos conectados y `!purificar`.
+2. **Puntos de canal**: en la web de Twitch, nombre **Oro** e icono `oro-moneda-18/36/72.png`.
+3. **Rehacer las recompensas en la web de Twitch** para poder ponerles icono (Twitch no deja poner imagen a las creadas desde Streamer.bot). Con los precios y límites de la tabla y **Saltar la cola**. Después:
+   - Borrar las viejas en Streamer.bot (Platforms → Twitch → Channel Point Rewards).
+   - En cada acción, volver a elegir la recompensa en su disparador **Reward Redemption**.
+   - **Pregunta a Crid4m AI**: al rehacerla cambia su id. Dejar vacío `PREGUNTA_IA_REWARD_ID` en el `.env` (la reconoce por el nombre) o pasarme el id nuevo.
+4. **Probar el Loot con dos personas**: `crid4n` desde el móvil escribe en el chat; probar `!duelo`, un Grito de guerra con directo abierto y una Maldición seguida de un duelo.
+
+### Cosas a tener en cuenta
+
+- `FX Botin` está reducida al 57 % y colocada en (0, 198), y `FX Pocion` al 47 % arriba a la derecha. Si no fue a propósito, colocarlas a pantalla completa.
+- Si arrancas el bot con el directo ya empezado, en la pestaña Loot pulsa **El directo ya ha empezado**. Y **Terminar directo** si se queda marcado sin estar emitiendo.
+- Siguiente en la lista: retos al jugador, predicciones y contador de wipes. Ideas para Terremoto y Lag cuando haya plugins (el terremoto tira un objeto al suelo y se lo lleva el primero que escriba `!coger`).
 
 ---
 
