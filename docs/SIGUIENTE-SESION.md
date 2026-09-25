@@ -20,7 +20,7 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 - Mochila de 20. `!inventario` `!poder` `!duelo nombre` `!forjar` `!presumir` `!coleccion` `!purificar` `!loot`. Títulos por completar una rareza.
 - **Efectos conectados**: Grito de guerra → cofre de guerra en 1-2 min (solo armas). Maldición → objeto maldito (poder doble; se pierde al perder un duelo). Poción de vida → `!purificar`.
 
-**Iconos de Twitch** en `biblioteca/imagenes/twitch/`: moneda Oro (18/36/72) y uno por recompensa (28/56/112). Fuente en `docs/iconos/`.
+**Iconos de Twitch** en `biblioteca/imagenes/twitch/`: moneda Oro (28/56/112) y uno por recompensa (28/56/112). Fuente en `docs/iconos/`.
 
 ### Precios y límites acordados
 
@@ -36,7 +36,7 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 ### Lo primero de la próxima vez
 
 1. **Reinicia el bot** (sin estar en directo): trae los efectos conectados y `!purificar`.
-2. **Puntos de canal**: en la web de Twitch, nombre **Oro** e icono `oro-moneda-18/36/72.png`.
+2. **Puntos de canal**: en la web de Twitch, nombre **Oro** e icono `oro-moneda-28/56/112.png`.
 3. **Rehacer las recompensas en la web de Twitch** para poder ponerles icono (Twitch no deja poner imagen a las creadas desde Streamer.bot). Con los precios y límites de la tabla y **Saltar la cola**. Después:
    - Borrar las viejas en Streamer.bot (Platforms → Twitch → Channel Point Rewards).
    - En cada acción, volver a elegir la recompensa en su disparador **Reward Redemption**.

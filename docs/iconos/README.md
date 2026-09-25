@@ -4,7 +4,7 @@
 
 | Qué | Archivos | Dónde se suben |
 |---|---|---|
-| Moneda **Oro** (puntos de canal) | `biblioteca/imagenes/twitch/oro-moneda-{18,36,72}.png` | Panel de creador → Recompensas para espectadores → Puntos de canal → Configuración |
+| Moneda **Oro** (puntos de canal) | `biblioteca/imagenes/twitch/oro-moneda-{28,56,112}.png` | Panel de creador → Recompensas para espectadores → Puntos de canal → Configuración |
 | Una por recompensa | `biblioteca/imagenes/twitch/<nombre>-{28,56,112}.png` | Al crear o editar la recompensa en el panel de creador |
 
 Twitch **no deja poner imagen a una recompensa creada desde Streamer.bot**: la API no admite imágenes, y el panel de Twitch no edita recompensas de otra aplicación. Para tener icono, la recompensa se crea desde el panel de creador de Twitch. Streamer.bot sigue viendo sus canjes igual; solo pierde la capacidad de activarla o pausarla él.
@@ -21,7 +21,7 @@ EDGE="/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
 i=0
 for n in oro-moneda grito pocion maldicion cofre terremoto lag pregunta-ia pregunta-incomoda; do
   x=$(( (i % 5) * 512 )); y=$(( (i / 5) * 512 ))
-  if [ "$n" = oro-moneda ]; then tams="72 36 18"; else tams="112 56 28"; fi
+  tams="112 56 28"
   for t in $tams; do
     magick hoja.png -crop 512x512+$x+$y +repage -filter Lanczos -resize ${t}x${t} -strip \
       "biblioteca/imagenes/twitch/$n-$t.png"
