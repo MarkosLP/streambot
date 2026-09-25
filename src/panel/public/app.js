@@ -65,6 +65,19 @@ function hace(iso) {
   return dias === 1 ? 'ayer' : `hace ${dias} días`;
 }
 
+// Rareza por coste: las mismas que usará el Loot del chat.
+function rareza(coste) {
+  if (coste >= 1500) return { clase: 'r-legendario', nombre: 'Legendario' };
+  if (coste >= 1000) return { clase: 'r-epico', nombre: 'Épico' };
+  if (coste >= 800) return { clase: 'r-raro', nombre: 'Raro' };
+  return { clase: 'r-comun', nombre: 'Común' };
+}
+
+const ICONOS = { grito: '⚔️', pocion: '🧪', maldicion: '💀', terremoto: '🌋', lag: '🐌' };
+const icono = (id) => ICONOS[id] || '✨';
+
+const cooldownTexto = (seg) => (seg >= 60 ? `${seg / 60} min` : `${seg} s`);
+
 function fecha(iso) {
   return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 }
@@ -90,6 +103,7 @@ function irA(tab) {
   }
   for (const v of document.querySelectorAll('.vista')) v.hidden = v.id !== `v-${tab}`;
   try { localStorage.setItem('panel-tab', tab); } catch { /* sin almacenamiento, da igual */ }
+  if (location.hash !== `#${tab}`) history.replaceState(null, '', `#${tab}`);
   cargadores[tab]?.();
 }
 
@@ -115,6 +129,7 @@ async function refrescar() {
     estado = await api(`/api/estado?log=${ultimoLog}`);
     $('sin-bot').hidden = true;
     pintarCabecera(estado);
+    pintarFichas(estado);
     pintarAjustes(estado.bot);
     pintarGasto(estado.gasto, estado.bot.modelo);
     pintarPendientes(estado.pendientes);
@@ -122,30 +137,49 @@ async function refrescar() {
   } catch {
     $('sin-bot').hidden = false;
     const sb = $('p-sb');
-    sb.className = 'pastilla mal';
+    sb.className = 'estado mal';
     sb.textContent = 'Bot sin conexión';
+    ficha('s-bot', 'mal', 'Sin conexión', '¿Está en marcha npm start?');
   }
 }
 
 function pintarCabecera({ bot, streamerbot, directo }) {
   const sb = $('p-sb');
-  sb.className = `pastilla ${streamerbot.conectado ? 'ok' : 'mal'}`;
+  sb.className = `estado ${streamerbot.conectado ? 'ok' : 'mal'}`;
   sb.textContent = streamerbot.conectado ? (streamerbot.version || 'Streamer.bot') : 'Streamer.bot desconectado';
   sb.title = streamerbot.destino;
 
   const d = $('p-directo');
-  d.className = `pastilla ${directo ? 'vivo' : ''}`;
+  d.className = `estado ${directo ? 'vivo' : ''}`;
   d.textContent = directo ? `En directo · ${duracion(directo.desde)}` : 'Sin directo';
 
   const dry = $('p-dry');
   dry.hidden = !bot.dryRun;
-  dry.className = 'pastilla aviso';
+  dry.className = 'estado aviso';
   dry.title = 'DRY_RUN: no se envía nada a Twitch';
 
   const btn = $('interruptor');
   btn.className = `interruptor ${bot.interruptor ? 'on' : 'off'}`;
-  btn.querySelector('.interruptor-texto').textContent = bot.interruptor ? 'Bot activo · Apagar' : 'Bot APAGADO · Encender';
+  btn.querySelector('.interruptor-texto').textContent = bot.interruptor ? 'Apagar el bot' : 'Encender el bot';
   btn.title = bot.interruptorDetalle;
+}
+
+function ficha(id, clase, valor, sub = '') {
+  const el = $(id);
+  el.className = `stat ${clase}`;
+  el.querySelector('.stat-valor').textContent = valor;
+  el.querySelector('.stat-sub').textContent = sub;
+}
+
+function pintarFichas({ bot, streamerbot, directo, gasto }) {
+  ficha('s-bot', bot.interruptor ? 'ok' : 'mal', bot.interruptor ? 'Activo' : 'Apagado',
+    bot.dryRun ? 'DRY RUN: no sale nada a Twitch' : bot.revision ? 'Con modo revisión' : 'Publica sin revisión');
+  ficha('s-directo', directo ? 'vivo' : '', directo ? duracion(directo.desde) : 'Offline',
+    directo ? `Desde las ${hora(directo.desde).slice(0, 5)}` : 'Sin directo en marcha');
+  ficha('s-sb', streamerbot.conectado ? 'ok' : 'mal', streamerbot.conectado ? 'Conectado' : 'Desconectado',
+    streamerbot.conectado ? (streamerbot.version || streamerbot.destino) : streamerbot.destino);
+  ficha('s-ia', 'oro', usd(gasto.today.spentUsd),
+    `${gasto.today.calls} de ${gasto.maxCallsPerDay} llamadas · tope $${gasto.budgetTodayUsd}`);
 }
 
 $('interruptor').addEventListener('click', async () => {
@@ -237,8 +271,17 @@ function pintarPendientes(pendientes) {
 const nivelesVisibles = () =>
   new Set([...document.querySelectorAll('#filtros input:checked')].map((i) => i.value));
 
-function lineaLog(l) {
-  return h('li', { class: l.level }, h('time', {}, hora(l.at)), h('span', { class: 'msg' }, l.msg));
+// Un mensaje de varias líneas llega como varias entradas con la misma hora:
+// se pintan juntas, con la hora solo en la primera.
+function lineasLog(lista) {
+  let anterior = null;
+  return lista.map((l) => {
+    const t = hora(l.at);
+    const sigue = anterior && anterior.t === t && anterior.level === l.level;
+    anterior = { t, level: l.level };
+    return h('li', { class: `${l.level} ${sigue ? 'sigue' : 'nuevo-grupo'}` },
+      h('time', {}, t), h('span', { class: 'msg' }, l.msg));
+  });
 }
 
 function anadirLog(nuevas) {
@@ -253,11 +296,14 @@ function pintarLog() {
   const visibles = nivelesVisibles();
   const log = $('log');
   const abajo = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
-  log.replaceChildren(...lineas.filter((l) => visibles.has(l.level)).map(lineaLog));
+  log.replaceChildren(...lineasLog(lineas.filter((l) => visibles.has(l.level))));
   if (abajo) log.scrollTop = log.scrollHeight;
 
   const corto = $('log-corto');
-  corto.replaceChildren(...lineas.filter((l) => l.level !== 'debug').slice(-12).map(lineaLog));
+  const recientes = lineas.filter((l) => l.level !== 'debug').slice(-18);
+  corto.replaceChildren(...(recientes.length
+    ? lineasLog(recientes)
+    : [h('li', { class: 'log-vacio' }, 'Todavía no ha pasado nada.')]));
   corto.scrollTop = corto.scrollHeight;
 }
 
@@ -291,6 +337,7 @@ async function cargarEfectos() {
     const datos = await api('/api/efectos');
     $('efectos-sin-sb').hidden = datos.conectado;
     $('efectos').replaceChildren(...datos.efectos.map(tarjetaEfecto));
+    pintarBotonera(datos);
 
     $('efectos-extra').replaceChildren(
       ...(datos.extra.length
@@ -298,8 +345,8 @@ async function cargarEfectos() {
             h('header', {}, h('h2', {}, 'Otros efectos tuyos'), h('span', { class: 'nota' }, `Actions que empiezan por «${datos.prefijo}»`)),
             h('div', { class: 'efectos' }, datos.extra.map((a) =>
               h('div', { class: 'efecto' },
-                h('div', { class: 'titulo' }, h('h3', {}, a.name.slice(datos.prefijo.length))),
-                h('div', { class: 'pie' }, botonProbar(a.id, a.enabled)),
+                h('div', { class: 'efecto-cabeza' }, h('span', { class: 'icono' }, '✨'), h('div', {}, h('h3', {}, a.name.slice(datos.prefijo.length)))),
+                h('div', { class: 'efecto-cuerpo' }, h('div', { class: 'pie' }, botonProbar(a.id, a.enabled))),
               ))),
           )]
         : []),
@@ -307,6 +354,66 @@ async function cargarEfectos() {
   } catch (err) {
     tostada(err.message, true);
   }
+}
+
+async function lanzar(accionId) {
+  await api(`/api/acciones/${accionId}/ejecutar`, {});
+}
+
+function pintarBotonera(datos) {
+  const botones = datos.efectos.map((e) => {
+    const r = rareza(e.coste);
+    const montado = Boolean(e.accionId);
+    const el = h('button', {
+      class: `boton-fx ${r.clase} ${montado ? '' : 'no-montado'}`,
+      type: 'button',
+      title: montado ? `${e.queHace} Lo lanza sin gastar puntos.` : 'Todavía no está montado en Streamer.bot. Pulsa para ver cómo.',
+      onclick: async () => {
+        if (!montado) return irA('efectos');
+        try {
+          await lanzar(e.accionId);
+          el.classList.remove('lanzado');
+          void el.offsetWidth; // reinicia la animación
+          el.classList.add('lanzado');
+          tostada(`${icono(e.id)} ${e.recompensa} lanzado`);
+        } catch (err) {
+          tostada(err.message, true);
+        }
+      },
+    },
+      h('span', { class: 'icono' }, icono(e.id)),
+      e.montado === false && h('span', { class: 'falta' }, 'Por montar'),
+      h('span', { class: 'nombre' }, e.recompensa),
+      h('span', { class: 'linea' },
+        h('span', { class: 'rareza' }, r.nombre),
+        h('span', { class: 'coste' }, `🪙 ${e.coste.toLocaleString('es-ES')}`)),
+    );
+    return el;
+  });
+
+  const extra = datos.extra.map((a) => h('button', {
+    class: 'boton-fx r-comun',
+    type: 'button',
+    disabled: !a.enabled,
+    onclick: async () => {
+      try {
+        await lanzar(a.id);
+        tostada(`${a.name.slice(datos.prefijo.length)} lanzado`);
+      } catch (err) {
+        tostada(err.message, true);
+      }
+    },
+  },
+    h('span', { class: 'icono' }, '✨'),
+    h('span', { class: 'nombre' }, a.name.slice(datos.prefijo.length)),
+    h('span', { class: 'linea' }, h('span', { class: 'rareza' }, 'Tuyo')),
+  ));
+
+  $('botonera').replaceChildren(...botones, ...extra);
+  $('botonera-nota').textContent = datos.conectado
+    ? 'Lanza los efectos sin gastar puntos'
+    : 'Streamer.bot desconectado: no se pueden lanzar';
+  $('botonera-nota').classList.toggle('mal', !datos.conectado);
 }
 
 function botonProbar(accionId, habilitada = true) {
@@ -317,7 +424,7 @@ function botonProbar(accionId, habilitada = true) {
     title: !accionId ? 'Todavía no existe en Streamer.bot' : !habilitada ? 'La Action está desactivada en Streamer.bot' : 'Ejecuta la Action, sin gastar puntos',
     onclick: async () => {
       try {
-        await api(`/api/acciones/${accionId}/ejecutar`, {});
+        await lanzar(accionId);
         tostada('Efecto lanzado');
       } catch (err) {
         tostada(err.message, true);
@@ -339,19 +446,25 @@ function tarjetaEfecto(e) {
     ...e.pasos,
   ];
 
-  return h('article', { class: 'tarjeta efecto' },
-    h('div', { class: 'titulo' }, h('h3', {}, e.recompensa), estadoChip),
-    h('p', {}, e.queHace),
-    h('div', { class: 'meta' },
-      h('span', { class: 'coste' }, `🪙 ${e.coste.toLocaleString('es-ES')}`),
-      h('span', {}, `· cooldown ${e.cooldownSeg >= 60 ? `${e.cooldownSeg / 60} min` : `${e.cooldownSeg} s`}`),
-      e.necesita && h('span', { class: 'chip plugin' }, e.necesita),
+  const r = rareza(e.coste);
+  return h('article', { class: `tarjeta efecto ${r.clase}` },
+    h('div', { class: 'efecto-cabeza' },
+      h('span', { class: 'icono' }, icono(e.id)),
+      h('div', {}, h('span', { class: 'rareza' }, r.nombre), h('h3', {}, e.recompensa)),
+      estadoChip),
+    h('div', { class: 'efecto-cuerpo' },
+      h('p', {}, e.queHace),
+      h('div', { class: 'meta' },
+        h('span', { class: 'coste' }, `🪙 ${e.coste.toLocaleString('es-ES')}`),
+        h('span', {}, `· cooldown ${cooldownTexto(e.cooldownSeg)}`),
+        e.necesita && h('span', { class: 'chip plugin' }, e.necesita),
+      ),
+      h('details', { open: e.montado === false && !e.necesita },
+        h('summary', {}, 'Cómo montarlo'),
+        h('ol', {}, pasos.map((p) => h('li', {}, p))),
+      ),
+      h('div', { class: 'pie' }, botonProbar(e.accionId)),
     ),
-    h('details', { open: e.montado === false && !e.necesita },
-      h('summary', {}, 'Cómo montarlo'),
-      h('ol', {}, pasos.map((p) => h('li', {}, p))),
-    ),
-    h('div', { class: 'pie' }, botonProbar(e.accionId)),
   );
 }
 
@@ -441,10 +554,16 @@ $('r-espectadores').addEventListener('click', cargarEspectadores);
 // Arranque
 // ---------------------------------------------------------------------------
 
-let inicial = 'directo';
-try { inicial = localStorage.getItem('panel-tab') || 'directo'; } catch { /* nada */ }
+let inicial = location.hash.slice(1);
+if (!inicial) {
+  try { inicial = localStorage.getItem('panel-tab') || 'directo'; } catch { inicial = 'directo'; }
+}
 if (!$(`v-${inicial}`)) inicial = 'directo';
 irA(inicial);
+$('hoy').textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
 refrescar();
 setInterval(refrescar, INTERVALO_MS);
+if (inicial !== 'efectos') cargarEfectos();
+// La botonera se entera sola cuando montas una Action nueva en Streamer.bot.
+setInterval(cargarEfectos, 15000);

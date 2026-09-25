@@ -4,100 +4,177 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Panel Crid4m</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='13' fill='%23e3b341' stroke='%23a07818' stroke-width='3'/><text x='16' y='21' font-size='13' text-anchor='middle' font-family='sans-serif' font-weight='700' fill='%23654a0c'>C</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='13' fill='%23f0b93a' stroke='%239a6b12' stroke-width='3'/><text x='16' y='21' font-size='13' text-anchor='middle' font-family='sans-serif' font-weight='700' fill='%235c3f08'>C</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <header class="top">
+<div class="app">
+
+  <!-- ================= LATERAL ================= -->
+  <aside class="lateral">
     <div class="marca">
-      <span class="moneda" aria-hidden="true"></span>
+      <svg class="moneda" viewBox="0 0 40 40" aria-hidden="true">
+        <defs>
+          <radialGradient id="g-oro" cx="35%" cy="30%" r="75%">
+            <stop offset="0" stop-color="#fff0b8"/>
+            <stop offset=".45" stop-color="#f0b93a"/>
+            <stop offset="1" stop-color="#9a6b12"/>
+          </radialGradient>
+        </defs>
+        <circle cx="20" cy="20" r="18" fill="url(#g-oro)" stroke="#7a520c" stroke-width="1.5"/>
+        <circle cx="20" cy="20" r="13.5" fill="none" stroke="#fff3c4" stroke-opacity=".45" stroke-width="1" stroke-dasharray="2 2.2"/>
+        <text x="20" y="26" text-anchor="middle" font-family="Chakra Petch, sans-serif" font-weight="700" font-size="17" fill="#5c3f08">C</text>
+      </svg>
       <div>
-        <h1>Crid4m</h1>
-        <p class="sub">Panel de control</p>
+        <strong class="marca-nombre">Crid4m</strong>
+        <span class="marca-sub">Panel de directo</span>
       </div>
     </div>
 
-    <div class="pastillas" id="pastillas">
-      <span class="pastilla" id="p-sb">Streamer.bot</span>
-      <span class="pastilla" id="p-directo">Directo</span>
-      <span class="pastilla" id="p-dry" hidden>DRY RUN</span>
+    <nav class="pestanas" role="tablist" aria-label="Secciones">
+      <button role="tab" data-tab="directo" aria-selected="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8 8 0 0 0 0 11.4M17.7 6.3a8 8 0 0 1 0 11.4"/></svg>
+        Directo
+      </button>
+      <button role="tab" data-tab="efectos">
+        <svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>
+        Efectos
+      </button>
+      <button role="tab" data-tab="interacciones">
+        <svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
+        Interacciones
+      </button>
+      <button role="tab" data-tab="espectadores">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/></svg>
+        Espectadores
+      </button>
+      <button role="tab" data-tab="registro">
+        <svg viewBox="0 0 24 24"><path d="M4 5h16M4 10h16M4 15h10M4 20h7"/></svg>
+        Registro
+      </button>
+    </nav>
+
+    <div class="lateral-pie">
+      <div class="estados">
+        <span class="estado" id="p-sb">Streamer.bot</span>
+        <span class="estado" id="p-directo">Directo</span>
+        <span class="estado aviso" id="p-dry" hidden>DRY RUN</span>
+      </div>
+      <button class="interruptor" id="interruptor" type="button">
+        <span class="luz"></span>
+        <span class="interruptor-texto">Cargando…</span>
+      </button>
     </div>
+  </aside>
 
-    <button class="interruptor" id="interruptor" type="button">
-      <span class="luz"></span>
-      <span class="interruptor-texto">Cargando…</span>
-    </button>
-  </header>
-
-  <nav class="pestanas" role="tablist">
-    <button role="tab" data-tab="directo" aria-selected="true">Directo</button>
-    <button role="tab" data-tab="efectos">Efectos</button>
-    <button role="tab" data-tab="interacciones">Interacciones</button>
-    <button role="tab" data-tab="espectadores">Espectadores</button>
-    <button role="tab" data-tab="registro">Registro</button>
-  </nav>
-
+  <!-- ================= CONTENIDO ================= -->
   <main>
+
     <!-- DIRECTO -->
     <section class="vista" id="v-directo">
+      <header class="cabecera-vista">
+        <div>
+          <p class="antetitulo" id="hoy"></p>
+          <h1>Directo</h1>
+        </div>
+      </header>
+
       <div class="aviso-conexion" id="sin-bot" hidden>
         No hay conexión con el bot. ¿Está en marcha <code>npm start</code>?
       </div>
 
+      <div class="stats">
+        <div class="stat" id="s-bot">
+          <span class="stat-etiqueta">Bot</span>
+          <span class="stat-valor">—</span>
+          <span class="stat-sub"></span>
+        </div>
+        <div class="stat" id="s-directo">
+          <span class="stat-etiqueta">Emisión</span>
+          <span class="stat-valor">—</span>
+          <span class="stat-sub"></span>
+        </div>
+        <div class="stat" id="s-sb">
+          <span class="stat-etiqueta">Streamer.bot</span>
+          <span class="stat-valor">—</span>
+          <span class="stat-sub"></span>
+        </div>
+        <div class="stat" id="s-ia">
+          <span class="stat-etiqueta">IA hoy</span>
+          <span class="stat-valor">—</span>
+          <span class="stat-sub"></span>
+        </div>
+      </div>
+
       <article class="tarjeta revision" id="t-revision" hidden>
-        <header><h2>Esperando tu aprobación</h2></header>
+        <header><h2><span class="punto-vivo"></span>Esperando tu aprobación</h2></header>
         <div id="pendientes"></div>
       </article>
 
-      <div class="rejilla">
-        <article class="tarjeta">
-          <header><h2>Ajustes</h2><span class="nota">Hasta reiniciar el bot</span></header>
-          <label class="ajuste">
-            <span>
-              <strong>Interacciones espontáneas</strong>
-              <small>El bot habla sin que le invoquen: saludos, rachas, vueltas, continuará.</small>
-            </span>
-            <input type="checkbox" class="toggle" id="a-espontaneas">
-          </label>
-          <label class="ajuste">
-            <span>
-              <strong>Modo revisión</strong>
-              <small>Lo que escribe la IA espera tu aprobación antes de salir.</small>
-            </span>
-            <input type="checkbox" class="toggle" id="a-revision">
-          </label>
+      <section class="bloque">
+        <header class="bloque-cabecera">
+          <h2>Botonera</h2>
+          <span class="nota" id="botonera-nota">Lanza los efectos sin gastar puntos</span>
+          <button class="enlace" data-ir="efectos" type="button">Gestionar efectos →</button>
+        </header>
+        <div class="botonera" id="botonera"></div>
+      </section>
+
+      <div class="dos-col">
+        <article class="tarjeta actividad">
+          <header><h2>Actividad</h2><button class="enlace" data-ir="registro" type="button">Ver registro →</button></header>
+          <ol class="log corto" id="log-corto"></ol>
         </article>
 
-        <article class="tarjeta">
-          <header><h2>Gasto de IA</h2><span class="nota" id="modelo"></span></header>
-          <div id="gasto"></div>
-        </article>
+        <div class="columna">
+          <article class="tarjeta">
+            <header><h2>Escribir en el chat</h2></header>
+            <form class="chat" id="f-chat">
+              <input id="chat-texto" maxlength="480" placeholder="Mensaje para el chat…" autocomplete="off">
+              <button type="submit" class="boton primario">Enviar</button>
+            </form>
+            <p class="resultado" id="chat-resultado">Pasa por los mismos filtros que el bot.</p>
+          </article>
+
+          <article class="tarjeta">
+            <header><h2>Ajustes</h2><span class="nota">Hasta reiniciar</span></header>
+            <label class="ajuste">
+              <span>
+                <strong>Interacciones espontáneas</strong>
+                <small>El bot habla sin que le invoquen: saludos, rachas, vueltas, continuará.</small>
+              </span>
+              <input type="checkbox" class="toggle" id="a-espontaneas">
+            </label>
+            <label class="ajuste">
+              <span>
+                <strong>Modo revisión</strong>
+                <small>Lo que escribe la IA espera tu aprobación antes de salir.</small>
+              </span>
+              <input type="checkbox" class="toggle" id="a-revision">
+            </label>
+          </article>
+
+          <article class="tarjeta">
+            <header><h2>Gasto de IA</h2><span class="nota" id="modelo"></span></header>
+            <div id="gasto"></div>
+          </article>
+        </div>
       </div>
-
-      <article class="tarjeta">
-        <header><h2>Escribir en el chat</h2><span class="nota">Pasa por los mismos filtros que el bot</span></header>
-        <form class="chat" id="f-chat">
-          <input id="chat-texto" maxlength="480" placeholder="Mensaje para el chat…" autocomplete="off">
-          <button type="submit" class="boton primario">Enviar</button>
-        </form>
-        <p class="resultado" id="chat-resultado"></p>
-      </article>
-
-      <article class="tarjeta">
-        <header><h2>Actividad reciente</h2><button class="enlace" data-ir="registro" type="button">Ver todo</button></header>
-        <ol class="log corto" id="log-corto"></ol>
-      </article>
     </section>
 
     <!-- EFECTOS -->
     <section class="vista" id="v-efectos" hidden>
-      <div class="cabecera-vista">
+      <header class="cabecera-vista">
         <div>
-          <h2>Efectos con Oro 🪙</h2>
-          <p class="nota">Se montan en Streamer.bot. Aquí ves cuáles faltan y los pruebas sin gastar puntos.</p>
+          <p class="antetitulo">Channel Points · Oro 🪙</p>
+          <h1>Efectos</h1>
+          <p class="nota">Se montan en Streamer.bot. Aquí ves cuáles faltan, cómo montarlos, y los pruebas.</p>
         </div>
         <button class="boton" id="r-efectos" type="button">Actualizar</button>
-      </div>
+      </header>
       <div class="aviso" id="efectos-sin-sb" hidden>
         Sin conexión con Streamer.bot: no se puede saber qué está montado.
       </div>
@@ -107,10 +184,13 @@
 
     <!-- INTERACCIONES -->
     <section class="vista" id="v-interacciones" hidden>
-      <div class="cabecera-vista">
-        <h2>Interacciones</h2>
+      <header class="cabecera-vista">
+        <div>
+          <p class="antetitulo">Comandos y eventos del bot</p>
+          <h1>Interacciones</h1>
+        </div>
         <button class="boton" id="r-interacciones" type="button">Actualizar</button>
-      </div>
+      </header>
       <div class="tabla-envoltorio">
         <table class="tabla">
           <thead>
@@ -123,13 +203,16 @@
 
     <!-- ESPECTADORES -->
     <section class="vista" id="v-espectadores" hidden>
-      <div class="cabecera-vista">
-        <h2>Espectadores <span class="contador" id="n-espectadores"></span></h2>
+      <header class="cabecera-vista">
+        <div>
+          <p class="antetitulo">Lo que el bot recuerda</p>
+          <h1>Espectadores <span class="contador" id="n-espectadores"></span></h1>
+        </div>
         <div class="acciones-cabecera">
           <input type="search" id="buscar" placeholder="Buscar…">
           <button class="boton" id="r-espectadores" type="button">Actualizar</button>
         </div>
-      </div>
+      </header>
       <div class="tabla-envoltorio">
         <table class="tabla">
           <thead>
@@ -142,21 +225,25 @@
 
     <!-- REGISTRO -->
     <section class="vista" id="v-registro" hidden>
-      <div class="cabecera-vista">
-        <h2>Registro</h2>
+      <header class="cabecera-vista">
+        <div>
+          <p class="antetitulo">En directo</p>
+          <h1>Registro</h1>
+        </div>
         <div class="filtros" id="filtros">
           <label><input type="checkbox" value="debug"> debug</label>
           <label><input type="checkbox" value="info" checked> info</label>
           <label><input type="checkbox" value="warn" checked> avisos</label>
           <label><input type="checkbox" value="error" checked> errores</label>
         </div>
-      </div>
+      </header>
       <ol class="log" id="log"></ol>
     </section>
   </main>
+</div>
 
-  <div class="tostada" id="tostada" role="status" aria-live="polite"></div>
+<div class="tostada" id="tostada" role="status" aria-live="polite"></div>
 
-  <script src="/app.js"></script>
+<script src="/app.js"></script>
 </body>
 </html>
