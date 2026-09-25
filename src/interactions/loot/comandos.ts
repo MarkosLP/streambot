@@ -210,7 +210,7 @@ export const purificar: Interaction<CtxComando> = {
     const yo = ctx.viewer;
     if (!puedePurificar(yo.id)) {
       return {
-        text: `@${yo.displayName} 🧪 Para purificar un objeto maldito, canjea antes una Poción de vida con Oro.`,
+        text: `@${yo.displayName} 🧪 Para purificar un objeto maldito, canjea antes una Poción de vida con Oros.`,
         ...mencion(ctx),
       };
     }
@@ -256,7 +256,7 @@ export const ayuda: Interaction<CtxComando> = {
     text:
       `🎁 Loot: cada ${config.loot.minutosMin}-${config.loot.minutosMax} min cae un cofre para quien hable en el chat, ` +
       // Sin @ en el ejemplo del duelo: policy bloquea mencionar a quien no participa.
-      `y con Oro está el ${config.loot.cofreRewardTitle}. Comandos: !inventario !poder !duelo nombre !forjar !presumir !coleccion`,
+      `y con Oros está el ${config.loot.cofreRewardTitle}. Comandos: !inventario !poder !duelo nombre !forjar !presumir !coleccion`,
   }),
 };
 

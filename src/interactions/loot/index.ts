@@ -20,7 +20,7 @@ import { ESTILO, MOCHILA_MAX, RAREZAS, etiqueta, tirar, type Azar, type Botin } 
  *
  *  1. **Cofre**: cada 20-30 minutos de directo cae uno para quien haya escrito
  *     en el chat hace poco. Premia estar y hablar, no solo mirar.
- *  2. **Cofre del tesoro**: se compra con Oro (puntos de canal) y tiene mejores
+ *  2. **Cofre del tesoro**: se compra con Oros (puntos de canal) y tiene mejores
  *     probabilidades.
  *  3. **Panel**: el botón "Soltar cofre ahora", para cuando quieras tú.
  *
@@ -218,7 +218,7 @@ export async function soltarCofre(
 }
 
 // ---------------------------------------------------------------------------
-// Cofre del tesoro (Oro)
+// Cofre del tesoro (Oros)
 // ---------------------------------------------------------------------------
 
 interface CtxCofreOro extends Ctx {

@@ -7,11 +7,11 @@ Streamer.bot y OBS.
 
 ---
 
-## 1. La moneda: Oro 🪙
+## 1. La moneda: Oros 🪙
 
 | | Propuesta |
 |---|---|
-| Nombre | **Oro** |
+| Nombre | **Oros** (Twitch pide 4 letras como mínimo; "Oro" no cabía) |
 | Icono | Una moneda de oro, estilo pixel o icono de MMO |
 | Por qué | Todo el que juega a un MMO lo entiende sin explicación. "Gastar 500 de oro en maldecir al streamer" se lee solo. |
 

@@ -244,7 +244,7 @@ export const config = {
     minutosMax: int('LOOT_MINUTOS_MAX', 30),
     /** Solo recibe botín quien ha escrito en el chat en estos últimos minutos. */
     minutosActividad: int('LOOT_MINUTOS_ACTIVIDAD', 15),
-    /** El Cofre del tesoro que se compra con Oro. */
+    /** El Cofre del tesoro que se compra con Oros. */
     cofreRewardId: str('LOOT_COFRE_REWARD_ID', ''),
     cofreRewardTitle: str('LOOT_COFRE_REWARD_TITLE', 'Cofre del tesoro'),
     /** !inventario, por persona. */
