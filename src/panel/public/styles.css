@@ -536,6 +536,22 @@ strong.ui {
 .loot-acciones .nota { font-size: 0.8rem; }
 .loot-prueba { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .loot-prueba:empty { display: none; }
+.revelado {
+  display: flex; align-items: center; gap: 16px; margin-top: 14px; padding: 14px 18px;
+  border-radius: 14px; border: 1px solid color-mix(in srgb, var(--rareza) 55%, transparent);
+  background: radial-gradient(320px 120px at 0% 50%, color-mix(in srgb, var(--rareza) 22%, transparent), transparent 80%), var(--tarjeta-2);
+  box-shadow: 0 0 30px -10px var(--rareza);
+  animation: revela 0.45s cubic-bezier(.2, 1.5, .4, 1);
+}
+@keyframes revela { from { opacity: 0; transform: scale(0.94); } }
+.revelado-cofre { font-size: 2rem; animation: sacude 0.45s ease-out; }
+@keyframes sacude { 30% { transform: rotate(-12deg) scale(1.15); } 60% { transform: rotate(8deg); } }
+.revelado > div { display: grid; gap: 2px; }
+.revelado-objeto {
+  font-family: var(--titulos); font-size: 1.35rem; font-weight: 700;
+  color: color-mix(in srgb, var(--rareza) 70%, var(--texto));
+}
+.revelado.r-legendario .revelado-objeto { text-shadow: 0 0 16px color-mix(in srgb, var(--legendario) 70%, transparent); }
 .prueba-item { display: inline-flex; align-items: center; gap: 4px; animation: aparece 0.35s ease-out; }
 @keyframes aparece { from { opacity: 0; transform: translateY(-4px); } }
 

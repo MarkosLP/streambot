@@ -693,9 +693,19 @@ for (const [id, tipo] of [['l-prueba', 'cofre'], ['l-prueba-oro', 'oro']]) {
   $(id).addEventListener('click', async () => {
     try {
       const b = await api('/api/loot/prueba', { tipo });
+      const r = RAREZA_LOOT[b.rareza];
+      // El objeto en grande: una pastillita sola pasaba desapercibida.
+      $('l-revelado').replaceChildren(h('div', { class: `revelado ${r.clase}` },
+        h('span', { class: 'revelado-cofre' }, tipo === 'oro' ? '🗝️' : '🎁'),
+        h('div', {},
+          h('span', { class: 'rareza' }, `${r.nombre} · ${tipo === 'oro' ? 'Cofre del tesoro' : 'cofre gratis'} · de prueba`),
+          h('strong', { class: 'revelado-objeto' }, b.objeto))));
+      tostada(`${tipo === 'oro' ? '🗝️' : '🎁'} ${r.nombre}: ${b.objeto}`);
+
+      // Y el historial de las anteriores, para ver cómo se reparten.
       const caja = $('l-resultado-prueba');
-      caja.prepend(h('span', { class: 'prueba-item' }, tipo === 'oro' ? '🗝️ ' : '🎁 ', pildoraBotin(b)));
-      while (caja.children.length > 8) caja.lastChild.remove();
+      caja.prepend(h('span', { class: 'prueba-item' }, pildoraBotin(b)));
+      while (caja.children.length > 10) caja.lastChild.remove();
     } catch (err) {
       tostada(err.message, true);
     }
