@@ -1,0 +1,175 @@
+<!doctype html>
+<!--
+  Iconos de Twitch del canal: la moneda de los puntos (Oro) y las recompensas.
+
+  Esta página es la FUENTE. Los PNG de biblioteca/imagenes/ salen de aquí:
+  se abre en Edge sin ventana, se hace captura y se recortan con ImageMagick
+  (ver docs/iconos/README.md). Para cambiar un icono, se cambia su SVG aquí.
+
+  Estilo común: contorno oscuro grueso, colores vivos, formas simples.
+  Tienen que leerse a 28×28 píxeles, que es como los ve el chat en el móvil.
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; background: transparent; }
+  .hoja { display: grid; grid-template-columns: repeat(5, 512px); }
+  svg { width: 512px; height: 512px; display: block; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <radialGradient id="oro" cx="38%" cy="32%" r="75%">
+      <stop offset="0" stop-color="#fff4c2"/><stop offset=".45" stop-color="#f5c542"/><stop offset="1" stop-color="#b07410"/>
+    </radialGradient>
+    <linearGradient id="acero" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#d7dee8"/><stop offset="1" stop-color="#8e9aab"/>
+    </linearGradient>
+    <linearGradient id="madera" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b8743a"/><stop offset="1" stop-color="#6e3d17"/>
+    </linearGradient>
+    <radialGradient id="sangre" cx="40%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#ff8aa0"/><stop offset=".5" stop-color="#e8264a"/><stop offset="1" stop-color="#8f0a24"/>
+    </radialGradient>
+    <radialGradient id="hueso" cx="40%" cy="30%" r="80%">
+      <stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#e9e2f5"/><stop offset="1" stop-color="#a99bc4"/>
+    </radialGradient>
+    <radialGradient id="aura" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#b86bff" stop-opacity=".9"/><stop offset="1" stop-color="#b86bff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="cristal" cx="38%" cy="32%" r="75%">
+      <stop offset="0" stop-color="#e9f6ff"/><stop offset=".4" stop-color="#7cc4ff"/><stop offset=".85" stop-color="#5b3fd6"/><stop offset="1" stop-color="#2d1a7a"/>
+    </radialGradient>
+    <linearGradient id="roca" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c79a6a"/><stop offset="1" stop-color="#6f4a2a"/>
+    </linearGradient>
+    <radialGradient id="concha" cx="40%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#ffe0a8"/><stop offset=".55" stop-color="#e59a3c"/><stop offset="1" stop-color="#8f4f12"/>
+    </radialGradient>
+    <linearGradient id="naranja" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffb347"/><stop offset="1" stop-color="#e8661a"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="hoja">
+
+<!-- 1. ORO: la moneda de los puntos de canal -->
+<svg viewBox="0 0 128 128" id="oro-moneda">
+  <circle cx="64" cy="66" r="54" fill="#5c3a06"/>
+  <circle cx="64" cy="62" r="54" fill="url(#oro)" stroke="#3a2404" stroke-width="6"/>
+  <circle cx="64" cy="62" r="40" fill="none" stroke="#a86d0c" stroke-width="5"/>
+  <!-- corona -->
+  <path d="M40 76 L36 46 L52 58 L64 38 L76 58 L92 46 L88 76 Z" fill="#c9880f" stroke="#3a2404" stroke-width="5" stroke-linejoin="round"/>
+  <rect x="40" y="76" width="48" height="9" rx="3" fill="#c9880f" stroke="#3a2404" stroke-width="5"/>
+  <path d="M26 44 A42 42 0 0 1 58 22" fill="none" stroke="#fffbe6" stroke-width="7" stroke-linecap="round" opacity=".85"/>
+</svg>
+
+<!-- 2. GRITO DE GUERRA: espadas cruzadas -->
+<svg viewBox="0 0 128 128" id="grito">
+  <g id="espada" transform="rotate(45 64 64)">
+    <path d="M57 88 V24 L64 8 L71 24 V88 Z" fill="url(#acero)" stroke="#1d2230" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M64 14 V84" stroke="#9aa6b7" stroke-width="3"/>
+    <rect x="40" y="86" width="48" height="11" rx="5" fill="#f5c542" stroke="#1d2230" stroke-width="5"/>
+    <rect x="58.5" y="96" width="11" height="18" fill="#7a3f14" stroke="#1d2230" stroke-width="5"/>
+    <circle cx="64" cy="118" r="7" fill="#f5c542" stroke="#1d2230" stroke-width="5"/>
+  </g>
+  <use href="#espada" transform="translate(128 0) scale(-1 1)"/>
+</svg>
+
+<!-- 3. POCIÓN DE VIDA: frasco rojo con corazón -->
+<svg viewBox="0 0 128 128" id="pocion">
+  <path d="M50 20 V42 C24 52 14 72 18 92 C22 112 42 122 64 122 C86 122 106 112 110 92 C114 72 104 52 78 42 V20 Z" fill="#1f0a10"/>
+  <clipPath id="frasco"><path d="M52 22 V44 C28 54 19 72 22 91 C26 110 44 118 64 118 C84 118 102 110 106 91 C109 72 100 54 76 44 V22 Z"/></clipPath>
+  <g clip-path="url(#frasco)">
+    <rect x="0" y="0" width="128" height="128" fill="#fbe9ee" opacity=".35"/>
+    <path d="M0 66 Q22 58 44 66 T88 66 T132 66 V128 H0 Z" fill="url(#sangre)"/>
+  </g>
+  <path d="M52 22 V44 C28 54 19 72 22 91 C26 110 44 118 64 118 C84 118 102 110 106 91 C109 72 100 54 76 44 V22 Z" fill="none" stroke="#2a0c14" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M64 102 C50 92 44 86 44 78 C44 71 50 67 55 67 C59 67 62 69 64 72 C66 69 69 67 73 67 C78 67 84 71 84 78 C84 86 78 92 64 102 Z" fill="#fff" opacity=".92"/>
+  <path d="M33 78 C31 88 34 98 42 104" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".7"/>
+  <rect x="44" y="12" width="40" height="14" rx="5" fill="#c68b4e" stroke="#2a0c14" stroke-width="5"/>
+</svg>
+
+<!-- 4. MALDICIÓN: calavera morada -->
+<svg viewBox="0 0 128 128" id="maldicion">
+  <circle cx="64" cy="62" r="60" fill="url(#aura)"/>
+  <path d="M24 58 C24 32 42 16 64 16 C86 16 104 32 104 58 C104 72 98 80 90 84 V100 H38 V84 C30 80 24 72 24 58 Z" fill="url(#hueso)" stroke="#1d0f33" stroke-width="6" stroke-linejoin="round"/>
+  <ellipse cx="47" cy="60" rx="12" ry="13" fill="#2a0d4d"/>
+  <ellipse cx="81" cy="60" rx="12" ry="13" fill="#2a0d4d"/>
+  <circle cx="47" cy="61" r="5" fill="#d9a6ff"/>
+  <circle cx="81" cy="61" r="5" fill="#d9a6ff"/>
+  <path d="M64 70 L57 83 H71 Z" fill="#2a0d4d"/>
+  <path d="M50 100 V90 M64 100 V90 M78 100 V90" stroke="#1d0f33" stroke-width="5" stroke-linecap="round"/>
+  <path d="M38 104 H90" stroke="#1d0f33" stroke-width="6" stroke-linecap="round"/>
+  <path d="M34 42 C38 30 48 24 58 23" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".8"/>
+</svg>
+
+<!-- 5. COFRE DEL TESORO -->
+<svg viewBox="0 0 128 128" id="cofre">
+  <path d="M16 60 C16 34 36 24 64 24 C92 24 112 34 112 60 Z" fill="url(#madera)" stroke="#2a1606" stroke-width="6" stroke-linejoin="round"/>
+  <rect x="16" y="58" width="96" height="54" rx="6" fill="url(#madera)" stroke="#2a1606" stroke-width="6"/>
+  <path d="M34 28 V58 M94 28 V58" stroke="#2a1606" stroke-width="12"/>
+  <path d="M34 28 V58 M94 28 V58" stroke="#f5c542" stroke-width="6"/>
+  <path d="M34 60 V110 M94 60 V110" stroke="#2a1606" stroke-width="12"/>
+  <path d="M34 60 V110 M94 60 V110" stroke="#f5c542" stroke-width="6"/>
+  <rect x="16" y="54" width="96" height="10" fill="#f5c542" stroke="#2a1606" stroke-width="5"/>
+  <rect x="52" y="52" width="24" height="30" rx="5" fill="url(#oro)" stroke="#2a1606" stroke-width="5"/>
+  <circle cx="64" cy="64" r="4" fill="#2a1606"/>
+  <path d="M64 66 V74" stroke="#2a1606" stroke-width="4" stroke-linecap="round"/>
+  <path d="M26 44 C28 36 36 31 46 30" fill="none" stroke="#ffd9a8" stroke-width="5" stroke-linecap="round" opacity=".7"/>
+  <path d="M106 16 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z" fill="#fff6c9" stroke="#8a5a06" stroke-width="2"/>
+</svg>
+
+<!-- 6. TERREMOTO: suelo partido -->
+<svg viewBox="0 0 128 128" id="terremoto">
+  <path d="M8 70 L58 58 L50 78 L62 92 L54 118 H8 Z" fill="url(#roca)" stroke="#2b1a0c" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M120 64 L72 56 L66 76 L78 90 L70 118 H120 Z" fill="url(#roca)" stroke="#2b1a0c" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M8 70 L58 58 M120 64 L72 56" stroke="#8fcf5a" stroke-width="7" stroke-linecap="round"/>
+  <path d="M36 42 l10 -8 6 10 -10 6z M84 34 l12 -4 2 12 -12 2z M62 24 l7 -9 7 8 -7 8z" fill="#a47449" stroke="#2b1a0c" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M18 34 Q24 28 18 22 M110 30 Q116 24 110 18" fill="none" stroke="#ffd166" stroke-width="5" stroke-linecap="round"/>
+</svg>
+
+<!-- 7. LAG: caracol -->
+<svg viewBox="0 0 128 128" id="lag">
+  <path d="M8 108 H92 C104 108 110 100 110 88 V58" fill="none" stroke="#2b3312" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M8 108 H92 C104 108 110 100 110 88 V58" fill="none" stroke="#a9d45c" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M104 56 L98 36 M116 56 L120 36" stroke="#2b3312" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="98" cy="34" r="6" fill="#fff" stroke="#2b3312" stroke-width="4"/>
+  <circle cx="120" cy="34" r="6" fill="#fff" stroke="#2b3312" stroke-width="4"/>
+  <circle cx="54" cy="70" r="36" fill="url(#concha)" stroke="#3d2206" stroke-width="6"/>
+  <path d="M54 70 m0 -6 a6 6 0 1 1 -6 6 a12 12 0 0 1 12 -12 a18 18 0 0 1 18 18 a24 24 0 0 1 -24 24 a30 30 0 0 1 -30 -30" fill="none" stroke="#3d2206" stroke-width="5" stroke-linecap="round"/>
+  <g fill="#fff" stroke="#3d2206" stroke-width="3"><circle cx="14" cy="16" r="6"/><circle cx="32" cy="14" r="6" opacity=".7"/><circle cx="50" cy="14" r="6" opacity=".4"/></g>
+</svg>
+
+<!-- 8. PREGUNTA A CRID4M AI: bola de cristal -->
+<svg viewBox="0 0 128 128" id="pregunta-ia">
+  <path d="M30 104 C34 92 44 88 64 88 C84 88 94 92 98 104 Z" fill="url(#oro)" stroke="#2a1a05" stroke-width="6" stroke-linejoin="round"/>
+  <rect x="22" y="102" width="84" height="14" rx="6" fill="#b07410" stroke="#2a1a05" stroke-width="6"/>
+  <circle cx="64" cy="56" r="44" fill="url(#cristal)" stroke="#1a1040" stroke-width="6"/>
+  <path d="M44 62 C44 48 58 42 68 48 C76 53 72 64 64 64 C58 64 56 58 60 56" fill="none" stroke="#e8f4ff" stroke-width="5" stroke-linecap="round" opacity=".85"/>
+  <path d="M40 30 C46 22 56 18 66 18" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".85"/>
+  <path d="M86 70 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z" fill="#fff" />
+  <path d="M84 36 l2 4 4 2 -4 2 -2 4 -2 -4 -4 -2 4 -2z" fill="#fff" opacity=".9"/>
+</svg>
+
+<!-- 9. PREGUNTA INCÓMODA: bocadillo con ?! -->
+<svg viewBox="0 0 128 128" id="pregunta-incomoda">
+  <path d="M16 22 H112 C118 22 122 26 122 32 V80 C122 86 118 90 112 90 H56 L30 112 L34 90 H16 C10 90 6 86 6 80 V32 C6 26 10 22 16 22 Z" fill="url(#naranja)" stroke="#3a1602" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M42 42 C42 34 48 30 56 30 C64 30 70 35 70 42 C70 50 60 51 60 60 V63" fill="none" stroke="#3a1602" stroke-width="13" stroke-linecap="round"/>
+  <path d="M42 42 C42 34 48 30 56 30 C64 30 70 35 70 42 C70 50 60 51 60 60 V63" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="60" cy="76" r="6" fill="#fff" stroke="#3a1602" stroke-width="3"/>
+  <path d="M88 32 V62" stroke="#3a1602" stroke-width="13" stroke-linecap="round"/>
+  <path d="M88 32 V62" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="88" cy="76" r="6" fill="#fff" stroke="#3a1602" stroke-width="3"/>
+  <path d="M112 14 C108 20 108 24 112 26 C116 24 116 20 112 14 Z" fill="#7cc8ff" stroke="#123a5c" stroke-width="3"/>
+</svg>
+
+<!-- 10. hueco -->
+<svg viewBox="0 0 128 128"></svg>
+
+</div>
+</body>
+</html>
