@@ -12,7 +12,7 @@ import {
   type Azar,
   type Rareza,
 } from './objetos.js';
-import { buscarPresente, conTitulo, enPantalla, inventario, notaMochila } from './index.js';
+import { buscarPresente, conTitulo, enPantalla, gastarPurificacion, inventario, notaMochila, puedePurificar } from './index.js';
 
 /**
  * Para qué sirve el botín (decidido el 25 sep 2026: los cuatro usos).
@@ -108,11 +108,15 @@ export const duelo: Interaction<CtxComando> = {
     const ganaYo = (ctx.azar ?? Math.random)() < prob;
     const [ganador, perdedor] = ganaYo ? [yo, rival] : [rival, yo];
     lootDb.apuntarDuelo(ganador.id, perdedor.id);
+    // La patata caliente: el maldito más fuerte del perdedor cambia de manos.
+    const maldito = lootDb.traspasarMaldito(perdedor.id, ganador.id, ganador.displayName);
+    if (maldito) enPantalla(ganador.displayName, maldito, 'maldicion');
     const sorpresa = (ganaYo ? prob : 1 - prob) < 0.4 ? ' ¡Sorpresa!' : '';
+    const traspaso = maldito ? ` ☠️ ${etiqueta(maldito)} pasa a ${ganador.displayName}.` : '';
     return {
       text:
         `⚔️ @${yo.displayName} (poder ${pa}) reta a @${rival.displayName} (poder ${pb})… ` +
-        `¡Gana ${conTitulo(ganador)}!${sorpresa} (${Math.round(prob * 100)} % para quien retaba)`,
+        `¡Gana ${conTitulo(ganador)}!${sorpresa} (${Math.round(prob * 100)} % para quien retaba)${traspaso}`,
       allowedMentions: [yo.login, rival.login],
     };
   },
@@ -142,17 +146,18 @@ export const forjar: Interaction<CtxComando> = {
   run: (ctx) => {
     const yo = ctx.viewer;
     const inv = lootDb.inventario(yo.id);
-    const rareza = rarezaAForjar(ctx.args, inv.porRareza);
-    const cuenta = RAREZAS.filter((r) => r !== 'legendario').map((r) => `${inv.porRareza[r]}${ESTILO[r].emoji}`).join(' ');
+    // Solo cuenta lo que se puede fundir: los malditos no entran en la forja.
+    const rareza = rarezaAForjar(ctx.args, inv.forjables);
+    const cuenta = RAREZAS.filter((r) => r !== 'legendario').map((r) => `${inv.forjables[r]}${ESTILO[r].emoji}`).join(' ');
+    const fundidos = rareza && inv.forjables[rareza] >= FORJA_CANTIDAD ? lootDb.consumir(yo.id, rareza, FORJA_CANTIDAD) : null;
 
-    if (!rareza || inv.porRareza[rareza] < FORJA_CANTIDAD) {
+    if (!rareza || !fundidos) {
       return {
         text: `@${yo.displayName} 🔨 Para forjar hacen falta ${FORJA_CANTIDAD} objetos de la misma rareza (tienes ${cuenta}).`,
         ...mencion(ctx),
       };
     }
     const destino = siguienteRareza(rareza)!;
-    const fundidos = lootDb.consumir(yo.id, rareza, FORJA_CANTIDAD)!;
     const lista = OBJETOS[destino];
     const objeto = lista[Math.floor((ctx.azar ?? Math.random)() * lista.length)]!;
     const botin = { objeto, rareza: destino };
@@ -190,6 +195,33 @@ export const presumir: Interaction<CtxComando> = {
     }
     enPantalla(conTitulo(yo), mejor, 'presumir');
     return { text: `💪 @${conTitulo(yo)} presume de ${etiqueta(mejor)}`, ...mencion(ctx) };
+  },
+};
+
+// ---------------------------------------------------------------------------
+// !purificar (tras canjear una Poción de vida)
+// ---------------------------------------------------------------------------
+
+export const purificar: Interaction<CtxComando> = {
+  name: 'loot-purificar',
+  spontaneous: false,
+  cooldowns: [porPersona('loot-purificar', 10_000)],
+  run: (ctx) => {
+    const yo = ctx.viewer;
+    if (!puedePurificar(yo.id)) {
+      return {
+        text: `@${yo.displayName} 🧪 Para purificar un objeto maldito, canjea antes una Poción de vida con Oro.`,
+        ...mencion(ctx),
+      };
+    }
+    const limpio = lootDb.purificar(yo.id);
+    gastarPurificacion(yo.id);
+    if (!limpio) return { text: `@${yo.displayName} 🧪 Ya no llevas nada maldito.`, ...mencion(ctx) };
+    enPantalla(yo.displayName, limpio, 'purificar');
+    return {
+      text: `🧪 @${yo.displayName} purifica ${etiqueta(limpio)}: ya es suyo para siempre (sin el poder doble).`,
+      ...mencion(ctx),
+    };
   },
 };
 
@@ -239,6 +271,7 @@ const COMANDOS: Array<[RegExp, Interaction<CtxComando>]> = [
   [/^!forjar\b/i, forjar],
   [/^!presumir\b/i, presumir],
   [/^!colecci[oó]n\b/i, coleccion],
+  [/^!purificar\b/i, purificar],
   [/^!loot\b/i, ayuda],
 ];
 
@@ -260,5 +293,6 @@ export const LISTA = [
   ['!forjar', `${FORJA_CANTIDAD} objetos de una rareza → 1 de la siguiente. Se puede elegir: !forjar raros`],
   ['!presumir', 'Tu mejor pieza, en la pantalla del directo'],
   ['!coleccion', 'Cuántos objetos distintos has conseguido. Completar una rareza da título'],
+  ['!purificar', 'Tras canjear una Poción de vida: limpia tu objeto maldito (ya no lo pierdes, pero sin poder doble)'],
 ] as const;
 

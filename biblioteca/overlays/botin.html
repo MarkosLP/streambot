@@ -9,6 +9,7 @@
 
   rareza: comun, raro, epico o legendario. Cambia colores, rayos, sonido y
   duración (5 s lo normal, 6,5 s Épico, 8 s Legendario).
+  maldito=1: aspecto de objeto maldito, sea de la rareza que sea (6,5 s).
 
   El sonido suena solo si viene ?user= (un cofre de verdad o una prueba
   lanzada desde el panel): así la vista previa de la Biblioteca no suena sola.
@@ -28,6 +29,12 @@
   body.raro       { --c1: #e6f1ff; --c2: #58a6ff; --c3: #0d3f86; --brillo: 79, 157, 255; --dur: 5s; }
   body.epico      { --c1: #f3e8ff; --c2: #b98cff; --c3: #4b1c8f; --brillo: 176, 124, 255; --dur: 6.5s; }
   body.legendario { --c1: #fff9e6; --c2: #ffb347; --c3: #8a3d00; --brillo: 255, 154, 46; --dur: 8s; }
+  /* Maldito: verde tóxico sobre morado, sea de la rareza que sea. */
+  body.maldito    { --c1: #eaffd9; --c2: #86ff5c; --c3: #3b0f5c; --brillo: 134, 255, 92; --dur: 6.5s; }
+  body.maldito .placa { background: linear-gradient(180deg, rgba(34, 10, 48, .95), rgba(12, 4, 18, .96)); }
+  body.maldito .rayos { display: block; filter: hue-rotate(-40deg); }
+  body.maldito .objeto { filter: drop-shadow(0 5px 0 rgba(0,0,0,.6)) drop-shadow(0 0 26px rgba(134,255,92,.6)); animation: tiembla .18s steps(2) infinite; }
+  @keyframes tiembla { 50% { transform: translateX(2px); } }
 
   .escena {
     position: absolute; left: 50%; top: 40%; width: 1200px; height: 520px;
@@ -130,6 +137,7 @@
   const COFRES = {
     cofre: '🎁 Cofre abierto', oro: '🗝️ Cofre del tesoro', panel: '🎁 Cofre abierto',
     prueba: '🎁 Tirada de prueba', forja: '🔨 Recién forjado', presumir: '💪 Mirad lo que tengo',
+    guerra: '⚔️ Cofre de guerra', maldicion: '☠️ Objeto maldito', purificar: '🧪 Purificado',
   };
 
   const q = new URLSearchParams(location.search);
@@ -137,8 +145,9 @@
   const user = (q.get('user') || '').slice(0, 25);
   const item = (q.get('item') || '').slice(0, 60);
 
-  document.body.className = rareza;
-  document.getElementById('rango').textContent = RANGOS[rareza];
+  const maldito = q.get('maldito') === '1';
+  document.body.className = maldito ? `${rareza} maldito` : rareza;
+  document.getElementById('rango').textContent = maldito ? `☠ MALDITO · ${RANGOS[rareza].replace(/[★✦◆]/g, '').trim()} ☠` : RANGOS[rareza];
   document.getElementById('cofre').textContent = COFRES[q.get('origen')] || COFRES.cofre;
   if (item) document.getElementById('objeto').textContent = item;
   if (user) {
@@ -147,7 +156,7 @@
     const b = document.createElement('b');
     b.textContent = user;
     quien.append(b);
-    const sonido = new Audio(rareza === 'legendario' ? '../sonidos/legendario.wav' : '../sonidos/cofre.wav');
+    const sonido = new Audio(maldito ? '../sonidos/maldicion.wav' : rareza === 'legendario' ? '../sonidos/legendario.wav' : '../sonidos/cofre.wav');
     sonido.volume = 0.8;
     sonido.play().catch(() => {});
   }

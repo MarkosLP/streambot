@@ -33,9 +33,13 @@ export const ESTILO: Record<Rareza, { nombre: string; plural: string; emoji: str
  * `oro` es el Cofre del tesoro que se compra con puntos de canal. Tiene que
  * notarse que es mejor, o nadie gastará sus puntos en él.
  */
-export const PROBABILIDADES: Record<'cofre' | 'oro', Record<Rareza, number>> = {
+export type TipoCofre = 'cofre' | 'oro' | 'guerra';
+
+export const PROBABILIDADES: Record<TipoCofre, Record<Rareza, number>> = {
   cofre: { comun: 60, raro: 26, epico: 10, legendario: 4 },
   oro: { comun: 35, raro: 35, epico: 22, legendario: 8 },
+  // El cofre que atrae un Grito de guerra: solo armas, y con algo más de suerte.
+  guerra: { comun: 45, raro: 33, epico: 16, legendario: 6 },
 };
 
 export const OBJETOS: Record<Rareza, string[]> = {
@@ -134,9 +138,19 @@ export type Azar = () => number;
 export interface Botin {
   objeto: string;
   rareza: Rareza;
+  /**
+   * Objeto maldito (lo da la Maldición): el doble de poder, pero si pierdes
+   * un duelo pasa a quien te ha ganado. Una Poción de vida lo purifica.
+   */
+  maldito?: boolean;
 }
 
-export function tirar(tipo: 'cofre' | 'oro', azar: Azar = Math.random): Botin {
+/** Qué objetos son armas. Por el nombre, para que valga con los que añadas. */
+// Palabra completa: "Colgante de hojalata" no es un arma aunque lleve "hoja".
+const ARMA = /(?<!\p{L})(espada|daga|hacha|arco|lanza|martillo|hoja|filo|báculo|bastón|flecha)(?!\p{L})/iu;
+export const esArma = (objeto: string) => ARMA.test(objeto);
+
+export function tirar(tipo: TipoCofre, azar: Azar = Math.random): Botin {
   const tabla = PROBABILIDADES[tipo];
   let tirada = azar() * 100;
   let rareza: Rareza = 'comun';
@@ -147,12 +161,18 @@ export function tirar(tipo: 'cofre' | 'oro', azar: Azar = Math.random): Botin {
     }
     tirada -= tabla[r];
   }
-  const lista = OBJETOS[rareza];
+  // En el cofre de guerra solo hay armas. Si alguien deja una rareza sin
+  // ninguna, se tira de la lista entera antes que no dar nada.
+  const armas = OBJETOS[rareza].filter(esArma);
+  const lista = tipo === 'guerra' && armas.length ? armas : OBJETOS[rareza];
   const objeto = lista[Math.min(lista.length - 1, Math.floor(azar() * lista.length))]!;
   return { objeto, rareza };
 }
 
-/** `🟣 Capa de las Sombras`, como se escribe en el chat. */
+/** `🟣 Capa de las Sombras`, como se escribe en el chat. Maldito: `☠️🟣 …`. */
 export function etiqueta(b: Botin): string {
-  return `${ESTILO[b.rareza].emoji} ${b.objeto}`;
+  return `${b.maldito ? '☠️' : ''}${ESTILO[b.rareza].emoji} ${b.objeto}`;
 }
+
+/** El poder de un objeto: el doble si está maldito. */
+export const poderDe = (b: Botin) => PODER[b.rareza] * (b.maldito ? 2 : 1);

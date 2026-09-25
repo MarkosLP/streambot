@@ -82,7 +82,7 @@ async function main(): Promise<void> {
   // Loot del chat: cada botín sale en OBS con el banner de su rareza. La
   // fila (para que no se pisen) la lleva el propio Loot.
   loot.setPantalla((quien, botin, origen) =>
-    conObs((pedir) => mostrarBotin(pedir, { quien, objeto: botin.objeto, rareza: botin.rareza, origen })),
+    conObs((pedir) => mostrarBotin(pedir, { quien, objeto: botin.objeto, rareza: botin.rareza, origen, maldito: botin.maldito })),
   );
   loot.arrancar();
 

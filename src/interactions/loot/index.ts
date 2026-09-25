@@ -87,7 +87,7 @@ export function aventureros(now = Date.now()): Viewer[] {
 // El botín en pantalla
 // ---------------------------------------------------------------------------
 
-export type OrigenPantalla = 'cofre' | 'oro' | 'panel' | 'prueba' | 'forja' | 'presumir';
+export type OrigenPantalla = 'cofre' | 'oro' | 'panel' | 'prueba' | 'forja' | 'presumir' | 'guerra' | 'maldicion' | 'purificar';
 export type Pantalla = (quien: string, botin: Botin, origen: OrigenPantalla) => Promise<void>;
 let pantalla: Pantalla | null = null;
 let fila: Promise<void> = Promise.resolve();
@@ -188,21 +188,31 @@ export async function soltarCofre(
     return { ok: false, motivo: `nadie ha escrito en el chat en los últimos ${config.loot.minutosActividad} minutos` };
   }
 
+  // Si alguien lanzó un Grito de guerra, este es el cofre de guerra: solo armas.
+  const guerra = cofreDeGuerra;
+  cofreDeGuerra = null;
+  const tipo = guerra ? 'guerra' : 'cofre';
+  const origenFinal = guerra ? 'guerra' : origen;
+
   // Se guarda ANTES de anunciar: si el mensaje no sale (tope por hora, un
   // corte), el botín ya es de quien le tocó y lo verá en !inventario.
   const reparto: Reparto[] = gente.map((viewer) => {
-    const botin = tirar('cofre', azar);
-    return { viewer, botin, resultado: lootDb.dar(viewer.id, viewer.displayName, botin, origen) };
+    const botin = tirar(tipo, azar);
+    return { viewer, botin, resultado: lootDb.dar(viewer.id, viewer.displayName, botin, origenFinal) };
   });
 
-  const outcome = await send({ text: componerCofre(reparto), reason: NAME });
+  const texto = componerCofre(reparto);
+  const outcome = await send({
+    text: guerra ? texto.replace(/^(🎁 ¡Ha caído un cofre!|✨ ¡Cofre LEGENDARIO!)/, `⚔️ ¡Cofre de guerra (grito de ${guerra})!`) : texto,
+    reason: NAME,
+  });
   interactionLog.record({
     interaction: NAME,
     status: outcome.sent ? 'sent' : 'blocked',
     detail: `${origen}: ${reparto.map((r) => `${r.viewer.login}=${r.botin.rareza}`).join(', ')}`,
   });
 
-  for (const r of reparto) enPantalla(r.viewer.displayName, r.botin, origen);
+  for (const r of reparto) enPantalla(r.viewer.displayName, r.botin, origenFinal);
   ultimoCofre = now;
   return { ok: true, reparto, enviado: outcome.sent };
 }
@@ -249,6 +259,121 @@ export const channelPointBinding = {
 };
 
 // ---------------------------------------------------------------------------
+// Los efectos del canal, conectados con el botín
+// ---------------------------------------------------------------------------
+//
+// Los efectos siguen viviendo en Streamer.bot (sonido, OBS). Aquí solo se
+// añade su lado del Loot, y solo con el Loot activo:
+//
+//   ⚔️ Grito de guerra  → "¡A las armas!": el próximo cofre cae en 1-2 min
+//                         y es de guerra (solo armas, algo más de suerte).
+//                         Para todo el chat activo, no solo para quien grita.
+//   💀 Maldición        → quien maldice recibe un objeto maldito: poder
+//                         doble, pero si pierde un duelo pasa al ganador.
+//   🧪 Poción de vida   → si llevas un maldito, te ofrece purificarlo
+//                         (!purificar): ya no se pierde, pero pierde el doble.
+
+const mismoTitulo = (a: string, b: string) =>
+  a.normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase() === b.normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase();
+
+interface CtxEfecto extends Ctx {
+  trigger: 'channel-point';
+  azar: Azar;
+}
+
+/** El que canjea un efecto está en el directo: cuenta como activo para los cofres. */
+function presente(viewer: Viewer): void {
+  if (config.ignoredLogins.includes(viewer.login) || viewer.login === config.broadcasterLogin) return;
+  if (consent.haPedidoOlvido(viewer.id)) return;
+  registrarActividad(viewer);
+}
+
+export const grito: Interaction<CtxEfecto> = {
+  name: 'loot-grito',
+  spontaneous: false,
+  guards: [
+    () => (ajustes.lootActivo() ? { ok: true } : { ok: false, motivo: 'el Loot está apagado' }),
+    () => (streams.current() ? { ok: true } : { ok: false, motivo: 'sin directo no caen cofres' }),
+    // No se acumula: si ya viene uno de guerra, solo suena el grito.
+    () => (cofreDeGuerra === null ? { ok: true } : { ok: false, motivo: 'ya hay un cofre de guerra en camino' }),
+  ],
+  run: (ctx) => {
+    cofreDeGuerra = ctx.viewer.displayName;
+    programarEn((60 + ctx.azar() * 60) * 1000);
+    return { text: `⚔️ ¡A las armas! El grito de ${ctx.viewer.displayName} atrae un cofre de guerra: cae en 1-2 min para quien esté en el chat.` };
+  },
+};
+
+export const maldicion: Interaction<CtxEfecto> = {
+  name: 'loot-maldicion',
+  spontaneous: false,
+  guards: [
+    () => (ajustes.lootActivo() ? { ok: true } : { ok: false, motivo: 'el Loot está apagado' }),
+    (ctx) => (consent.haPedidoOlvido(ctx.viewer.id) ? { ok: false, motivo: 'pidió el olvido' } : { ok: true }),
+  ],
+  run: (ctx) => {
+    const botin = { ...tirar('oro', ctx.azar), maldito: true };
+    lootDb.dar(ctx.viewer.id, ctx.viewer.displayName, botin, 'maldicion');
+    enPantalla(ctx.viewer.displayName, botin, 'maldicion');
+    return {
+      text:
+        `☠️ @${ctx.viewer.displayName} maldice al streamer… y la maldición le devuelve ${etiqueta(botin)}: ` +
+        `poder doble, pero si pierde un duelo pasa al ganador.`,
+      allowedMentions: [ctx.viewer.login],
+    };
+  },
+};
+
+/** Quién puede purificar ahora mismo, y hasta cuándo. */
+const purificaciones = new Map<string, number>();
+const VENTANA_PURIFICAR_MS = 5 * 60_000;
+
+export function puedePurificar(twitchId: string, now = Date.now()): boolean {
+  const hasta = purificaciones.get(twitchId);
+  return hasta !== undefined && hasta >= now;
+}
+
+export function gastarPurificacion(twitchId: string): void {
+  purificaciones.delete(twitchId);
+}
+
+export const pocion: Interaction<CtxEfecto> = {
+  name: 'loot-pocion',
+  spontaneous: false,
+  guards: [
+    () => (ajustes.lootActivo() ? { ok: true } : { ok: false, motivo: 'el Loot está apagado' }),
+    // Sin maldito, la poción es solo "¡Bebe agua!" y el bot no dice nada.
+    (ctx) => (lootDb.tieneMaldito(ctx.viewer.id) ? { ok: true } : { ok: false, motivo: 'no lleva nada maldito' }),
+  ],
+  run: (ctx) => {
+    const maldito = lootDb.tieneMaldito(ctx.viewer.id)!;
+    purificaciones.set(ctx.viewer.id, Date.now() + VENTANA_PURIFICAR_MS);
+    return {
+      text:
+        `🧪 @${ctx.viewer.displayName} la poción puede limpiar tu ${etiqueta(maldito)}. ` +
+        `Escribe !purificar en 5 min: será tuyo para siempre, pero pierde el poder doble.`,
+      allowedMentions: [ctx.viewer.login],
+    };
+  },
+};
+
+function efectoBinding(titulo: string, def: Interaction<CtxEfecto>) {
+  return {
+    matches: (event: ViewerRedeemEvent) => mismoTitulo(event.rewardTitle, titulo),
+    run: (event: ViewerRedeemEvent, azar: Azar = Math.random) => {
+      presente(event.viewer);
+      return engine.run(def, { viewer: event.viewer, trigger: 'channel-point' as const, azar });
+    },
+  };
+}
+
+export const efectosBindings = [
+  efectoBinding('Grito de guerra', grito),
+  efectoBinding('Maldición', maldicion),
+  efectoBinding('Poción de vida', pocion),
+];
+
+// ---------------------------------------------------------------------------
 // !inventario
 // ---------------------------------------------------------------------------
 
@@ -261,7 +386,8 @@ export function componerInventario(displayName: string, inv: lootDb.Inventario):
     .map((r) => `${inv.porRareza[r]} ${ESTILO[r].emoji}`)
     .join(' ');
   const mejor = inv.mejor ? ` · Tu mejor pieza: ${etiqueta(inv.mejor)}` : '';
-  return `@${displayName} 🎒 ${inv.total}/${MOCHILA_MAX}: ${cuenta} · ⚔️ Poder ${inv.poder}${mejor}`;
+  const malditos = inv.malditos ? ` · ☠️ ${inv.malditos} maldito${inv.malditos === 1 ? '' : 's'}` : '';
+  return `@${displayName} 🎒 ${inv.total}/${MOCHILA_MAX}: ${cuenta} · ⚔️ Poder ${inv.poder}${malditos}${mejor}`;
 }
 
 export const inventario: Interaction<Ctx> = {
@@ -287,14 +413,21 @@ export const inventario: Interaction<Ctx> = {
 let reloj: ReturnType<typeof setTimeout> | null = null;
 let proximo: number | null = null;
 let ultimoCofre: number | null = null;
+/** Quién lanzó el Grito de guerra que ha convertido el próximo cofre en uno de guerra. */
+let cofreDeGuerra: string | null = null;
+
+/** Cambia cuándo cae el próximo cofre. Lo usa el Grito de guerra para adelantarlo. */
+function programarEn(ms: number): void {
+  if (reloj) clearTimeout(reloj);
+  proximo = Date.now() + ms;
+  reloj = setTimeout(() => void tic(), ms);
+  reloj.unref?.();
+}
 
 /** Programa el siguiente cofre dentro del margen de minutos, al azar. */
 function programar(azar: Azar = Math.random): void {
   const { minutosMin, minutosMax } = config.loot;
-  const ms = (minutosMin + azar() * Math.max(0, minutosMax - minutosMin)) * 60_000;
-  proximo = Date.now() + ms;
-  reloj = setTimeout(() => void tic(), ms);
-  reloj.unref?.();
+  programarEn((minutosMin + azar() * Math.max(0, minutosMax - minutosMin)) * 60_000);
 }
 
 async function tic(): Promise<void> {
@@ -339,6 +472,7 @@ export function estado(now = Date.now()) {
     proximoEnSeg: proximo ? Math.max(0, Math.round((proximo - now) / 1000)) : null,
     ultimoCofre: ultimoCofre ? new Date(ultimoCofre).toISOString() : null,
     aventureros: aventureros(now).map((v) => v.displayName),
+    cofreDeGuerra,
     minutosActividad: config.loot.minutosActividad,
   };
 }
@@ -349,6 +483,8 @@ export function reset(): void {
   vistos.clear();
   parar();
   ultimoCofre = null;
+  cofreDeGuerra = null;
+  purificaciones.clear();
   pantalla = null;
   fila = Promise.resolve();
 }

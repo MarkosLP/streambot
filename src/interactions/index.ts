@@ -23,4 +23,6 @@ export const channelPoint: ChannelPointBinding[] = [
   preguntaIa.channelPointBinding,
   preguntaIncomoda.channelPointBinding,
   loot.channelPointBinding,
+  // Grito, Maldición y Poción: su lado del Loot. El efecto sigue en Streamer.bot.
+  ...loot.efectosBindings,
 ];

@@ -600,7 +600,7 @@ const RAREZA_LOOT = {
   epico: { clase: 'r-epico', nombre: 'Épico' },
   legendario: { clase: 'r-legendario', nombre: 'Legendario' },
 };
-const ORIGEN = { cofre: 'cofre', oro: 'Cofre del tesoro', panel: 'desde el panel', forja: 'forjado' };
+const ORIGEN = { cofre: 'cofre', oro: 'Cofre del tesoro', panel: 'desde el panel', forja: 'forjado', guerra: 'cofre de guerra', maldicion: 'Maldición' };
 
 function mmss(seg) {
   const m = Math.floor(seg / 60);
@@ -609,7 +609,8 @@ function mmss(seg) {
 
 function pildoraBotin(b) {
   const r = RAREZA_LOOT[b.rareza];
-  return h('span', { class: `botin ${r.clase}` }, h('span', { class: 'gema' }), b.objeto);
+  return h('span', { class: `botin ${r.clase}${b.maldito ? ' maldito' : ''}`, title: b.maldito ? 'Maldito: poder doble, se pierde en un duelo' : null },
+    h('span', { class: 'gema' }), b.maldito ? `☠️ ${b.objeto}` : b.objeto);
 }
 
 async function cargarLoot() {

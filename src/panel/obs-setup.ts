@@ -234,7 +234,7 @@ export const DURACION_BANNER_MS: Record<string, number> = { comun: 5000, raro: 5
  */
 export async function mostrarBotin(
   pedir: PedirObs,
-  { quien, objeto, rareza, origen }: { quien: string; objeto: string; rareza: string; origen: string },
+  { quien, objeto, rareza, origen, maldito = false }: { quien: string; objeto: string; rareza: string; origen: string; maldito?: boolean },
   { esperar = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)) } = {},
 ): Promise<void> {
   await renombrarAntigua(pedir);
@@ -242,11 +242,11 @@ export async function mostrarBotin(
   const dondeEsta = await buscar(pedir, nombre);
   if (!dondeEsta) throw new ErrorObs(`No existe la fuente «${nombre}». Créala con «Preparar en OBS».`);
 
-  const params = new URLSearchParams({ user: quien, item: objeto, rareza, origen }).toString().replace(/\+/g, '%20');
+  const params = new URLSearchParams({ user: quien, item: objeto, rareza, origen, ...(maldito && { maldito: '1' }) }).toString().replace(/\+/g, '%20');
   await pedir('SetInputSettings', { inputName: nombre, inputSettings: { url: urlBotin(`?${params}`) }, overlay: true });
   await pedir('SetSceneItemEnabled', { sceneName: dondeEsta.escena, sceneItemId: dondeEsta.id, sceneItemEnabled: true });
   try {
-    await esperar(DURACION_BANNER_MS[rareza] ?? 5000);
+    await esperar(maldito ? 6500 : (DURACION_BANNER_MS[rareza] ?? 5000));
   } finally {
     await pedir('SetSceneItemEnabled', { sceneName: dondeEsta.escena, sceneItemId: dondeEsta.id, sceneItemEnabled: false });
   }
