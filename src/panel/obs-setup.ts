@@ -19,16 +19,19 @@ export const PREPARABLES = {
   pocion: { nombre: 'FX Pocion', tipo: 'fuente', donde: 'escena' },
   maldicion: { nombre: 'FX Maldicion', tipo: 'filtro', donde: 'fuente' },
   lag: { nombre: 'FX Lag', tipo: 'filtro', donde: 'fuente', plugin: 'Freeze Filter' },
-  legendario: { nombre: 'FX Legendario', tipo: 'fuente', donde: 'escena' },
+  botin: { nombre: 'FX Botin', tipo: 'fuente', donde: 'escena' },
 } as const;
 
 /**
- * El banner del Loot Legendario lo sirve el panel y no un archivo local:
- * así el bot puede pasarle en la dirección quién ha ganado qué. Un archivo
- * local de OBS no admite parámetros.
+ * El banner del Loot lo sirve el panel y no un archivo local: así el bot
+ * puede pasarle en la dirección quién ha ganado qué. Un archivo local de OBS
+ * no admite parámetros.
  */
-export const urlLegendario = (params = '') =>
-  `http://127.0.0.1:${config.panel.port}/biblioteca/overlays/legendario.html${params}`;
+export const urlBotin = (params = '') =>
+  `http://127.0.0.1:${config.panel.port}/biblioteca/overlays/botin.html${params}`;
+
+/** Nombre que tuvo la fuente cuando solo salía con los Legendarios. */
+const NOMBRE_ANTIGUO_BOTIN = 'FX Legendario';
 
 export type Preparable = keyof typeof PREPARABLES;
 
@@ -82,7 +85,7 @@ export async function estado(pedir: PedirObs, fuenteJuego?: string): Promise<Est
       .map((i) => ({ nombre: i.inputName, tipo: i.inputKind })),
     existe: {
       pocion: entradas.inputs.some((i) => i.inputName === PREPARABLES.pocion.nombre),
-      legendario: entradas.inputs.some((i) => i.inputName === PREPARABLES.legendario.nombre),
+      botin: entradas.inputs.some((i) => i.inputName === PREPARABLES.botin.nombre || i.inputName === NOMBRE_ANTIGUO_BOTIN),
       maldicion: filtros ? filtros.includes(PREPARABLES.maldicion.nombre) : null,
       lag: filtros ? filtros.includes(PREPARABLES.lag.nombre) : null,
     },
@@ -119,7 +122,8 @@ async function prepararUno(
   { escena, fuente }: { escena?: string; fuente?: string },
   dirBiblioteca: string,
 ): Promise<string> {
-  if (efecto === 'pocion' || efecto === 'legendario') {
+  if (efecto === 'botin') await renombrarAntigua(pedir);
+  if (efecto === 'pocion' || efecto === 'botin') {
     if (!escena) throw new ErrorObs('Elige la escena del juego.');
     const nombre = PREPARABLES[efecto].nombre;
     const comunes = {
@@ -133,7 +137,7 @@ async function prepararUno(
       ? { ...comunes, is_local_file: true, local_file: join(dirBiblioteca, 'overlays', 'pocion.html') }
       // La fanfarria la toca el propio overlay: con "controlar el audio desde
       // OBS" suena en el directo como una fuente más del mezclador.
-      : { ...comunes, is_local_file: false, url: urlLegendario(), reroute_audio: true };
+      : { ...comunes, is_local_file: false, url: urlBotin(), reroute_audio: true };
     try {
       const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateInput', {
         sceneName: escena, inputName: nombre, inputKind: 'browser_source', inputSettings: ajustes, sceneItemEnabled: false,
@@ -207,25 +211,42 @@ async function buscar(pedir: PedirObs, fuente: string): Promise<{ escena: string
 }
 
 /**
- * Enseña el banner del Loot Legendario con el nombre y el objeto, y lo
- * vuelve a esconder. Si la fuente no existe, lo dice y no hace nada más:
- * el Legendario ya se ha anunciado en el chat.
+ * La fuente se llamó «FX Legendario» mientras el banner era solo para los
+ * Legendarios. Si queda una con ese nombre, se renombra: así nadie tiene que
+ * volver a crearla ni recolocarla.
  */
-export async function mostrarLegendario(
+async function renombrarAntigua(pedir: PedirObs): Promise<void> {
+  const { inputs } = await pedir<{ inputs: { inputName: string }[] }>('GetInputList');
+  const nueva = inputs.some((i) => i.inputName === PREPARABLES.botin.nombre);
+  const vieja = inputs.some((i) => i.inputName === NOMBRE_ANTIGUO_BOTIN);
+  if (vieja && !nueva) {
+    await pedir('SetInputName', { inputName: NOMBRE_ANTIGUO_BOTIN, newInputName: PREPARABLES.botin.nombre });
+  }
+}
+
+/** Cuánto se queda el banner en pantalla. Lo mismo mide la animación del overlay. */
+export const DURACION_BANNER_MS: Record<string, number> = { comun: 5000, raro: 5000, epico: 6500, legendario: 8000 };
+
+/**
+ * Enseña el banner de un botín con quién, qué y de qué rareza, y lo vuelve a
+ * esconder. Si la fuente no existe, lo dice y no hace nada más: el botín ya
+ * se ha anunciado en el chat.
+ */
+export async function mostrarBotin(
   pedir: PedirObs,
-  quien: string,
-  objeto: string,
-  { duracionMs = 8000, esperar = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)) } = {},
+  { quien, objeto, rareza, origen }: { quien: string; objeto: string; rareza: string; origen: string },
+  { esperar = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)) } = {},
 ): Promise<void> {
-  const nombre = PREPARABLES.legendario.nombre;
+  await renombrarAntigua(pedir);
+  const nombre = PREPARABLES.botin.nombre;
   const dondeEsta = await buscar(pedir, nombre);
   if (!dondeEsta) throw new ErrorObs(`No existe la fuente «${nombre}». Créala con «Preparar en OBS».`);
 
-  const params = `?user=${encodeURIComponent(quien)}&item=${encodeURIComponent(objeto)}`;
-  await pedir('SetInputSettings', { inputName: nombre, inputSettings: { url: urlLegendario(params) }, overlay: true });
+  const params = new URLSearchParams({ user: quien, item: objeto, rareza, origen }).toString().replace(/\+/g, '%20');
+  await pedir('SetInputSettings', { inputName: nombre, inputSettings: { url: urlBotin(`?${params}`) }, overlay: true });
   await pedir('SetSceneItemEnabled', { sceneName: dondeEsta.escena, sceneItemId: dondeEsta.id, sceneItemEnabled: true });
   try {
-    await esperar(duracionMs);
+    await esperar(DURACION_BANNER_MS[rareza] ?? 5000);
   } finally {
     await pedir('SetSceneItemEnabled', { sceneName: dondeEsta.escena, sceneItemId: dondeEsta.id, sceneItemEnabled: false });
   }

@@ -1,0 +1,153 @@
+<!doctype html>
+<!--
+  Overlay "Botín" del Loot del chat, para OBS.
+
+  NO se monta a mano: lo crea "Preparar en OBS" (fuente FX Botin) y lo enseña
+  el propio bot cada vez que se abre un cofre, con estos datos en la dirección:
+
+    botin.html?user=Nombre&item=Capa%20de%20las%20Sombras&rareza=epico
+
+  rareza: comun, raro, epico o legendario. Cambia colores, rayos, sonido y
+  duración (5 s lo normal, 6,5 s Épico, 8 s Legendario).
+
+  El sonido suena solo si viene ?user= (un cofre de verdad o una prueba
+  lanzada desde el panel): así la vista previa de la Biblioteca no suena sola.
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Botín</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&display=swap">
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+  body { font-family: "Chakra Petch", "Segoe UI", sans-serif; }
+
+  /* Colores por rareza: claro, principal, oscuro. */
+  body.comun      { --c1: #ffffff; --c2: #c9d1de; --c3: #5d6675; --brillo: 180, 190, 205; --dur: 5s; }
+  body.raro       { --c1: #e6f1ff; --c2: #58a6ff; --c3: #0d3f86; --brillo: 79, 157, 255; --dur: 5s; }
+  body.epico      { --c1: #f3e8ff; --c2: #b98cff; --c3: #4b1c8f; --brillo: 176, 124, 255; --dur: 6.5s; }
+  body.legendario { --c1: #fff9e6; --c2: #ffb347; --c3: #8a3d00; --brillo: 255, 154, 46; --dur: 8s; }
+
+  .escena {
+    position: absolute; left: 50%; top: 40%; width: 1200px; height: 520px;
+    transform: translate(-50%, -50%);
+    animation: entra 0.7s cubic-bezier(.2, 1.4, .4, 1) both, sale 0.6s ease-in calc(var(--dur) - 0.7s) forwards;
+  }
+  @keyframes entra { from { opacity: 0; transform: translate(-50%, -50%) scale(0.4); } }
+  @keyframes sale { to { opacity: 0; transform: translate(-50%, -60%) scale(1.04); } }
+  .comun .escena, .raro .escena { transform: translate(-50%, -50%) scale(.82); animation-name: entra-p, sale-p; }
+  @keyframes entra-p { from { opacity: 0; transform: translate(-50%, -50%) scale(0.35); } }
+  @keyframes sale-p { to { opacity: 0; transform: translate(-50%, -60%) scale(.86); } }
+
+  /* Rayos: solo Épico y Legendario. Lo normal no necesita tanto espectáculo. */
+  .rayos {
+    display: none;
+    position: absolute; left: 50%; top: 50%; width: 1400px; height: 1400px; margin: -700px 0 0 -700px;
+    background: repeating-conic-gradient(from 0deg, rgba(var(--brillo), .28) 0deg 6deg, rgba(var(--brillo), 0) 6deg 20deg);
+    -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 60%);
+    mask-image: radial-gradient(circle, #000 0%, transparent 60%);
+    animation: gira 14s linear infinite;
+  }
+  .epico .rayos, .legendario .rayos { display: block; }
+  @keyframes gira { to { transform: rotate(360deg); } }
+
+  .halo {
+    position: absolute; inset: 60px 120px;
+    background: radial-gradient(ellipse at center, rgba(var(--brillo), .5), rgba(var(--brillo), 0) 65%);
+    animation: pulso 1.2s ease-in-out infinite;
+  }
+  @keyframes pulso { 50% { opacity: .6; transform: scale(1.06); } }
+
+  .placa {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 1040px; padding: 34px 60px 38px; box-sizing: border-box; text-align: center;
+    background: linear-gradient(180deg, rgba(20, 16, 28, .93), rgba(10, 8, 14, .95));
+    border: 4px solid var(--c2); border-radius: 22px;
+    box-shadow: 0 0 0 3px var(--c3), 0 0 60px rgba(var(--brillo), .65), inset 0 0 40px rgba(var(--brillo), .22);
+  }
+  .placa::before, .placa::after {
+    content: "◆"; position: absolute; top: 50%; transform: translateY(-50%);
+    color: var(--c2); font-size: 40px; text-shadow: 0 0 16px rgba(var(--brillo), 1);
+  }
+  .placa::before { left: 20px; }
+  .placa::after { right: 20px; }
+
+  .cofre { font-size: 30px; font-weight: 600; letter-spacing: .08em; color: rgba(255, 255, 255, .75); }
+  .rango {
+    margin-top: 4px; font-size: 34px; font-weight: 700; letter-spacing: .5em; color: var(--c2);
+    text-shadow: 0 0 18px rgba(var(--brillo), .9);
+    animation: parpadeo 1.6s ease-in-out infinite;
+  }
+  @keyframes parpadeo { 50% { opacity: .75; } }
+
+  .objeto {
+    margin: 8px 0 10px; font-size: 80px; font-weight: 700; line-height: 1.02;
+    background: linear-gradient(180deg, var(--c1) 0%, var(--c1) 30%, var(--c2) 75%, var(--c3) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    -webkit-text-stroke: 2px rgba(0, 0, 0, .55);
+    filter: drop-shadow(0 5px 0 rgba(0, 0, 0, .6)) drop-shadow(0 0 26px rgba(var(--brillo), .6));
+  }
+  .quien { font-size: 38px; font-weight: 600; color: #fff; text-shadow: 0 3px 0 #000, 0 0 12px rgba(0,0,0,.8); }
+  .quien b { color: var(--c2); }
+
+  .chispa {
+    position: absolute; width: 12px; height: 12px; border-radius: 2px; background: var(--c1);
+    box-shadow: 0 0 14px var(--c2), 0 0 30px rgba(var(--brillo), 1); opacity: 0;
+    animation: chispa 1.8s ease-out infinite;
+  }
+  .comun .chispa { display: none; }
+  @keyframes chispa {
+    0% { opacity: 0; transform: translateY(20px) rotate(45deg) scale(.2); }
+    25% { opacity: 1; transform: translateY(0) rotate(45deg) scale(1.3); }
+    100% { opacity: 0; transform: translateY(-120px) rotate(45deg) scale(.3); }
+  }
+</style>
+</head>
+<body class="legendario">
+  <div class="escena">
+    <div class="rayos"></div>
+    <div class="halo"></div>
+    <div class="placa">
+      <div class="cofre" id="cofre">🎁 Cofre abierto</div>
+      <div class="rango" id="rango">★ LEGENDARIO ★</div>
+      <div class="objeto" id="objeto">Espada del Amanecer Eterno</div>
+      <div class="quien" id="quien">para <b>el chat</b></div>
+    </div>
+    <span class="chispa" style="left: 60px; top: 80px; animation-delay: .6s"></span>
+    <span class="chispa" style="left: 300px; top: 20px; animation-delay: 1.1s"></span>
+    <span class="chispa" style="left: 580px; top: 0; animation-delay: .9s"></span>
+    <span class="chispa" style="left: 880px; top: 30px; animation-delay: 1.4s"></span>
+    <span class="chispa" style="left: 1120px; top: 90px; animation-delay: .7s"></span>
+    <span class="chispa" style="left: 1080px; top: 420px; animation-delay: 1.7s"></span>
+    <span class="chispa" style="left: 120px; top: 440px; animation-delay: 2s"></span>
+    <span class="chispa" style="left: 620px; top: 490px; animation-delay: 1.3s"></span>
+  </div>
+
+<script>
+  // Todo como texto, nunca como HTML: el nombre lo elige cada espectador.
+  const RANGOS = { comun: 'COMÚN', raro: '◆ RARO ◆', epico: '✦ ÉPICO ✦', legendario: '★ LEGENDARIO ★' };
+  const COFRES = { cofre: '🎁 Cofre abierto', oro: '🗝️ Cofre del tesoro', panel: '🎁 Cofre abierto', prueba: '🎁 Tirada de prueba' };
+
+  const q = new URLSearchParams(location.search);
+  const rareza = RANGOS[q.get('rareza')] ? q.get('rareza') : 'legendario';
+  const user = (q.get('user') || '').slice(0, 25);
+  const item = (q.get('item') || '').slice(0, 60);
+
+  document.body.className = rareza;
+  document.getElementById('rango').textContent = RANGOS[rareza];
+  document.getElementById('cofre').textContent = COFRES[q.get('origen')] || COFRES.cofre;
+  if (item) document.getElementById('objeto').textContent = item;
+  if (user) {
+    const quien = document.getElementById('quien');
+    quien.textContent = 'para ';
+    const b = document.createElement('b');
+    b.textContent = user;
+    quien.append(b);
+    const sonido = new Audio(rareza === 'legendario' ? '../sonidos/legendario.wav' : '../sonidos/cofre.wav');
+    sonido.volume = 0.8;
+    sonido.play().catch(() => {});
+  }
+</script>
+</body>
+</html>

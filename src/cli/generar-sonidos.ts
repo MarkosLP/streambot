@@ -424,6 +424,32 @@ function legendario(): Senal {
   return masterizar(reverb(total, 0.4, 2.2), 1.4);
 }
 
+/** Cofre que se abre: crujido de madera, monedas y un brillo. Para lo que no es Legendario. */
+function cofre(): Senal {
+  const total = vacio(2.2);
+  // Crujido: ruido filtrado que sube, como una bisagra vieja.
+  const bisagra = biquad(ruido(0.45), 'banda', (t) => 300 + 900 * (t / 0.45), 6);
+  for (let i = 0; i < bisagra.length; i++) {
+    const t = i / SR;
+    bisagra[i] *= Math.sin((Math.PI * t) / 0.45) * (0.6 + 0.4 * Math.sin(t * 90));
+  }
+  mezclar(total, bisagra, 0, 0.5);
+  mezclar(total, tambor(160, 90, 0.4), 0.42, 0.5);
+
+  // Monedas: tintineos agudos y cortos.
+  for (let n = 0; n < 9; n++) {
+    const f = 2400 + azar() * 2200;
+    const m = vacio(0.18);
+    for (let i = 0; i < m.length; i++) {
+      const t = i / SR;
+      m[i] = (Math.sin(2 * Math.PI * f * t) + 0.5 * Math.sin(2 * Math.PI * f * 2.7 * t)) * Math.exp(-t * 28);
+    }
+    mezclar(total, m, 0.48 + azar() * 0.35, 0.12 + azar() * 0.1);
+  }
+  [1318.5, 1568, 2093].forEach((f, i) => mezclar(total, campana(f, 1.2), 0.62 + i * 0.07, 0.2));
+  return masterizar(reverb(total, 0.3, 1.2), 1.1);
+}
+
 // ---------------------------------------------------------------------------
 
 const SONIDOS: Record<string, () => Senal> = {
@@ -435,6 +461,7 @@ const SONIDOS: Record<string, () => Senal> = {
   // Los nuevos, SIEMPRE al final: el azar lleva semilla y es compartido, así
   // que uno nuevo delante cambiaría todos los que ya tienes montados.
   legendario,
+  cofre,
 };
 
 mkdirSync(DESTINO, { recursive: true });

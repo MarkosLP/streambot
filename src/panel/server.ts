@@ -17,7 +17,7 @@ import * as obsSetup from './obs-setup.js';
 import * as importar from './importar.js';
 import * as loot from '../interactions/loot/index.js';
 import * as lootDb from '../data/loot.js';
-import { OBJETOS, PROBABILIDADES, tirar } from '../interactions/loot/objetos.js';
+import { PROBABILIDADES, tirar } from '../interactions/loot/objetos.js';
 import * as cooldowns from '../core/cooldowns.js';
 import { conObs, type PedirObs } from '../transport/obs.js';
 
@@ -239,10 +239,14 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     return json(res, 200, { enviado: r.enviado, reparto: r.reparto.map((x) => ({ quien: x.viewer.displayName, ...x.botin })) });
   }
 
-  // Una tirada de mentira: ni se guarda ni sale al chat. Para ver cómo pinta.
+  // Una tirada de mentira: ni se guarda ni sale al chat, pero SÍ sale en OBS,
+  // que es justo lo que quieres ver al probar.
   if (ruta === 'POST /api/loot/prueba') {
     const { tipo } = await cuerpo(req);
-    return json(res, 200, tirar(tipo === 'oro' ? 'oro' : 'cofre'));
+    const botin = tirar(tipo === 'oro' ? 'oro' : 'cofre');
+    const quien = config.broadcasterLogin.charAt(0).toUpperCase() + config.broadcasterLogin.slice(1);
+    const enObs = loot.enPantalla(quien, botin, tipo === 'oro' ? 'oro' : 'prueba');
+    return json(res, 200, { ...botin, enObs });
   }
 
   // Si arrancaste el bot con el directo ya empezado, Twitch no vuelve a
@@ -256,15 +260,6 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     return json(res, 200, { ok: true });
   }
 
-  // El banner del Legendario en OBS, a demanda, para verlo sin esperar a la suerte.
-  if (ruta === 'POST /api/loot/legendario-prueba') {
-    const objeto = OBJETOS.legendario[Math.floor(Math.random() * OBJETOS.legendario.length)]!;
-    const quien = config.broadcasterLogin.charAt(0).toUpperCase() + config.broadcasterLogin.slice(1);
-    await obs((pedir) => obsSetup.mostrarLegendario(pedir, quien, objeto)).catch((err) => {
-      throw new ErrorHttp(502, err instanceof Error ? err.message : String(err));
-    });
-    return json(res, 200, { objeto });
-  }
 
   if (ruta === 'GET /api/biblioteca') return json(res, 200, await biblioteca.listar());
 

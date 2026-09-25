@@ -663,8 +663,8 @@ async function cargarLoot() {
     h('li', {}, 'Cofre del tesoro: crea en Streamer.bot la recompensa ', chipCopiar('Cofre del tesoro', 'Cofre del tesoro'),
       ' con coste ', chipCopiar('500', '500'), ' y ', h('strong', { class: 'ui' }, 'Skip Queue'),
       '. No hace falta ninguna acción: la abre el bot.'),
-    h('li', {}, 'Banner del Legendario: en ', h('strong', { class: 'ui' }, 'Efectos'), ' → ', h('strong', { class: 'ui' }, 'Preparar en OBS'),
-      ', marca ', h('strong', { class: 'ui' }, 'Loot Legendario'), '. Lo enseña el bot solo.'),
+    h('li', {}, 'Banner en pantalla: en ', h('strong', { class: 'ui' }, 'Efectos'), ' → ', h('strong', { class: 'ui' }, 'Preparar en OBS'),
+      ', marca ', h('strong', { class: 'ui' }, 'Banner del Loot'), '. Lo enseña el bot con cada cofre.'),
   );
 }
 
@@ -701,7 +701,7 @@ for (const [id, tipo] of [['l-prueba', 'cofre'], ['l-prueba-oro', 'oro']]) {
         h('div', {},
           h('span', { class: 'rareza' }, `${r.nombre} · ${tipo === 'oro' ? 'Cofre del tesoro' : 'cofre gratis'} · de prueba`),
           h('strong', { class: 'revelado-objeto' }, b.objeto))));
-      tostada(`${tipo === 'oro' ? '🗝️' : '🎁'} ${r.nombre}: ${b.objeto}`);
+      tostada(`${tipo === 'oro' ? '🗝️' : '🎁'} ${r.nombre}: ${b.objeto}${b.enObs ? ' · mira tu OBS' : ''}`);
 
       // Y el historial de las anteriores, para ver cómo se reparten.
       const caja = $('l-resultado-prueba');
@@ -729,19 +729,6 @@ for (const [id, abierto, texto] of [
   });
 }
 
-$('l-banner').addEventListener('click', async (e) => {
-  const boton = e.currentTarget;
-  boton.disabled = true;
-  tostada('✨ Mira tu OBS: el banner sale 8 segundos');
-  try {
-    const r = await api('/api/loot/legendario-prueba', {});
-    tostada(`Banner mostrado: ${r.objeto}`);
-  } catch (err) {
-    tostada(err.message, true);
-  } finally {
-    boton.disabled = false;
-  }
-});
 
 // La cuenta atrás se refresca sola mientras miras la pestaña.
 setInterval(() => { if (!$('v-loot').hidden) cargarLoot(); }, 5000);
@@ -831,7 +818,7 @@ const PREPARABLES = [
   { id: 'pocion', titulo: 'Poción de vida', que: 'Fuente «FX Pocion» con el overlay, oculta', necesita: 'escena' },
   { id: 'maldicion', titulo: 'Maldición', que: 'Filtro «FX Maldicion» en blanco y negro, apagado', necesita: 'fuente' },
   { id: 'lag', titulo: 'Lag', que: 'Filtro «FX Lag» que congela la imagen, apagado', necesita: 'fuente', plugin: true },
-  { id: 'legendario', titulo: 'Loot Legendario', que: 'Fuente «FX Legendario» con el banner del botín, oculta', necesita: 'escena' },
+  { id: 'botin', titulo: 'Banner del Loot', que: 'Fuente «FX Botin»: el banner de cada cofre, oculta', necesita: 'escena' },
 ];
 
 // Lo que elegiste la última vez, para no tener que volver a elegirlo.

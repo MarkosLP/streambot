@@ -24,8 +24,8 @@ import { ESTILO, RAREZAS, etiqueta, tirar, type Azar, type Botin } from './objet
  *     probabilidades.
  *  3. **Panel**: el botón "Soltar cofre ahora", para cuando quieras tú.
  *
- * Y `!inventario` para ver la mochila. Un Legendario, además, sale en pantalla
- * (ver `setAlLegendario`).
+ * Y `!inventario` para ver la mochila. Cada botín sale además en pantalla, con
+ * el color de su rareza (ver `setPantalla`).
  *
  * Con 1-3 espectadores todo esto tiene sentido desde el primer día: no hace
  * falta gente para que caiga un cofre, basta con una persona hablando.
@@ -66,25 +66,37 @@ export function aventureros(now = Date.now()): Viewer[] {
 }
 
 // ---------------------------------------------------------------------------
-// El Legendario en pantalla
+// El botín en pantalla
 // ---------------------------------------------------------------------------
 
-export type AlLegendario = (quien: string, botin: Botin) => Promise<void>;
-let alLegendario: AlLegendario | null = null;
+export type OrigenPantalla = 'cofre' | 'oro' | 'panel' | 'prueba';
+export type Pantalla = (quien: string, botin: Botin, origen: OrigenPantalla) => Promise<void>;
+let pantalla: Pantalla | null = null;
+let fila: Promise<void> = Promise.resolve();
 
 /**
- * Qué hacer cuando cae un Legendario. Se inyecta desde index.ts (enseña el
- * banner en OBS) para que el Loot no dependa de OBS: sin OBS, el Legendario
- * se anuncia en el chat igual.
+ * Cómo se enseña un botín en pantalla. Se inyecta desde index.ts (el banner
+ * de OBS) para que el Loot no dependa de OBS: sin OBS, el botín se anuncia en
+ * el chat igual.
  */
-export function setAlLegendario(fn: AlLegendario | null): void {
-  alLegendario = fn;
+export function setPantalla(fn: Pantalla | null): void {
+  pantalla = fn;
 }
 
-function celebrar(quien: string, botin: Botin): void {
-  if (botin.rareza !== 'legendario' || !alLegendario) return;
-  // Sin await: el banner dura segundos y el chat no tiene por qué esperarlo.
-  alLegendario(quien, botin).catch((err) => log.warn(`Loot: no se pudo enseñar el Legendario (${String(err)})`));
+/**
+ * Enseña un botín en pantalla. Van EN FILA: si un cofre toca a tres, salen
+ * los tres banners uno detrás de otro, sin pisarse.
+ *
+ * Sin await para quien llama: el banner dura segundos y el chat no tiene por
+ * qué esperarlo. Devuelve si había pantalla a la que mandarlo.
+ */
+export function enPantalla(quien: string, botin: Botin, origen: OrigenPantalla): boolean {
+  if (!pantalla) return false;
+  const mostrar = pantalla;
+  fila = fila
+    .then(() => mostrar(quien, botin, origen))
+    .catch((err) => log.warn(`Loot: el botín de ${quien} no salió en pantalla (${err instanceof Error ? err.message : String(err)}).`));
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -145,7 +157,7 @@ export async function soltarCofre(
     detail: `${origen}: ${reparto.map((r) => `${r.viewer.login}=${r.botin.rareza}`).join(', ')}`,
   });
 
-  for (const r of reparto) celebrar(r.viewer.displayName, r.botin);
+  for (const r of reparto) enPantalla(r.viewer.displayName, r.botin, origen);
   ultimoCofre = now;
   return { ok: true, reparto, enviado: outcome.sent };
 }
@@ -168,7 +180,7 @@ export const cofreOro: Interaction<CtxCofreOro> = {
     // Quien pidió el olvido abre su cofre igual, pero no se le guarda nada.
     const guarda = !consent.haPedidoOlvido(ctx.viewer.id);
     if (guarda) lootDb.guardar(ctx.viewer.id, ctx.viewer.displayName, botin, 'oro');
-    celebrar(ctx.viewer.displayName, botin);
+    enPantalla(ctx.viewer.displayName, botin, 'oro');
     const brillo = botin.rareza === 'legendario' ? ' ✨✨✨' : '';
     return {
       text: `🗝️ @${ctx.viewer.displayName} abre un Cofre del tesoro → ${etiqueta(botin)}${brillo}`,
@@ -291,5 +303,6 @@ export function reset(): void {
   actividad.clear();
   parar();
   ultimoCofre = null;
-  alLegendario = null;
+  pantalla = null;
+  fila = Promise.resolve();
 }

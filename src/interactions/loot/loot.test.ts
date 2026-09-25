@@ -147,18 +147,44 @@ describe('soltar un cofre', () => {
     assert.equal(lootDb.inventario('id-pepe').total, 1);
   });
 
-  test('un Legendario se celebra en pantalla; lo demás no', async () => {
-    const celebrados: string[] = [];
-    loot.setAlLegendario(async (quien, botin) => {
-      celebrados.push(`${quien}:${botin.rareza}`);
+  test('CADA botín sale en pantalla, sea de la rareza que sea', async () => {
+    const vistos: string[] = [];
+    loot.setPantalla(async (quien, botin, origen) => {
+      vistos.push(`${quien}:${botin.rareza}:${origen}`);
     });
     await handleEvent(mensaje('pepe'));
     await loot.soltarCofre({ azar: fijo(0) });
-    assert.deepEqual(celebrados, []);
-
     await loot.soltarCofre({ azar: fijo(0.999) });
-    assert.deepEqual(celebrados, ['pepe:legendario']);
+    await loot.channelPointBinding.run(redencion('ana') as any, fijo(0.5));
+    await new Promise((r) => setTimeout(r, 10));
+
+    assert.deepEqual(vistos, ['pepe:comun:cofre', 'pepe:legendario:cofre', 'ana:raro:oro']);
     assert.match(enviados[1]!, /^✨ ¡Cofre LEGENDARIO!/);
+  });
+
+  test('los banners van en fila: el segundo espera a que acabe el primero', async () => {
+    const orden: string[] = [];
+    loot.setPantalla(async (quien) => {
+      orden.push(`empieza ${quien}`);
+      await new Promise((r) => setTimeout(r, 20));
+      orden.push(`acaba ${quien}`);
+    });
+    await handleEvent(mensaje('pepe'));
+    await handleEvent(mensaje('ana'));
+    await loot.soltarCofre({ azar: fijo(0) });
+    await new Promise((r) => setTimeout(r, 80));
+    assert.deepEqual(orden, ['empieza pepe', 'acaba pepe', 'empieza ana', 'acaba ana']);
+  });
+
+  test('si la pantalla falla, el cofre ya se ha repartido y anunciado', async () => {
+    loot.setPantalla(async () => {
+      throw new Error('OBS cerrado');
+    });
+    await handleEvent(mensaje('pepe'));
+    const r = await loot.soltarCofre({ azar: fijo(0) });
+    assert.ok(r.ok);
+    assert.equal(enviados.length, 1);
+    assert.equal(lootDb.inventario('id-pepe').total, 1);
   });
 
   test('con muchísima gente el mensaje se corta a tiempo y lo dice', () => {

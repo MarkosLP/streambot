@@ -13,7 +13,7 @@ import * as revision from './revision.js';
 import { crearServidor, type PuertoStreamerbot, type ConObs } from './server.js';
 import { ErrorObs, autenticacion } from '../transport/obs.js';
 import { descodificar } from './importar.js';
-import { mostrarLegendario } from './obs-setup.js';
+import { mostrarBotin } from './obs-setup.js';
 import { EFECTOS, mismoNombre } from './efectos.js';
 
 /**
@@ -89,6 +89,14 @@ const obsFalso: ConObs = async (trabajo) => {
         obs.entradas.push({ inputName: d.inputName, inputKind: d.inputKind, settings: d.inputSettings });
         obs.items[d.sceneName].push({ sourceName: d.inputName, sceneItemId: ++id, enabled: d.sceneItemEnabled });
         return { sceneItemId: id };
+      case 'SetInputName': {
+        const e = obs.entradas.find((x) => x.inputName === d.inputName)!;
+        e.inputName = d.newInputName;
+        for (const lista of Object.values(obs.items)) {
+          for (const i of lista) if (i.sourceName === d.inputName) i.sourceName = d.newInputName;
+        }
+        return {};
+      }
       case 'SetInputSettings':
         obs.entradas.find((e) => e.inputName === d.inputName)!.settings = d.inputSettings;
         return {};
@@ -396,7 +404,7 @@ describe('preparar OBS', () => {
     assert.equal(body.conectado, true);
     assert.deepEqual(body.escenas, ['Escena juego', 'Charla']);
     assert.deepEqual(body.fuentes.map((f: any) => f.nombre), ['Juego']);
-    assert.deepEqual(body.existe, { pocion: false, legendario: false, maldicion: false, lag: false });
+    assert.deepEqual(body.existe, { pocion: false, botin: false, maldicion: false, lag: false });
     assert.equal(body.pluginFreeze, false);
   });
 
@@ -503,34 +511,45 @@ describe('código para importar', () => {
   });
 });
 
-describe('banner del Loot Legendario', () => {
-  test('Preparar OBS crea FX Legendario oculto, servido por el panel y con su audio en OBS', async () => {
-    const r = await post('/api/obs/preparar', { escena: 'Escena juego', efectos: ['legendario'] });
+describe('banner del Loot', () => {
+  const item = (nombre = 'FX Botin') => obs.items['Escena juego'].find((i) => i.sourceName === nombre);
+  const mostrar = (datos: { quien: string; objeto: string; rareza: string; origen: string }, visto: boolean[] = []) =>
+    obsFalso((pedir) => mostrarBotin(pedir, datos, { esperar: async () => { visto.push(item()!.enabled); } }));
+
+  test('Preparar OBS crea FX Botin oculto, servido por el panel y con su audio en OBS', async () => {
+    const r = await post('/api/obs/preparar', { escena: 'Escena juego', efectos: ['botin'] });
     assert.equal(r.body.resultados[0].ok, true);
-    const fuente = obs.entradas.find((e) => e.inputName === 'FX Legendario')!;
+    const fuente = obs.entradas.find((e) => e.inputName === 'FX Botin')!;
     assert.equal(fuente.settings.is_local_file, false);
-    assert.match(fuente.settings.url, /^http:\/\/127\.0\.0\.1:\d+\/biblioteca\/overlays\/legendario\.html$/);
+    assert.match(fuente.settings.url, /^http:\/\/127\.0\.0\.1:\d+\/biblioteca\/overlays\/botin\.html$/);
     assert.equal(fuente.settings.reroute_audio, true);
-    assert.equal(obs.items['Escena juego'].find((i) => i.sourceName === 'FX Legendario')!.enabled, false);
+    assert.equal(item()!.enabled, false);
   });
 
-  test('al caer uno, se enseña con el nombre y el objeto y se vuelve a esconder', async () => {
-    await post('/api/obs/preparar', { escena: 'Escena juego', efectos: ['legendario'] });
+  test('se enseña con quién, qué, rareza y origen, y se vuelve a esconder', async () => {
+    await post('/api/obs/preparar', { escena: 'Escena juego', efectos: ['botin'] });
     const visto: boolean[] = [];
-    await obsFalso((pedir) =>
-      mostrarLegendario(pedir, 'Pepe & Cía', 'Ala del Fénix', {
-        esperar: async () => {
-          visto.push(obs.items['Escena juego'].find((i) => i.sourceName === 'FX Legendario')!.enabled);
-        },
-      }),
-    );
-    const fuente = obs.entradas.find((e) => e.inputName === 'FX Legendario')!;
-    assert.match(fuente.settings.url, /\?user=Pepe%20%26%20C%C3%ADa&item=Ala%20del%20F%C3%A9nix$/);
+    await mostrar({ quien: 'Pepe & Cía', objeto: 'Ala del Fénix', rareza: 'epico', origen: 'oro' }, visto);
+    const url = new URL(obs.entradas.find((e) => e.inputName === 'FX Botin')!.settings.url);
+    assert.equal(url.searchParams.get('user'), 'Pepe & Cía');
+    assert.equal(url.searchParams.get('item'), 'Ala del Fénix');
+    assert.equal(url.searchParams.get('rareza'), 'epico');
+    assert.equal(url.searchParams.get('origen'), 'oro');
+    assert.doesNotMatch(url.search, /\+/, 'espacios como %20: OBS no siempre entiende el +');
     assert.deepEqual(visto, [true], 'visible mientras espera');
-    assert.equal(obs.items['Escena juego'].find((i) => i.sourceName === 'FX Legendario')!.enabled, false);
+    assert.equal(item()!.enabled, false);
+  });
+
+  test('la fuente antigua FX Legendario se renombra sola, sin recolocarla', async () => {
+    obs.entradas.push({ inputName: 'FX Legendario', inputKind: 'browser_source', settings: {} });
+    obs.items['Escena juego'].push({ sourceName: 'FX Legendario', sceneItemId: 77, enabled: false });
+    await mostrar({ quien: 'pepe', objeto: 'x', rareza: 'comun', origen: 'cofre' });
+    assert.equal(item('FX Legendario'), undefined);
+    assert.equal(item()!.sceneItemId, 77);
+    assert.deepEqual(obs.transformes, {}, 'no se le toca el sitio');
   });
 
   test('sin la fuente creada, lo dice en vez de fallar a medias', async () => {
-    await assert.rejects(obsFalso((pedir) => mostrarLegendario(pedir, 'pepe', 'x', { esperar: async () => {} })), /Preparar en OBS/);
+    await assert.rejects(mostrar({ quien: 'pepe', objeto: 'x', rareza: 'comun', origen: 'cofre' }), /Preparar en OBS/);
   });
 });

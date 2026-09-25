@@ -14,7 +14,7 @@ import { connect, disconnect, sendChat } from './transport/streamerbot.js';
 import * as panel from './panel/server.js';
 import { aprobadorPanel } from './panel/revision.js';
 import * as loot from './interactions/loot/index.js';
-import { mostrarLegendario } from './panel/obs-setup.js';
+import { mostrarBotin } from './panel/obs-setup.js';
 import { conObs } from './transport/obs.js';
 import type { Server } from 'node:http';
 
@@ -79,15 +79,11 @@ async function main(): Promise<void> {
 
   await connect();
 
-  // Loot del chat. El banner del Legendario va a OBS en fila: si caen dos
-  // seguidos, el segundo espera a que termine el primero en vez de pisarlo.
-  let fila: Promise<void> = Promise.resolve();
-  loot.setAlLegendario((quien, botin) => {
-    fila = fila.then(() => conObs((pedir) => mostrarLegendario(pedir, quien, botin.objeto))).catch((err) => {
-      log.warn(`Loot: el Legendario de ${quien} no salió en OBS (${err instanceof Error ? err.message : String(err)}).`);
-    });
-    return fila;
-  });
+  // Loot del chat: cada botín sale en OBS con el banner de su rareza. La
+  // fila (para que no se pisen) la lleva el propio Loot.
+  loot.setPantalla((quien, botin, origen) =>
+    conObs((pedir) => mostrarBotin(pedir, { quien, objeto: botin.objeto, rareza: botin.rareza, origen })),
+  );
   loot.arrancar();
 
   log.info('Escuchando. Ctrl+C para salir.');
