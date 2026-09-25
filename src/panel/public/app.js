@@ -340,6 +340,12 @@ async function cargarEfectos() {
     $('efectos-sin-sb').hidden = datos.conectado;
     $('efectos').replaceChildren(...datos.efectos.map(tarjetaEfecto));
     pintarBotonera(datos);
+    // #/efectos/grito abre directamente la guía de ese efecto.
+    if (guiaPendiente) {
+      const e = datos.efectos.find((x) => x.id === guiaPendiente);
+      guiaPendiente = null;
+      if (e) abrirGuia(e);
+    }
 
     $('efectos-extra').replaceChildren(
       ...(datos.extra.length
@@ -371,7 +377,10 @@ function pintarBotonera(datos) {
       type: 'button',
       title: montado ? `${e.queHace} Lo lanza sin gastar puntos.` : 'Todavía no está montado en Streamer.bot. Pulsa para ver cómo.',
       onclick: async () => {
-        if (!montado) return irA('efectos');
+        if (!montado) {
+          irA('efectos');
+          return abrirGuia(e);
+        }
         try {
           await lanzar(e.accionId);
           el.classList.remove('lanzado');
@@ -442,12 +451,6 @@ function tarjetaEfecto(e) {
       ? h('span', { class: 'chip ok' }, 'Montado')
       : h('span', { class: 'chip falta' }, 'Por montar');
 
-  const pasos = [
-    `En Streamer.bot: Platforms → Twitch → Channel Point Rewards → Add. Título «${e.recompensa}», coste ${e.coste}, cooldown ${e.cooldownSeg} s, marca «Skip reward queue».`,
-    `Actions → Add, con este nombre exacto: «${e.accion}». Trigger: Twitch → Channel Reward → Reward Redemption → ${e.recompensa}.`,
-    ...e.pasos,
-  ];
-
   const r = rareza(e.coste);
   return h('article', { class: `tarjeta efecto ${r.clase}` },
     h('div', { class: 'efecto-cabeza' },
@@ -462,13 +465,105 @@ function tarjetaEfecto(e) {
         e.necesita && h('span', { class: 'chip plugin' }, e.necesita),
       ),
       e.material?.length > 0 && h('div', { class: 'material' }, e.material.map(filaMaterial)),
-      h('details', { open: e.montado === false && !e.necesita },
-        h('summary', {}, 'Cómo montarlo'),
-        h('ol', {}, pasos.map((p) => h('li', {}, p))),
+      h('div', { class: 'pie' },
+        botonProbar(e.accionId),
+        h('button', {
+          class: `boton ${e.montado === false && !e.necesita ? 'destacado' : ''}`,
+          type: 'button',
+          onclick: () => abrirGuia(e),
+        }, e.montado ? 'Ver la guía' : 'Cómo montarlo'),
       ),
-      h('div', { class: 'pie' }, botonProbar(e.accionId)),
     ),
   );
+}
+
+// ---------------------------------------------------------------------------
+// Guía de montaje
+// ---------------------------------------------------------------------------
+
+// Pasos con marcas sencillas (ver src/panel/efectos.ts):
+//   **Botón**  → negrita    `texto` → se copia con un clic    [[ruta]] → archivo
+// Se trocea a mano y se pinta con textContent: nunca innerHTML.
+function textoGuia(str, e) {
+  const partes = [];
+  const re = /\*\*(.+?)\*\*|`(.+?)`|\[\[(.+?)\]\]/g;
+  let ultimo = 0;
+  let m;
+  while ((m = re.exec(str))) {
+    if (m.index > ultimo) partes.push(str.slice(ultimo, m.index));
+    if (m[1]) partes.push(h('strong', { class: 'ui' }, m[1]));
+    else if (m[2]) partes.push(chipCopiar(m[2], m[2]));
+    else {
+      const mat = e.material.find((x) => x.id === m[3]);
+      const nombre = m[3].split('/').pop();
+      partes.push(mat?.archivo ? chipCopiar(nombre, mat.archivo.ruta, 'archivo') : h('code', {}, nombre));
+    }
+    ultimo = re.lastIndex;
+  }
+  partes.push(str.slice(ultimo));
+  return partes;
+}
+
+function chipCopiar(texto, valor, extra = '') {
+  const el = h('button', {
+    class: `copiable ${extra}`,
+    type: 'button',
+    title: `Copiar: ${valor}`,
+    onclick: async () => {
+      await copiar(valor);
+      el.classList.add('hecho');
+      setTimeout(() => el.classList.remove('hecho'), 1400);
+    },
+  }, texto);
+  return el;
+}
+
+const DONDE = {
+  'Streamer.bot': { clase: 'd-sb', texto: 'Streamer.bot' },
+  OBS: { clase: 'd-obs', texto: 'OBS' },
+  Panel: { clase: 'd-panel', texto: 'Este panel' },
+};
+
+function abrirGuia(e) {
+  const r = rareza(e.coste);
+  const dialogo = $('guia');
+  const estado = e.montado === null ? h('span', { class: 'chip' }, 'Sin conexión')
+    : e.montado ? h('span', { class: 'chip ok' }, 'Montado') : h('span', { class: 'chip falta' }, 'Por montar');
+
+  dialogo.className = `guia ${r.clase}`;
+  dialogo.replaceChildren(
+    h('header', { class: 'guia-cabeza' },
+      h('span', { class: 'icono' }, icono(e.id)),
+      h('div', {},
+        h('span', { class: 'rareza' }, `${r.nombre} · 🪙 ${e.coste.toLocaleString('es-ES')}`),
+        h('h2', {}, `Cómo montar «${e.recompensa}»`),
+        h('p', { class: 'nota' }, e.queHace)),
+      estado,
+      h('button', { class: 'cerrar', type: 'button', 'aria-label': 'Cerrar', onclick: () => dialogo.close() }, '✕'),
+    ),
+    h('div', { class: 'guia-cuerpo' },
+      h('p', { class: 'guia-aviso' },
+        'Streamer.bot está en inglés: los botones salen en ', h('strong', { class: 'ui' }, 'negrita'),
+        ' tal cual los verás, con la traducción al lado. Lo que tienes que escribir sale así: ',
+        chipCopiar('pulsa para copiar', 'pulsa para copiar'), '.'),
+      e.necesita && h('p', { class: 'guia-aviso plugin' }, `Este efecto necesita un plugin de OBS: ${e.necesita}.`),
+      h('ol', { class: 'fases' }, e.guia.map((f, i) => {
+        const d = DONDE[f.donde];
+        return h('li', { class: 'fase' },
+          h('div', { class: 'fase-cabeza' },
+            h('span', { class: 'fase-num' }, String(i + 1)),
+            h('h3', {}, f.titulo),
+            h('span', { class: `donde ${d.clase}` }, d.texto)),
+          h('ol', { class: 'pasos' }, f.pasos.map((p) => h('li', {}, textoGuia(p, e)))),
+          f.nota && h('p', { class: 'fase-nota' }, textoGuia(f.nota, e)));
+      })),
+    ),
+    h('footer', { class: 'guia-pie' },
+      h('span', { class: 'nota' }, '¿Algún botón no se llama así en tu pantalla? Dímelo y corrijo la guía.'),
+      botonProbar(e.accionId)),
+  );
+  if (!dialogo.open) dialogo.showModal();
+  dialogo.querySelector('.guia-cuerpo').scrollTop = 0;
 }
 
 function filaMaterial(m) {
@@ -730,7 +825,7 @@ $('r-espectadores').addEventListener('click', cargarEspectadores);
 // Arranque
 // ---------------------------------------------------------------------------
 
-let inicial = location.hash.replace(/^#\/?/, '');
+let [inicial, guiaPendiente] = location.hash.replace(/^#\/?/, '').split('/');
 if (!inicial) {
   try { inicial = localStorage.getItem('panel-tab') || 'directo'; } catch { inicial = 'directo'; }
 }

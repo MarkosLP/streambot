@@ -394,6 +394,95 @@ input[type="search"]:focus, .chat input:focus { outline: none; border-color: var
 .efecto li::marker { color: var(--oro); font-family: var(--titulos); font-weight: 700; }
 .efecto .pie { margin-top: auto; display: flex; gap: 8px; }
 
+.boton.destacado { border-color: var(--oro); color: var(--oro); }
+
+/* ---------- Guía de montaje ---------- */
+
+.guia {
+  --rareza: var(--comun);
+  width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 48px);
+  padding: 0; border: 1px solid var(--borde-2); border-radius: 18px;
+  background: var(--tarjeta); color: var(--texto);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.8);
+  display: none; flex-direction: column; overflow: hidden;
+}
+.guia[open] { display: flex; }
+.guia::backdrop { background: rgba(5, 6, 10, 0.72); backdrop-filter: blur(3px); }
+
+.guia-cabeza {
+  display: flex; align-items: flex-start; gap: 14px; padding: 20px 22px;
+  border-bottom: 1px solid var(--borde);
+  background: radial-gradient(380px 140px at 0% 0%, color-mix(in srgb, var(--rareza) 20%, transparent), transparent 75%);
+}
+.guia-cabeza .icono {
+  display: grid; place-items: center; flex: none; width: 52px; height: 52px; border-radius: 14px; font-size: 1.7rem;
+  background: var(--tarjeta-2); border: 1px solid color-mix(in srgb, var(--rareza) 50%, var(--borde));
+}
+.guia-cabeza > div { margin-right: auto; min-width: 0; }
+.guia-cabeza h2 { font-size: 1.3rem; margin: 2px 0 4px; }
+.cerrar {
+  flex: none; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--borde-2);
+  background: var(--tarjeta-2); color: var(--texto-2); cursor: pointer; font-size: 0.9rem;
+}
+.cerrar:hover { color: var(--texto); border-color: var(--texto-3); }
+
+.guia-cuerpo { overflow-y: auto; padding: 18px 22px 8px; }
+.guia-aviso {
+  margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; font-size: 0.86rem; color: var(--texto-2);
+  background: var(--tarjeta-2); border: 1px solid var(--borde); line-height: 1.7;
+}
+.guia-aviso.plugin { color: var(--azul); border-color: color-mix(in srgb, var(--azul) 45%, transparent); }
+
+.fases { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.fase { position: relative; padding: 4px 0 18px 46px; }
+/* La línea que une las fases. */
+.fase:not(:last-child)::before {
+  content: ""; position: absolute; left: 15px; top: 36px; bottom: 0; width: 2px; background: var(--borde);
+}
+.fase-cabeza { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; min-height: 32px; }
+.fase-num {
+  position: absolute; left: 0; top: 4px; display: grid; place-items: center;
+  width: 32px; height: 32px; border-radius: 50%; font-family: var(--titulos); font-weight: 700;
+  background: var(--tarjeta-2); border: 2px solid var(--oro); color: var(--oro);
+}
+.fase-cabeza h3 { font-size: 1.08rem; }
+.donde {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 6px; border: 1px solid;
+}
+.d-sb { color: #c9a7ff; border-color: color-mix(in srgb, #a77bff 50%, transparent); background: color-mix(in srgb, #a77bff 12%, transparent); }
+.d-obs { color: var(--texto-2); border-color: var(--borde-2); background: var(--tarjeta-2); }
+.d-panel { color: var(--oro); border-color: color-mix(in srgb, var(--oro) 45%, transparent); background: color-mix(in srgb, var(--oro) 10%, transparent); }
+
+.pasos { margin: 0; padding-left: 20px; display: grid; gap: 7px; font-size: 0.92rem; line-height: 1.65; }
+.pasos li::marker { color: var(--texto-3); font-weight: 600; }
+strong.ui {
+  font-weight: 600; color: var(--texto);
+  padding: 1px 6px; border-radius: 5px; background: var(--tarjeta-2); border: 1px solid var(--borde-2);
+  white-space: nowrap;
+}
+.fase-nota {
+  margin: 10px 0 0; padding: 9px 12px; border-left: 3px solid var(--oro); border-radius: 0 8px 8px 0;
+  background: color-mix(in srgb, var(--oro) 7%, transparent); color: var(--texto-2); font-size: 0.85rem; line-height: 1.6;
+}
+
+.copiable {
+  display: inline; font: 0.84rem/1.4 "Cascadia Code", ui-monospace, Consolas, monospace;
+  padding: 1px 7px; border-radius: 5px; cursor: copy;
+  color: var(--oro-claro); background: color-mix(in srgb, var(--oro) 12%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--oro) 55%, transparent);
+}
+.copiable:hover { background: color-mix(in srgb, var(--oro) 22%, transparent); }
+.copiable.archivo::before { content: "📄 "; }
+.copiable.hecho { color: var(--verde); border-color: var(--verde); background: color-mix(in srgb, var(--verde) 12%, transparent); }
+.copiable.hecho::after { content: " ✓ copiado"; font-family: Inter, system-ui, sans-serif; }
+
+.guia-pie {
+  display: flex; align-items: center; gap: 12px; padding: 14px 22px;
+  border-top: 1px solid var(--borde); background: var(--tarjeta-2);
+}
+.guia-pie .nota { margin-right: auto; }
+
 /* ---------- Material de cada efecto ---------- */
 
 .material { display: grid; gap: 6px; }

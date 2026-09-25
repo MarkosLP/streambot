@@ -11,7 +11,7 @@ import * as streams from '../data/streams.js';
 import { budget } from '../services/ai/index.js';
 import * as revision from './revision.js';
 import * as datos from './datos.js';
-import { EFECTOS, PREFIJO_ACCION, mismoNombre } from './efectos.js';
+import { EFECTOS, PREFIJO_ACCION, guia, mismoNombre } from './efectos.js';
 import * as biblioteca from './biblioteca.js';
 import type { AccionSB, EstadoConexion } from '../transport/streamerbot.js';
 
@@ -249,8 +249,10 @@ async function efectos(sb: PuertoStreamerbot) {
     prefijo: PREFIJO_ACCION,
     efectos: EFECTOS.map((e) => {
       const accion = acciones?.find((a) => mismoNombre(a.name, e.accion)) ?? null;
+      const { obs: _obs, subacciones: _sub, ...resto } = e;
       return {
-        ...e,
+        ...resto,
+        guia: guia(e),
         material: e.material.map((m) => ({ id: m, archivo: enBiblioteca(m) })),
         montado: acciones === null ? null : accion !== null,
         accionId: accion?.id ?? null,
