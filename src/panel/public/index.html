@@ -47,6 +47,10 @@
         <svg viewBox="0 0 24 24"><path d="M3 10a5 5 0 0 1 5-5h8a5 5 0 0 1 5 5v9H3zM3 12h18M10 12v3h4v-3"/></svg>
         Loot
       </button>
+      <button role="tab" data-tab="titulos">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7M17 14l1.5 3 3.5.5-2.5 2.4.6 3.4-3.1-1.6-3.1 1.6.6-3.4L12 17.5l3.5-.5z"/></svg>
+        Títulos
+      </button>
       <button role="tab" data-tab="biblioteca">
         <svg viewBox="0 0 24 24"><path d="M4 4h4v16H4zM10 4h4v16h-4zM15.5 5.2l3.9-1 3.6 14.6-3.9 1z"/></svg>
         Biblioteca
@@ -305,6 +309,54 @@
             <ol class="pasos" id="l-montar"></ol>
           </article>
         </div>
+      </div>
+    </section>
+
+    <!-- TÍTULOS -->
+    <section class="vista" id="v-titulos" hidden>
+      <header class="cabecera-vista">
+        <div>
+          <p class="antetitulo">Sugerencias de la IA local</p>
+          <h1>Títulos</h1>
+          <p class="nota">Títulos para el directo, un anuncio para redes y etiquetas. Solo son sugerencias: copia lo que te guste y ponlo tú en Twitch.</p>
+        </div>
+        <span class="chip" id="t-ia">—</span>
+      </header>
+
+      <article class="tarjeta">
+        <form class="titulos-form" id="t-form">
+          <label class="campo">
+            <span>Juego</span>
+            <input type="text" id="t-juego" list="t-juegos" placeholder="World of Warcraft" autocomplete="off" maxlength="80">
+            <datalist id="t-juegos"></datalist>
+            <small>También es la categoría de Twitch.</small>
+          </label>
+          <label class="campo"><span>Qué vas a hacer</span><select id="t-sesion"></select></label>
+          <label class="campo"><span>Tono</span><select id="t-tono"></select></label>
+          <label class="campo titulos-notas">
+            <span>Notas <small>(opcional)</small></span>
+            <input type="text" id="t-notas" placeholder="el nombre de la raid o la zona, vuelvo tras una semana, parche nuevo…" maxlength="300">
+          </label>
+          <label class="interruptor-loot titulos-canal" title="Jefes derrotados, legendarios, rachas… del minijuego del chat de esta semana">
+            <span>Usar lo que ha pasado en el chat</span>
+            <input type="checkbox" class="toggle" id="t-canal" checked>
+          </label>
+          <button class="boton primario" type="submit" id="t-generar">✨ Sugerir títulos</button>
+        </form>
+        <p class="nota" id="t-contexto" hidden></p>
+      </article>
+
+      <div id="t-resultado"></div>
+
+      <div class="dos-col">
+        <article class="tarjeta">
+          <header><h2>⭐ Favoritos</h2></header>
+          <ol class="lista-titulos" id="t-favoritos"></ol>
+        </article>
+        <article class="tarjeta">
+          <header><h2>Usados hace poco</h2><span class="nota">La IA no los repite</span></header>
+          <ol class="lista-titulos" id="t-usados"></ol>
+        </article>
       </div>
     </section>
 

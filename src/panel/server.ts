@@ -21,6 +21,8 @@ import * as lootComandos from '../interactions/loot/comandos.js';
 import * as jefe from '../interactions/loot/jefe.js';
 import * as terremoto from '../interactions/terremoto.js';
 import * as directo from '../core/directo.js';
+import * as titulos from './titulos.js';
+import * as iaLocal from '../services/ia-local.js';
 import * as arena from '../interactions/loot/arena.js';
 import { MOCHILA_MAX, PROBABILIDADES, tirar } from '../interactions/loot/objetos.js';
 import * as cooldowns from '../core/cooldowns.js';
@@ -318,6 +320,33 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     return json(res, 200, { ok: true });
   }
 
+
+  // Títulos: sugerencias de la IA local. Nada se conecta a Twitch: se copian.
+  if (ruta === 'GET /api/titulos') {
+    return json(res, 200, { ia: await iaLocal.estado(), ...titulos.listado(), contexto: titulos.contextoCanal() });
+  }
+
+  if (ruta === 'POST /api/titulos/sugerir') {
+    const { juego, sesion, tono, notas, conCanal } = await cuerpo(req);
+    const texto = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : '');
+    if (!texto(sesion, 40) || !texto(tono, 40)) throw new ErrorHttp(400, 'falta la sesión o el tono');
+    try {
+      titulos.podar();
+      const r = await titulos.sugerir({
+        juego: texto(juego, 80), sesion: texto(sesion, 40), tono: texto(tono, 40), notas: texto(notas, 300), conCanal: conCanal === true,
+      });
+      return json(res, 200, r);
+    } catch (err) {
+      throw new ErrorHttp(err instanceof iaLocal.ErrorIaLocal ? 503 : 500, err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  if (ruta === 'POST /api/titulos/marcar') {
+    const { id, favorito, usado } = await cuerpo(req);
+    if (!Number.isInteger(id)) throw new ErrorHttp(400, 'falta el id');
+    titulos.marcar(id as number, { favorito: typeof favorito === "boolean" ? favorito : undefined, usado: usado === true });
+    return json(res, 200, { ok: true });
+  }
 
   if (ruta === 'GET /api/biblioteca') return json(res, 200, await biblioteca.listar());
 

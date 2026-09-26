@@ -104,6 +104,22 @@ export const config = {
     fuenteJuego: str('OBS_FUENTE_JUEGO', 'Captura de ventana'),
   },
 
+  /**
+   * IA local (Ollama), para lo que se hace FUERA del directo: sugerir títulos
+   * y textos. Lo que habla con el chat en directo sigue siendo Claude.
+   *
+   * qwen3.5:9b, elegido el 26 sep 2026 comparando títulos: qwen2.5:7b (el que
+   * cabe entero en la RTX 2060) se inventaba raids y escribía Con Mayúsculas;
+   * qwen3.5:9b escribe natural y con gracia, a cambio de ~20 s (la primera
+   * vez, ~1 min: carga en la gráfica). keepAlive: cuánto se queda en la
+   * gráfica tras usarlo; corto, para que no te quite memoria mientras juegas.
+   */
+  iaLocal: {
+    url: str('OLLAMA_URL', 'http://127.0.0.1:11434'),
+    modelo: str('OLLAMA_MODELO', 'qwen3.5:9b'),
+    keepAlive: str('OLLAMA_KEEP_ALIVE', '2m'),
+  },
+
   logLevel: levelRaw as LogLevel,
   captureRawEvents: bool('CAPTURE_RAW_EVENTS', true),
   broadcasterLogin: str('BROADCASTER_LOGIN', 'crid4m').toLowerCase(),

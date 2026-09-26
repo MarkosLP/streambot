@@ -47,7 +47,8 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 - El Lag (Freeze Filter) ya funciona. Paneles de Twitch rehechos (26 sep): más épicos, con Terremoto y Lag en Recompensas, `!top`, el cofre de fidelidad y un cuarto panel «Jefes de raid». Hay que subirlos otra vez.
 - **Cofre de fidelidad** (3+ directos seguidos, en el primer mensaje de cada directo) y **`!top`**. Las rachas se cuentan ya aunque las espontáneas estén apagadas.
 - **Laboratorio de pruebas**: `npm run laboratorio` simula 8 personas usando comandos A LA VEZ (12 escenarios: cofre en el suelo, !usar doble, !dar cruzado, jefe en multitud, duelos cruzados con maldito, regalo + cofre, forja + dar, terremotos, jefes dobles, todo mezclado, ráfaga de 120) y comprueba que no se duplica ni se pierde nada. Con `--semilla=N` se repite una ejecución. 30 semillas limpias el 26 sep. Encontró un fallo: con «Yo también juego» apagado después de escribir, el canal seguía recibiendo cofres 15 min (arreglado).
-- Hay que **reiniciar el bot** para tenerlo. 428 tests.
+- **Títulos** (pestaña nueva, IA local con Ollama, `qwen3.5:9b`): 10 títulos de la sesión + 3 «💬 del chat», anuncio para redes, categoría (el juego) y etiquetas. Todo son sugerencias para copiar; nada se conecta a Twitch ni a Discord. Favoritos (⭐) y usados (copiar = usado); la IA no repite ninguno. Dos peticiones separadas: con lo del chat en la misma, lo metía en todos. qwen2.5:7b se descartó (inventaba raids, Mayúsculas En Cada Palabra). En raids, poner el nombre de la raid en Notas o se inventa uno. ~40 s por tanda.
+- Hay que **reiniciar el bot** para tenerlo. 436 tests.
 
 ### Precios y límites acordados
 

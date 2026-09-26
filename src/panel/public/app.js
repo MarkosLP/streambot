@@ -94,6 +94,7 @@ function duracion(desdeIso) {
 const cargadores = {
   efectos: () => { cargarEfectos(); cargarObs(); },
   biblioteca: cargarBiblioteca,
+  titulos: cargarTitulos,
   loot: cargarLoot,
   interacciones: cargarInteracciones,
   espectadores: cargarEspectadores,
@@ -1384,6 +1385,129 @@ $('visor').addEventListener('keydown', (e) => {
 $('visor').addEventListener('click', (e) => { if (e.target === $('visor')) $('visor').close(); });
 
 $('r-biblioteca').addEventListener('click', cargarBiblioteca);
+
+// ---------------------------------------------------------------------------
+// Títulos
+// ---------------------------------------------------------------------------
+
+// Lo último que elegiste, para no tener que elegirlo cada vez.
+const tituloElegido = { juego: '', sesion: '', tono: '', canal: true };
+try { Object.assign(tituloElegido, JSON.parse(localStorage.getItem('panel-titulos') || '{}')); } catch { /* nada */ }
+let titulosCargados = false;
+
+async function cargarTitulos() {
+  let d;
+  try {
+    d = await api('/api/titulos');
+  } catch (err) {
+    tostada(err.message === 'no existe' ? 'Reinicia el bot para ver Títulos (Ctrl+C y npm start)' : err.message, true);
+    return;
+  }
+  const ia = $('t-ia');
+  ia.className = `chip ${d.ia.disponible ? 'ok' : 'falta'}`;
+  ia.textContent = d.ia.disponible ? `IA local · ${d.ia.modelo}` : 'IA local apagada';
+  ia.title = d.ia.motivo || 'Ollama, en tu PC: gratis y sin salir de casa';
+  $('t-generar').disabled = !d.ia.disponible;
+  if (!d.ia.disponible) $('t-resultado').replaceChildren(h('p', { class: 'aviso' }, d.ia.motivo));
+
+  if (!titulosCargados) {
+    titulosCargados = true;
+    $('t-sesion').replaceChildren(...d.sesiones.map((s) => h('option', { value: s, selected: s === tituloElegido.sesion }, s)));
+    $('t-tono').replaceChildren(...d.tonos.map((s) => h('option', { value: s, selected: s === tituloElegido.tono }, s)));
+    $('t-juego').value = tituloElegido.juego || d.juegos[0] || '';
+    $('t-canal').checked = tituloElegido.canal !== false;
+  }
+  $('t-juegos').replaceChildren(...d.juegos.map((j) => h('option', { value: j })));
+  const ctx = $('t-contexto');
+  ctx.hidden = !d.contexto.length;
+  ctx.textContent = d.contexto.length ? `Del chat esta semana: ${d.contexto.join(' · ')}` : '';
+
+  const fila = (t) => h('li', {},
+    botonEstrella(t.id, t.favorito === 1),
+    h('span', { class: 'texto-titulo' }, t.texto),
+    t.juego && h('span', { class: 'dato' }, t.juego),
+    botonCopiarTitulo(t));
+  $('t-favoritos').replaceChildren(...(d.favoritos.length ? d.favoritos.map(fila) : [h('li', { class: 'vacio-lista' }, 'Marca con ⭐ los que te gusten.')]));
+  $('t-usados').replaceChildren(...(d.usados.length ? d.usados.map(fila) : [h('li', { class: 'vacio-lista' }, 'Cuando copies uno, aparecerá aquí.')]));
+}
+
+function botonEstrella(id, marcado) {
+  const b = h('button', {
+    class: 'estrella', type: 'button', 'aria-pressed': String(marcado), 'aria-label': marcado ? 'Quitar de favoritos' : 'Guardar en favoritos',
+    onclick: async () => {
+      const nuevo = b.getAttribute('aria-pressed') !== 'true';
+      try {
+        await api('/api/titulos/marcar', { id, favorito: nuevo });
+        b.setAttribute('aria-pressed', String(nuevo));
+        cargarTitulos();
+      } catch (err) { tostada(err.message, true); }
+    },
+  }, '★');
+  return b;
+}
+
+/** Copiar un título también lo apunta como usado: así la IA no lo repite. */
+function botonCopiarTitulo(t) {
+  const b = h('button', {
+    class: 'boton pequeno copiar', type: 'button',
+    onclick: async () => {
+      await copiar(t.texto);
+      b.textContent = '✓ Copiado';
+      setTimeout(() => { b.textContent = 'Copiar'; }, 1500);
+      api('/api/titulos/marcar', { id: t.id, usado: true }).then(() => cargarTitulos()).catch(() => {});
+    },
+  }, 'Copiar');
+  return b;
+}
+
+$('t-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const pedido = {
+    juego: $('t-juego').value.trim(),
+    sesion: $('t-sesion').value,
+    tono: $('t-tono').value,
+    notas: $('t-notas').value.trim(),
+    conCanal: $('t-canal').checked,
+  };
+  Object.assign(tituloElegido, { juego: pedido.juego, sesion: pedido.sesion, tono: pedido.tono, canal: pedido.conCanal });
+  try { localStorage.setItem('panel-titulos', JSON.stringify(tituloElegido)); } catch { /* nada */ }
+
+  const boton = $('t-generar');
+  boton.disabled = true;
+  $('t-resultado').replaceChildren(h('article', { class: 'tarjeta' },
+    h('p', { class: 'pensando' }, 'La IA local está pensando… La primera vez tarda más (carga el modelo en la gráfica): hasta un minuto.')));
+  try {
+    const r = await api('/api/titulos/sugerir', pedido);
+    pintarSugerencia(r);
+  } catch (err) {
+    $('t-resultado').replaceChildren(h('p', { class: 'aviso' }, err.message));
+  } finally {
+    boton.disabled = false;
+  }
+});
+
+function pintarSugerencia(r) {
+  $('t-resultado').replaceChildren(h('article', { class: 'tarjeta' },
+    h('header', {}, h('h2', {}, 'Sugerencias'), h('span', { class: 'nota' }, 'Copiar lo apunta como usado · ⭐ para guardarlo')),
+    h('div', { class: 'sugerencias' }, r.titulos.map((t) => h('div', { class: 'sugerencia' },
+      botonEstrella(t.id, false),
+      h('span', { class: 'texto-titulo' }, t.texto),
+      t.delChat && h('span', { class: 'chip', title: 'Menciona algo del minijuego del chat' }, '💬 del chat'),
+      h('span', { class: 'largo' }, `${t.texto.length}/140`),
+      botonCopiarTitulo(t)))),
+    h('div', { class: 'extras-titulos' },
+      h('div', {},
+        h('h3', {}, 'Anuncio para redes o Discord'),
+        r.anuncio ? h('p', { class: 'anuncio' }, r.anuncio) : h('p', { class: 'nota' }, 'Esta vez no ha salido anuncio.'),
+        r.anuncio && botonCopiar(r.anuncio, 'Copiar anuncio')),
+      h('div', {},
+        h('h3', {}, 'Para Twitch'),
+        r.categoria && h('p', {}, 'Categoría: ', chipCopiar(r.categoria, r.categoria)),
+        h('div', { class: 'etiquetas' }, r.etiquetas.map((e) => chipCopiar(e, e))),
+        r.etiquetas.length > 0 && botonCopiar(r.etiquetas.join(', '), 'Copiar etiquetas'))),
+  ));
+  cargarTitulos();
+}
 $('b-abrir').addEventListener('click', () => abrirCarpeta());
 
 // ---------------------------------------------------------------------------
