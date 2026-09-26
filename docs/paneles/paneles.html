@@ -11,170 +11,505 @@
   cambias una, cambia también el README.
 
   Los comandos y los precios son los de src/interactions/loot/comandos.ts y
-  docs/SIGUIENTE-SESION.md. Si cambian allí, se cambian aquí.
+  docs/07-EFECTOS-CANAL.md. Los retratos de los jefes, los de
+  biblioteca/overlays/jefe.html (TEMAS), copiados tal cual. Si cambian allí,
+  se cambian aquí.
 -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Chakra+Petch:wght@500;600;700&display=swap">
 <style>
   :root {
-    --fondo: #16111f;
-    --fondo-2: #231a31;
-    --tinta: #efe8f7;
-    --tenue: #b3a8c4;
-    --oro: #f5c542;
-    --oro-osc: #a86d0c;
-    --borde: #3a2404;
-    --comun: #c9ced6;
-    --raro: #4ea4ff;
-    --epico: #b86bff;
-    --legendario: #ff9a2e;
+    --oro: #f5c542; --oro-claro: #fff0b0; --oro-osc: #a86d0c; --borde: #2a1a04;
+    --tinta: #efe8f7; --tenue: #b7aac9;
+    --comun: #c9ced6; --raro: #4ea4ff; --epico: #b86bff; --legendario: #ff9a2e;
   }
-  html, body { margin: 0; padding: 0; background: #0e0b14; }
-  body { width: 320px; font-family: "Segoe UI", system-ui, sans-serif; color: var(--tinta); }
+  html, body { margin: 0; padding: 0; background: #0b0810; }
+  body { width: 320px; font-family: "Chakra Petch", "Segoe UI", sans-serif; color: var(--tinta); }
 
+  /* ---------- El panel: fondo, marco doble y esquinas ---------- */
   .panel {
-    box-sizing: border-box;
-    width: 320px;
-    height: var(--alto);
-    position: relative;
-    overflow: hidden;
+    box-sizing: border-box; width: 320px; height: var(--alto); position: relative; overflow: hidden;
+    padding: 14px 14px 0;
     background:
-      radial-gradient(120% 60% at 50% 0%, #3a2a52 0%, transparent 70%),
-      linear-gradient(180deg, var(--fondo-2), var(--fondo));
-    border: 3px solid var(--oro-osc);
-    border-radius: 10px;
-    box-shadow: inset 0 0 0 2px var(--borde), inset 0 0 0 3px #f5c54233;
+      radial-gradient(90% 40% at 50% 0%, rgba(245, 197, 66, .16), transparent 70%),
+      radial-gradient(120% 60% at 50% 105%, rgba(120, 60, 200, .22), transparent 70%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"),
+      linear-gradient(180deg, #1d1428, #120c1a 60%, #0d0913);
   }
+  .panel::before, .panel::after { content: ""; position: absolute; pointer-events: none; border-radius: 12px; }
+  .panel::before { inset: 3px; border: 2px solid var(--oro-osc); box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000, inset 0 0 26px rgba(245, 197, 66, .12); }
+  .panel::after { inset: 8px; border: 1px solid rgba(245, 197, 66, .3); border-radius: 8px; }
+  .esquina { position: absolute; width: 44px; height: 44px; z-index: 2; filter: drop-shadow(0 1px 0 #000); }
+  .esquina.a { left: 0; top: 0; } .esquina.b { right: 0; top: 0; transform: scaleX(-1); }
+  .esquina.c { left: 0; bottom: 0; transform: scaleY(-1); } .esquina.d { right: 0; bottom: 0; transform: scale(-1, -1); }
 
-  /* Cabecera: el "banner" del panel */
-  .cab {
-    height: 64px;
-    display: flex; align-items: center; gap: 10px;
-    padding: 0 14px;
-    background: linear-gradient(180deg, #4a3413, #2b1d08);
-    border-bottom: 3px solid var(--oro-osc);
-    box-shadow: 0 2px 0 var(--borde);
+  /* ---------- Cabecera: medallón y pergamino ---------- */
+  .cab { position: relative; height: 78px; margin-bottom: 8px; }
+  .cinta {
+    position: absolute; left: 30px; right: 0; top: 14px; height: 50px; padding-left: 62px;
+    display: flex; flex-direction: column; justify-content: center;
+    background: linear-gradient(180deg, #5a3e14, #2e1f07 60%, #402c0c);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 50%, 100% 100%, 0 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 240, 176, .35);
   }
-  .cab img { width: 42px; height: 42px; filter: drop-shadow(0 2px 0 #0008); }
-  .cab h2 {
-    margin: 0;
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 24px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap;
-    color: var(--oro);
-    text-shadow: 0 2px 0 var(--borde), 0 0 12px #f5c54255;
+  .cinta::before { content: ""; position: absolute; inset: 3px 16px 3px 3px; border-top: 1px solid rgba(245, 197, 66, .45); border-bottom: 1px solid rgba(245, 197, 66, .45); }
+  .cinta h2 {
+    margin: 0; font-family: "Cinzel", Georgia, serif; font-weight: 900; font-size: 19px; letter-spacing: .8px; line-height: 1;
+    text-transform: uppercase; white-space: nowrap;
+    background: linear-gradient(180deg, var(--oro-claro) 0%, var(--oro) 50%, #c47a12 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 2px 0 #000) drop-shadow(0 0 10px rgba(245, 197, 66, .45));
   }
-  .cab small { display: block; font-family: "Segoe UI", sans-serif; font-size: 11px; letter-spacing: .5px;
-    text-transform: none; color: #e9d8a8; font-weight: 600; margin-top: -1px; }
+  .cinta small { margin-top: 3px; font-size: 11px; font-weight: 600; letter-spacing: .4px; color: #e9d8a8; white-space: nowrap; }
+  .medallon {
+    position: absolute; left: 0; top: 0; width: 78px; height: 78px; z-index: 1;
+    display: grid; place-items: center; border-radius: 50%;
+    background: radial-gradient(circle at 50% 40%, #3b2a52, #150d20 70%);
+    box-shadow: 0 0 0 4px var(--oro-osc), 0 0 0 5px #000, 0 0 0 7px rgba(245, 197, 66, .5), 0 0 22px rgba(245, 197, 66, .5), 0 4px 10px #000;
+  }
+  .medallon img { width: 50px; height: 50px; filter: drop-shadow(0 2px 0 #0008); }
+  .medallon::after { content: ""; position: absolute; inset: -11px; border-radius: 50%; border: 1.5px dashed rgba(245, 197, 66, .6); }
 
-  .cuerpo { padding: 10px 12px 0; }
-
-  /* Comandos */
-  .cmd { display: flex; align-items: baseline; gap: 8px; padding: 5px 0; border-bottom: 1px solid #ffffff12; }
-  .cmd:last-child { border-bottom: 0; }
-  .cmd code {
-    flex: none;
-    font-family: Consolas, "Cascadia Mono", monospace; font-size: 13px; font-weight: 700;
-    color: #2b1d08; background: linear-gradient(180deg, #ffe38a, var(--oro));
-    border: 1.5px solid var(--borde); border-radius: 5px; padding: 1px 6px;
-  }
-  .cmd code i { font-style: normal; font-weight: 400; opacity: .7; }
-  .cmd span { font-size: 12.5px; line-height: 1.3; color: var(--tinta); }
+  /* ---------- Separadores con rombo ---------- */
   .seccion {
-    margin: 9px 0 3px; font-size: 10.5px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
-    color: var(--tenue); display: flex; align-items: center; gap: 8px;
+    display: flex; align-items: center; gap: 8px; margin: 8px 2px 4px;
+    font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--oro);
   }
-  .seccion::after { content: ""; flex: 1; height: 1px; background: #ffffff22; }
-  .seccion:first-child { margin-top: 2px; }
+  .seccion::before, .seccion::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(245, 197, 66, .6), transparent); }
+  .seccion span::before, .seccion span::after { content: "◆"; font-size: 7px; margin: 0 6px; vertical-align: 2px; }
 
-  /* Recompensas */
-  .rec { display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid #ffffff12; }
-  .rec:last-child { border-bottom: 0; }
-  .rec > img { width: 40px; height: 40px; }
-  .rec b { display: block; font-size: 14px; }
-  .rec span { display: block; font-size: 11.5px; color: var(--tenue); line-height: 1.3; }
-  .precio { display: flex; align-items: center; gap: 4px; font-weight: 800; font-size: 14px; color: var(--oro); text-shadow: 0 1px 0 var(--borde); }
-  .precio img { width: 18px; height: 18px; }
+  /* ---------- Comandos ---------- */
+  .cmd { display: flex; align-items: center; gap: 8px; padding: 4px 4px; }
+  .cmd + .cmd { border-top: 1px solid rgba(255, 255, 255, .06); }
+  .cmd code {
+    flex: none; min-width: 0;
+    font-family: Consolas, "Cascadia Mono", monospace; font-size: 12.5px; font-weight: 700;
+    color: #2b1d08; background: linear-gradient(180deg, #fff1b8, var(--oro) 55%, #d69a1e);
+    border: 1.5px solid var(--borde); border-radius: 4px; padding: 1px 6px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), 0 1px 0 #000, 0 0 8px rgba(245, 197, 66, .25);
+  }
+  .cmd code i { font-style: normal; font-weight: 400; opacity: .65; }
+  .cmd span { font-size: 12.3px; line-height: 1.25; }
+  .cmd em { font-style: normal; color: var(--tenue); font-size: 11px; }
 
-  /* Loot */
-  .texto { font-size: 13px; line-height: 1.45; margin: 2px 0 8px; }
+  /* ---------- Recompensas ---------- */
+  .rec {
+    display: grid; grid-template-columns: 42px 1fr auto; gap: 9px; align-items: center;
+    margin: 6px 0; padding: 6px 8px 6px 6px; border-radius: 8px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--r) 18%, transparent), rgba(0, 0, 0, .25) 70%);
+    border: 1px solid color-mix(in srgb, var(--r) 55%, transparent); border-left: 3px solid var(--r);
+    box-shadow: inset 0 0 12px color-mix(in srgb, var(--r) 12%, transparent);
+  }
+  .rec.comun { --r: var(--comun); } .rec.raro { --r: var(--raro); } .rec.epico { --r: var(--epico); } .rec.legendario { --r: var(--legendario); }
+  .rec > img { width: 42px; height: 42px; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--r) 60%, transparent)); }
+  .rec b { display: block; font-size: 13.5px; line-height: 1.15; }
+  .rec span { display: block; font-size: 11px; color: var(--tenue); line-height: 1.25; margin-top: 1px; }
+  .precio { display: flex; align-items: center; gap: 4px; font-weight: 700; font-size: 14px; color: var(--oro); text-shadow: 0 1px 0 #000, 0 0 8px rgba(245, 197, 66, .4); }
+  .precio img { width: 17px; height: 17px; }
+
+  /* ---------- Loot ---------- */
+  .texto { font-size: 12.5px; line-height: 1.45; margin: 4px 2px 8px; }
   .texto b { color: var(--oro); }
-  .rarezas { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
-  .rareza { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 700;
-    padding: 5px 8px; border-radius: 6px; background: #0006; border: 1.5px solid currentColor; }
-  .rareza::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
-  .comun { color: var(--comun); } .raro { color: var(--raro); } .epico { color: var(--epico); } .legendario { color: var(--legendario); }
-  .pie { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; font-size: 12px; color: var(--tenue); }
+  .rarezas { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0 4px; }
+  .rareza {
+    display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700;
+    padding: 5px 8px; border-radius: 6px; background: linear-gradient(90deg, color-mix(in srgb, currentColor 16%, transparent), rgba(0,0,0,.35));
+    border: 1.5px solid currentColor; box-shadow: 0 0 10px color-mix(in srgb, currentColor 30%, transparent);
+  }
+  .rareza::before { content: ""; width: 9px; height: 9px; transform: rotate(45deg); background: currentColor; box-shadow: 0 0 8px currentColor; }
+  .comun-t { color: var(--comun); } .raro-t { color: var(--raro); } .epico-t { color: var(--epico); } .legendario-t { color: var(--legendario); }
+  .extra { display: grid; grid-template-columns: 26px 1fr; gap: 6px; align-items: start; margin: 7px 2px; font-size: 12px; line-height: 1.35; }
+  .extra .ico { font-size: 18px; text-align: center; line-height: 1.1; }
+  .extra b { color: var(--oro); }
+
+  /* ---------- Jefes ---------- */
+  .jefes { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 8px; margin-top: 4px; }
+  .jefe { display: grid; grid-template-columns: 50px 1fr; gap: 6px; align-items: center; padding: 4px 5px; border-radius: 8px; background: rgba(0, 0, 0, .28); border: 1px solid rgba(255, 255, 255, .07); }
+  .jefe svg { width: 50px; height: 50px; filter: drop-shadow(0 0 6px var(--g)); }
+  .jefe b { display: block; font-family: "Cinzel", Georgia, serif; font-size: 10.5px; line-height: 1.15; color: #fff; }
+  .jefe span { display: block; margin-top: 2px; font-size: 10px; line-height: 1.2; color: var(--g2); font-weight: 600; }
+
+  .pie { position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; font-size: 11.5px; color: var(--tenue); }
   .pie code { font-family: Consolas, monospace; font-weight: 700; color: var(--oro); }
 </style>
 </head>
 <body>
 
-<!-- 1. COMANDOS · alto 565 -->
-<section class="panel" id="comandos" style="--alto: 565px">
+<!-- Esquinas de filigrana: se copian en cada panel con JS (abajo). -->
+<template id="esquina">
+  <svg class="esquina" viewBox="0 0 44 44" aria-hidden="true">
+    <path d="M4 40 V14 Q4 4 14 4 H40" fill="none" stroke="#f5c542" stroke-width="2"/>
+    <path d="M9 40 V17 Q9 9 17 9 H40" fill="none" stroke="#a86d0c" stroke-width="1"/>
+    <path d="M4 4 L13 4 L4 13 Z" fill="#f5c542"/>
+    <circle cx="16" cy="16" r="3" fill="#ffb347" stroke="#2a1a04" stroke-width="1.2"/>
+    <path d="M22 4 q4 6 10 0 M4 22 q6 4 0 10" fill="none" stroke="#f5c542" stroke-width="1.3"/>
+  </svg>
+</template>
+
+<!-- 1. COMANDOS · alto 575 -->
+<section class="panel" id="comandos" style="--alto: 575px">
   <div class="cab">
-    <img src="../../biblioteca/imagenes/twitch/grito-112.png" alt="">
-    <h2>Comandos<small>Escríbelos en el chat</small></h2>
+    <div class="cinta"><h2>Comandos</h2><small>Escríbelos en el chat</small></div>
+    <div class="medallon"><img src="../../biblioteca/imagenes/twitch/grito-112.png" alt=""></div>
   </div>
-  <div class="cuerpo">
-    <div class="seccion">Loot</div>
-    <div class="cmd"><code>!loot</code><span>Cómo funciona el Loot</span></div>
-    <div class="cmd"><code>!inventario</code><span>Tu mochila (20 huecos)</span></div>
-    <div class="cmd"><code>!poder</code><span>Tu poder y tu puesto</span></div>
-    <div class="cmd"><code>!duelo <i>nombre</i></code><span>Reta a alguien del chat</span></div>
-    <div class="cmd"><code>!dar <i>nombre</i></code><span>Regala un objeto a alguien</span></div>
-    <div class="cmd"><code>!usar</code><span>Usa un objeto mágico en el directo</span></div>
-    <div class="cmd"><code>!atacar</code><span>Pega al jefe cuando aparezca</span></div>
-    <div class="cmd"><code>!forjar</code><span>3 iguales → 1 de más rareza</span></div>
-    <div class="cmd"><code>!presumir</code><span>Tu mejor pieza, en pantalla</span></div>
-    <div class="cmd"><code>!coleccion</code><span>Lo que llevas y tus títulos</span></div>
-    <div class="cmd"><code>!purificar</code><span>Limpia tu objeto maldito (con Poción de vida)</span></div>
-    <div class="seccion">Con el bot</div>
-    <div class="cmd"><code>!pregunta <i>texto</i></code><span>Pregúntale a Crid4m AI</span></div>
-    <div class="cmd"><code>!incomoda</code><span>Una pregunta incómoda (subs)</span></div>
-  </div>
+  <div class="seccion"><span>Loot</span></div>
+  <div class="cmd"><code>!loot</code><span>Cómo funciona el Loot</span></div>
+  <div class="cmd"><code>!inventario</code><span>Tu mochila (20 huecos)</span></div>
+  <div class="cmd"><code>!poder</code><span>Tu poder y tu puesto</span></div>
+  <div class="cmd"><code>!top</code><span>Los tres más fuertes del canal</span></div>
+  <div class="cmd"><code>!duelo <i>nombre</i></code><span>Reta a alguien del chat</span></div>
+  <div class="cmd"><code>!dar</code><span>Regala un objeto <em>(!dar ana 2)</em></span></div>
+  <div class="cmd"><code>!usar</code><span>Usa un objeto mágico en el directo</span></div>
+  <div class="cmd"><code>!atacar</code><span>Pega al jefe cuando aparezca</span></div>
+  <div class="cmd"><code>!forjar</code><span>3 iguales → 1 de más rareza</span></div>
+  <div class="cmd"><code>!presumir</code><span>Tu mejor pieza, en pantalla</span></div>
+  <div class="cmd"><code>!coleccion</code><span>Lo que llevas y tus títulos</span></div>
+  <div class="cmd"><code>!purificar</code><span>Limpia un objeto maldito <em>(con Poción)</em></span></div>
+  <div class="seccion"><span>Con el bot</span></div>
+  <div class="cmd"><code>!pregunta <i>texto</i></code><span>Pregúntale a Crid4m AI</span></div>
+  <div class="cmd"><code>!incomoda</code><span>Una pregunta incómoda <em>(subs)</em></span></div>
 </section>
 
-<!-- 2. RECOMPENSAS · alto 370 -->
-<section class="panel" id="recompensas" style="--alto: 370px">
+<!-- 2. RECOMPENSAS · alto 520 -->
+<section class="panel" id="recompensas" style="--alto: 520px">
   <div class="cab">
-    <img src="../../biblioteca/imagenes/twitch/oro-moneda-112.png" alt="">
-    <h2>Recompensas<small>Se pagan con Oros, los puntos del canal</small></h2>
+    <div class="cinta"><h2>Recompensas</h2><small>Con Oros, los puntos del canal</small></div>
+    <div class="medallon"><img src="../../biblioteca/imagenes/twitch/oro-moneda-112.png" alt=""></div>
   </div>
-  <div class="cuerpo">
-    <div class="rec"><img src="../../biblioteca/imagenes/twitch/pocion-112.png" alt="">
-      <div><b>Poción de vida</b><span>«¡Bebe agua!» en pantalla y te deja usar !purificar</span></div>
-      <div class="precio"><img src="../../biblioteca/imagenes/twitch/oro-moneda-56.png" alt="">500</div></div>
-    <div class="rec"><img src="../../biblioteca/imagenes/twitch/grito-112.png" alt="">
-      <div><b>Grito de guerra</b><span>Suena en el directo y en 1-2 min cae un cofre de armas</span></div>
-      <div class="precio"><img src="../../biblioteca/imagenes/twitch/oro-moneda-56.png" alt="">750</div></div>
-    <div class="rec"><img src="../../biblioteca/imagenes/twitch/cofre-112.png" alt="">
-      <div><b>Cofre del tesoro</b><span>Abres un cofre del Loot al momento</span></div>
-      <div class="precio"><img src="../../biblioteca/imagenes/twitch/oro-moneda-56.png" alt="">1.500</div></div>
-    <div class="rec"><img src="../../biblioteca/imagenes/twitch/maldicion-112.png" alt="">
-      <div><b>Maldición</b><span>Pantalla en blanco y negro y un objeto maldito: poder doble, pero lo pierdes al perder un duelo</span></div>
-      <div class="precio"><img src="../../biblioteca/imagenes/twitch/oro-moneda-56.png" alt="">2.500</div></div>
-  </div>
+  <div class="rec comun"><img src="../../biblioteca/imagenes/twitch/pocion-112.png" alt="">
+    <div><b>Poción de vida</b><span>«¡Bebe agua!» en pantalla y te deja usar !purificar</span></div>
+    <div class="precio"><img src="../../biblioteca/imagenes/twitch/oro-moneda-56.png" alt="">500</div></div>
+  <div class="rec comun"><img src="../../biblioteca/imagenes/twitch/grito-112.png" alt="">
+    <div><b>Grito de guerra</b><span>Suena en el directo y cae un cofre de armas</span></div>
+    <div class="precio"><img src="../../biblioteca/imagenes/twitch/oro-moneda-56.png" alt="">750</div></div>
+  <div class="rec raro"><img src="../../biblioteca/imagenes/twitch/cofre-112.png" alt="">
+    <div><b>Cofre del tesoro</b><span>Abres un cofre con mejor suerte, al momento</span></div>
+    <div class="precio"><img src="../../biblioteca/imagenes/twitch/oro-moneda-56.png" alt="">1.500</div></div>
+  <div class="rec epico"><img src="../../biblioteca/imagenes/twitch/maldicion-112.png" alt="">
+    <div><b>Maldición</b><span>Pantalla en blanco y negro y un objeto maldito</span></div>
+    <div class="precio"><img src="../../biblioteca/imagenes/twitch/oro-moneda-56.png" alt="">2.500</div></div>
+  <div class="rec epico"><img src="../../biblioteca/imagenes/twitch/terremoto-112.png" alt="">
+    <div><b>Terremoto</b><span>La imagen del juego tiembla 5 segundos</span></div>
+    <div class="precio"><img src="../../biblioteca/imagenes/twitch/oro-moneda-56.png" alt="">3.000</div></div>
+  <div class="rec legendario"><img src="../../biblioteca/imagenes/twitch/lag-112.png" alt="">
+    <div><b>Lag</b><span>La imagen se congela 5 segundos</span></div>
+    <div class="precio"><img src="../../biblioteca/imagenes/twitch/oro-moneda-56.png" alt="">5.000</div></div>
 </section>
 
-<!-- 3. LOOT · alto 350 -->
-<section class="panel" id="loot" style="--alto: 350px">
+<!-- 3. LOOT · alto 445 -->
+<section class="panel" id="loot" style="--alto: 445px">
   <div class="cab">
-    <img src="../../biblioteca/imagenes/twitch/cofre-112.png" alt="">
-    <h2>Loot del chat<small>Botín por estar en el directo</small></h2>
+    <div class="cinta"><h2>Loot del chat</h2><small>Botín por estar en el directo</small></div>
+    <div class="medallon"><img src="../../biblioteca/imagenes/twitch/cofre-112.png" alt=""></div>
   </div>
-  <div class="cuerpo">
-    <p class="texto">Cada <b>20-30 minutos</b> cae un cofre para quien haya escrito en el chat en los últimos 15 minutos. Lo que sale se guarda en tu mochila y aparece en pantalla.</p>
-    <div class="rarezas">
-      <div class="rareza comun">Común</div>
-      <div class="rareza raro">Raro</div>
-      <div class="rareza epico">Épico</div>
-      <div class="rareza legendario">Legendario</div>
-    </div>
-    <p class="texto">Sube tu <b>poder</b>, gana duelos, forja piezas mejores y completa una rareza para ganar un <b>título</b>. Y si aparece un <b>jefe</b>, ¡todos a <b>!atacar</b>!</p>
+  <p class="texto">Cada <b>20-30 minutos</b> cae un cofre para quien haya escrito en el chat hace poco. Lo que sale va a tu mochila y aparece en pantalla.</p>
+  <div class="rarezas">
+    <div class="rareza comun-t">Común</div>
+    <div class="rareza raro-t">Raro</div>
+    <div class="rareza epico-t">Épico</div>
+    <div class="rareza legendario-t">Legendario</div>
   </div>
+  <div class="seccion"><span>Y además</span></div>
+  <div class="extra"><span class="ico">🔥</span><span><b>3 directos seguidos</b>: cofre de fidelidad en cada directo.</span></div>
+  <div class="extra"><span class="ico">🐉</span><span><b>Jefes de raid</b>: todos a !atacar. Botín para quien pegue; el mejor, Cofre del tesoro.</span></div>
+  <div class="extra"><span class="ico">⚔️</span><span><b>Duelos, forja y títulos</b>: sube tu poder y completa una rareza.</span></div>
   <div class="pie">Todos los comandos: <code>!loot</code></div>
 </section>
 
+<!-- 4. JEFES · alto 485 -->
+<section class="panel" id="jefes" style="--alto: 485px">
+  <div class="cab">
+    <div class="cinta"><h2>Jefes de raid</h2><small>Aparecen en el directo: ¡!atacar!</small></div>
+    <div class="medallon"><img src="../../biblioteca/imagenes/icono-maldicion.png" alt=""></div>
+  </div>
+  <div class="jefes" id="lista-jefes">
+    <div class="jefe" style="--g: #36b7ff; --g2: #9fdcff">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <defs><radialGradient id="dragon-fondo" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#1b4b78"/><stop offset=".7" stop-color="#071a2c"/><stop offset="1" stop-color="#050203"/></radialGradient></defs>
+        <circle cx="100" cy="100" r="92" fill="none" stroke="#e2a53c" stroke-width="3" stroke-dasharray="10 7" opacity=".85"/>
+        <circle cx="100" cy="100" r="82" fill="url(#dragon-fondo)" stroke="#e2a53c" stroke-width="9"/>
+        <defs>
+          <linearGradient id="dragon-piel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f2fbff"/><stop offset=".5" stop-color="#7cc6ee"/><stop offset="1" stop-color="#1e4f82"/></linearGradient>
+          <radialGradient id="dragon-ojo"><stop offset="0" stop-color="#fff"/><stop offset=".45" stop-color="#8ff6ff"/><stop offset="1" stop-color="#00b3ff" stop-opacity="0"/></radialGradient>
+        </defs>
+        <path d="M72 70 C52 52 42 30 52 8 C58 32 70 46 88 56 Z" fill="#dff3ff" stroke="#0d2640" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M128 70 C148 52 158 30 148 8 C142 32 130 46 112 56 Z" fill="#dff3ff" stroke="#0d2640" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M60 86 L30 76 L54 98 L26 104 L56 114 L36 130 L64 124 Z" fill="#bfe8ff" stroke="#0d2640" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M140 86 L170 76 L146 98 L174 104 L144 114 L164 130 L136 124 Z" fill="#bfe8ff" stroke="#0d2640" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M100 42 C76 42 58 58 56 82 C55 96 62 108 72 116 L78 146 C82 162 92 170 100 172 C108 170 118 162 122 146 L128 116 C138 108 145 96 144 82 C142 58 124 42 100 42 Z" fill="url(#dragon-piel)" stroke="#0d2640" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M100 48 L90 64 L100 76 L110 64 Z M80 58 L74 70 L84 72 Z M120 58 L126 70 L116 72 Z" fill="#fff" opacity=".55"/>
+        <path d="M62 84 L96 97 L93 104 L60 93 Z" fill="#0d2640"/>
+        <path d="M138 84 L104 97 L107 104 L140 93 Z" fill="#0d2640"/>
+        <g class="ojos">
+          <ellipse cx="80" cy="106" rx="13" ry="7" fill="url(#dragon-ojo)" transform="rotate(20 80 106)"/>
+          <ellipse cx="120" cy="106" rx="13" ry="7" fill="url(#dragon-ojo)" transform="rotate(-20 120 106)"/>
+        </g>
+        <path d="M80 100 L80 112 M120 100 L120 112" stroke="#0d2640" stroke-width="3" stroke-linecap="round"/>
+        <path d="M84 138 C92 132 108 132 116 138" fill="none" stroke="#0d2640" stroke-width="3" stroke-linecap="round"/>
+        <ellipse cx="92" cy="147" rx="4" ry="2.6" fill="#0d2640"/><ellipse cx="108" cy="147" rx="4" ry="2.6" fill="#0d2640"/>
+        <path d="M80 148 L85 168 L90 152 Z M120 148 L115 168 L110 152 Z" fill="#fff" stroke="#0d2640" stroke-width="2" stroke-linejoin="round"/>
+        <g class="vaho" fill="#dff6ff"><circle cx="92" cy="178" r="4"/><circle cx="104" cy="182" r="5"/><circle cx="98" cy="190" r="3"/></g>
+      </svg>
+      <div><b>Dragón de Escarcha</b><span>❄️ Aliento helado</span></div>
+    </div>
+    <div class="jefe" style="--g: #5dff8a; --g2: #9dffb8">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <defs><radialGradient id="esqueleto-fondo" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#1f3a22"/><stop offset=".7" stop-color="#07130a"/><stop offset="1" stop-color="#050203"/></radialGradient></defs>
+        <circle cx="100" cy="100" r="92" fill="none" stroke="#e2a53c" stroke-width="3" stroke-dasharray="10 7" opacity=".85"/>
+        <circle cx="100" cy="100" r="82" fill="url(#esqueleto-fondo)" stroke="#e2a53c" stroke-width="9"/>
+        <defs>
+          <linearGradient id="esqueleto-hueso" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbf4e4"/><stop offset=".6" stop-color="#d8c9a8"/><stop offset="1" stop-color="#8f7c5a"/></linearGradient>
+          <linearGradient id="esqueleto-oro" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0b0"/><stop offset=".5" stop-color="#e2a53c"/><stop offset="1" stop-color="#7a4610"/></linearGradient>
+          <radialGradient id="esqueleto-ojo"><stop offset="0" stop-color="#f4fff0"/><stop offset=".4" stop-color="#5dff8a"/><stop offset="1" stop-color="#0b8a35" stop-opacity="0"/></radialGradient>
+        </defs>
+        <path d="M100 56 C70 56 56 76 56 100 C56 116 64 126 72 132 L72 148 C72 154 78 158 84 158 L116 158 C122 158 128 154 128 148 L128 132 C136 126 144 116 144 100 C144 76 130 56 100 56 Z" fill="url(#esqueleto-hueso)" stroke="#1a0e08" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M112 60 L106 76 L114 84 L108 96" fill="none" stroke="#6b5a3c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M70 102 C72 90 90 88 94 100 C96 110 84 116 76 114 C71 112 69 108 70 102 Z" fill="#0c140c"/>
+        <path d="M130 102 C128 90 110 88 106 100 C104 110 116 116 124 114 C129 112 131 108 130 102 Z" fill="#0c140c"/>
+        <g class="ojos"><circle cx="82" cy="103" r="12" fill="url(#esqueleto-ojo)"/><circle cx="118" cy="103" r="12" fill="url(#esqueleto-ojo)"/></g>
+        <path d="M100 116 L94 128 L106 128 Z" fill="#0c140c"/>
+        <path d="M78 140 H122" stroke="#1a0e08" stroke-width="3"/>
+        <path d="M86 136 V152 M95 136 V154 M105 136 V154 M114 136 V152" stroke="#1a0e08" stroke-width="3" stroke-linecap="round"/>
+        <path d="M58 66 L62 28 L78 48 L90 18 L100 42 L110 18 L122 48 L138 28 L142 66 Z" fill="url(#esqueleto-oro)" stroke="#3a2404" stroke-width="3.5" stroke-linejoin="round"/>
+        <rect x="56" y="60" width="88" height="12" rx="3" fill="url(#esqueleto-oro)" stroke="#3a2404" stroke-width="3.5"/>
+        <circle cx="100" cy="46" r="5" fill="#5dff8a" stroke="#0b3a18" stroke-width="2"/>
+        <circle cx="76" cy="54" r="3.5" fill="#e0112b" stroke="#3a0008" stroke-width="1.5"/><circle cx="124" cy="54" r="3.5" fill="#e0112b" stroke="#3a0008" stroke-width="1.5"/>
+      </svg>
+      <div><b>Rey Esqueleto</b><span>💀 Alza a los muertos</span></div>
+    </div>
+    <div class="jefe" style="--g: #7ed321; --g2: #c3f07a">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <defs><radialGradient id="hidra-fondo" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#23421a"/><stop offset=".7" stop-color="#081405"/><stop offset="1" stop-color="#050203"/></radialGradient></defs>
+        <circle cx="100" cy="100" r="92" fill="none" stroke="#e2a53c" stroke-width="3" stroke-dasharray="10 7" opacity=".85"/>
+        <circle cx="100" cy="100" r="82" fill="url(#hidra-fondo)" stroke="#e2a53c" stroke-width="9"/>
+        <defs>
+          <linearGradient id="hidra-escama" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c8f58a"/><stop offset=".55" stop-color="#4f9e2f"/><stop offset="1" stop-color="#173f12"/></linearGradient>
+        </defs>
+        <g fill="none" stroke-linecap="round">
+          <path d="M100 186 C96 150 70 130 62 92" stroke="#0e2a0a" stroke-width="22"/>
+          <path d="M100 186 C104 150 130 130 138 92" stroke="#0e2a0a" stroke-width="22"/>
+          <path d="M100 186 C100 140 100 110 100 74" stroke="#0e2a0a" stroke-width="24"/>
+          <path d="M100 186 C96 150 70 130 62 92" stroke="url(#hidra-escama)" stroke-width="16"/>
+          <path d="M100 186 C104 150 130 130 138 92" stroke="url(#hidra-escama)" stroke-width="16"/>
+          <path d="M100 186 C100 140 100 110 100 74" stroke="url(#hidra-escama)" stroke-width="18"/>
+        </g>
+        <defs><g id="hidra-cabeza">
+          <path d="M-20 12 C-24 -8 -12 -28 0 -30 C12 -28 24 -8 20 12 C14 22 -14 22 -20 12 Z" fill="url(#hidra-escama)" stroke="#0e2a0a" stroke-width="3.5" stroke-linejoin="round"/>
+          <path d="M-12 -20 L-4 -12 M12 -20 L4 -12" stroke="#0e2a0a" stroke-width="3" stroke-linecap="round"/>
+          <g class="ojos"><ellipse cx="-9" cy="-6" rx="5" ry="4" fill="#ffe14a"/><ellipse cx="9" cy="-6" rx="5" ry="4" fill="#ffe14a"/></g>
+          <path d="M-9 -10 V-2 M9 -10 V-2" stroke="#0e2a0a" stroke-width="2"/>
+          <path d="M-8 16 L-6 26 L-3 17 Z M8 16 L6 26 L3 17 Z" fill="#fff" stroke="#0e2a0a" stroke-width="1.5"/>
+        </g></defs>
+        <use href="#hidra-cabeza" transform="translate(58 80) rotate(-24) scale(.9)"/>
+        <use href="#hidra-cabeza" transform="translate(142 80) rotate(24) scale(.9)"/>
+        <use href="#hidra-cabeza" transform="translate(100 60) scale(1.1)"/>
+        <path d="M100 88 L100 100 L94 106 M100 100 L106 106" fill="none" stroke="#e0112b" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      <div><b>Hidra del Pantano</b><span>🐍 Mordisco venenoso</span></div>
+    </div>
+    <div class="jefe" style="--g: #ff7a1a; --g2: #ffb070">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <defs><radialGradient id="golem-fondo" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#3a2a26"/><stop offset=".7" stop-color="#0d0908"/><stop offset="1" stop-color="#050203"/></radialGradient></defs>
+        <circle cx="100" cy="100" r="92" fill="none" stroke="#e2a53c" stroke-width="3" stroke-dasharray="10 7" opacity=".85"/>
+        <circle cx="100" cy="100" r="82" fill="url(#golem-fondo)" stroke="#e2a53c" stroke-width="9"/>
+        <defs>
+          <linearGradient id="golem-roca" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5d5a68"/><stop offset=".5" stop-color="#26232c"/><stop offset="1" stop-color="#0a090d"/></linearGradient>
+          <radialGradient id="golem-lava"><stop offset="0" stop-color="#fff3b0"/><stop offset=".4" stop-color="#ff8a1a"/><stop offset="1" stop-color="#ff3a00" stop-opacity="0"/></radialGradient>
+        </defs>
+        <path d="M70 38 L88 30 L96 44 Z M112 42 L124 28 L134 46 Z" fill="#3a3740" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M60 50 L140 50 L154 96 L142 158 L112 170 L88 170 L58 158 L46 96 Z" fill="url(#golem-roca)" stroke="#000" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M56 84 L96 90 L96 102 L54 96 Z M144 84 L104 90 L104 102 L146 96 Z" fill="#17151b" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+        <g class="ojos"><rect x="68" y="102" width="22" height="10" rx="2" fill="url(#golem-lava)"/><rect x="110" y="102" width="22" height="10" rx="2" fill="url(#golem-lava)"/>
+          <rect x="72" y="104" width="14" height="6" fill="#ffd36b"/><rect x="114" y="104" width="14" height="6" fill="#ffd36b"/></g>
+        <g class="grietas" fill="none" stroke="#ff8a1a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M100 52 L94 68 L104 78 L98 88"/><path d="M60 126 L74 132 L70 146"/><path d="M146 116 L132 126 L138 140"/><path d="M84 60 L78 72"/>
+        </g>
+        <path d="M74 136 L84 146 L94 138 L104 148 L114 138 L126 146 L130 134 L122 156 L78 156 Z" fill="#0a0507" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M80 150 L120 150" stroke="#ff6a00" stroke-width="3" opacity=".9"/>
+      </svg>
+      <div><b>Gólem de Obsidiana</b><span>🗿 Terremoto</span></div>
+    </div>
+    <div class="jefe" style="--g: #b45cff; --g2: #d9a8ff">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <defs><radialGradient id="liche-fondo" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#3a1a5a"/><stop offset=".7" stop-color="#10061c"/><stop offset="1" stop-color="#050203"/></radialGradient></defs>
+        <circle cx="100" cy="100" r="92" fill="none" stroke="#e2a53c" stroke-width="3" stroke-dasharray="10 7" opacity=".85"/>
+        <circle cx="100" cy="100" r="82" fill="url(#liche-fondo)" stroke="#e2a53c" stroke-width="9"/>
+        <defs>
+          <linearGradient id="liche-capa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b3fa0"/><stop offset=".6" stop-color="#2c1146"/><stop offset="1" stop-color="#0d0418"/></linearGradient>
+          <radialGradient id="liche-ojo"><stop offset="0" stop-color="#fff"/><stop offset=".4" stop-color="#d59bff"/><stop offset="1" stop-color="#8a2be2" stop-opacity="0"/></radialGradient>
+          <radialGradient id="liche-sombra" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#000" stop-opacity=".2"/><stop offset="1" stop-color="#000" stop-opacity=".95"/></radialGradient>
+        </defs>
+        <path d="M100 22 C58 30 42 72 44 116 C45 146 54 166 62 180 L138 180 C146 166 155 146 156 116 C158 72 142 30 100 22 Z" fill="url(#liche-capa)" stroke="#07020d" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M100 30 C86 60 84 90 84 120 M100 30 C114 60 116 90 116 120" fill="none" stroke="#8d5cc4" stroke-width="2" opacity=".6"/>
+        <ellipse cx="100" cy="112" rx="36" ry="46" fill="#07020d"/>
+        <path d="M100 76 C80 76 72 90 72 106 C72 118 78 126 84 130 L84 142 L116 142 L116 130 C122 126 128 118 128 106 C128 90 120 76 100 76 Z" fill="#cfc2dd" stroke="#1a0b28" stroke-width="3"/>
+        <ellipse cx="100" cy="112" rx="36" ry="46" fill="url(#liche-sombra)"/>
+        <g class="ojos"><circle cx="88" cy="106" r="9" fill="url(#liche-ojo)"/><circle cx="112" cy="106" r="9" fill="url(#liche-ojo)"/>
+          <circle cx="88" cy="106" r="3" fill="#fff"/><circle cx="112" cy="106" r="3" fill="#fff"/></g>
+        <path d="M90 132 V140 M97 132 V142 M103 132 V142 M110 132 V140" stroke="#1a0b28" stroke-width="2.5" stroke-linecap="round"/>
+        <g fill="#d59bff" font-family="serif" font-size="18" text-anchor="middle" class="runas">
+          <text x="54" y="60">ᛟ</text><text x="146" y="60">ᚦ</text><text x="100" y="18">ᛉ</text>
+        </g>
+      </svg>
+      <div><b>Liche sin Nombre</b><span>☠️ Drenar alma</span></div>
+    </div>
+    <div class="jefe" style="--g: #e0112b; --g2: #ff8a96">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <defs><radialGradient id="arana-fondo" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#3a0d18"/><stop offset=".7" stop-color="#0e0306"/><stop offset="1" stop-color="#050203"/></radialGradient></defs>
+        <circle cx="100" cy="100" r="92" fill="none" stroke="#e2a53c" stroke-width="3" stroke-dasharray="10 7" opacity=".85"/>
+        <circle cx="100" cy="100" r="82" fill="url(#arana-fondo)" stroke="#e2a53c" stroke-width="9"/>
+        <defs>
+          <radialGradient id="arana-cuerpo" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#5a2a3a"/><stop offset=".5" stop-color="#22101a"/><stop offset="1" stop-color="#050204"/></radialGradient>
+          <radialGradient id="arana-ojo"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="#ff3b4a"/><stop offset="1" stop-color="#8a0010"/></radialGradient>
+        </defs>
+        <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <g stroke="#050204" stroke-width="9">
+            <path d="M84 76 L58 44 L40 36"/><path d="M82 84 L48 66 L26 74"/><path d="M82 94 L48 104 L28 126"/><path d="M86 102 L62 130 L52 158"/>
+            <path d="M116 76 L142 44 L160 36"/><path d="M118 84 L152 66 L174 74"/><path d="M118 94 L152 104 L172 126"/><path d="M114 102 L138 130 L148 158"/>
+          </g>
+          <g stroke="#6b1a28" stroke-width="3.5">
+            <path d="M84 76 L58 44 L40 36"/><path d="M82 84 L48 66 L26 74"/><path d="M82 94 L48 104 L28 126"/><path d="M86 102 L62 130 L52 158"/>
+            <path d="M116 76 L142 44 L160 36"/><path d="M118 84 L152 66 L174 74"/><path d="M118 94 L152 104 L172 126"/><path d="M114 102 L138 130 L148 158"/>
+          </g>
+        </g>
+        <g fill="#ff3b4a"><circle cx="58" cy="44" r="3"/><circle cx="48" cy="66" r="3"/><circle cx="48" cy="104" r="3"/><circle cx="62" cy="130" r="3"/>
+          <circle cx="142" cy="44" r="3"/><circle cx="152" cy="66" r="3"/><circle cx="152" cy="104" r="3"/><circle cx="138" cy="130" r="3"/></g>
+        <ellipse cx="100" cy="136" rx="32" ry="36" fill="url(#arana-cuerpo)" stroke="#000" stroke-width="3.5"/>
+        <path d="M100 116 L88 130 L112 130 Z M88 142 L112 142 L100 130 Z" fill="#e0112b" stroke="#3a0008" stroke-width="2" stroke-linejoin="round"/>
+        <circle cx="100" cy="86" r="24" fill="url(#arana-cuerpo)" stroke="#000" stroke-width="3.5"/>
+        <path d="M90 64 C82 58 84 48 92 50 L96 64 Z M110 64 C118 58 116 48 108 50 L104 64 Z" fill="#1a0b12" stroke="#000" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M88 52 L84 60 M112 52 L116 60" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+        <g class="ojos">
+          <circle cx="93" cy="80" r="5.5" fill="url(#arana-ojo)"/><circle cx="107" cy="80" r="5.5" fill="url(#arana-ojo)"/>
+          <circle cx="86" cy="73" r="3" fill="url(#arana-ojo)"/><circle cx="114" cy="73" r="3" fill="url(#arana-ojo)"/>
+          <circle cx="96" cy="70" r="2.6" fill="url(#arana-ojo)"/><circle cx="104" cy="70" r="2.6" fill="url(#arana-ojo)"/>
+          <circle cx="84" cy="85" r="2.4" fill="url(#arana-ojo)"/><circle cx="116" cy="85" r="2.4" fill="url(#arana-ojo)"/>
+        </g>
+      </svg>
+      <div><b>Araña Reina</b><span>🕸️ Telaraña</span></div>
+    </div>
+    <div class="jefe" style="--g: #19c2b0; --g2: #8ff0e4">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <defs><radialGradient id="kraken-fondo" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#0f3a4a"/><stop offset=".7" stop-color="#041018"/><stop offset="1" stop-color="#050203"/></radialGradient></defs>
+        <circle cx="100" cy="100" r="92" fill="none" stroke="#e2a53c" stroke-width="3" stroke-dasharray="10 7" opacity=".85"/>
+        <circle cx="100" cy="100" r="82" fill="url(#kraken-fondo)" stroke="#e2a53c" stroke-width="9"/>
+        <defs>
+          <linearGradient id="kraken-manto" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b58bd6"/><stop offset=".5" stop-color="#5c3a8a"/><stop offset="1" stop-color="#1d0f33"/></linearGradient>
+          <radialGradient id="kraken-ojo"><stop offset="0" stop-color="#fff9c0"/><stop offset=".6" stop-color="#ffc21a"/><stop offset="1" stop-color="#b36b00"/></radialGradient>
+        </defs>
+        <g fill="none" stroke-linecap="round">
+          <g stroke="#12071f" stroke-width="16">
+            <path d="M76 112 C56 128 42 150 56 168 C64 176 76 170 70 160"/><path d="M124 112 C144 128 158 150 144 168 C136 176 124 170 130 160"/>
+            <path d="M90 116 C84 140 78 160 90 178"/><path d="M110 116 C116 140 122 160 110 178"/>
+          </g>
+          <g stroke="url(#kraken-manto)" stroke-width="11">
+            <path d="M76 112 C56 128 42 150 56 168 C64 176 76 170 70 160"/><path d="M124 112 C144 128 158 150 144 168 C136 176 124 170 130 160"/>
+            <path d="M90 116 C84 140 78 160 90 178"/><path d="M110 116 C116 140 122 160 110 178"/>
+          </g>
+        </g>
+        <g fill="#f0d6ff"><circle cx="58" cy="146" r="2.5"/><circle cx="54" cy="158" r="2.5"/><circle cx="142" cy="146" r="2.5"/><circle cx="146" cy="158" r="2.5"/>
+          <circle cx="84" cy="146" r="2.2"/><circle cx="82" cy="160" r="2.2"/><circle cx="116" cy="146" r="2.2"/><circle cx="118" cy="160" r="2.2"/></g>
+        <path d="M100 26 C66 26 54 56 56 86 C58 104 68 116 80 120 L120 120 C132 116 142 104 144 86 C146 56 134 26 100 26 Z" fill="url(#kraken-manto)" stroke="#12071f" stroke-width="4" stroke-linejoin="round"/>
+        <g fill="#e2c4ff" opacity=".6"><circle cx="82" cy="50" r="5"/><circle cx="118" cy="46" r="4"/><circle cx="100" cy="38" r="3"/><circle cx="128" cy="66" r="3.5"/><circle cx="72" cy="70" r="3"/></g>
+        <g class="ojos"><ellipse cx="80" cy="94" rx="14" ry="11" fill="url(#kraken-ojo)" stroke="#12071f" stroke-width="3"/><ellipse cx="120" cy="94" rx="14" ry="11" fill="url(#kraken-ojo)" stroke="#12071f" stroke-width="3"/></g>
+        <rect x="70" y="92" width="20" height="4" rx="2" fill="#12071f"/><rect x="110" y="92" width="20" height="4" rx="2" fill="#12071f"/>
+        <path d="M66 82 L92 88 M134 82 L108 88" stroke="#12071f" stroke-width="4" stroke-linecap="round"/>
+      </svg>
+      <div><b>Kraken del Foso</b><span>🐙 Tentáculo</span></div>
+    </div>
+    <div class="jefe" style="--g: #d9772b; --g2: #ffc38a">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <defs><radialGradient id="minotauro-fondo" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#4a2a15"/><stop offset=".7" stop-color="#140a04"/><stop offset="1" stop-color="#050203"/></radialGradient></defs>
+        <circle cx="100" cy="100" r="92" fill="none" stroke="#e2a53c" stroke-width="3" stroke-dasharray="10 7" opacity=".85"/>
+        <circle cx="100" cy="100" r="82" fill="url(#minotauro-fondo)" stroke="#e2a53c" stroke-width="9"/>
+        <defs>
+          <linearGradient id="minotauro-pelo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a5a2e"/><stop offset=".6" stop-color="#5e3016"/><stop offset="1" stop-color="#2a1206"/></linearGradient>
+          <linearGradient id="minotauro-cuerno" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff6e0"/><stop offset="1" stop-color="#b8a27a"/></linearGradient>
+        </defs>
+        <path d="M66 70 C40 70 22 52 22 26 C34 44 50 50 70 52 Z" fill="url(#minotauro-cuerno)" stroke="#2a1206" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M134 70 C160 70 178 52 178 26 C166 44 150 50 130 52 Z" fill="url(#minotauro-cuerno)" stroke="#2a1206" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M58 84 C44 80 38 92 48 100 C54 104 62 100 64 96 Z M142 84 C156 80 162 92 152 100 C146 104 138 100 136 96 Z" fill="url(#minotauro-pelo)" stroke="#2a1206" stroke-width="3"/>
+        <path d="M100 48 C72 48 58 66 60 92 C62 110 70 122 74 132 L76 150 C80 166 90 172 100 172 C110 172 120 166 124 150 L126 132 C130 122 138 110 140 92 C142 66 128 48 100 48 Z" fill="url(#minotauro-pelo)" stroke="#2a1206" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M60 70 L140 64 L142 80 L60 86 Z" fill="#f4f1ea" stroke="#2a1206" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M106 66 L106 82 M100 74 L112 74" stroke="#d62b2b" stroke-width="3"/>
+        <g class="ojos"><ellipse cx="82" cy="102" rx="10" ry="8" fill="#fff4e8"/><ellipse cx="118" cy="102" rx="10" ry="8" fill="#fff4e8"/>
+          <circle cx="82" cy="104" r="4" fill="#2a1206"/><circle cx="118" cy="104" r="4" fill="#2a1206"/>
+          <path d="M74 100 L80 104 M88 98 L84 104 M112 98 L116 104 M126 100 L120 104" stroke="#e0302b" stroke-width="1.5"/></g>
+        <path d="M70 98 C76 92 88 92 94 98 L94 102 L70 102 Z M130 98 C124 92 112 92 106 98 L106 102 L130 102 Z" fill="#5e3016" stroke="#2a1206" stroke-width="2"/>
+        <path d="M78 132 C80 150 120 150 122 132 C118 124 82 124 78 132 Z" fill="#c9a081" stroke="#2a1206" stroke-width="3"/>
+        <ellipse cx="90" cy="136" rx="4" ry="5" fill="#2a1206"/><ellipse cx="110" cy="136" rx="4" ry="5" fill="#2a1206"/>
+        <path d="M88 150 C88 162 112 162 112 150" fill="none" stroke="#e2a53c" stroke-width="5"/>
+        <path d="M142 96 C146 104 142 110 138 108 C134 106 136 100 142 96 Z" fill="#8fd3ff" stroke="#1a4a6a" stroke-width="1.5"/>
+      </svg>
+      <div><b>Minotauro con Resaca</b><span>🤢 Vomitona</span></div>
+    </div>
+    <div class="jefe" style="--g: #9aa9bd; --g2: #dfe6f0">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <defs><radialGradient id="tanque-fondo" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#2b3342"/><stop offset=".7" stop-color="#0b0e14"/><stop offset="1" stop-color="#050203"/></radialGradient></defs>
+        <circle cx="100" cy="100" r="92" fill="none" stroke="#e2a53c" stroke-width="3" stroke-dasharray="10 7" opacity=".85"/>
+        <circle cx="100" cy="100" r="82" fill="url(#tanque-fondo)" stroke="#e2a53c" stroke-width="9"/>
+        <defs>
+          <linearGradient id="tanque-acero" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6d7a8c"/><stop offset=".35" stop-color="#e8edf4"/><stop offset=".7" stop-color="#9aa6b6"/><stop offset="1" stop-color="#4a5566"/></linearGradient>
+          <linearGradient id="tanque-escudo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d6fc4"/><stop offset="1" stop-color="#16305e"/></linearGradient>
+        </defs>
+        <path d="M60 60 C60 36 78 26 100 26 C122 26 140 36 140 60 L142 128 C142 136 136 140 128 140 L72 140 C64 140 58 136 58 128 Z" fill="url(#tanque-acero)" stroke="#161b24" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M100 26 L100 140" stroke="#5a6678" stroke-width="3"/>
+        <path d="M70 84 L96 84 L96 92 L70 92 Z M104 84 L130 84 L130 92 L104 92 Z" fill="#0b0e14"/>
+        <g class="ojos" fill="#fff"><circle cx="82" cy="88" r="2.5"/><circle cx="118" cy="88" r="2.5"/></g>
+        <path d="M112 44 C118 50 124 48 128 54" fill="none" stroke="#3b4658" stroke-width="3" stroke-linecap="round"/>
+        <path d="M122 60 L114 70 L120 76 L112 84" fill="none" stroke="#161b24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <g transform="rotate(-18 76 50)"><rect x="60" y="44" width="32" height="12" rx="5" fill="#f0c9a0" stroke="#8a6a4a" stroke-width="2"/><path d="M72 46 V54 M80 46 V54" stroke="#c9a07a" stroke-width="1.5"/></g>
+        <path d="M100 116 L136 122 C136 150 122 168 100 180 C78 168 64 150 64 122 Z" fill="url(#tanque-escudo)" stroke="#0b1428" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M100 124 L100 172 M72 134 L128 134" stroke="#e2a53c" stroke-width="4"/>
+        <path d="M112 124 L104 142 L114 152 L106 170" fill="none" stroke="#0b1428" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <g class="estrellas" fill="#ffd24a" stroke="#6b4a00" stroke-width="1">
+          <path d="M60 22 l3 7 7 1 -5 5 1 7 -6 -3 -6 3 1 -7 -5 -5 7 -1 z"/><path d="M140 16 l2.4 5.6 5.6 .8 -4 4 .8 5.6 -4.8 -2.4 -4.8 2.4 .8 -5.6 -4 -4 5.6 -.8 z"/>
+        </g>
+      </svg>
+      <div><b>Tanque que no sabe tanquear</b><span>🛡️ Se pega solo</span></div>
+    </div>
+    <div class="jefe" style="--g: #00e5ff; --g2: #8ff6ff">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <defs><radialGradient id="lag-fondo" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#1a1030"/><stop offset=".7" stop-color="#05030c"/><stop offset="1" stop-color="#050203"/></radialGradient></defs>
+        <circle cx="100" cy="100" r="92" fill="none" stroke="#e2a53c" stroke-width="3" stroke-dasharray="10 7" opacity=".85"/>
+        <circle cx="100" cy="100" r="82" fill="url(#lag-fondo)" stroke="#e2a53c" stroke-width="9"/>
+        <defs>
+          <linearGradient id="lag-pixel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2b2350"/><stop offset="1" stop-color="#0a0718"/></linearGradient>
+        </defs>
+        <g class="wifi" fill="none" stroke-linecap="round">
+          <path d="M62 50 C86 28 114 28 138 50" stroke="#00e5ff" stroke-width="6" opacity=".35"/>
+          <path d="M74 60 C90 46 110 46 126 60" stroke="#00e5ff" stroke-width="6" opacity=".6"/>
+          <path d="M86 70 C94 64 106 64 114 70" stroke="#00e5ff" stroke-width="6"/>
+          <path d="M126 24 L144 42 M144 24 L126 42" stroke="#ff2a6a" stroke-width="6"/>
+        </g>
+        <g transform="translate(-4 0)" opacity=".7"><rect x="56" y="80" width="88" height="80" rx="10" fill="none" stroke="#ff00c8" stroke-width="4"/></g>
+        <g transform="translate(4 0)" opacity=".7"><rect x="56" y="80" width="88" height="80" rx="10" fill="none" stroke="#00e5ff" stroke-width="4"/></g>
+        <rect x="56" y="80" width="88" height="80" rx="10" fill="url(#lag-pixel)" stroke="#e8f8ff" stroke-width="4"/>
+        <g class="ojos" fill="#00e5ff"><rect x="72" y="100" width="16" height="16"/><rect x="112" y="100" width="16" height="16"/>
+          <rect x="76" y="104" width="8" height="8" fill="#fff"/><rect x="116" y="104" width="8" height="8" fill="#fff"/></g>
+        <path d="M76 138 H84 V132 H92 V138 H100 V132 H108 V138 H116 V132 H124" fill="none" stroke="#ff00c8" stroke-width="4"/>
+        <g fill="#00e5ff"><rect x="36" y="112" width="10" height="10"/><rect x="152" y="96" width="8" height="8"/><rect x="150" y="140" width="12" height="6" fill="#ff00c8"/><rect x="40" y="146" width="8" height="8" fill="#ff00c8"/></g>
+        <text x="100" y="182" text-anchor="middle" font-family="Consolas, monospace" font-size="15" font-weight="700" fill="#ff2a6a">999 ms</text>
+      </svg>
+      <div><b>Lag Primigenio</b><span>📶 Desconexión</span></div>
+    </div>
+  </div>
+  <div class="pie">Cada uno tiene su <code>ataque especial</code></div>
+</section>
+
+<script>
+  // Las esquinas de filigrana, en los cuatro rincones de cada panel.
+  const esquina = document.getElementById('esquina');
+  for (const panel of document.querySelectorAll('.panel')) {
+    for (const lado of ['a', 'b', 'c', 'd']) {
+      const e = esquina.content.firstElementChild.cloneNode(true);
+      e.classList.add(lado);
+      panel.append(e);
+    }
+  }
+</script>
 </body>
 </html>

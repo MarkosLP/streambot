@@ -44,8 +44,9 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 - **Sonidos más bajos**: los overlays suenan al 35 % (antes 80 %). Se ajustan en el mezclador de OBS (pistas «FX Jefe» y «FX Botin») o con `?volumen=0.2` en la dirección de la fuente.
 - **Terremoto sin plugin**: el bot mueve `Captura de ventana` (`OBS_FUENTE_JUEGO`) 5 s y la deja en su sitio (probado en su OBS el 26 sep: vuelve a 0,0). La Action de Streamer.bot, solo sonido + aviso; ya se puede importar. El plugin Move está instalado y cargado, pero no se usa.
 - **El directo según OBS** (`core/directo.ts`): cada minuto pregunta a OBS si emite y abre o cierra el directo por el mismo camino que los avisos de Twitch. Si OBS deja de contestar 5 veces seguidas (y había contestado antes), lo cierra. «Marcar en directo para probar» del panel lo deja abierto aunque no emitas, hasta que lo cierres o haya una emisión de verdad.
-- El Lag (Freeze Filter) ya funciona y los paneles de Twitch están subidos (26 sep).
-- Hay que **reiniciar el bot** para tenerlo. 424 tests.
+- El Lag (Freeze Filter) ya funciona. Paneles de Twitch rehechos (26 sep): más épicos, con Terremoto y Lag en Recompensas, `!top`, el cofre de fidelidad y un cuarto panel «Jefes de raid». Hay que subirlos otra vez.
+- **Cofre de fidelidad** (3+ directos seguidos, en el primer mensaje de cada directo) y **`!top`**. Las rachas se cuentan ya aunque las espontáneas estén apagadas.
+- Hay que **reiniciar el bot** para tenerlo. 428 tests.
 
 ### Precios y límites acordados
 
