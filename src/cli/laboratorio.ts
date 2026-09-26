@@ -266,8 +266,9 @@ async function main(): Promise<void> {
     meter('ana', 'Frasco de agua bendita', 'raro');
     meter('luis', 'Calavera que susurra', 'epico');
     await aLaVez([mensaje('ana', '!usar'), mensaje('ana', '!usar frasco'), mensaje('ana', '!usar'), mensaje('luis', '!usar calavera')], 10);
-    const quedanAna = filasLoot().filter((f) => f.twitch_id === 'lab-ana' && f.objeto === 'Frasco de agua bendita').length;
-    const quedanLuis = filasLoot().filter((f) => f.twitch_id === 'lab-luis' && f.objeto === 'Calavera que susurra').length;
+    // Solo los que se pueden usar: los malditos no cuentan (la Calavera puede devolver uno).
+    const quedanAna = filasLoot().filter((f) => f.twitch_id === 'lab-ana' && f.objeto === 'Frasco de agua bendita' && !f.maldito).length;
+    const quedanLuis = filasLoot().filter((f) => f.twitch_id === 'lab-luis' && f.objeto === 'Calavera que susurra' && !f.maldito).length;
     const usados = (quedanAna === 0 ? 1 : 0) + (quedanLuis === 0 ? 1 : 0);
     if (usados !== 1) fallos.push(`se gastaron ${usados} objetos; con 2 min entre efectos en pantalla debía ser 1`);
     if (efectos.length !== usados) fallos.push(`${efectos.length} efectos lanzados para ${usados} objetos gastados`);

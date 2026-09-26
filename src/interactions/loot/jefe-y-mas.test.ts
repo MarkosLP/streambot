@@ -17,7 +17,8 @@ import * as loot from './index.js';
 import * as jefe from './jefe.js';
 import * as arena from './arena.js';
 import { ESPECIALES } from './especiales.js';
-import type { Rareza } from './objetos.js';
+import { NOMBRES_USABLES, tirarMaldito, type Rareza } from './objetos.js';
+import { USABLES } from './comandos.js';
 
 /**
  * Lo del 26 sep 2026: el cofre de guerra que cae sin nadie, !dar, !usar y el
@@ -278,6 +279,16 @@ describe('✨ !usar', () => {
     await handleEvent(mensaje('ana', '!usar calavera'));
     assert.match(enviados.at(-1)!, /La pantalla aún se está recuperando/);
     assert.deepEqual(objetos('ana'), ['Calavera que susurra'], 'no se gasta');
+  });
+
+  test('un objeto maldito nunca es de los que se usan (sería un objeto muerto)', () => {
+    for (let i = 0; i < 2000; i++) {
+      const b = tirarMaldito();
+      assert.ok(b.maldito);
+      assert.ok(!NOMBRES_USABLES.includes(b.objeto), b.objeto);
+    }
+    // Y la lista de nombres cuadra con la de !usar.
+    assert.deepEqual([...NOMBRES_USABLES].sort(), Object.keys(USABLES).sort());
   });
 
   test('un objeto normal no hace nada, y lo dice', async () => {

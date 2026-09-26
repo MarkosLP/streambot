@@ -14,6 +14,7 @@ import {
   etiqueta,
   siguienteRareza,
   tirar,
+  tirarMaldito,
   type Azar,
   type Botin,
   type Rareza,
@@ -417,7 +418,7 @@ export const usar: Interaction<CtxComando> = {
       texto = `💧 ${yo.displayName} abre el Frasco de agua bendita: ¡a beber agua todo el mundo!` +
         (limpio ? ` Y de paso purifica ${etiqueta(limpio)}.` : '');
     } else {
-      const botin = { ...tirar('oro', ctx.azar), maldito: true };
+      const botin = tirarMaldito(ctx.azar);
       lootDb.dar(yo.id, yo.displayName, botin, 'maldicion');
       enPantalla(yo.displayName, botin, 'maldicion');
       texto = `💀 ${yo.displayName} escucha a la Calavera que susurra… la pantalla se maldice y le devuelve ${etiqueta(botin)}.`;

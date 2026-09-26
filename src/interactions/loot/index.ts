@@ -14,7 +14,7 @@ import * as streams from '../../data/streams.js';
 import * as users from '../../data/users.js';
 import { esBot } from '../../core/bots.js';
 import * as arena from './arena.js';
-import { ESTILO, MOCHILA_MAX, RAREZAS, etiqueta, tirar, type Azar, type Botin } from './objetos.js';
+import { ESTILO, MOCHILA_MAX, RAREZAS, etiqueta, tirar, tirarMaldito, type Azar, type Botin } from './objetos.js';
 
 /**
  * Loot del chat.
@@ -584,7 +584,7 @@ export const maldicion: Interaction<CtxEfecto> = {
     (ctx) => (consent.haPedidoOlvido(ctx.viewer.id) ? { ok: false, motivo: 'pidió el olvido' } : { ok: true }),
   ],
   run: (ctx) => {
-    const botin = { ...tirar('oro', ctx.azar), maldito: true };
+    const botin = tirarMaldito(ctx.azar);
     lootDb.dar(ctx.viewer.id, ctx.viewer.displayName, botin, 'maldicion');
     enPantalla(ctx.viewer.displayName, botin, 'maldicion');
     return {

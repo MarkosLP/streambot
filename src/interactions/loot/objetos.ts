@@ -222,3 +222,19 @@ export function etiqueta(b: Botin): string {
 
 /** El poder de un objeto: el doble si está maldito. */
 export const poderDe = (b: Botin) => PODER[b.rareza] * (b.maldito ? 2 : 1);
+
+/**
+ * Los objetos que se pueden usar con !usar (la lista completa, con su efecto,
+ * está en comandos.ts, USABLES). Aquí solo los nombres, para que un objeto
+ * maldito no salga nunca de estos: los malditos no se pueden usar, y una
+ * Calavera maldita sería un objeto muerto. (Lo encontró el laboratorio.)
+ */
+export const NOMBRES_USABLES = ['Cuerno de guerra', 'Frasco de agua bendita', 'Calavera que susurra'];
+
+/** Un objeto maldito (Maldición, Calavera): como un Cofre del tesoro, pero nunca un usable. */
+export function tirarMaldito(azar: Azar = Math.random): Botin {
+  let botin = tirar('oro', azar);
+  for (let i = 0; i < 20 && NOMBRES_USABLES.includes(botin.objeto); i++) botin = tirar('oro', azar);
+  if (NOMBRES_USABLES.includes(botin.objeto)) botin = { objeto: OBJETOS[botin.rareza].find((o) => !NOMBRES_USABLES.includes(o))!, rareza: botin.rareza };
+  return { ...botin, maldito: true };
+}
