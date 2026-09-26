@@ -2,6 +2,7 @@ import type { ViewerRedeemEvent } from '../core/events.js';
 import * as preguntaIa from './pregunta-ia.js';
 import * as preguntaIncomoda from './pregunta-incomoda.js';
 import * as loot from './loot/index.js';
+import * as terremoto from './terremoto.js';
 
 /**
  * Registro de interacciones de Channel Point.
@@ -25,4 +26,6 @@ export const channelPoint: ChannelPointBinding[] = [
   loot.channelPointBinding,
   // Grito, Maldición y Poción: su lado del Loot. El efecto sigue en Streamer.bot.
   ...loot.efectosBindings,
+  // Terremoto: el temblor de la imagen lo hace el bot. El sonido, Streamer.bot.
+  terremoto.channelPointBinding,
 ];

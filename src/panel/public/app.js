@@ -892,7 +892,7 @@ function pintarImportar() {
         : 'Elige arriba la escena y la fuente del juego.')
       : h('p', { class: 'nota' }, 'Usará la escena ', h('strong', {}, obsElegido.escena), ' y la fuente ', h('strong', {}, obsElegido.fuente), ', las mismas de «Preparar OBS».'),
     h('div', { class: 'preparables' }, marcas),
-    h('div', { class: 'obs-pie' }, boton, h('span', { class: 'nota' }, 'El Terremoto no está: se genera cuando tengas el plugin y lo configuremos.')),
+    h('div', { class: 'obs-pie' }, boton),
     pasos,
   );
 }

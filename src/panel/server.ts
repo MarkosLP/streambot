@@ -19,6 +19,7 @@ import * as loot from '../interactions/loot/index.js';
 import * as lootDb from '../data/loot.js';
 import * as lootComandos from '../interactions/loot/comandos.js';
 import * as jefe from '../interactions/loot/jefe.js';
+import * as terremoto from '../interactions/terremoto.js';
 import * as arena from '../interactions/loot/arena.js';
 import { MOCHILA_MAX, PROBABILIDADES, tirar } from '../interactions/loot/objetos.js';
 import * as cooldowns from '../core/cooldowns.js';
@@ -359,6 +360,10 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       desdePanel: true,
     });
     log.info(`Panel: acción ${ejecutar[1]} ejecutada a mano.`);
+    // El Terremoto es sonido (Streamer.bot) + temblor (el bot): al probarlo, los dos.
+    const probada = (await sb.acciones().catch(() => [])).find((a) => a.id === ejecutar[1]);
+    const terremotoCat = EFECTOS.find((e) => e.id === 'terremoto');
+    if (probada && terremotoCat && mismoNombre(probada.name, terremotoCat.accion)) terremoto.temblar();
     return json(res, 200, { ok: true });
   }
 

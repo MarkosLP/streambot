@@ -84,6 +84,12 @@ describe('importar en Streamer.bot', () => {
   });
 
   test('no inventa efectos que no sabe generar', () => {
-    assert.throws(() => exportacion(['terremoto' as any], OPCIONES), /no importable/);
+    assert.throws(() => exportacion(['meteorito' as any], OPCIONES), /no importable/);
+  });
+
+  test('el Terremoto solo lleva el sonido y el aviso: el temblor lo hace el bot', () => {
+    const accion = exportacion(['terremoto'], OPCIONES).data.actions[0];
+    assert.equal(accion.name, 'Efecto - Terremoto');
+    assert.deepEqual(accion.subActions.map((s: any) => s.type), [1, 10], 'sonido y mensaje, nada de OBS');
   });
 });

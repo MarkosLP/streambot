@@ -262,3 +262,50 @@ export async function mostrarBotin(
     await pedir('SetSceneItemEnabled', { sceneName: dondeEsta.escena, sceneItemId: dondeEsta.id, sceneItemEnabled: false });
   }
 }
+
+// ---------------------------------------------------------------------------
+// Terremoto: la fuente del juego tiembla
+// ---------------------------------------------------------------------------
+
+/**
+ * Hace temblar una fuente moviéndola unos píxeles a un lado y a otro, y la
+ * deja EXACTAMENTE donde estaba (26 sep 2026: con el plugin Move había que
+ * encadenar varios filtros; así no hace falta ninguno).
+ *
+ * Tiembla en la escena que está en emisión; si la fuente no está ahí, en la
+ * primera que la tenga. La vuelta a su sitio va en un finally: aunque OBS
+ * falle a mitad, lo último que se intenta es colocarla bien.
+ */
+export async function temblar(
+  pedir: PedirObs,
+  { fuente, ms = 5000, amplitud = 16, paso = 40 }: { fuente: string; ms?: number; amplitud?: number; paso?: number },
+  { esperar = (t: number) => new Promise<void>((r) => setTimeout(r, t)), azar = Math.random } = {},
+): Promise<void> {
+  const { currentProgramSceneName: enEmision } = await pedir<{ currentProgramSceneName: string }>('GetCurrentProgramScene');
+  let donde: { escena: string; id: number } | null = null;
+  try {
+    const { sceneItemId } = await pedir<{ sceneItemId: number }>('GetSceneItemId', { sceneName: enEmision, sourceName: fuente });
+    donde = { escena: enEmision, id: sceneItemId };
+  } catch {
+    donde = await buscar(pedir, fuente);
+  }
+  if (!donde) throw new ErrorObs(`No encuentro la fuente «${fuente}» en ninguna escena. Cámbiala con OBS_FUENTE_JUEGO en el .env.`);
+
+  const { sceneItemTransform: t } = await pedir<{ sceneItemTransform: { positionX: number; positionY: number } }>(
+    'GetSceneItemTransform', { sceneName: donde.escena, sceneItemId: donde.id },
+  );
+  const mover = (x: number, y: number) => pedir('SetSceneItemTransform', {
+    sceneName: donde!.escena, sceneItemId: donde!.id, sceneItemTransform: { positionX: x, positionY: y },
+  });
+  try {
+    for (let hecho = 0; hecho < ms; hecho += paso) {
+      // Fuerte al principio y se va calmando en el último tercio.
+      const fuerza = hecho < ms * 0.66 ? 1 : 1 - (hecho - ms * 0.66) / (ms * 0.34);
+      const a = amplitud * fuerza;
+      await mover(t.positionX + (azar() * 2 - 1) * a, t.positionY + (azar() * 2 - 1) * a);
+      await esperar(paso);
+    }
+  } finally {
+    await mover(t.positionX, t.positionY);
+  }
+}

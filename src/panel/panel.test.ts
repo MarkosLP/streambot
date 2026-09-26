@@ -13,7 +13,7 @@ import * as revision from './revision.js';
 import { crearServidor, type PuertoStreamerbot, type ConObs } from './server.js';
 import { ErrorObs, autenticacion } from '../transport/obs.js';
 import { descodificar } from './importar.js';
-import { mostrarBotin } from './obs-setup.js';
+import { mostrarBotin, temblar } from './obs-setup.js';
 import { EFECTOS, mismoNombre } from './efectos.js';
 
 /**
@@ -110,6 +110,15 @@ const obsFalso: ConObs = async (trabajo) => {
         return { sceneItemId: id };
       case 'GetVideoSettings':
         return { baseWidth: 2560, baseHeight: 1440 };
+      case 'GetCurrentProgramScene':
+        return { currentProgramSceneName: 'Escena juego' };
+      case 'GetSceneItemId': {
+        const item = obs.items[d.sceneName]?.find((i) => i.sourceName === d.sourceName);
+        if (!item) throw new ErrorObs('no existe', 600);
+        return { sceneItemId: item.sceneItemId };
+      }
+      case 'GetSceneItemTransform':
+        return { sceneItemTransform: { ...(obs.transformes[d.sceneItemId] ?? { positionX: 0, positionY: 0 }) } };
       case 'SetSceneItemTransform':
         obs.transformes[d.sceneItemId] = d.sceneItemTransform;
         return {};
@@ -530,7 +539,7 @@ describe('código para importar', () => {
 
   test('sin escena o con efectos inventados, no genera nada', async () => {
     assert.equal((await pedir('GET', '/api/efectos/importar?ids=pocion&fuente=x')).status, 400);
-    assert.equal((await pedir('GET', '/api/efectos/importar?ids=terremoto&escena=a&fuente=b')).status, 400);
+    assert.equal((await pedir('GET', '/api/efectos/importar?ids=meteorito&escena=a&fuente=b')).status, 400);
     assert.equal((await pedir('GET', '/api/efectos/importar?escena=a&fuente=b')).status, 400);
   });
 });
@@ -575,5 +584,25 @@ describe('banner del Loot', () => {
 
   test('sin la fuente creada, lo dice en vez de fallar a medias', async () => {
     await assert.rejects(mostrar({ quien: 'pepe', objeto: 'x', rareza: 'comun', origen: 'cofre' }), /Preparar en OBS/);
+  });
+});
+
+describe('terremoto', () => {
+  test('mueve la fuente del juego a un lado y a otro, y la deja donde estaba', async () => {
+    const id = obs.items['Escena juego'].find((i) => i.sourceName === 'Juego')!.sceneItemId;
+    obs.transformes[id] = { positionX: 100, positionY: 50 };
+    const posiciones: Array<[number, number]> = [];
+    await obsFalso((pedir) => temblar(pedir, { fuente: 'Juego', ms: 200, paso: 40 }, {
+      esperar: async () => { posiciones.push([obs.transformes[id].positionX, obs.transformes[id].positionY]); },
+    }));
+    assert.equal(posiciones.length, 5);
+    assert.ok(posiciones.some(([x, y]) => x !== 100 || y !== 50), 'ha temblado');
+    assert.ok(posiciones.every(([x, y]) => Math.abs(x - 100) <= 16 && Math.abs(y - 50) <= 16), 'sin pasarse');
+    assert.equal(obs.transformes[id].positionX, 100);
+    assert.equal(obs.transformes[id].positionY, 50);
+  });
+
+  test('si la fuente no existe, lo dice sin mover nada', async () => {
+    await assert.rejects(obsFalso((pedir) => temblar(pedir, { fuente: 'No existe', ms: 100 })), /No encuentro la fuente «No existe»/);
   });
 });

@@ -48,8 +48,8 @@ export interface OpcionesImportar {
   dirBiblioteca?: string;
 }
 
-/** Efectos que se saben generar enteros. Terremoto espera a su plugin. */
-export const IMPORTABLES = ['grito', 'pocion', 'maldicion', 'lag'] as const;
+/** Efectos que se saben generar enteros. */
+export const IMPORTABLES = ['grito', 'pocion', 'maldicion', 'terremoto', 'lag'] as const;
 export type Importable = (typeof IMPORTABLES)[number];
 
 function receta(e: Efecto, o: Required<OpcionesImportar>): SubAccion[] {
@@ -100,6 +100,9 @@ function receta(e: Efecto, o: Required<OpcionesImportar>): SubAccion[] {
         esperar(10000),
         filtro('FX Maldicion', FILTRO_APAGADO),
       ];
+    case 'terremoto':
+      // El temblor lo hace el bot al ver el canje (interactions/terremoto.ts).
+      return [sonido('terremoto.wav'), chat('%user% hace temblar la tierra 🌋')];
     case 'lag':
       return [sonido('lag.wav'), filtro('FX Lag', FILTRO_ENCENDIDO), esperar(5000), filtro('FX Lag', FILTRO_APAGADO)];
     default:

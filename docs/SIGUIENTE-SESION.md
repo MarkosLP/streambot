@@ -42,7 +42,8 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 - **Cada jefe con su aspecto**: retrato SVG propio en el medallón y en el aviso, colores de la barra y un ambiente en los bordes (nieve, almas, burbujas tóxicas, brasas con temblor en críticos, runas, telarañas y arañas colgando, tentáculos, «¡hic!», «MISS», glitch). En `jefe.html`, `TEMAS`; el tipo viene de `JEFES` en `jefe.ts`. En el panel se puede elegir qué jefe invocar. Vista previa: `jefe.html?demo=1&jefe=arana`.
 - **Ataque especial del jefe** (`especiales.ts`): uno por combate al bajar del 60 %. Congelar, atrapar, desconectar o arrastrar a alguien 15 s; aturdir a todos 8 s (gólem); curarse (esqueleto, liche); envenenar (hidra: la mitad de daño); vomitona (todos fallan el siguiente); el tanque se pega solo. Una línea en el chat y cartel en el overlay, con quién está afectado bajo la barra.
 - **Sonidos más bajos**: los overlays suenan al 35 % (antes 80 %). Se ajustan en el mezclador de OBS (pistas «FX Jefe» y «FX Botin») o con `?volumen=0.2` en la dirección de la fuente.
-- Hay que **reiniciar el bot** para tenerlo. 415 tests.
+- **Terremoto sin plugin**: el bot mueve `Captura de ventana` (`OBS_FUENTE_JUEGO`) 5 s y la deja en su sitio (probado en su OBS el 26 sep: vuelve a 0,0). La Action de Streamer.bot, solo sonido + aviso; ya se puede importar. El plugin Move está instalado y cargado, pero no se usa.
+- Hay que **reiniciar el bot** para tenerlo. 418 tests.
 
 ### Precios y límites acordados
 

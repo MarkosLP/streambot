@@ -100,6 +100,8 @@ export const config = {
   obs: {
     url: str('OBS_WS_URL', 'ws://127.0.0.1:4455'),
     password: str('OBS_WS_PASSWORD', ''),
+    /** La fuente del juego: la que tiembla con el Terremoto. */
+    fuenteJuego: str('OBS_FUENTE_JUEGO', 'Captura de ventana'),
   },
 
   logLevel: levelRaw as LogLevel,

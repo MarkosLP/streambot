@@ -152,19 +152,20 @@ export const EFECTOS: Efecto[] = [
     cooldownSeg: 1200,
     maxPorDirecto: 2,
     maxPorPersona: 1,
-    queHace: 'La cámara tiembla 5 segundos.',
-    necesita: 'Plugin Move (Exeldro)',
+    queHace: 'La imagen del juego tiembla 5 segundos. El temblor lo hace el bot; la Action solo pone el sonido.',
+    necesita: null,
     material: ['sonidos/terremoto.wav'],
     obs: {
       pasos: [
-        'Cierra OBS e instala el plugin **Move** de Exeldro. Está en obsproject.com, en la sección de plugins; busca "Move". Es gratis.',
-        'Abre OBS y dime que ya lo tienes. El temblor se hace con los filtros de movimiento del plugin, y cómo se configuran depende de la versión que instales, así que lo terminamos juntos.',
+        'Nada que montar en OBS: cuando alguien canjea **Terremoto**, el bot mueve la fuente del juego unos píxeles a un lado y a otro durante 5 segundos, y la deja exactamente donde estaba.',
+        'Tiembla la fuente `Captura de ventana`. Si la tuya se llama de otra forma, ponla en el `.env` como `OBS_FUENTE_JUEGO=` y reinicia el bot.',
       ],
+      nota: 'Antes se hacía con el plugin Move, pero había que encadenar varios filtros. Así no hace falta ninguno (y si lo tienes instalado, no estorba).',
     },
     subacciones: {
       pasos: [
         playSound('sonidos/terremoto.wav'),
-        'Luego, igual que en Maldición: encender el filtro del temblor, **Delay** de `5000`, y apagarlo.',
+        'Y ya está: el temblor lo pone el bot al ver el canje.',
       ],
     },
   }),

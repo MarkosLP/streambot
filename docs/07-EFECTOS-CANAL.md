@@ -55,7 +55,7 @@ necesitan un plugin gratuito.
 | 1 | **Grito de guerra** | 750 | 10 min · máx. 4 por directo, 1 por persona | Suena un sonido | Nada |
 | 2 | **Poción de vida** | 500 | 10 min · máx. 2 por persona | Aparece "¡Bebe agua!" 5 s en pantalla | Nada |
 | 3 | **Maldición** | 2.500 | 20 min · máx. 2 por directo, 1 por persona | La pantalla se queda en blanco y negro 10 s | Nada |
-| 4 | **Terremoto** | 3.000 | 20 min · máx. 2 por directo, 1 por persona | La cámara tiembla 5 s | Plugin *Move* |
+| 4 | **Terremoto** | 3.000 | 20 min · máx. 2 por directo, 1 por persona | La imagen del juego tiembla 5 s | Nada (lo hace el bot) |
 | 5 | **Lag** | 5.000 | 30 min · máx. 1 por directo | La imagen se congela 5 s | Plugin *Freeze Filter* |
 | — | **Cofre del tesoro** | 1.500 | 5 min · máx. 2 por persona | Abre un cofre del Loot | Nada (lo abre el bot) |
 
@@ -157,11 +157,17 @@ al final de la ruta, pone "Cortesía de Nombre".
 Si en vez de la fuente del juego pones el filtro en la escena entera, se
 maldice todo, cámara incluida. Queda más gracioso.
 
-### 6.3 Terremoto *(plugin Move)*
+### 6.3 Terremoto *(sin plugin: lo hace el bot)*
 
-Con el plugin **Move** instalado, se añade a la fuente de la cámara un filtro
-**Move Value** que oscile la posición, y se activa y desactiva como en 6.2 con
-un Delay de 5 s. Lo detallo cuando llegues aquí; depende de la versión del plugin.
+Cambiado el 26 sep 2026. Con el plugin **Move** había que encadenar varios
+filtros «Move Source» y dependía de la versión. Ahora, cuando alguien canjea
+**Terremoto**, el bot mueve la fuente del juego (`Captura de ventana`, o la que
+pongas en `OBS_FUENTE_JUEGO`) unos píxeles a un lado y a otro durante 5 s por
+el WebSocket de OBS, y la deja exactamente donde estaba.
+
+La Action de Streamer.bot solo pone el sonido (y un aviso en el chat). El
+panel la genera con «Copiar código para Import», y su botón **Probar** hace
+las dos cosas: sonido y temblor.
 
 ### 6.4 Lag *(plugin Freeze Filter)*
 

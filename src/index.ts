@@ -14,7 +14,8 @@ import { connect, disconnect, sendChat } from './transport/streamerbot.js';
 import * as panel from './panel/server.js';
 import { aprobadorPanel } from './panel/revision.js';
 import * as loot from './interactions/loot/index.js';
-import { mostrarBotin } from './panel/obs-setup.js';
+import { mostrarBotin, temblar } from './panel/obs-setup.js';
+import * as terremoto from './interactions/terremoto.js';
 import { conObs } from './transport/obs.js';
 import { EFECTOS, mismoNombre } from './panel/efectos.js';
 import type { Server } from 'node:http';
@@ -96,6 +97,7 @@ async function main(): Promise<void> {
     await streamerbot.ejecutarAccion(accion.id, { user: quien.displayName, userName: quien.login });
     return true;
   });
+  terremoto.setTemblor(() => conObs((pedir) => temblar(pedir, { fuente: config.obs.fuenteJuego })));
   loot.arrancar();
 
   log.info('Escuchando. Ctrl+C para salir.');
