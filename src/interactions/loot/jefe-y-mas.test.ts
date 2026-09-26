@@ -132,18 +132,42 @@ describe('📨 los dos techos de mensajes', () => {
 });
 
 describe('🎁 !dar', () => {
-  test('sin decir qué, da el peor objeto', async () => {
+  test('!dar solo explica cómo se usa y enseña tus objetos numerados', async () => {
+    meter('pepe', 'Arco de tejo élfico', 'raro');
+    meter('pepe', 'Mapa arrugado', 'comun');
+    await handleEvent(mensaje('pepe', '!dar'));
+    assert.equal(
+      enviados.at(-1),
+      '@pepe 🎁 Para regalar: !dar nombre número. Tus objetos: 1 ⚪ Mapa arrugado · 2 🔵 Arco de tejo élfico',
+    );
+    assert.equal(objetos('pepe').length, 2, 'no regala nada');
+  });
+
+  test('!dar ana sin decir qué pregunta, y !dar ana 2 le da el número 2', async () => {
     meter('pepe', 'Arco de tejo élfico', 'raro');
     meter('pepe', 'Mapa arrugado', 'comun');
     await handleEvent(mensaje('ana'));
     await handleEvent(mensaje('pepe', '!dar @ana'));
-    assert.match(enviados.at(-1)!, /^🎁 @pepe le da ⚪ Mapa arrugado a @ana/);
-    assert.deepEqual(objetos('ana'), ['Mapa arrugado']);
-    assert.deepEqual(objetos('pepe'), ['Arco de tejo élfico']);
+    assert.match(enviados.at(-1)!, /¿Qué le das a ana\? Escribe !dar ana y el número: 1 ⚪ Mapa arrugado · 2 🔵 Arco/);
+    assert.equal(objetos('ana').length, 0, 'preguntar no regala');
+
+    // Justo después de mirar la lista se puede regalar: no espera 30 s.
+    cooldowns.reset();
+    await handleEvent(mensaje('pepe', '!dar ana 2'));
+    assert.match(enviados.at(-1)!, /^🎁 @pepe le regala 🔵 Arco de tejo élfico a @ana/);
+    assert.deepEqual(objetos('ana'), ['Arco de tejo élfico']);
+    assert.deepEqual(objetos('pepe'), ['Mapa arrugado']);
     assert.equal(lootDb.coleccion('id-ana').total, 1, 'cuenta para su colección');
   });
 
-  test('por rareza o por parte del nombre, sin tildes', async () => {
+  test('un número que no existe lo dice', async () => {
+    meter('pepe', 'Mapa arrugado', 'comun');
+    await handleEvent(mensaje('ana'));
+    await handleEvent(mensaje('pepe', '!dar ana 7'));
+    assert.match(enviados.at(-1)!, /No tienes el número 7: van del 1 al 1/);
+  });
+
+  test('también por rareza o por parte del nombre, sin tildes', async () => {
     meter('pepe', 'Mapa arrugado', 'comun');
     meter('pepe', 'Capa de las Sombras', 'epico');
     meter('pepe', 'Báculo de la Tormenta', 'epico');
@@ -154,19 +178,19 @@ describe('🎁 !dar', () => {
     assert.deepEqual(objetos('ana').sort(), ['Báculo de la Tormenta', 'Capa de las Sombras']);
   });
 
-  test('los malditos no se regalan, ni se da a quien no está, ni al canal', async () => {
+  test('los malditos no se regalan, ni se da a quien no está; al canal, sí', async () => {
     meter('pepe', 'Filo del Vacío', 'legendario', true);
     await handleEvent(mensaje('ana'));
     await handleEvent(mensaje(config.broadcasterLogin));
     await handleEvent(mensaje('pepe', '!dar ana'));
-    assert.match(enviados.at(-1)!, /no se regalan/);
+    assert.match(enviados.at(-1)!, /No tienes nada que regalar \(los objetos malditos no se regalan\)/);
     meter('pepe', 'Mapa arrugado', 'comun');
     cooldowns.reset();
-    await handleEvent(mensaje('pepe', '!dar fantasma'));
+    await handleEvent(mensaje('pepe', '!dar fantasma 1'));
     assert.match(enviados.at(-1)!, /No veo a fantasma/);
     cooldowns.reset();
-    await handleEvent(mensaje('pepe', `!dar ${config.broadcasterLogin}`));
-    assert.match(enviados.at(-1)!, /le da ⚪ Mapa arrugado a @/, 'al canal sí se le puede dar');
+    await handleEvent(mensaje('pepe', `!dar ${config.broadcasterLogin} 1`));
+    assert.match(enviados.at(-1)!, /le regala ⚪ Mapa arrugado a @/, 'al canal sí se le puede dar');
     assert.equal(objetos('pepe').length, 1);
   });
 });

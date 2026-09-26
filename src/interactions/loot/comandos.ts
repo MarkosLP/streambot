@@ -1,4 +1,4 @@
-import { config } from '../../config.js';
+import { config, MAX_MESSAGE_LENGTH } from '../../config.js';
 import * as ajustes from '../../core/ajustes.js';
 import * as cooldowns from '../../core/cooldowns.js';
 import { log } from '../../core/logger.js';
@@ -15,6 +15,7 @@ import {
   siguienteRareza,
   tirar,
   type Azar,
+  type Botin,
   type Rareza,
 } from './objetos.js';
 import {
@@ -255,42 +256,90 @@ const RAREZA_POR_NOMBRE: Record<string, Rareza> = {
 };
 
 /**
- * Regalar un objeto a otra persona del chat. Sin nada más, el peor que lleves;
- * con una rareza (`!dar ana epico`), el más antiguo de esa rareza; con parte
- * del nombre (`!dar ana capa`), ese. Los malditos no se regalan.
+ * Regalar un objeto a otra persona del chat (rehecho el 26 sep 2026: con el
+ * primero nadie sabía qué estaba dando).
+ *
+ *   !dar                 cómo se usa, y tus objetos numerados
+ *   !dar ana             lo mismo, preguntando qué le das a ana
+ *   !dar ana 2           el número 2 de esa lista
+ *   !dar ana epico       el más antiguo de esa rareza
+ *   !dar ana capa        el que lleve «capa» en el nombre
+ *
+ * Los malditos no se regalan: solo cambian de manos perdiendo un duelo.
  */
+const DAR_COOLDOWN_MS = 30_000;
+
+/** `1 ⚪ Mapa arrugado · 2 🔵 Arco de tejo élfico · …`, hasta donde quepa. */
+function listaRegalables(objetos: Array<Botin & { id: number }>, cabe: number): string {
+  let texto = '';
+  for (let i = 0; i < objetos.length; i++) {
+    const trozo = `${i === 0 ? '' : ' · '}${i + 1} ${etiqueta(objetos[i]!)}`;
+    const resto = objetos.length - i - 1;
+    if (texto.length + trozo.length + (resto ? 12 : 0) > cabe) return `${texto} · y ${objetos.length - i} más`;
+    texto += trozo;
+  }
+  return texto;
+}
+
 export const dar: Interaction<CtxComando> = {
   name: 'loot-dar',
   spontaneous: false,
-  guards: [(ctx) => (ctx.args.trim() ? { ok: true } : { ok: false, motivo: 'sin destinatario', registrar: false })],
-  cooldowns: [porPersona('loot-dar', 30_000)],
+  // Un freno corto contra el spam de la lista. El de verdad (30 s) solo se
+  // gasta al regalar: mirar la lista y regalar justo después tiene que poder ser.
+  cooldowns: [porPersona('loot-dar', 5_000)],
   run: (ctx) => {
     const yo = ctx.viewer;
-    const [nombre = '', ...resto] = ctx.args.trim().split(/\s+/);
+    const [nombre = '', ...resto] = ctx.args.trim().split(/\s+/).filter(Boolean);
+    const objetos = lootDb.regalables(yo.id);
+    const inicio = `@${yo.displayName} 🎁 `;
+
+    if (!objetos.length) {
+      return { text: `${inicio}No tienes nada que regalar (los objetos malditos no se regalan). Habla en el chat y caerá algo.`, ...mencion(ctx) };
+    }
+
     const limpio = nombre.replace(/^@/, '');
+    if (!limpio) {
+      const ayuda = 'Para regalar: !dar nombre número. Tus objetos: ';
+      return { text: inicio + ayuda + listaRegalables(objetos, MAX_MESSAGE_LENGTH - inicio.length - ayuda.length), ...mencion(ctx) };
+    }
+
     const para = buscarPresente(limpio);
     if (!para) {
-      return { text: `@${yo.displayName} 🎁 No veo a ${limpio} por el chat. Solo puedes dar algo a quien haya escrito hace poco.`, ...mencion(ctx) };
+      return { text: `${inicio}No veo a ${limpio} por el chat. Solo puedes dar algo a quien haya escrito hace poco.`, ...mencion(ctx) };
     }
-    if (para.id === yo.id) return { text: `@${yo.displayName} 🎁 Pasarte algo de una mano a la otra no cuenta.`, ...mencion(ctx) };
+    if (para.id === yo.id) return { text: `${inicio}Pasarte algo de una mano a la otra no cuenta.`, ...mencion(ctx) };
     if (!juega(para.login)) {
-      return { text: `@${yo.displayName} 🎁 ${para.displayName} no necesita botín: ¡quédatelo tú!`, ...mencion(ctx) };
+      return { text: `${inicio}${para.displayName} no necesita botín: ¡quédatelo tú!`, ...mencion(ctx) };
     }
 
     const que = resto.join(' ');
+    if (!que) {
+      const pregunta = `¿Qué le das a ${para.displayName}? Escribe !dar ${para.login} y el número: `;
+      return { text: inicio + pregunta + listaRegalables(objetos, MAX_MESSAGE_LENGTH - inicio.length - pregunta.length), ...mencion(ctx) };
+    }
+
+    // Por número, por rareza o por parte del nombre.
+    const numero = /^\d+$/.test(que) ? Number(que) : null;
     const rareza = RAREZA_POR_NOMBRE[sinTildes(que)];
-    const fila = lootDb.elegir(yo.id, rareza ? { rareza } : { texto: que || undefined });
+    const fila = numero !== null
+      ? objetos[numero - 1] ?? null
+      : lootDb.elegir(yo.id, rareza ? { rareza } : { texto: que });
     if (!fila) {
-      const nada = que ? `No llevas nada que encaje con «${que}»` : 'No llevas nada que dar';
-      return { text: `@${yo.displayName} 🎁 ${nada} (los objetos malditos no se regalan).`, ...mencion(ctx) };
+      const nada = numero !== null ? `No tienes el número ${numero}: van del 1 al ${objetos.length}` : `No llevas nada que encaje con «${que}»`;
+      return { text: `${inicio}${nada}. Escribe !dar para ver la lista.`, ...mencion(ctx) };
     }
     if (lootDb.contar(para.id) >= MOCHILA_MAX) {
-      return { text: `@${yo.displayName} 🎁 La mochila de ${para.displayName} está llena (${MOCHILA_MAX}).`, ...mencion(ctx) };
+      return { text: `${inicio}La mochila de ${para.displayName} está llena (${MOCHILA_MAX}).`, ...mencion(ctx) };
     }
+    const clave = cooldowns.keys.user('loot-dar-regalo', yo.id);
+    const falta = cooldowns.remaining(clave, DAR_COOLDOWN_MS);
+    if (falta > 0) return { text: `${inicio}Espera ${Math.ceil(falta / 1000)} s para regalar otra cosa.`, ...mencion(ctx) };
+    cooldowns.tryConsume(clave, DAR_COOLDOWN_MS);
+
     const { tituloNuevo } = lootDb.pasar(fila.id, para.id, para.displayName);
     const titulo = tituloNuevo ? ` · 🏆 ¡${para.displayName} completa una colección: «${tituloNuevo}»!` : '';
     return {
-      text: `🎁 @${yo.displayName} le da ${etiqueta(fila)} a @${para.displayName}${titulo}`,
+      text: `🎁 @${yo.displayName} le regala ${etiqueta(fila)} a @${para.displayName}${titulo}`,
       allowedMentions: [yo.login, para.login],
     };
   },
@@ -441,7 +490,7 @@ export const LISTA = [
   ['!forjar', `${FORJA_CANTIDAD} objetos de una rareza → 1 de la siguiente. Se puede elegir: !forjar raros`],
   ['!presumir', 'Tu mejor pieza, en la pantalla del directo'],
   ['!coleccion', 'Cuántos objetos distintos has conseguido. Completar una rareza da título'],
-  ['!dar nombre', 'Regala tu peor objeto a alguien del chat. O uno concreto: !dar ana epico, !dar ana capa'],
+  ['!dar nombre nº', 'Regala un objeto a alguien del chat. !dar solo te enseña tus objetos numerados; !dar ana 2 le da el 2'],
   ['!usar', 'Usa un objeto con efecto en el directo: Cuerno de guerra, Frasco de agua bendita, Calavera que susurra'],
   ['!atacar', 'Pega al jefe cuando aparece. Botín para todos si cae; Cofre del tesoro para quien más daño haga'],
   ['!purificar', 'Tras canjear una Poción de vida: limpia tu objeto maldito (ya no lo pierdes, pero sin poder doble)'],
