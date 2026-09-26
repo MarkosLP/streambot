@@ -36,16 +36,13 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 ### Lo primero de la próxima vez
 
 1. **Reinicia el bot** (sin estar en directo): trae los efectos conectados y `!purificar`.
-2. **Puntos de canal**: en la web de Twitch, nombre **Oros** e icono `oro-moneda-28/56/112.png`.
-3. **Rehacer las recompensas en la web de Twitch** para poder ponerles icono (Twitch no deja poner imagen a las creadas desde Streamer.bot). Con los precios y límites de la tabla y **Saltar la cola**. Después:
-   - Borrar las viejas en Streamer.bot (Platforms → Twitch → Channel Point Rewards).
-   - En cada acción, volver a elegir la recompensa en su disparador **Reward Redemption**.
-   - **Pregunta a Crid4m AI**: al rehacerla cambia su id. Dejar vacío `PREGUNTA_IA_REWARD_ID` en el `.env` (la reconoce por el nombre) o pasarme el id nuevo.
+2. ~~Puntos de canal e iconos de las recompensas~~ **Hecho el 26 sep.** Las recompensas ya estaban en Twitch; solo hubo que ponerles icono. No se rehicieron, así que no cambia ningún id.
+3. **Subir los paneles** de `biblioteca/imagenes/twitch/paneles/` (Comandos, Recompensas, Loot). Cómo, en `docs/paneles/README.md`.
 4. **Probar el Loot con dos personas**: `crid4n` desde el móvil escribe en el chat; probar `!duelo`, un Grito de guerra con directo abierto y una Maldición seguida de un duelo.
 
 ### Cosas a tener en cuenta
 
-- `FX Botin` está reducida al 57 % y colocada en (0, 198), y `FX Pocion` al 47 % arriba a la derecha. Si no fue a propósito, colocarlas a pantalla completa.
+- Los tamaños y posiciones de las fuentes `FX` en OBS son a propósito.
 - Si arrancas el bot con el directo ya empezado, en la pestaña Loot pulsa **El directo ya ha empezado**. Y **Terminar directo** si se queda marcado sin estar emitiendo.
 - Siguiente en la lista: retos al jugador, predicciones y contador de wipes. Ideas para Terremoto y Lag cuando haya plugins (el terremoto tira un objeto al suelo y se lo lleva el primero que escriba `!coger`).
 
@@ -248,3 +245,4 @@ O simplemente `!estado` en el chat.
 | `docs/05-NOTAS-PARA-EL-MOTOR.md` | Por qué el motor es como es |
 | `docs/06-DISENO-XP-Y-LOGROS.md` | El diseño de XP y por qué NO se construyó |
 | `docs/07-EFECTOS-CANAL.md` | **Nuevo.** La moneda Oro, precios y la guía paso a paso de los efectos |
+| `docs/paneles/` | Los paneles de Twitch (Comandos, Recompensas, Loot) y cómo regenerarlos |
