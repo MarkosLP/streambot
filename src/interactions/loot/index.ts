@@ -15,7 +15,9 @@ import * as users from '../../data/users.js';
 import * as suscriptores from '../../data/suscriptores.js';
 import { esBot } from '../../core/bots.js';
 import * as arena from './arena.js';
-import { ESTILO, MOCHILA_MAX, RAREZAS, etiqueta, tirar, tirarMaldito, type Azar, type Botin } from './objetos.js';
+import { ESTILO, MOCHILA_MAX, NOMBRES_USABLES, RAREZAS, etiqueta, tirar, tirarMaldito, type Azar, type Botin, type TipoCofre } from './objetos.js';
+import * as eventos from './eventos.js';
+import * as temporada from './temporada.js';
 
 /**
  * Loot del chat.
@@ -308,6 +310,18 @@ export function cofreFidelidad(
   });
 }
 
+/**
+ * Una tirada de cofre con el evento de la semana aplicado (eventos.ts):
+ * la Semana del coleccionista vuelve a tirar una vez lo repetido, y la
+ * Semana maldita maldice 1 de cada 6 (nunca un usable: sería un objeto muerto).
+ */
+export function tirarConEvento(tipo: TipoCofre, twitchId: string, azar: Azar = Math.random): Botin {
+  let botin = tirar(tipo, azar);
+  if (eventos.activo('coleccionista') && lootDb.loTuvo(twitchId, botin.objeto)) botin = tirar(tipo, azar);
+  if (eventos.activo('semana-maldita') && !NOMBRES_USABLES.includes(botin.objeto) && azar() < 1 / 6) botin = { ...botin, maldito: true };
+  return botin;
+}
+
 export type ResultadoCofre =
   | { ok: true; reparto: Reparto[]; enviado: boolean }
   | { ok: false; motivo: string };
@@ -338,13 +352,14 @@ export async function soltarCofre(
   // Si alguien lanzó un Grito de guerra, este es el cofre de guerra: solo armas.
   const guerra = cofreDeGuerra;
   cofreDeGuerra = null;
-  const tipo = guerra ? 'guerra' : 'cofre';
+  // Fiebre del oro: el cofre de siempre, con la suerte del Cofre del tesoro.
+  const tipo: TipoCofre = guerra ? 'guerra' : eventos.activo('fiebre-oro') ? 'oro' : 'cofre';
   const origenFinal = guerra ? 'guerra' : origen;
 
   // Se guarda ANTES de anunciar: si el mensaje no sale (tope por hora, un
   // corte), el botín ya es de quien le tocó y lo verá en !inventario.
   const reparto: Reparto[] = gente.map((viewer) => {
-    const botin = tirar(tipo, azar);
+    const botin = tirarConEvento(tipo, viewer.id, azar);
     return { viewer, botin, resultado: lootDb.dar(viewer.id, viewer.displayName, botin, origenFinal) };
   });
 
@@ -426,7 +441,7 @@ export async function regalarCofre(
   }
 
   const reparto: Reparto[] = gente.map((viewer) => {
-    const botin = tirar(tipo, azar);
+    const botin = tirarConEvento(tipo, viewer.id, azar);
     return { viewer, botin, resultado: lootDb.dar(viewer.id, viewer.displayName, botin, 'regalo') };
   });
 
@@ -769,4 +784,6 @@ export function reset(): void {
   lanzador = null;
   enElSuelo = null;
   fila = Promise.resolve();
+  eventos.reset();
+  temporada.reset();
 }

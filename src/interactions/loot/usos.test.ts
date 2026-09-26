@@ -157,7 +157,7 @@ describe('!poder y !duelo', () => {
     dar('ana', 'comun', 1);
     await handleEvent(mensaje('ana'));
     await engine.run(comandos.duelo, { viewer: { id: 'id-pepe', login: 'pepe', displayName: 'pepe' } as any, trigger: 'command', args: '@ana', azar: fijo(0) });
-    assert.match(enviados[0]!, /^⚔️ @pepe \(poder 8\) reta a @ana \(poder 1\)… ¡Gana pepe! \(80 % para quien retaba\)$/);
+    assert.match(enviados[0]!, /^⚔️ @pepe \(poder 8\) reta a @ana \(poder 1\)… ¡Gana pepe! \(80 % para quien retaba\) \+5 de temporada$/);
     assert.deepEqual(lootDb.duelos('id-pepe'), { ganados: 1, perdidos: 0 });
     assert.deepEqual(lootDb.duelos('id-ana'), { ganados: 0, perdidos: 1 });
   });

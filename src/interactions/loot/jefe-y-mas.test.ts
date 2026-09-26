@@ -163,16 +163,16 @@ describe('🔥 cofre de fidelidad', () => {
   });
 });
 
-describe('🏆 !top', () => {
+describe('🏆 !top poder', () => {
   test('los tres con más poder, y tu puesto si no estás', async () => {
     meter('ana', 'Filo del Vacío', 'legendario');
     meter('luis', 'Capa de las Sombras', 'epico');
     meter('pepe', 'Arco de tejo élfico', 'raro');
     meter('marta', 'Mapa arrugado', 'comun');
-    await handleEvent(mensaje('marta', '!top'));
-    assert.equal(enviados.at(-1), '🏆 Top poder: 🥇 ana ⚔️ 20 · 🥈 luis ⚔️ 8 · 🥉 pepe ⚔️ 3 · Tú: puesto 4 de 4');
+    await handleEvent(mensaje('marta', '!top poder'));
+    assert.equal(enviados.at(-1), '⚔️ Top poder: 🥇 ana ⚔️ 20 · 🥈 luis ⚔️ 8 · 🥉 pepe ⚔️ 3 · Tú: puesto 4 de 4');
     cooldowns.reset();
-    await handleEvent(mensaje('ana', '!ranking'));
+    await handleEvent(mensaje('ana', '!ranking poder'));
     assert.doesNotMatch(enviados.at(-1)!, /Tú:/, 'si estás en el podio, no se repite');
   });
 });

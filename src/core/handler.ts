@@ -26,6 +26,7 @@ import * as preguntaIncomoda from '../interactions/pregunta-incomoda.js';
 import * as loot from '../interactions/loot/index.js';
 import * as lootComandos from '../interactions/loot/comandos.js';
 import * as mecenas from '../interactions/loot/mecenas.js';
+import * as temporada from '../interactions/loot/temporada.js';
 import * as suscriptores from '../data/suscriptores.js';
 import * as registry from '../interactions/index.js';
 import { budget } from '../services/ai/index.js';
@@ -237,6 +238,9 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   // decisión ya está tomada dentro, y un await aquí rompería la regla de
   // arriba (nada asíncrono antes de que las interacciones decidan).
   loot.recogerDelSuelo(viewer)?.catch((err) => log.error(`Loot: fallo al recoger del suelo: ${String(err)}`));
+  // Con la primera persona que escribe en el directo: el evento de la semana
+  // y, si acaba de terminar una temporada, su podio. Sin await, por lo mismo.
+  temporada.alPrimerMensaje()?.catch((err) => log.error(`Loot: fallo en el anuncio del directo: ${String(err)}`));
 
   // La asistencia al directo se registra ANTES que ninguna interacción, y
   // pase lo que pase después, espontáneas o no: si dependiera de que #19

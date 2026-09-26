@@ -1,11 +1,16 @@
 import { config, MAX_MESSAGE_LENGTH } from '../../config.js';
 import * as ajustes from '../../core/ajustes.js';
+import * as consent from '../../core/consent.js';
 import * as cooldowns from '../../core/cooldowns.js';
 import { log } from '../../core/logger.js';
 import * as streams from '../../data/streams.js';
 import type { Ctx, Interaction } from '../../core/interaction.js';
 import * as lootDb from '../../data/loot.js';
 import * as suscriptores from '../../data/suscriptores.js';
+import * as streaks from '../../data/streaks.js';
+import * as temporadas from '../../data/temporadas.js';
+import * as users from '../../data/users.js';
+import type { Viewer } from '../../core/events.js';
 import {
   ESTILO,
   FORJA_CANTIDAD,
@@ -35,6 +40,8 @@ import {
 } from './index.js';
 import * as arena from './arena.js';
 import * as jefe from './jefe.js';
+import * as eventos from './eventos.js';
+import * as temporada from './temporada.js';
 
 const sinTildes = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase();
 
@@ -135,6 +142,8 @@ export const duelo: Interaction<CtxComando> = {
     const ganaYo = (ctx.azar ?? Math.random)() < prob;
     const [ganador, perdedor] = ganaYo ? [yo, rival] : [rival, yo];
     lootDb.apuntarDuelo(ganador.id, perdedor.id);
+    const puntos = temporada.puntosDuelo();
+    temporadas.sumar(ganador.id, ganador.displayName, puntos);
     // La patata caliente: el maldito más fuerte del perdedor cambia de manos.
     const maldito = lootDb.traspasarMaldito(perdedor.id, ganador.id, ganador.displayName);
     // En pantalla lo enseña el overlay del duelo, maldito incluido: el banner
@@ -151,7 +160,7 @@ export const duelo: Interaction<CtxComando> = {
     return {
       text:
         `⚔️ @${yo.displayName} (poder ${pa}) reta a @${rival.displayName} (poder ${pb})… ` +
-        `¡Gana ${conTitulo(ganador)}!${sorpresa} (${Math.round(prob * 100)} % para quien retaba)${traspaso}`,
+        `¡Gana ${conTitulo(ganador)}!${sorpresa} (${Math.round(prob * 100)} % para quien retaba) +${puntos} de temporada${traspaso}`,
       allowedMentions: [yo.login, rival.login],
     };
   },
@@ -167,11 +176,14 @@ const NOMBRES_RAREZA: Record<string, Rareza> = {
   epico: 'epico', epicos: 'epico', épico: 'epico', épicos: 'epico',
 };
 
+/** Cuántos se funden: 3, o 2 en la semana de la Forja al rojo vivo. */
+export const cantidadForja = () => (eventos.activo('forja-caliente') ? 2 : FORJA_CANTIDAD);
+
 /** La rareza a forjar: la que se pida, o la más baja de la que haya bastantes. */
 function rarezaAForjar(args: string, porRareza: Record<Rareza, number>): Rareza | null {
   const pedida = NOMBRES_RAREZA[args.trim().toLowerCase()];
   if (pedida) return pedida;
-  return (['comun', 'raro', 'epico'] as Rareza[]).find((r) => porRareza[r] >= FORJA_CANTIDAD) ?? null;
+  return (['comun', 'raro', 'epico'] as Rareza[]).find((r) => porRareza[r] >= cantidadForja()) ?? null;
 }
 
 export const forjar: Interaction<CtxComando> = {
@@ -184,11 +196,12 @@ export const forjar: Interaction<CtxComando> = {
     // Solo cuenta lo que se puede fundir: los malditos no entran en la forja.
     const rareza = rarezaAForjar(ctx.args, inv.forjables);
     const cuenta = RAREZAS.filter((r) => r !== 'legendario').map((r) => `${inv.forjables[r]}${ESTILO[r].emoji}`).join(' ');
-    const fundidos = rareza && inv.forjables[rareza] >= FORJA_CANTIDAD ? lootDb.consumir(yo.id, rareza, FORJA_CANTIDAD) : null;
+    const cantidad = cantidadForja();
+    const fundidos = rareza && inv.forjables[rareza] >= cantidad ? lootDb.consumir(yo.id, rareza, cantidad) : null;
 
     if (!rareza || !fundidos) {
       return {
-        text: `@${yo.displayName} 🔨 Para forjar hacen falta ${FORJA_CANTIDAD} objetos de la misma rareza (tienes ${cuenta}).`,
+        text: `@${yo.displayName} 🔨 Para forjar hacen falta ${cantidad} objetos de la misma rareza${cantidad < FORJA_CANTIDAD ? ' (🔥 Forja al rojo vivo)' : ''} (tienes ${cuenta}).`,
         ...mencion(ctx),
       };
     }
@@ -437,7 +450,19 @@ export const usar: Interaction<CtxComando> = {
 // !top
 // ---------------------------------------------------------------------------
 
-/** Los tres con más poder, y tu puesto si no estás entre ellos. */
+const MEDALLAS = ['🥇', '🥈', '🥉'];
+const marcaSub = (id: string) => (suscriptores.esSub(id) ? ' 💜' : '');
+const mesActual = () => temporadas.nombre(temporadas.deFecha());
+const quedan = () => {
+  const d = temporadas.diasQuedan();
+  return d === 1 ? 'último día' : `quedan ${d} días`;
+};
+
+/**
+ * El podio de la temporada del mes (27 sep 2026: antes era el de poder, que
+ * solo sube y nadie nuevo podía alcanzar). `!top poder` sigue dando el de
+ * siempre. Y tu puesto, si no estás entre los tres.
+ */
 export const top: Interaction<CtxComando> = {
   name: 'loot-top',
   spontaneous: false,
@@ -448,15 +473,110 @@ export const top: Interaction<CtxComando> = {
     { key: () => cooldowns.keys.interaction('loot-top'), ms: 20_000, motivo: (_ctx, faltan) => `cooldown, faltan ${faltan}s` },
   ],
   run: (ctx) => {
-    const lista = lootDb.mochilas(3);
-    if (!lista.length) return { text: '🏆 Todavía nadie tiene botín. ¡El primer cofre marca el ranking!' };
-    const medallas = ['🥇', '🥈', '🥉'];
-    const podio = lista
-      .map((m, i) => `${medallas[i]} ${m.display_name}${suscriptores.esSub(m.twitch_id) ? ' 💜' : ''}${m.titulo ? ` «${m.titulo}»` : ''} ⚔️ ${m.poder}`)
-      .join(' · ');
-    const yo = lista.some((m) => m.twitch_id === ctx.viewer.id) ? null : lootDb.puesto(ctx.viewer.id);
-    const tuyo = yo ? ` · Tú: puesto ${yo.puesto} de ${yo.de}` : '';
-    return { text: `🏆 Top poder: ${podio}${tuyo}` };
+    if (/^\s*poder\b/i.test(ctx.args)) {
+      const lista = lootDb.mochilas(3);
+      if (!lista.length) return { text: '⚔️ Todavía nadie tiene botín. ¡El primer cofre marca el ranking!' };
+      const podio = lista
+        .map((m, i) => `${MEDALLAS[i]} ${m.display_name}${marcaSub(m.twitch_id)}${m.titulo ? ` «${m.titulo}»` : ''} ⚔️ ${m.poder}`)
+        .join(' · ');
+      const yo = lista.some((m) => m.twitch_id === ctx.viewer.id) ? null : lootDb.puesto(ctx.viewer.id);
+      return { text: `⚔️ Top poder: ${podio}${yo ? ` · Tú: puesto ${yo.puesto} de ${yo.de}` : ''}` };
+    }
+    const cabecera = `🏆 Temporada de ${mesActual()} (${quedan()})`;
+    const lista = temporada.rankingActual(3);
+    if (!lista.length) return { text: `${cabecera}: nadie tiene puntos aún. ¡Cada objeto que consigas suma! (!temporada)` };
+    const podio = lista.map((p, i) => `${MEDALLAS[i]} ${p.display_name}${marcaSub(p.twitch_id)} ${p.puntos}`).join(' · ');
+    const yo = lista.some((p) => p.twitch_id === ctx.viewer.id) ? null : temporada.puestoActual(ctx.viewer.id);
+    return { text: `${cabecera}: ${podio}${yo ? ` · Tú: ${yo.puesto}º con ${yo.puntos}` : ''} · !top poder para el de poder` };
+  },
+};
+
+// ---------------------------------------------------------------------------
+// !temporada
+// ---------------------------------------------------------------------------
+
+export const verTemporada: Interaction<CtxComando> = {
+  name: 'loot-temporada-ver',
+  spontaneous: false,
+  consulta: true,
+  cooldowns: [porPersona('loot-temporada-ver', 60_000)],
+  run: (ctx) => {
+    const yo = temporada.puestoActual(ctx.viewer.id);
+    const tuyo = yo ? `Llevas ${yo.puntos} puntos (${yo.puesto}º de ${yo.de}).` : 'Aún no tienes puntos.';
+    const ultimo = temporadas.salon(1)[0];
+    const campeon = ultimo?.podio[0] ? ` Último campeón: ${ultimo.podio[0].display_name} (${temporadas.nombre(ultimo.temporada)}).` : '';
+    const premios = temporada.PREMIOS.map((r, i) => `${MEDALLAS[i]}${ESTILO[r].emoji}`).join(' ');
+    return {
+      text:
+        `@${ctx.viewer.displayName} 🏆 Temporada de ${mesActual()}, ${quedan()}. ${tuyo} Suman: cada objeto (lo que vale su poder), ` +
+        `duelo ganado +${temporada.puntosDuelo()}, MVP de un jefe +${temporada.PUNTOS_MVP}. Premios: ${premios} y el título «Campeón de ${mesActual()}».${campeon}`,
+      ...mencion(ctx),
+    };
+  },
+};
+
+// ---------------------------------------------------------------------------
+// !evento
+// ---------------------------------------------------------------------------
+
+export const evento: Interaction<CtxComando> = {
+  name: 'loot-evento',
+  spontaneous: false,
+  consulta: true,
+  cooldowns: [{ key: () => cooldowns.keys.interaction('loot-evento'), ms: 60_000, motivo: (_c, f) => `cooldown, faltan ${f}s` }],
+  run: () => {
+    const e = eventos.actual();
+    if (!e) return { text: '📅 Esta semana no hay evento en el Loot: todo con sus reglas de siempre.' };
+    const d = eventos.diasParaCambiar();
+    return { text: `📅 Evento de la semana, ${eventos.describir(e)}. Cambia ${d === 1 ? 'mañana' : `en ${d} días`}.` };
+  },
+};
+
+// ---------------------------------------------------------------------------
+// !pj [nombre]
+// ---------------------------------------------------------------------------
+
+/** Alguien por su nombre: del chat, o quien haya pasado alguna vez. */
+function buscarFicha(nombre: string): Viewer | null {
+  const presente = buscarPresente(nombre);
+  if (presente) return presente;
+  const u = users.findByLogin(nombre);
+  if (!u || consent.haPedidoOlvido(u.twitch_id)) return null;
+  return { id: u.twitch_id, login: u.login, displayName: u.display_name, isBroadcaster: false, isModerator: false, isVip: false, isSubscriber: false, rawRole: null };
+}
+
+/** La ficha de personaje en una línea: todo lo tuyo del Loot, junto. */
+export function componerFicha(v: Viewer, arroba = false): string {
+  const inv = lootDb.inventario(v.id);
+  const p = lootDb.puesto(v.id);
+  const t = temporada.puestoActual(v.id);
+  const c = lootDb.coleccion(v.id);
+  const d = lootDb.duelos(v.id);
+  const racha = streaks.find(v.id)?.current ?? 0;
+  const partes = [
+    `⚔️ Poder ${inv.poder}${p ? ` (${p.puesto}º de ${p.de})` : ''}`,
+    t ? `🏆 ${t.puntos} pts de temporada (${t.puesto}º)` : '🏆 0 pts de temporada',
+    `📖 Colección ${c.total}/${c.de}`,
+    d.ganados + d.perdidos ? `🤺 Duelos ${d.ganados}-${d.perdidos}` : null,
+    racha > 1 ? `🔥 ${racha} directos seguidos` : null,
+    `🎒 ${inv.total}/${lootDb.capacidad(v.id)}`,
+    inv.mejor ? `Mejor pieza: ${etiqueta(inv.mejor)}` : null,
+  ].filter(Boolean);
+  return `🧙 ${arroba ? '@' : ''}${conTitulo(v)} · ${partes.join(' · ')}`;
+}
+
+export const pj: Interaction<CtxComando> = {
+  name: 'loot-pj',
+  spontaneous: false,
+  consulta: true,
+  cooldowns: [porPersona('loot-pj', 60_000)],
+  run: (ctx) => {
+    const nombre = ctx.args.trim().split(/\s+/)[0]?.replace(/^@/, '') ?? '';
+    const propia = !nombre || nombre.toLowerCase() === ctx.viewer.login.toLowerCase();
+    const quien = propia ? ctx.viewer : buscarFicha(nombre);
+    if (!quien) return { text: `@${ctx.viewer.displayName} 🧙 No conozco a ${nombre}: tiene que haber pasado por el chat.`, ...mencion(ctx) };
+    // La tuya, con @; la de otro, sin: no se le notifica.
+    return propia ? { text: componerFicha(quien, true), ...mencion(ctx) } : { text: componerFicha(quien) };
   },
 };
 
@@ -493,7 +613,7 @@ export const ayuda: Interaction<CtxComando> = {
     text:
       `🎁 Loot: cada ${config.loot.minutosMin}-${config.loot.minutosMax} min cae un cofre para quien hable en el chat, ` +
       // Sin @ en el ejemplo del duelo: policy bloquea mencionar a quien no participa.
-      `y con Oros está el ${config.loot.cofreRewardTitle}. Comandos: !inventario !poder !duelo nombre !dar nombre !usar !forjar !presumir !coleccion !top`,
+      `y con Oros está el ${config.loot.cofreRewardTitle}. Comandos: !pj !inventario !poder !duelo nombre !dar nombre !usar !forjar !presumir !coleccion !top !temporada !evento`,
   }),
 };
 
@@ -505,7 +625,7 @@ const COMANDOS: Array<[RegExp, Interaction<CtxComando>]> = [
   [/^!(inventario|inv|mochila)\b/i, inventario as unknown as Interaction<CtxComando>],
   [/^!poder\b/i, poder],
   [/^!duelo\b/i, duelo],
-  [/^!forjar\b/i, forjar],
+  [/^!(forjar|fundir)\b/i, forjar],
   [/^!presumir\b/i, presumir],
   [/^!colecci[oó]n\b/i, coleccion],
   [/^!purificar\b/i, purificar],
@@ -513,6 +633,9 @@ const COMANDOS: Array<[RegExp, Interaction<CtxComando>]> = [
   [/^!usar\b/i, usar],
   [/^!(atacar|atk)\b/i, jefe.atacar],
   [/^!(top|ranking)\b/i, top],
+  [/^!temporada\b/i, verTemporada],
+  [/^!evento\b/i, evento],
+  [/^!(pj|ficha|personaje)\b/i, pj],
   [/^!loot\b/i, ayuda],
 ];
 
@@ -529,15 +652,18 @@ export function buscar(texto: string): { def: Interaction<CtxComando>; args: str
 export const LISTA = [
   ['!loot', 'Explica el Loot y sus comandos'],
   ['!inventario', 'Tu mochila (máx. 20), tu poder y tu mejor pieza. También !mochila e !inv'],
+  ['!pj', 'Tu ficha de personaje en una línea: poder, temporada, colección, duelos, racha. !pj nombre enseña la de otro'],
   ['!poder', 'Tu poder, tu puesto y tus duelos ganados'],
   ['!duelo nombre', 'Reta a quien esté en el chat (con o sin @). Más poder, más posibilidades (20-80 %)'],
-  ['!forjar', `${FORJA_CANTIDAD} objetos de una rareza → 1 de la siguiente. Se puede elegir: !forjar raros`],
+  ['!forjar', `${FORJA_CANTIDAD} objetos de una rareza → 1 de la siguiente. Se puede elegir: !forjar raros. También !fundir`],
   ['!presumir', 'Tu mejor pieza, en la pantalla del directo'],
   ['!coleccion', 'Cuántos objetos distintos has conseguido. Completar una rareza da título'],
   ['!dar nombre nº', 'Regala un objeto a alguien del chat. !dar solo te enseña tus objetos numerados; !dar ana 2 le da el 2'],
   ['!usar', 'Usa un objeto con efecto en el directo: Cuerno de guerra, Frasco de agua bendita, Calavera que susurra'],
   ['!atacar', 'Pega al jefe cuando aparece. Botín para todos si cae; Cofre del tesoro para quien más daño haga'],
-  ['!top', 'Los tres con más poder del canal, y tu puesto'],
+  ['!top', 'El podio de la temporada del mes, y tu puesto. !top poder: los tres con más poder'],
+  ['!temporada', 'Tus puntos de temporada, cómo se ganan, los premios y el último campeón'],
+  ['!evento', 'El evento de la semana del Loot (cambia cada lunes)'],
   ['!purificar', 'Tras canjear una Poción de vida: limpia tu objeto maldito (ya no lo pierdes, pero sin poder doble)'],
 ] as const;
 

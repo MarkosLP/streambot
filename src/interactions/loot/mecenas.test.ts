@@ -228,7 +228,7 @@ describe('💜 S4-S6 · marca, mochila y colección de mecenas', () => {
     lootDb.dar('id-ana', 'ana', { objeto: 'Mapa arrugado', rareza: 'comun' }, 'cofre');
     await handleEvent(msg('ana', '!poder', true));
     assert.match(enviados.at(-1)!, /^@ana 💜 ⚔️ Poder 1.* · 💜 suscriptor/);
-    await handleEvent(msg('ana', '!top', true));
+    await handleEvent(msg('ana', '!top poder', true));
     assert.match(enviados.at(-1)!, /🥇 ana 💜 ⚔️ 1/);
     // Si deja de serlo, la insignia lo dice.
     cooldowns.reset();

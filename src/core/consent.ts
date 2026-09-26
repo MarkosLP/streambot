@@ -64,6 +64,8 @@ export function olvidar(twitchId: string): Borrado {
   db.prepare('DELETE FROM coleccion WHERE twitch_id = ?').run(twitchId);
   db.prepare('DELETE FROM duelos WHERE twitch_id = ?').run(twitchId);
   db.prepare('DELETE FROM suscriptores WHERE twitch_id = ?').run(twitchId);
+  db.prepare('DELETE FROM temporada_puntos WHERE twitch_id = ?').run(twitchId);
+  db.prepare('DELETE FROM salon_fama WHERE twitch_id = ?').run(twitchId);
   suscriptores.reset();
 
   const borrado: Borrado = {

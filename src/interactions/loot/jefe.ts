@@ -13,6 +13,9 @@ import type { CtxComando } from './comandos.js';
 import { aventureros, componerCofre, enPantalla, juega, type Reparto } from './index.js';
 import { tirar, type Azar } from './objetos.js';
 import { ESPECIALES, UMBRAL } from './especiales.js';
+import * as eventos from './eventos.js';
+import * as temporadas from '../../data/temporadas.js';
+import { PUNTOS_MVP } from './temporada.js';
 
 /**
  * Jefe de raid (26 sep 2026).
@@ -299,10 +302,13 @@ function derrotado(j: Jefe, azar: Azar): { text: string; resumen: string } {
   );
   const reparto: Reparto[] = conBotin.map(({ viewer }, i) => {
     // Quien más daño hizo (entre quienes reciben botín), Cofre del tesoro.
-    const botin = tirar(i === 0 ? 'oro' : 'cofre', azar);
+    // En la semana de Caza mayor, todos.
+    const botin = tirar(i === 0 || eventos.activo('caza-mayor') ? 'oro' : 'cofre', azar);
     return { viewer, botin, resultado: lootDb.dar(viewer.id, viewer.displayName, botin, 'jefe') };
   });
   for (const r of reparto) enPantalla(r.viewer.displayName, r.botin, 'jefe');
+  // El MVP suma puntos de temporada (el botín ya suma lo suyo).
+  if (reparto[0]) temporadas.sumar(reparto[0].viewer.id, reparto[0].viewer.displayName, PUNTOS_MVP);
   const resumen = `jefe derrotado, ${j.nombre}: ${orden.map((o) => `${o.viewer.login}=${o.dano}`).join(', ')}`;
 
   const mvp = orden[0]!;
