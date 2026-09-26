@@ -336,10 +336,26 @@ describe('biblioteca', () => {
       '/biblioteca/secretos/grito-de-guerra.wav',
       '/biblioteca/sonidos/grito-de-guerra.exe',
       '/biblioteca/sonidos/sub/grito-de-guerra.wav',
+      '/biblioteca/imagenes/twitch/..%2F..%2F..%2F.env',
+      '/biblioteca/imagenes/twitch/%2E%2E/%2E%2E/%2E%2E/.env',
+      '/biblioteca/imagenes/../../.env',
+      '/biblioteca/imagenes/twitch%2F..%2F..%2Foro-moneda.png',
+      '/biblioteca/imagenes/a/b/c/d/icono.png',
+      '/biblioteca/imagenes/twitch/cofre-28.exe',
     ]) {
       const r = await pedir('GET', ruta);
       assert.notEqual(r.status, 200, ruta);
     }
+  });
+
+  test('las imágenes pueden estar en subcarpetas, y se listan con la suya', async () => {
+    const { body } = await pedir('GET', '/api/biblioteca');
+    const icono = body.imagenes.find((i: any) => i.carpeta === 'twitch' && i.nombre === 'cofre-28.png');
+    assert.ok(icono, 'falta imagenes/twitch/cofre-28.png');
+    assert.equal(icono.url, '/biblioteca/imagenes/twitch/cofre-28.png');
+    const r = await pedir('GET', icono.url);
+    assert.equal(r.status, 200);
+    assert.equal(r.headers['content-type'], 'image/png');
   });
 
   test('abrir la carpeta exige X-Panel, como todo lo que hace algo', async () => {

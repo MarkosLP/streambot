@@ -782,3 +782,92 @@ strong.ui {
 .jefe-cabeza { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
 .jefe-barra { width: 100%; height: 14px; border-radius: 99px; background: var(--fondo); border: 1px solid var(--borde-2); overflow: hidden; }
 .jefe-barra > span { display: block; height: 100%; background: linear-gradient(90deg, var(--rojo), var(--oro)); transition: width .4s ease; }
+
+/* ---------- Galería de imágenes ---------- */
+
+.galeria-filtros { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 16px; }
+.galeria-filtros input[type="search"] {
+  flex: 1 1 220px; max-width: 320px; padding: 8px 12px; border-radius: 9px;
+  border: 1px solid var(--borde-2); background: var(--fondo); color: var(--texto); font: inherit;
+}
+.galeria-filtros input[type="search"]:focus { outline: none; border-color: var(--oro); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+button.chip { cursor: pointer; background: transparent; font: inherit; font-size: 0.78rem; font-weight: 600; padding: 4px 11px; }
+button.chip:hover { color: var(--texto); border-color: var(--texto-3); }
+button.chip[aria-pressed="true"] { color: var(--oro-claro); border-color: var(--oro); background: color-mix(in srgb, var(--oro) 14%, transparent); }
+button.chip:focus-visible { outline: 2px solid var(--oro); outline-offset: 2px; }
+button.chip .cuenta { opacity: .6; margin-left: 4px; font-variant-numeric: tabular-nums; }
+
+.grupo-galeria + .grupo-galeria { margin-top: 26px; }
+.grupo-galeria > h3 {
+  display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px;
+  font-family: var(--titulos); font-size: 0.95rem; letter-spacing: .04em; color: var(--texto-2);
+}
+.grupo-galeria > h3 code { font-size: 0.78rem; color: var(--texto-3); }
+.grupo-galeria .lista-imagenes { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.grupo-galeria.anchos .lista-imagenes { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+
+/* Fondos de las miniaturas: a cuadros, el oscuro de Twitch o claro. */
+.fondo-cuadros { background: repeating-conic-gradient(#1c2130 0% 25%, #151924 0% 50%) 0 0 / 20px 20px; }
+.fondo-twitch { background: #18181b; }
+.fondo-claro { background: repeating-conic-gradient(#ffffff 0% 25%, #eceff4 0% 50%) 0 0 / 20px 20px; }
+
+.imagen { display: flex; flex-direction: column; transition: transform .15s ease, border-color .15s ease; }
+.imagen:hover { transform: translateY(-2px); border-color: var(--borde-2); }
+.imagen-vista { cursor: zoom-in; border: 0; width: 100%; font: inherit; color: inherit; }
+.imagen-vista:focus-visible { outline: 2px solid var(--oro); outline-offset: -2px; }
+.imagen .overlay-pie { margin-top: auto; }
+.imagen .sonido-info { min-width: 0; flex: 1; }
+
+/* Un icono de Twitch en sus tres tamaños, a tamaño real. */
+.tamanos { display: flex; align-items: flex-end; justify-content: center; gap: 14px; }
+.tamanos figure { margin: 0; display: grid; justify-items: center; gap: 6px; }
+.tamanos img { image-rendering: auto; max-width: none; max-height: none; }
+.tamanos figcaption { font-size: 0.7rem; color: var(--texto-3); font-variant-numeric: tabular-nums; }
+.fondo-claro .tamanos figcaption { color: #5b6275; }
+.copias { display: flex; gap: 4px; flex-wrap: wrap; }
+.copias .boton { padding: 3px 8px; font-size: 0.72rem; }
+
+/* ---------- Visor ---------- */
+
+.visor {
+  width: min(1100px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0;
+  border: 1px solid var(--borde-2); border-radius: var(--radio); background: var(--tarjeta); color: var(--texto);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .7); overflow: hidden;
+}
+.visor::backdrop { background: rgba(4, 6, 10, .78); backdrop-filter: blur(3px); }
+.visor[open] { display: flex; flex-direction: column; animation: visor-entra .18s ease-out; }
+@keyframes visor-entra { from { opacity: 0; transform: scale(.97); } }
+.visor-lienzo { position: relative; display: grid; place-items: center; min-height: 240px; height: min(68vh, 720px); padding: 24px 64px; }
+.visor-lienzo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.visor-lienzo.pixeles img { image-rendering: pixelated; }
+.visor-flecha {
+  position: absolute; top: 50%; transform: translateY(-50%); width: 42px; height: 42px; border-radius: 50%;
+  border: 1px solid var(--borde-2); background: rgba(10, 12, 18, .75); color: var(--texto); font-size: 1.6rem; line-height: 1; cursor: pointer;
+}
+.visor-flecha:hover { border-color: var(--oro); color: var(--oro-claro); }
+.visor-flecha.izq { left: 12px; } .visor-flecha.der { right: 12px; }
+.visor-pie { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 14px 18px; border-top: 1px solid var(--borde); }
+.visor-info { display: grid; gap: 2px; min-width: 0; margin-right: auto; }
+.visor-info strong { font-family: "Cascadia Code", ui-monospace, Consolas, monospace; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.visor-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Vista previa de overlays: botones para probar variantes. */
+.variantes { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 12px 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .imagen, .visor[open] { transition: none; animation: none; }
+}
+
+/* Ajustes de la galería: que nada se corte. */
+.imagen-vista img { width: 100%; height: 100%; object-fit: contain; }
+.tamanos img { width: auto; height: auto; object-fit: initial; }
+.tamanos figcaption { white-space: nowrap; }
+.grupo-galeria.anchos .imagen-vista { aspect-ratio: 3 / 4; }
+.grupo-galeria.iconos .lista-imagenes { grid-template-columns: repeat(auto-fill, minmax(262px, 1fr)); }
+.imagen .overlay-pie { flex-wrap: wrap; align-items: flex-end; }
+.imagen .sonido-info strong { white-space: normal; overflow-wrap: anywhere; }
+a.boton { text-decoration: none; display: inline-flex; align-items: center; }
+.imagen-vista > img { position: absolute; inset: 12px; width: calc(100% - 24px); height: calc(100% - 24px); object-fit: contain; }
+.imagen .sonido-info { flex: 1 1 100%; }
+.imagen .overlay-pie > .copiar { margin-left: auto; }

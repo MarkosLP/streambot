@@ -11,7 +11,10 @@ import { EFECTOS } from './efectos.js';
  * el panel, con su ruta lista para pegar en Streamer.bot u OBS.
  *
  * El panel solo sirve archivos de esas tres carpetas, solo con extensiones
- * conocidas y solo por su nombre: nada de subcarpetas ni `..`.
+ * conocidas y solo por su nombre: nada de `..`. Subcarpetas, solo en
+ * imágenes (`imagenes/twitch/paneles/`) y como mucho tres niveles: los
+ * sonidos y los overlays se enlazan entre sí con rutas relativas
+ * (`../sonidos/x.wav`) que una subcarpeta rompería.
  */
 
 export const DIR_BIBLIOTECA = fileURLToPath(new URL('../../biblioteca/', import.meta.url));
@@ -25,9 +28,14 @@ const TIPOS = {
 export type Seccion = keyof typeof TIPOS;
 export const SECCIONES = Object.keys(TIPOS) as Seccion[];
 
+/** Niveles de subcarpeta que se admiten en imágenes. */
+const PROFUNDIDAD = 3;
+
 export interface Archivo {
   nombre: string;
   seccion: Seccion;
+  /** Subcarpeta dentro de la sección, con `/`: '' en la raíz, 'twitch/paneles'... */
+  carpeta: string;
   ruta: string;
   url: string;
   bytes: number;
@@ -71,32 +79,45 @@ function usadoPor(seccion: Seccion, nombre: string): string[] {
 export async function listar(dir = DIR_BIBLIOTECA): Promise<{ carpeta: string } & Record<Seccion, Archivo[]>> {
   const resultado = { carpeta: dir } as { carpeta: string } & Record<Seccion, Archivo[]>;
   for (const seccion of SECCIONES) {
-    const tipos: Record<string, string> = TIPOS[seccion];
-    let nombres: string[] = [];
-    try {
-      nombres = await readdir(join(dir, seccion));
-    } catch {
-      // Carpeta que no existe: sección vacía.
-    }
     const archivos: Archivo[] = [];
-    for (const nombre of nombres.sort((a, b) => a.localeCompare(b, 'es'))) {
-      if (!NOMBRE_VALIDO.test(nombre) || !tipos[extname(nombre).toLowerCase()]) continue;
-      const ruta = join(dir, seccion, nombre);
-      const info = await stat(ruta).catch(() => null);
-      if (!info?.isFile()) continue;
-      archivos.push({
-        nombre,
-        seccion,
-        ruta,
-        url: `/biblioteca/${seccion}/${encodeURIComponent(nombre)}`,
-        bytes: info.size,
-        duracionSeg: extname(nombre).toLowerCase() === '.wav' ? await duracionWav(ruta) : null,
-        usadoPor: usadoPor(seccion, nombre),
-      });
-    }
+    await recorrer(dir, seccion, [], archivos);
     resultado[seccion] = archivos;
   }
   return resultado;
+}
+
+/** Los archivos de una carpeta de la sección, y los de sus subcarpetas si es de imágenes. */
+async function recorrer(dir: string, seccion: Seccion, sub: string[], archivos: Archivo[]): Promise<void> {
+  const tipos: Record<string, string> = TIPOS[seccion];
+  let nombres: string[] = [];
+  try {
+    nombres = await readdir(join(dir, seccion, ...sub));
+  } catch {
+    // Carpeta que no existe: sección vacía.
+  }
+  const subcarpetas: string[] = [];
+  for (const nombre of nombres.sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))) {
+    if (!NOMBRE_VALIDO.test(nombre)) continue;
+    const ruta = join(dir, seccion, ...sub, nombre);
+    const info = await stat(ruta).catch(() => null);
+    if (info?.isDirectory()) {
+      if (seccion === 'imagenes' && sub.length < PROFUNDIDAD) subcarpetas.push(nombre);
+      continue;
+    }
+    if (!info?.isFile() || !tipos[extname(nombre).toLowerCase()]) continue;
+    archivos.push({
+      nombre,
+      seccion,
+      carpeta: sub.join('/'),
+      ruta,
+      url: `/biblioteca/${seccion}/${[...sub, nombre].map(encodeURIComponent).join('/')}`,
+      bytes: info.size,
+      duracionSeg: extname(nombre).toLowerCase() === '.wav' ? await duracionWav(ruta) : null,
+      usadoPor: sub.length ? [] : usadoPor(seccion, nombre),
+    });
+  }
+  // Primero lo de esta carpeta, después cada subcarpeta.
+  for (const c of subcarpetas) await recorrer(dir, seccion, [...sub, c], archivos);
 }
 
 /**
@@ -104,20 +125,28 @@ export async function listar(dir = DIR_BIBLIOTECA): Promise<{ carpeta: string } 
  * Cualquier cosa rara (subcarpetas, `..`, extensiones que no toca) es null.
  */
 export function resolver(pathname: string, dir = DIR_BIBLIOTECA): { ruta: string; tipo: string } | null {
-  const m = /^\/biblioteca\/(\w+)\/([^/]+)$/.exec(pathname);
+  const m = /^\/biblioteca\/(\w+)\/(.+)$/.exec(pathname);
   if (!m) return null;
   const seccion = m[1] as Seccion;
   if (!SECCIONES.includes(seccion)) return null;
-  let nombre: string;
-  try {
-    nombre = decodeURIComponent(m[2]);
-  } catch {
-    return null;
+  // Cada trozo se decodifica y se comprueba POR SEPARADO: un %2F dentro de un
+  // nombre no puede colar una barra, ni un %2E%2E un "..".
+  const trozos = m[2].split('/');
+  if (trozos.length > 1 && (seccion !== 'imagenes' || trozos.length > PROFUNDIDAD + 1)) return null;
+  const partes: string[] = [];
+  for (const t of trozos) {
+    let parte: string;
+    try {
+      parte = decodeURIComponent(t);
+    } catch {
+      return null;
+    }
+    if (!NOMBRE_VALIDO.test(parte) || parte.includes('..')) return null;
+    partes.push(parte);
   }
-  if (!NOMBRE_VALIDO.test(nombre) || nombre.includes('..')) return null;
-  const tipo = (TIPOS[seccion] as Record<string, string>)[extname(nombre).toLowerCase()];
+  const tipo = (TIPOS[seccion] as Record<string, string>)[extname(partes.at(-1)!).toLowerCase()];
   if (!tipo) return null;
-  return { ruta: join(dir, seccion, nombre), tipo };
+  return { ruta: join(dir, seccion, ...partes), tipo };
 }
 
 /** Abre la carpeta en el Explorador (o lo que toque en cada sistema). */

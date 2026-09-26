@@ -333,10 +333,37 @@
       </section>
 
       <section class="bloque">
-        <header class="bloque-cabecera"><h2>Imágenes</h2><span class="nota">PNG, GIF, WebP o JPG</span></header>
-        <div class="lista-imagenes" id="b-imagenes"></div>
+        <header class="bloque-cabecera"><h2>Imágenes</h2><span class="nota" id="n-imagenes">PNG, GIF, WebP o JPG</span></header>
+        <div class="galeria-filtros">
+          <input type="search" id="g-buscar" placeholder="Buscar por nombre…" autocomplete="off" spellcheck="false" aria-label="Buscar imágenes">
+          <div class="chips" id="g-carpetas" role="group" aria-label="Carpetas"></div>
+          <div class="chips" id="g-fondos" role="group" aria-label="Fondo de las miniaturas">
+            <button type="button" class="chip" data-fondo="cuadros">▦ Cuadros</button>
+            <button type="button" class="chip" data-fondo="twitch">Twitch</button>
+            <button type="button" class="chip" data-fondo="claro">Claro</button>
+          </div>
+        </div>
+        <div id="b-imagenes"></div>
       </section>
     </section>
+
+    <!-- Visor de imágenes -->
+    <dialog class="visor" id="visor" aria-labelledby="visor-nombre">
+      <div class="visor-lienzo" id="visor-lienzo">
+        <button class="visor-flecha izq" id="visor-ant" type="button" aria-label="Anterior">‹</button>
+        <img id="visor-img" alt="">
+        <button class="visor-flecha der" id="visor-sig" type="button" aria-label="Siguiente">›</button>
+      </div>
+      <div class="visor-pie">
+        <div class="visor-info">
+          <strong id="visor-nombre"></strong>
+          <span class="nota" id="visor-datos"></span>
+        </div>
+        <div class="chips" id="visor-fondos"></div>
+        <div class="visor-acciones" id="visor-acciones"></div>
+        <button class="boton" type="button" id="visor-cerrar">Cerrar</button>
+      </div>
+    </dialog>
 
     <!-- INTERACCIONES -->
     <section class="vista" id="v-interacciones" hidden>

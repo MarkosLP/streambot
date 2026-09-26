@@ -1136,26 +1136,231 @@ async function cargarBiblioteca() {
 
   $('b-overlays').replaceChildren(...(lib.overlays.length
     ? lib.overlays.map((o) => {
-      const marco = h('iframe', { src: o.url, sandbox: 'allow-scripts', title: o.nombre, tabindex: '-1' });
+      const vars = VARIANTES_OVERLAY[o.nombre] || [];
+      let actual = vars[0]?.q ?? '';
+      const marco = h('iframe', { src: o.url + actual, sandbox: 'allow-scripts', title: o.nombre, tabindex: '-1' });
       const vista = h('div', { class: 'overlay-vista' }, marco);
       escalarOverlay.observe(vista);
+      const chips = vars.length > 1 && h('div', { class: 'variantes chips', role: 'group', 'aria-label': 'Variantes' },
+        vars.map((v, i) => h('button', {
+          type: 'button', class: 'chip', 'aria-pressed': String(i === 0),
+          onclick: (ev) => {
+            actual = v.q;
+            marco.src = o.url + actual;
+            for (const b of ev.currentTarget.parentNode.children) b.setAttribute('aria-pressed', String(b === ev.currentTarget));
+          },
+        }, v.nombre)));
       return h('article', { class: 'overlay' },
         vista,
+        chips,
         h('div', { class: 'overlay-pie' },
           h('div', { class: 'sonido-info' }, h('strong', {}, o.nombre), h('span', { class: 'sonido-meta' }, usadoEn(o.usadoPor))),
-          h('button', { class: 'boton pequeno', type: 'button', onclick: () => { marco.src = o.url; } }, '↻ Repetir'),
+          // Misma dirección no recarga: se pasa por about:blank para repetir la animación.
+          h('button', { class: 'boton pequeno', type: 'button', onclick: () => { marco.src = 'about:blank'; setTimeout(() => { marco.src = o.url + actual; }, 30); } }, '↻ Repetir'),
           botonCopiar(o.ruta)));
     })
     : [vacioBiblioteca('overlays', 'No hay overlays todavía.')]));
 
-  $('b-imagenes').replaceChildren(...(lib.imagenes.length
-    ? lib.imagenes.map((i) => h('article', { class: 'imagen' },
-      h('div', { class: 'imagen-vista' }, h('img', { src: i.url, alt: i.nombre, loading: 'lazy' })),
-      h('div', { class: 'overlay-pie' },
-        h('div', { class: 'sonido-info' }, h('strong', {}, i.nombre), h('span', { class: 'sonido-meta' }, h('span', { class: 'dato' }, tamano(i.bytes)))),
-        botonCopiar(i.ruta))))
-    : [vacioBiblioteca('imagenes', 'Aquí irán los iconos de las recompensas y las imágenes de los efectos.')]));
+  galeria.imagenes = lib.imagenes;
+  pintarGaleria();
 }
+
+// ---------------------------------------------------------------------------
+// Galería de imágenes
+// ---------------------------------------------------------------------------
+
+/**
+ * Cómo se enseña cada overlay en la vista previa. Sin esto, la barra del jefe
+ * sale vacía (sin jefe es transparente) y el banner, siempre Legendario.
+ */
+const VARIANTES_OVERLAY = {
+  'jefe.html': [{ nombre: 'Combate de prueba', q: '?demo=1' }],
+  'botin.html': [
+    { nombre: 'Legendario', q: '?rareza=legendario&item=Espada%20del%20Amanecer%20Eterno' },
+    { nombre: 'Épico', q: '?rareza=epico&item=Capa%20de%20las%20Sombras' },
+    { nombre: 'Raro', q: '?rareza=raro&item=Arco%20de%20tejo%20%C3%A9lfico' },
+    { nombre: 'Común', q: '?rareza=comun&item=Calcet%C3%ADn%20del%20tanque' },
+    { nombre: 'Maldito', q: '?rareza=epico&maldito=1&item=Calavera%20que%20susurra' },
+  ],
+};
+
+/** Nombre bonito de cada carpeta de imágenes. Las que no estén, por su ruta. */
+const CARPETAS = {
+  '': { titulo: 'Iconos', ancho: false },
+  twitch: { titulo: 'Twitch · moneda y recompensas', ancho: false },
+  'twitch/paneles': { titulo: 'Twitch · paneles', ancho: true },
+};
+const tituloCarpeta = (c) => CARPETAS[c]?.titulo ?? c;
+const rutaCarpeta = (c) => `imagenes/${c ? `${c}/` : ''}`;
+
+const galeria = { imagenes: [], carpeta: null, texto: '', fondo: 'cuadros', visibles: [] };
+try { galeria.fondo = localStorage.getItem('panel-galeria-fondo') || 'cuadros'; } catch { /* nada */ }
+
+function guardarFondo(fondo) {
+  galeria.fondo = fondo;
+  try { localStorage.setItem('panel-galeria-fondo', fondo); } catch { /* nada */ }
+}
+
+/** `cofre-28.png`, `cofre-56.png`, `cofre-112.png` → un solo juego «cofre» con tres tamaños. */
+function agrupar(imagenes) {
+  const juegos = new Map();
+  const sueltas = [];
+  for (const i of imagenes) {
+    const m = /^(.+)-(\d+)\.(png|webp|gif|jpe?g)$/i.exec(i.nombre);
+    if (!m) { sueltas.push(i); continue; }
+    const clave = `${i.carpeta}/${m[1]}`;
+    if (!juegos.has(clave)) juegos.set(clave, { base: m[1], carpeta: i.carpeta, tamanos: [] });
+    juegos.get(clave).tamanos.push({ px: Number(m[2]), img: i });
+  }
+  const tarjetas = [];
+  for (const j of juegos.values()) {
+    // Un solo tamaño no es un juego: va como imagen suelta.
+    if (j.tamanos.length < 2) sueltas.push(j.tamanos[0].img);
+    else tarjetas.push({ tipo: 'juego', carpeta: j.carpeta, nombre: j.base, tamanos: j.tamanos.sort((a, b) => a.px - b.px) });
+  }
+  for (const i of sueltas) tarjetas.push({ tipo: 'imagen', carpeta: i.carpeta, nombre: i.nombre, img: i });
+  return tarjetas.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }));
+}
+
+function pintarGaleria() {
+  const todas = galeria.imagenes;
+  for (const b of $('g-fondos').children) b.setAttribute('aria-pressed', String(b.dataset.fondo === galeria.fondo));
+  if (!todas.length) {
+    $('g-carpetas').replaceChildren();
+    $('b-imagenes').replaceChildren(vacioBiblioteca('imagenes', 'Aquí irán los iconos de las recompensas y las imágenes de los efectos.'));
+    return;
+  }
+  const carpetas = [...new Set(todas.map((i) => i.carpeta))];
+  if (galeria.carpeta !== null && !carpetas.includes(galeria.carpeta)) galeria.carpeta = null;
+
+  $('n-imagenes').textContent = `${todas.length} imágenes · PNG, GIF, WebP o JPG`;
+  const chip = (carpeta, texto, cuenta) => h('button', {
+    type: 'button', class: 'chip', 'aria-pressed': String(galeria.carpeta === carpeta),
+    onclick: () => { galeria.carpeta = carpeta; pintarGaleria(); },
+  }, texto, h('span', { class: 'cuenta' }, String(cuenta)));
+  $('g-carpetas').replaceChildren(
+    chip(null, 'Todas', todas.length),
+    ...carpetas.map((c) => chip(c, tituloCarpeta(c), todas.filter((i) => i.carpeta === c).length)),
+  );
+
+  const texto = galeria.texto.trim().toLowerCase();
+  const filtradas = todas.filter((i) =>
+    (galeria.carpeta === null || i.carpeta === galeria.carpeta) &&
+    (!texto || `${i.carpeta}/${i.nombre}`.toLowerCase().includes(texto)));
+  // El orden en que el visor pasa de una a otra: el de la pantalla.
+  galeria.visibles = [];
+
+  const grupos = carpetas
+    .filter((c) => filtradas.some((i) => i.carpeta === c))
+    .map((c) => ({ c, tarjetas: agrupar(filtradas.filter((i) => i.carpeta === c)) }))
+    .map(({ c, tarjetas }) => h('section', {
+      // Con juegos de tamaños, tarjetas más anchas: 28 + 56 + 112 px no caben en una estrecha.
+      class: `grupo-galeria${CARPETAS[c]?.ancho ? ' anchos' : ''}${tarjetas.some((t) => t.tipo === 'juego') ? ' iconos' : ''}`,
+    },
+      h('h3', {}, tituloCarpeta(c), h('code', {}, rutaCarpeta(c))),
+      h('div', { class: 'lista-imagenes' }, tarjetas.map(tarjetaImagen))));
+
+  $('b-imagenes').replaceChildren(...(grupos.length
+    ? grupos
+    : [h('p', { class: 'vacio-lista' }, `Nada coincide con «${galeria.texto}».`)]));
+}
+
+function tarjetaImagen(t) {
+  const fondo = `fondo-${galeria.fondo}`;
+  if (t.tipo === 'juego') {
+    const mayor = t.tamanos.at(-1).img;
+    const indice = galeria.visibles.push(mayor) - 1;
+    return h('article', { class: 'imagen' },
+      h('button', { class: `imagen-vista ${fondo}`, type: 'button', 'aria-label': `Ver ${t.nombre} en grande`, onclick: () => abrirVisor(indice) },
+        h('div', { class: 'tamanos' }, t.tamanos.map(({ px, img }) => h('figure', {},
+          // A tamaño real, salvo que no quepa en la tarjeta.
+          h('img', { src: img.url, alt: '', width: String(Math.min(px, 112)), height: String(Math.min(px, 112)), loading: 'lazy' }),
+          h('figcaption', {}, `${px} px`))))),
+      h('div', { class: 'overlay-pie' },
+        h('div', { class: 'sonido-info' },
+          h('strong', {}, t.nombre),
+          h('div', { class: 'copias' }, t.tamanos.map(({ px, img }) => botonCopiar(img.ruta, `${px}`))))));
+  }
+  const i = t.img;
+  const indice = galeria.visibles.push(i) - 1;
+  const dims = h('span', { class: 'dato' });
+  const img = h('img', { src: i.url, alt: i.nombre, loading: 'lazy' });
+  img.addEventListener('load', () => { dims.textContent = `${img.naturalWidth}×${img.naturalHeight}`; });
+  return h('article', { class: 'imagen' },
+    h('button', { class: `imagen-vista ${fondo}`, type: 'button', 'aria-label': `Ver ${i.nombre} en grande`, onclick: () => abrirVisor(indice) }, img),
+    h('div', { class: 'overlay-pie' },
+      h('div', { class: 'sonido-info' }, h('strong', { title: i.nombre }, i.nombre),
+        h('span', { class: 'sonido-meta' }, dims, h('span', { class: 'dato' }, tamano(i.bytes)))),
+      botonCopiar(i.ruta)));
+}
+
+$('g-buscar').addEventListener('input', (e) => { galeria.texto = e.target.value; pintarGaleria(); });
+$('g-fondos').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-fondo]');
+  if (!b) return;
+  guardarFondo(b.dataset.fondo);
+  pintarGaleria();
+});
+
+// ---------- El visor ----------
+
+let visorIndice = 0;
+const FONDOS_VISOR = [['cuadros', '▦ Cuadros'], ['twitch', 'Twitch'], ['claro', 'Claro']];
+
+function abrirVisor(indice) {
+  visorIndice = indice;
+  pintarVisor();
+  if (!$('visor').open) $('visor').showModal();
+}
+
+function pintarVisor() {
+  const lista = galeria.visibles;
+  const i = lista[visorIndice];
+  if (!i) return;
+  const img = $('visor-img');
+  const lienzo = $('visor-lienzo');
+  lienzo.className = `visor-lienzo fondo-${galeria.fondo}`;
+  $('visor-nombre').textContent = i.nombre;
+  $('visor-datos').textContent = `${rutaCarpeta(i.carpeta)} · ${tamano(i.bytes)}`;
+  img.style.width = '';
+  img.onload = () => {
+    // Los iconos pequeños se amplían sin emborronar, para ver cada píxel.
+    const pequeno = img.naturalWidth <= 128;
+    lienzo.classList.toggle('pixeles', pequeno);
+    img.style.width = pequeno ? `${img.naturalWidth * 3}px` : '';
+    $('visor-datos').textContent = `${rutaCarpeta(i.carpeta)} · ${img.naturalWidth}×${img.naturalHeight} px · ${tamano(i.bytes)}`;
+  };
+  img.src = i.url;
+  img.alt = i.nombre;
+  $('visor-fondos').replaceChildren(...FONDOS_VISOR.map(([id, texto]) => h('button', {
+    type: 'button', class: 'chip', 'aria-pressed': String(galeria.fondo === id),
+    onclick: () => { guardarFondo(id); pintarVisor(); pintarGaleria(); },
+  }, texto)));
+  $('visor-acciones').replaceChildren(
+    botonCopiar(i.ruta),
+    h('a', { class: 'boton pequeno', href: i.url, download: i.nombre }, 'Descargar'),
+  );
+  const varias = lista.length > 1;
+  $('visor-ant').hidden = !varias;
+  $('visor-sig').hidden = !varias;
+}
+
+function moverVisor(paso) {
+  const n = galeria.visibles.length;
+  if (n < 2) return;
+  visorIndice = (visorIndice + paso + n) % n;
+  pintarVisor();
+}
+
+$('visor-ant').addEventListener('click', () => moverVisor(-1));
+$('visor-sig').addEventListener('click', () => moverVisor(1));
+$('visor-cerrar').addEventListener('click', () => $('visor').close());
+$('visor').addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') { e.preventDefault(); moverVisor(-1); }
+  if (e.key === 'ArrowRight') { e.preventDefault(); moverVisor(1); }
+});
+// Clic en el fondo oscuro, fuera de la ventana: cerrar.
+$('visor').addEventListener('click', (e) => { if (e.target === $('visor')) $('visor').close(); });
 
 $('r-biblioteca').addEventListener('click', cargarBiblioteca);
 $('b-abrir').addEventListener('click', () => abrirCarpeta());
