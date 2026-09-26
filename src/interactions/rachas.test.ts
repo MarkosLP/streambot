@@ -9,6 +9,7 @@ import { setApprover } from '../core/review.js';
 import * as cooldowns from '../core/cooldowns.js';
 import * as policy from '../core/policy.js';
 import * as killswitch from '../core/killswitch.js';
+import * as ajustes from '../core/ajustes.js';
 import * as streams from '../data/streams.js';
 import * as streaks from '../data/streaks.js';
 import { componerHito, mereceAnuncio } from './rachas.js';
@@ -60,6 +61,8 @@ beforeEach(() => {
   cooldowns.reset();
   policy.reset();
   killswitch.enable('test');
+  // Aquí se prueban las rachas: el cofre de fidelidad (Loot) tiene sus tests.
+  ajustes.setLootActivo(false, 'test');
   setSender(async (texto) => {
     enviados.push(texto);
   });

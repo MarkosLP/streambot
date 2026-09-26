@@ -429,6 +429,32 @@ export const usar: Interaction<CtxComando> = {
 };
 
 // ---------------------------------------------------------------------------
+// !top
+// ---------------------------------------------------------------------------
+
+/** Los tres con más poder, y tu puesto si no estás entre ellos. */
+export const top: Interaction<CtxComando> = {
+  name: 'loot-top',
+  spontaneous: false,
+  cooldowns: [
+    porPersona('loot-top', 60_000),
+    // Una línea cada 20 s como mucho, pida quien la pida: es la misma para todos.
+    { key: () => cooldowns.keys.interaction('loot-top'), ms: 20_000, motivo: (_ctx, faltan) => `cooldown, faltan ${faltan}s` },
+  ],
+  run: (ctx) => {
+    const lista = lootDb.mochilas(3);
+    if (!lista.length) return { text: '🏆 Todavía nadie tiene botín. ¡El primer cofre marca el ranking!' };
+    const medallas = ['🥇', '🥈', '🥉'];
+    const podio = lista
+      .map((m, i) => `${medallas[i]} ${m.display_name}${m.titulo ? ` «${m.titulo}»` : ''} ⚔️ ${m.poder}`)
+      .join(' · ');
+    const yo = lista.some((m) => m.twitch_id === ctx.viewer.id) ? null : lootDb.puesto(ctx.viewer.id);
+    const tuyo = yo ? ` · Tú: puesto ${yo.puesto} de ${yo.de}` : '';
+    return { text: `🏆 Top poder: ${podio}${tuyo}` };
+  },
+};
+
+// ---------------------------------------------------------------------------
 // !coleccion
 // ---------------------------------------------------------------------------
 
@@ -459,7 +485,7 @@ export const ayuda: Interaction<CtxComando> = {
     text:
       `🎁 Loot: cada ${config.loot.minutosMin}-${config.loot.minutosMax} min cae un cofre para quien hable en el chat, ` +
       // Sin @ en el ejemplo del duelo: policy bloquea mencionar a quien no participa.
-      `y con Oros está el ${config.loot.cofreRewardTitle}. Comandos: !inventario !poder !duelo nombre !dar nombre !usar !forjar !presumir !coleccion`,
+      `y con Oros está el ${config.loot.cofreRewardTitle}. Comandos: !inventario !poder !duelo nombre !dar nombre !usar !forjar !presumir !coleccion !top`,
   }),
 };
 
@@ -478,6 +504,7 @@ const COMANDOS: Array<[RegExp, Interaction<CtxComando>]> = [
   [/^!dar\b/i, dar],
   [/^!usar\b/i, usar],
   [/^!(atacar|atk)\b/i, jefe.atacar],
+  [/^!(top|ranking)\b/i, top],
   [/^!loot\b/i, ayuda],
 ];
 
@@ -502,6 +529,7 @@ export const LISTA = [
   ['!dar nombre nº', 'Regala un objeto a alguien del chat. !dar solo te enseña tus objetos numerados; !dar ana 2 le da el 2'],
   ['!usar', 'Usa un objeto con efecto en el directo: Cuerno de guerra, Frasco de agua bendita, Calavera que susurra'],
   ['!atacar', 'Pega al jefe cuando aparece. Botín para todos si cae; Cofre del tesoro para quien más daño haga'],
+  ['!top', 'Los tres con más poder del canal, y tu puesto'],
   ['!purificar', 'Tras canjear una Poción de vida: limpia tu objeto maldito (ya no lo pierdes, pero sin poder doble)'],
 ] as const;
 

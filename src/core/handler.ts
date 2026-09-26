@@ -218,6 +218,15 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   // arriba (nada asíncrono antes de que las interacciones decidan).
   loot.recogerDelSuelo(viewer)?.catch((err) => log.error(`Loot: fallo al recoger del suelo: ${String(err)}`));
 
+  // La asistencia al directo se registra ANTES que ninguna interacción, y
+  // pase lo que pase después, espontáneas o no: si dependiera de que #19
+  // llegue a ejecutarse, un cooldown o una guarda de otra cosa (o tener las
+  // espontáneas apagadas) podría costarle a alguien su racha.
+  const racha = rachas.registrar(viewer.id);
+  // Desde el tercer directo seguido, cofre de fidelidad. Es del Loot, que
+  // tiene su propio interruptor: no depende de las espontáneas.
+  if (racha) loot.cofreFidelidad(viewer, racha)?.catch((err) => log.error(`Loot: fallo en el cofre de fidelidad: ${String(err)}`));
+
   // A partir de aquí el bot hablaría sin que nadie se lo pida. Con las
   // interacciones espontáneas apagadas, solo responde a comandos.
   if (!ajustes.interaccionesEspontaneas()) return;
@@ -229,10 +238,6 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   //
   // El motor se encarga de guardas, cooldowns, envío y registro. Aquí solo se
   // decide A CUÁL se le da la oportunidad, que es lo propio del enrutado.
-  // La asistencia al directo se registra ANTES que ninguna interacción, y
-  // pase lo que pase después. Si dependiera de que #19 llegue a ejecutarse,
-  // un cooldown o una guarda de otra cosa podría costarle a alguien su racha.
-  const racha = rachas.registrar(viewer.id);
   if (racha) {
     await engine.run(rachas.interaction, { viewer, trigger: 'chat', resultado: racha });
   }

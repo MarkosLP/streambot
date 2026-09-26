@@ -125,6 +125,57 @@ describe('⚔️ el cofre de guerra sin nadie en el chat', () => {
   });
 });
 
+describe('🔥 cofre de fidelidad', () => {
+  const online = () => normalize('Twitch.StreamOnline', {}, 'simulator');
+  const offline = () => normalize('Twitch.StreamOffline', {}, 'simulator');
+
+  /** ana viene a N directos seguidos, un mensaje (o varios) en cada uno. */
+  async function directos(n: number, mensajes = 1) {
+    for (let i = 0; i < n; i++) {
+      await handleEvent(online());
+      for (let m = 0; m < mensajes; m++) await handleEvent(mensaje('ana', `hola ${m}`));
+      await handleEvent(offline());
+    }
+  }
+
+  test('desde el tercer directo seguido, un cofre en el primer mensaje de cada directo', async () => {
+    await directos(2);
+    assert.equal(objetos('ana').length, 0, 'dos seguidos: todavía no');
+    await directos(1, 3);
+    assert.equal(objetos('ana').length, 1, 'al tercero, uno (aunque escriba tres veces)');
+    assert.match(enviados.at(-1)!, /^🔥 @ana, 3 directos seguidos: ¡cofre de fidelidad! → /);
+    assert.equal(lootDb.recientes(1)[0]!.origen, 'fidelidad');
+    await directos(1);
+    assert.equal(objetos('ana').length, 2, 'y otro al cuarto');
+  });
+
+  test('con el Loot apagado, no cae', async () => {
+    ajustes.setLootActivo(false, 'test');
+    await directos(3);
+    assert.equal(objetos('ana').length, 0);
+  });
+
+  test('las rachas se cuentan aunque las espontáneas estén apagadas', async () => {
+    ajustes.setInteraccionesEspontaneas(false, 'test');
+    await directos(3);
+    assert.equal(objetos('ana').length, 1);
+  });
+});
+
+describe('🏆 !top', () => {
+  test('los tres con más poder, y tu puesto si no estás', async () => {
+    meter('ana', 'Filo del Vacío', 'legendario');
+    meter('luis', 'Capa de las Sombras', 'epico');
+    meter('pepe', 'Arco de tejo élfico', 'raro');
+    meter('marta', 'Mapa arrugado', 'comun');
+    await handleEvent(mensaje('marta', '!top'));
+    assert.equal(enviados.at(-1), '🏆 Top poder: 🥇 ana ⚔️ 20 · 🥈 luis ⚔️ 8 · 🥉 pepe ⚔️ 3 · Tú: puesto 4 de 4');
+    cooldowns.reset();
+    await handleEvent(mensaje('ana', '!ranking'));
+    assert.doesNotMatch(enviados.at(-1)!, /Tú:/, 'si estás en el podio, no se repite');
+  });
+});
+
 describe('📨 los dos techos de mensajes', () => {
   test('con el techo espontáneo agotado, !inventario sigue contestando (lo del 26 sep)', async () => {
     for (let i = 0; i < config.messagesPerHour; i++) policy.registerSent();

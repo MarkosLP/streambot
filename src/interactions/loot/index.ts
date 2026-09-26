@@ -138,7 +138,7 @@ export function aventureros(now = Date.now()): Viewer[] {
 // El botín en pantalla
 // ---------------------------------------------------------------------------
 
-export type OrigenPantalla = 'cofre' | 'oro' | 'panel' | 'regalo' | 'jefe' | 'prueba' | 'forja' | 'presumir' | 'guerra' | 'maldicion' | 'purificar';
+export type OrigenPantalla = 'cofre' | 'oro' | 'panel' | 'regalo' | 'jefe' | 'fidelidad' | 'prueba' | 'forja' | 'presumir' | 'guerra' | 'maldicion' | 'purificar';
 export type Pantalla = (quien: string, botin: Botin, origen: OrigenPantalla) => Promise<void>;
 let pantalla: Pantalla | null = null;
 let fila: Promise<void> = Promise.resolve();
@@ -261,6 +261,43 @@ export function recogerDelSuelo(viewer: Viewer, azar: Azar = Math.random, now = 
     solicitado: true,
   }).then((o) => {
     interactionLog.record({ interaction: NAME, twitchId: viewer.id, status: o.sent ? 'sent' : 'blocked', detail: `suelo: ${botin.rareza}` });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Cofre de fidelidad
+// ---------------------------------------------------------------------------
+
+/** Directos seguidos a partir de los que cae el cofre de fidelidad. */
+export const RACHA_FIDELIDAD = 3;
+
+/**
+ * Premio por venir seguido (26 sep 2026): desde el tercer directo seguido,
+ * el primer mensaje de cada directo trae un cofre con la suerte del Cofre
+ * del tesoro. Con pocos espectadores, lo que más importa es que vuelvan.
+ *
+ * Solo en el PRIMER mensaje del directo: la racha llega como 'continua' o
+ * 'comodin' una vez por directo; los siguientes mensajes son 'repetida'.
+ * Decisión síncrona, envío después (mismo motivo que recogerDelSuelo).
+ */
+export function cofreFidelidad(
+  viewer: Viewer,
+  racha: { tipo: string; racha: number },
+  azar: Azar = Math.random,
+): Promise<void> | null {
+  if (racha.tipo !== 'continua' && racha.tipo !== 'comodin') return null;
+  if (racha.racha < RACHA_FIDELIDAD) return null;
+  if (!ajustes.lootActivo() || !esPersona(viewer)) return null;
+  const botin = tirar('oro', azar);
+  const resultado = lootDb.dar(viewer.id, viewer.displayName, botin, 'fidelidad');
+  enPantalla(viewer.displayName, botin, 'fidelidad');
+  return send({
+    text: `🔥 @${viewer.displayName}, ${racha.racha} directos seguidos: ¡cofre de fidelidad! → ${etiqueta(botin)}` +
+      `${botin.rareza === 'legendario' ? ' ✨✨✨' : ''}${notaMochila(resultado)}${anunciosDeTitulo([{ viewer, botin, resultado }])}`,
+    reason: NAME,
+    allowedMentions: [viewer.login],
+  }).then((o) => {
+    interactionLog.record({ interaction: NAME, twitchId: viewer.id, status: o.sent ? 'sent' : 'blocked', detail: `fidelidad ${racha.racha}: ${botin.rareza}` });
   });
 }
 
