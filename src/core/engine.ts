@@ -70,6 +70,7 @@ export async function run<C extends Ctx>(def: Interaction<C>, ctx: C): Promise<v
     reason: def.name,
     allowedMentions: salida.allowedMentions,
     aiGenerated: salida.aiGenerated,
+    solicitado: !def.spontaneous,
   });
 
   interactionLog.record({

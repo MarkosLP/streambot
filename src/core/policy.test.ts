@@ -99,4 +99,19 @@ describe('policy', () => {
     const unaHoraDespues = ahora + 60 * 60 * 1000 + 1;
     assert.equal(policy.evaluate({ text: 'hola', reason: 'test' }, unaHoraDespues).ok, true);
   });
+
+  test('lo que alguien pide tiene su propio techo: el bot callado no deja a nadie sin respuesta', () => {
+    const ahora = Date.now();
+    for (let i = 0; i < config.messagesPerHour; i += 1) policy.registerSent(ahora);
+    assert.equal(policy.evaluate({ text: 'hola', reason: 'test' }, ahora).ok, false, 'el espontáneo, agotado');
+    assert.equal(policy.evaluate({ text: 'hola', reason: 'test', solicitado: true }, ahora).ok, true, 'la respuesta, no');
+  });
+
+  test('y las respuestas no gastan del techo espontáneo, pero tienen el suyo', () => {
+    const ahora = Date.now();
+    for (let i = 0; i < config.respuestasPerHour; i += 1) policy.registerSent(ahora, true);
+    const respuesta = policy.evaluate({ text: 'hola', reason: 'test', solicitado: true }, ahora);
+    assert.equal(!respuesta.ok && respuesta.rejection, 'hourly-budget');
+    assert.equal(policy.evaluate({ text: 'hola', reason: 'test' }, ahora).ok, true);
+  });
 });

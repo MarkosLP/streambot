@@ -53,7 +53,7 @@ export async function send(message: OutboundMessage): Promise<SendOutcome> {
 
   if (config.dryRun) {
     log.info(`[SIMULADO · ${message.reason}] ${verdict.text}`);
-    policy.registerSent();
+    policy.registerSent(Date.now(), message.solicitado === true);
     return { sent: true, dryRun: true };
   }
 
@@ -64,7 +64,7 @@ export async function send(message: OutboundMessage): Promise<SendOutcome> {
 
   try {
     await sender(verdict.text);
-    policy.registerSent();
+    policy.registerSent(Date.now(), message.solicitado === true);
     log.info(`[ENVIADO · ${message.reason}] ${verdict.text}`);
     return { sent: true, dryRun: false };
   } catch (err) {

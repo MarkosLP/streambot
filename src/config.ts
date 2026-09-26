@@ -124,6 +124,15 @@ export const config = {
    */
   messagesPerHour: int('BOT_MESSAGES_PER_HOUR', 12),
 
+  /**
+   * Techo aparte para lo que alguien PIDE: un comando, un canje, un botón del
+   * panel. No es el bot hablando solo, así que no gasta del de arriba (el 26
+   * sep 2026, un jefe y unos regalos lo agotaron en 10 minutos y dejaron a la
+   * gente sin !inventario). Twitch admite 20 mensajes cada 30 s: 60 por hora
+   * es solo un freno contra un bucle.
+   */
+  respuestasPerHour: int('BOT_RESPUESTAS_PER_HOUR', 60),
+
   /** true = no envía nada a Twitch, solo registra. Útil para probar en directo sin riesgo. */
   dryRun: bool('DRY_RUN', false),
 

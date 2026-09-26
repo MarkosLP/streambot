@@ -257,6 +257,7 @@ export function recogerDelSuelo(viewer: Viewer, azar: Azar = Math.random, now = 
     text: `⚔️ @${viewer.displayName} llega el primero y abre el cofre de guerra de ${de} → ${etiqueta(botin)}${notaMochila(resultado)}${anunciosDeTitulo([{ viewer, botin, resultado }])}`,
     reason: NAME,
     allowedMentions: [viewer.login],
+    solicitado: true,
   }).then((o) => {
     interactionLog.record({ interaction: NAME, twitchId: viewer.id, status: o.sent ? 'sent' : 'blocked', detail: `suelo: ${botin.rareza}` });
   });
@@ -279,6 +280,7 @@ export async function soltarCofre(
       cofreDeGuerra = null;
       enElSuelo = { de, hasta: now + SUELO_MS };
       const outcome = await send({
+        solicitado: true,
         text: `⚔️ El cofre de guerra de ${de} ha caído… y no hay nadie para abrirlo. El primero que escriba en el chat en los próximos ${SUELO_MS / 60_000} min se lo lleva.`,
         reason: NAME,
       });
@@ -305,6 +307,7 @@ export async function soltarCofre(
   const outcome = await send({
     text: guerra ? texto.replace(/^(🎁 ¡Ha caído un cofre!|✨ ¡Cofre LEGENDARIO!)/, `⚔️ ¡Cofre de guerra (grito de ${guerra})!`) : texto,
     reason: NAME,
+    solicitado: origen === 'panel' || guerra !== null,
   });
   interactionLog.record({
     interaction: NAME,
@@ -389,7 +392,7 @@ export async function regalarCofre(
       `${uno.botin.rareza === 'legendario' ? ' ✨✨✨' : ''}${notaMochila(uno.resultado)}${anunciosDeTitulo(reparto)}`
     : componerCofre(reparto, `🎁 ¡${streamer()} regala ${nombreCofre} a todo el chat! `);
 
-  const outcome = await send({ text: texto, reason: NAME, allowedMentions: uno ? [uno.viewer.login] : undefined });
+  const outcome = await send({ text: texto, reason: NAME, allowedMentions: uno ? [uno.viewer.login] : undefined, solicitado: true });
   interactionLog.record({
     interaction: NAME,
     status: outcome.sent ? 'sent' : 'blocked',

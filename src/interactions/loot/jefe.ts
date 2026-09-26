@@ -101,6 +101,7 @@ export async function invocar({ azar = Math.random, now = Date.now() }: { azar?:
   const outcome = await send({
     text: `🐉 ¡Aparece ${nombre} con ${vidaMax} de vida! Escribid !atacar para derribarlo: tenéis ${DURACION_MS / 60_000} min. Botín para todos los que peguen.`,
     reason: NAME,
+    solicitado: true,
   });
   interactionLog.record({ interaction: NAME, status: outcome.sent ? 'sent' : 'blocked', detail: `aparece ${nombre} (${vidaMax})` });
   return { ok: true, nombre, vida: vidaMax, enviado: outcome.sent };
@@ -187,6 +188,7 @@ async function terminarPorTiempo(): Promise<void> {
     const outcome = await send({
       text: `💨 ${mayuscula(j.nombre)} se escapa con ${j.vida}/${j.vidaMax} de vida.${mejor} ¡A la próxima!`,
       reason: NAME,
+      solicitado: true,
     });
     interactionLog.record({ interaction: NAME, status: outcome.sent ? 'sent' : 'blocked', detail: `se escapa ${j.nombre} (${j.vida}/${j.vidaMax})` });
   } catch (err) {

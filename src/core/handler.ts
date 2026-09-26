@@ -142,13 +142,14 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
           `(${borrado.memories} recuerdo(s) borrados).`,
         reason: 'olvidame',
         allowedMentions: [viewer.login],
+        solicitado: true,
       });
       return;
     }
 
     if (!isIgnored(viewer)) users.touch(viewer);
     if (control === 'ping') {
-      await send({ text: `pong, ${viewer.displayName}`, reason: 'sonda-verificacion' });
+      await send({ text: `pong, ${viewer.displayName}`, reason: 'sonda-verificacion', solicitado: true });
     }
     return;
   }

@@ -28,6 +28,12 @@ export interface OutboundMessage {
    * lo determinista ya sabemos qué dice, lo generado no.
    */
   aiGenerated?: boolean;
+  /**
+   * true si es la respuesta a algo que alguien ha pedido (un comando, un
+   * canje, un botón del panel). Cuenta contra su propio techo por hora, no
+   * contra el de lo que el bot dice solo.
+   */
+  solicitado?: boolean;
 }
 
 export type PolicyRejection =
@@ -44,8 +50,9 @@ export type PolicyResult =
   | { ok: true; text: string }
   | { ok: false; rejection: PolicyRejection; detail: string };
 
-/** Marcas de tiempo de los mensajes enviados, para el techo por hora. */
+/** Marcas de tiempo de los mensajes enviados, para los dos techos por hora. */
 let sentTimestamps: number[] = [];
+let respuestasTimestamps: number[] = [];
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -102,11 +109,13 @@ export function evaluate(message: OutboundMessage, now = Date.now()): PolicyResu
     }
   }
 
-  if (remainingBudget(now) <= 0) {
+  if (message.solicitado ? remainingRespuestas(now) <= 0 : remainingBudget(now) <= 0) {
     return {
       ok: false,
       rejection: 'hourly-budget',
-      detail: `ya se han enviado ${config.messagesPerHour} mensajes en la última hora`,
+      detail: message.solicitado
+        ? `ya se han enviado ${config.respuestasPerHour} respuestas en la última hora`
+        : `ya se han enviado ${config.messagesPerHour} mensajes espontáneos en la última hora`,
     };
   }
 
@@ -114,8 +123,8 @@ export function evaluate(message: OutboundMessage, now = Date.now()): PolicyResu
 }
 
 /** Lo llama output.send() cuando un mensaje se ha enviado de verdad. */
-export function registerSent(now = Date.now()): void {
-  sentTimestamps.push(now);
+export function registerSent(now = Date.now(), solicitado = false): void {
+  (solicitado ? respuestasTimestamps : sentTimestamps).push(now);
 }
 
 export function remainingBudget(now = Date.now()): number {
@@ -123,7 +132,13 @@ export function remainingBudget(now = Date.now()): number {
   return config.messagesPerHour - sentTimestamps.length;
 }
 
+export function remainingRespuestas(now = Date.now()): number {
+  respuestasTimestamps = respuestasTimestamps.filter((t) => now - t < HOUR_MS);
+  return config.respuestasPerHour - respuestasTimestamps.length;
+}
+
 /** Solo para tests y para el simulador. */
 export function reset(): void {
   sentTimestamps = [];
+  respuestasTimestamps = [];
 }

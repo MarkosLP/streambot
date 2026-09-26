@@ -122,6 +122,15 @@ describe('⚔️ el cofre de guerra sin nadie en el chat', () => {
   });
 });
 
+describe('📨 los dos techos de mensajes', () => {
+  test('con el techo espontáneo agotado, !inventario sigue contestando (lo del 26 sep)', async () => {
+    for (let i = 0; i < config.messagesPerHour; i++) policy.registerSent();
+    meter('ana', 'Mapa arrugado', 'comun');
+    await handleEvent(mensaje('ana', '!inventario'));
+    assert.match(enviados.at(-1)!, /^@ana 🎒/);
+  });
+});
+
 describe('🎁 !dar', () => {
   test('sin decir qué, da el peor objeto', async () => {
     meter('pepe', 'Arco de tejo élfico', 'raro');

@@ -34,7 +34,9 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 - Paneles de Twitch regenerados con `!dar`, `!usar` y `!atacar`: hay que volver a subir comandos.png y loot.png.
 - **El canal juega al Loot** como uno más (cofres, jefe, regalos, `!dar`). Interruptor «Yo también juego» en el panel; `LOOT_CANAL_JUEGA` en el `.env`.
 - **Barra del jefe en OBS** (`biblioteca/overlays/jefe.html`, fuente `FX Jefe`): emblema, vida con rastro, reloj, números de daño (críticos en dorado), aviso al aparecer y rótulo final con podio. Se crea desde Efectos → Preparar en OBS → «Barra del jefe». Queda VISIBLE siempre: sin jefe es transparente. Pregunta al bot cada 0,5 s por `GET /api/overlay/jefe` (única ruta con CORS). Vista previa: `jefe.html?demo=1`.
-- Hay que **reiniciar el bot** para tenerlo. 399 tests.
+- **Dos techos de mensajes**: 12/hora lo que el bot dice solo (`BOT_MESSAGES_PER_HOUR`) y 60/hora las respuestas a comandos, canjes y botones del panel (`BOT_RESPUESTAS_PER_HOUR`). Antes era uno solo de 12, y un jefe con regalos lo agotó en 10 min dejando a la gente sin `!inventario`.
+- **Biblioteca**: galería con subcarpetas, visor, filtros y vistas previas de overlays con variantes.
+- Hay que **reiniciar el bot** para tenerlo. 403 tests.
 
 ### Precios y límites acordados
 

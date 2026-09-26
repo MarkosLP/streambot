@@ -201,7 +201,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     // Lo escribes tú, así que puedes mencionar a quien quieras. Pasa por
     // policy como todo lo demás: interruptor, longitud y techo por hora.
     const menciones = [...texto.matchAll(/@(\w+)/g)].map((m) => m[1].toLowerCase());
-    const outcome = await send({ text: texto.trim(), reason: 'panel', allowedMentions: menciones });
+    const outcome = await send({ text: texto.trim(), reason: 'panel', allowedMentions: menciones, solicitado: true });
     if (!outcome.sent) throw new ErrorHttp(409, `no salió: ${outcome.detail}`);
     return json(res, 200, { ok: true, dryRun: outcome.dryRun });
   }
