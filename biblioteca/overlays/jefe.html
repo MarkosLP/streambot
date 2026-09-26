@@ -1,0 +1,418 @@
+<!doctype html>
+<!--
+  Overlay "Jefe de raid" del Loot, para OBS.
+
+  NO se monta a mano: lo crea "Preparar en OBS" (fuente FX Jefe). Se queda
+  SIEMPRE visible: sin jefe no pinta nada, es transparente.
+
+  Pregunta al bot cada medio segundo cómo va el combate
+  (GET /api/overlay/jefe) y pinta:
+    - al aparecer: aviso a pantalla completa y la barra bajando desde arriba
+    - la barra de vida, con rastro del daño, marcas cada 10 % y el tiempo
+    - un número por cada !atacar (los críticos, grandes y dorados)
+    - al final: ¡DERROTADO! con el podio de daño, o ¡SE ESCAPA!
+
+  ?demo=1 simula un combate entero sin bot, para verlo en la Biblioteca.
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Jefe de raid</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Chakra+Petch:wght@600;700&display=swap">
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+  body { font-family: "Chakra Petch", "Segoe UI", sans-serif; color: #fff; }
+  [hidden] { display: none !important; }
+
+  /* ---------- La barra ---------- */
+  .jefe {
+    position: absolute; top: 34px; left: 50%; width: 1180px; height: 150px;
+    transform: translateX(-50%);
+    animation: baja .9s cubic-bezier(.2, 1.3, .4, 1) both;
+  }
+  .jefe.sale { animation: sube .6s ease-in forwards; }
+  @keyframes baja { from { transform: translate(-50%, -240px); } }
+  @keyframes sube { to { transform: translate(-50%, -240px); opacity: 0; } }
+
+  .emblema {
+    position: absolute; left: -20px; top: -8px; width: 170px; height: 170px; z-index: 3;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,.7)) drop-shadow(0 0 22px rgba(255, 60, 30, .55));
+  }
+  .emblema.golpe { animation: sacude .28s steps(3); }
+  @keyframes sacude {
+    0% { transform: translate(0, 0) rotate(0); }
+    33% { transform: translate(-7px, 3px) rotate(-4deg); }
+    66% { transform: translate(6px, -2px) rotate(3deg); }
+  }
+  .emblema .ojos { animation: brillo 1.4s ease-in-out infinite; }
+  @keyframes brillo { 50% { opacity: .55; } }
+  .emblema .anillo { transform-origin: 100px 100px; animation: gira 16s linear infinite; }
+  @keyframes gira { to { transform: rotate(360deg); } }
+  .insignia {
+    position: absolute; left: 112px; top: 108px; width: 50px; height: 50px; z-index: 4;
+    display: grid; place-items: center; font-size: 28px;
+    background: radial-gradient(circle at 35% 30%, #4a2230, #14070c); border: 3px solid #d9a441; border-radius: 50%;
+    box-shadow: 0 0 12px rgba(0,0,0,.8);
+  }
+
+  .cartel {
+    position: absolute; left: 150px; right: 0; top: 6px; height: 50px;
+    display: flex; align-items: flex-end; gap: 18px; padding-left: 26px;
+  }
+  .etiqueta {
+    font-size: 17px; font-weight: 700; letter-spacing: .35em; color: #ff6b4a;
+    text-shadow: 0 0 10px rgba(255, 60, 30, .9), 0 2px 0 #000; padding-bottom: 7px;
+  }
+  .nombre {
+    font-family: "Cinzel", Georgia, serif; font-weight: 900; font-size: 40px; line-height: 1;
+    letter-spacing: .04em; text-transform: uppercase;
+    background: linear-gradient(180deg, #fff6d6 0%, #ffd36b 45%, #c9771a 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 3px 0 rgba(0,0,0,.85)) drop-shadow(0 0 14px rgba(255, 170, 60, .45));
+    white-space: nowrap;
+  }
+  .reloj {
+    margin-left: auto; margin-right: 8px; padding-bottom: 5px;
+    font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums;
+    color: #fff; text-shadow: 0 2px 0 #000, 0 0 10px rgba(0,0,0,.8);
+  }
+  .reloj.prisa { color: #ff5a4a; animation: late .6s ease-in-out infinite; }
+  @keyframes late { 50% { transform: scale(1.12); } }
+
+  .marco {
+    position: absolute; left: 150px; right: 0; top: 64px; height: 52px;
+    padding: 6px; box-sizing: border-box; border-radius: 10px;
+    background: linear-gradient(180deg, #5b4326, #2a1d0f 55%, #4a3520);
+    box-shadow: 0 0 0 2px #0b0703, 0 0 0 4px #b98a3a, 0 0 0 6px #0b0703, 0 10px 24px rgba(0,0,0,.6);
+  }
+  .barra { position: relative; height: 100%; border-radius: 5px; overflow: hidden; background: #1a0707; box-shadow: inset 0 3px 8px rgba(0,0,0,.9); }
+  .rastro, .vida { position: absolute; left: 0; top: 0; bottom: 0; }
+  .rastro { background: linear-gradient(180deg, #fff3c4, #ffb03b); transition: width .9s ease-in .35s; }
+  .vida {
+    background: linear-gradient(180deg, #ff7a5c 0%, #e0212b 40%, #8f0714 100%);
+    transition: width .18s ease-out;
+    box-shadow: 4px 0 12px rgba(255, 80, 50, .8);
+  }
+  .vida::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.35) 45%, transparent 60%);
+    background-size: 300% 100%; animation: brilla 2.4s linear infinite;
+  }
+  @keyframes brilla { from { background-position: 150% 0; } to { background-position: -150% 0; } }
+  .jefe.critica .vida { animation: late-vida .7s ease-in-out infinite; }
+  @keyframes late-vida { 50% { filter: brightness(1.6) saturate(1.3); } }
+  .marcas { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), rgba(0,0,0,.55) calc(10% - 2px) 10%); pointer-events: none; }
+  .cifra {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .06em;
+    text-shadow: 0 2px 0 #000, 0 0 6px #000;
+  }
+  .pista {
+    position: absolute; left: 176px; top: 124px; font-size: 20px; font-weight: 600; letter-spacing: .05em;
+    color: rgba(255,255,255,.9); text-shadow: 0 2px 0 #000, 0 0 8px #000;
+  }
+  .pista b { color: #ffd36b; }
+
+  /* ---------- Números de daño ---------- */
+  .dano {
+    position: absolute; z-index: 5; text-align: center; pointer-events: none; white-space: nowrap;
+    font-weight: 700; font-size: 44px; color: #fff;
+    text-shadow: 0 3px 0 #000, 0 0 10px rgba(0,0,0,.9);
+    animation: salta 1.5s cubic-bezier(.2, .9, .4, 1) forwards;
+  }
+  .dano small { display: block; font-size: 18px; color: #ffd9c9; letter-spacing: .04em; }
+  .dano.critico { font-size: 74px; color: #ffd24a; text-shadow: 0 4px 0 #6b2b00, 0 0 22px rgba(255, 170, 30, .95); animation-name: salta-critico; }
+  .dano.critico::before { content: "¡CRÍTICO!"; display: block; font-size: 22px; letter-spacing: .3em; color: #fff3c4; }
+  @keyframes salta {
+    0% { opacity: 0; transform: translateY(10px) scale(.4); }
+    15% { opacity: 1; transform: translateY(-10px) scale(1.15); }
+    30% { transform: translateY(-18px) scale(1); }
+    100% { opacity: 0; transform: translateY(-110px) scale(.9); }
+  }
+  @keyframes salta-critico {
+    0% { opacity: 0; transform: scale(2.4) rotate(-8deg); }
+    14% { opacity: 1; transform: scale(1) rotate(3deg); }
+    22% { transform: scale(1.12) rotate(-2deg); }
+    100% { opacity: 0; transform: translateY(-130px) scale(1) rotate(0); }
+  }
+
+  /* ---------- Aviso de entrada ---------- */
+  .aviso {
+    position: absolute; left: 0; right: 0; top: 50%; height: 190px; transform: translateY(-50%);
+    display: grid; place-items: center;
+    background:
+      repeating-linear-gradient(-45deg, rgba(255, 40, 30, .0) 0 38px, rgba(255, 40, 30, .16) 38px 76px),
+      linear-gradient(180deg, rgba(40, 0, 0, 0), rgba(60, 0, 0, .82) 22%, rgba(60, 0, 0, .82) 78%, rgba(40, 0, 0, 0));
+    animation: aviso 3.4s ease-in-out forwards;
+  }
+  .aviso::before, .aviso::after { content: ""; position: absolute; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, transparent, #ff4a3a, transparent); box-shadow: 0 0 18px #ff4a3a; }
+  .aviso::before { top: 30px; } .aviso::after { bottom: 30px; }
+  @keyframes aviso { 0% { opacity: 0; transform: translateY(-50%) scaleY(0); } 10%, 82% { opacity: 1; transform: translateY(-50%) scaleY(1); } 100% { opacity: 0; transform: translateY(-50%) scaleY(0); } }
+  .aviso-texto { text-align: center; }
+  .aviso-texto span { display: block; font-size: 26px; font-weight: 700; letter-spacing: .6em; color: #ff8a70; text-shadow: 0 0 14px #ff3a2a; animation: brillo .5s steps(2) infinite; }
+  .aviso-texto strong {
+    display: block; font-family: "Cinzel", Georgia, serif; font-weight: 900; font-size: 84px; line-height: 1.05; text-transform: uppercase;
+    background: linear-gradient(180deg, #fff6d6, #ffcc5c 50%, #c2410c); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 4px 0 #000) drop-shadow(0 0 24px rgba(255, 80, 30, .7));
+  }
+
+  /* ---------- Final ---------- */
+  .final {
+    position: absolute; left: 50%; top: 44%; width: 1300px; transform: translate(-50%, -50%);
+    text-align: center; animation: final-entra .8s cubic-bezier(.2, 1.4, .4, 1) both, final-sale .7s ease-in 8.2s forwards;
+  }
+  @keyframes final-entra { from { opacity: 0; transform: translate(-50%, -50%) scale(.3); } }
+  @keyframes final-sale { to { opacity: 0; transform: translate(-50%, -58%) scale(1.05); } }
+  .rayos {
+    position: absolute; left: 50%; top: 42%; width: 1500px; height: 1500px; margin: -750px 0 0 -750px; z-index: -1;
+    background: repeating-conic-gradient(from 0deg, rgba(255, 190, 70, .26) 0deg 6deg, rgba(255, 190, 70, 0) 6deg 18deg);
+    -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 58%); mask-image: radial-gradient(circle, #000 0%, transparent 58%);
+    animation: gira 18s linear infinite;
+  }
+  .final.escapa .rayos { background: radial-gradient(circle, rgba(120, 80, 170, .45), transparent 60%); animation: none; }
+  .titular {
+    font-family: "Cinzel", Georgia, serif; font-weight: 900; font-size: 150px; line-height: 1; text-transform: uppercase;
+    background: linear-gradient(180deg, #fffbe8 0%, #ffd66b 40%, #e07a12 80%, #7a3300 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 6px 0 rgba(0,0,0,.85)) drop-shadow(0 0 40px rgba(255, 170, 40, .7));
+  }
+  .final.escapa .titular { background-image: linear-gradient(180deg, #f3ecff 0%, #b9a3e0 50%, #4b2f7a 100%); filter: drop-shadow(0 6px 0 rgba(0,0,0,.85)) drop-shadow(0 0 30px rgba(140, 100, 220, .7)); }
+  .subtitulo { margin-top: 6px; font-size: 38px; font-weight: 700; text-shadow: 0 3px 0 #000, 0 0 14px #000; }
+  .podio { display: flex; justify-content: center; gap: 22px; margin-top: 26px; }
+  .puesto {
+    min-width: 250px; padding: 14px 26px; border-radius: 16px;
+    background: linear-gradient(180deg, rgba(30, 20, 12, .92), rgba(12, 8, 5, .95));
+    border: 3px solid var(--c); box-shadow: 0 0 26px color-mix(in srgb, var(--c) 55%, transparent);
+    animation: final-entra .6s cubic-bezier(.2, 1.4, .4, 1) both;
+  }
+  .puesto:nth-child(1) { --c: #ffd24a; animation-delay: .5s; }
+  .puesto:nth-child(2) { --c: #d7dee8; animation-delay: .7s; }
+  .puesto:nth-child(3) { --c: #e0915a; animation-delay: .9s; }
+  .puesto .medalla { font-size: 46px; line-height: 1; }
+  .puesto .quien { font-size: 32px; font-weight: 700; color: var(--c); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .puesto .cuanto { font-size: 22px; color: rgba(255,255,255,.85); }
+</style>
+</head>
+<body>
+
+<!-- La barra del jefe -->
+<div class="jefe" id="jefe" hidden>
+  <svg class="emblema" id="emblema" viewBox="0 0 200 200" aria-hidden="true">
+    <defs>
+      <radialGradient id="fondo" cx="50%" cy="45%" r="60%">
+        <stop offset="0" stop-color="#5a1010"/><stop offset=".7" stop-color="#220405"/><stop offset="1" stop-color="#0c0102"/>
+      </radialGradient>
+      <linearGradient id="oro" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fff0b0"/><stop offset=".45" stop-color="#e2a53c"/><stop offset="1" stop-color="#7a4610"/>
+      </linearGradient>
+      <linearGradient id="hueso" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fbf4e4"/><stop offset=".6" stop-color="#d8c9a8"/><stop offset="1" stop-color="#8f7c5a"/>
+      </linearGradient>
+      <linearGradient id="cuerno" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#3a2a22"/><stop offset=".6" stop-color="#1c120e"/><stop offset="1" stop-color="#0a0605"/>
+      </linearGradient>
+      <radialGradient id="ojo" cx="50%" cy="50%" r="50%">
+        <stop offset="0" stop-color="#fff6b0"/><stop offset=".35" stop-color="#ffb020"/><stop offset=".8" stop-color="#ff2a10"/><stop offset="1" stop-color="#ff2a10" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <!-- Anillo de runas que gira -->
+    <g class="anillo">
+      <circle cx="100" cy="100" r="92" fill="none" stroke="#e2a53c" stroke-width="3" stroke-dasharray="10 7" opacity=".85"/>
+    </g>
+    <!-- Medallón -->
+    <circle cx="100" cy="100" r="82" fill="url(#fondo)" stroke="url(#oro)" stroke-width="9"/>
+    <circle cx="100" cy="100" r="72" fill="none" stroke="#0c0102" stroke-width="3"/>
+    <!-- Cuernos -->
+    <path d="M62 78 C40 64 30 40 40 18 C46 40 60 52 78 60 Z" fill="url(#cuerno)" stroke="#e2a53c" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M138 78 C160 64 170 40 160 18 C154 40 140 52 122 60 Z" fill="url(#cuerno)" stroke="#e2a53c" stroke-width="2.5" stroke-linejoin="round"/>
+    <!-- Calavera -->
+    <path d="M100 52 C70 52 56 72 56 96 C56 112 64 122 72 128 L72 144 C72 150 78 154 84 154 L116 154 C122 154 128 150 128 144 L128 128 C136 122 144 112 144 96 C144 72 130 52 100 52 Z"
+          fill="url(#hueso)" stroke="#1a0e08" stroke-width="4" stroke-linejoin="round"/>
+    <!-- Grieta -->
+    <path d="M104 54 L98 70 L106 78 L100 90" fill="none" stroke="#6b5a3c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Cuencas y ojos -->
+    <path d="M70 98 C72 86 90 84 94 96 C96 106 84 112 76 110 C71 108 69 104 70 98 Z" fill="#150606"/>
+    <path d="M130 98 C128 86 110 84 106 96 C104 106 116 112 124 110 C129 108 131 104 130 98 Z" fill="#150606"/>
+    <g class="ojos">
+      <circle cx="82" cy="99" r="12" fill="url(#ojo)"/>
+      <circle cx="118" cy="99" r="12" fill="url(#ojo)"/>
+    </g>
+    <!-- Nariz -->
+    <path d="M100 112 L94 124 L106 124 Z" fill="#150606"/>
+    <!-- Dientes -->
+    <path d="M78 136 H122" stroke="#1a0e08" stroke-width="3"/>
+    <path d="M86 132 V148 M95 132 V150 M105 132 V150 M114 132 V148" stroke="#1a0e08" stroke-width="3" stroke-linecap="round"/>
+    <!-- Colmillos -->
+    <path d="M80 136 L84 150 L88 136 Z M112 136 L116 150 L120 136 Z" fill="#fbf4e4" stroke="#1a0e08" stroke-width="2" stroke-linejoin="round"/>
+  </svg>
+  <div class="insignia" id="insignia">🐉</div>
+
+  <div class="cartel">
+    <span class="etiqueta">JEFE</span>
+    <span class="nombre" id="nombre">El Dragón de Escarcha</span>
+    <span class="reloj" id="reloj">3:00</span>
+  </div>
+  <div class="marco">
+    <div class="barra">
+      <div class="rastro" id="rastro" style="width:100%"></div>
+      <div class="vida" id="vida" style="width:100%"></div>
+      <div class="marcas"></div>
+      <div class="cifra" id="cifra">200 / 200</div>
+    </div>
+  </div>
+  <div class="pista" id="pista">Escribe <b>!atacar</b> en el chat</div>
+</div>
+
+<div id="danos"></div>
+
+<!-- Aviso al aparecer -->
+<div class="aviso" id="aviso" hidden>
+  <div class="aviso-texto">
+    <span>⚠ ¡APARECE UN JEFE! ⚠</span>
+    <strong id="aviso-nombre">El Dragón de Escarcha</strong>
+  </div>
+</div>
+
+<!-- Final -->
+<div class="final" id="final" hidden>
+  <div class="rayos"></div>
+  <div class="titular" id="titular">¡Derrotado!</div>
+  <div class="subtitulo" id="subtitulo">El Dragón de Escarcha ha caído</div>
+  <div class="podio" id="podio"></div>
+</div>
+
+<script>
+  // Todo como texto, nunca como HTML: los nombres los elige cada espectador.
+  const $ = (id) => document.getElementById(id);
+  const INSIGNIAS = [
+    [/drag[oó]n/i, '🐉'], [/esqueleto/i, '💀'], [/hidra/i, '🐍'], [/g[oó]lem/i, '🗿'], [/liche/i, '☠️'],
+    [/ara[ñn]a/i, '🕷️'], [/kraken/i, '🐙'], [/minotauro/i, '🐂'], [/tanque/i, '🛡️'], [/lag/i, '📶'],
+  ];
+  const mayuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  const sonar = (archivo) => { const a = new Audio(`../sonidos/${archivo}`); a.volume = 0.8; a.play().catch(() => {}); };
+
+  let actual = null;      // id del jefe que se está pintando
+  let visto = 0;          // último golpe pintado
+  let finalVisto = null;  // id del jefe cuyo final ya se enseñó
+
+  function pintar(d) {
+    const j = d.jefe;
+    if (j) {
+      if (j.id !== actual) aparece(j);
+      const pct = Math.max(0, (j.vida / j.vidaMax) * 100);
+      $('vida').style.width = `${pct}%`;
+      $('rastro').style.width = `${pct}%`;
+      $('cifra').textContent = `${j.vida} / ${j.vidaMax}`;
+      $('reloj').textContent = `⏳ ${mmss(j.quedanSeg)}`;
+      $('reloj').classList.toggle('prisa', j.quedanSeg <= 30);
+      $('jefe').classList.toggle('critica', pct <= 25);
+      for (const g of j.golpes) if (g.n > visto) { numero(g); visto = g.n; }
+    } else if (actual !== null && !$('jefe').hidden) {
+      // Se ha ido: pinta los últimos golpes (el que lo mató) y se retira.
+      $('jefe').classList.add('sale');
+      setTimeout(() => { $('jefe').hidden = true; $('jefe').classList.remove('sale'); }, 650);
+    }
+    if (d.final && d.final.id !== finalVisto) acaba(d.final);
+  }
+
+  function aparece(j) {
+    actual = j.id;
+    // Los golpes de antes de que se cargara el overlay no se repiten.
+    if (j.golpes.length) visto = Math.max(visto, ...j.golpes.map((g) => g.n));
+    const nombre = mayuscula(j.nombre);
+    $('nombre').textContent = nombre;
+    $('aviso-nombre').textContent = nombre;
+    $('insignia').textContent = (INSIGNIAS.find(([re]) => re.test(j.nombre)) || [, '👹'])[1];
+    // El aviso solo si acaba de aparecer; si el overlay se carga a mitad, directo a la barra.
+    if (j.vida === j.vidaMax && j.golpes.length === 0) {
+      $('aviso').hidden = false;
+      sonar('terremoto.wav');
+      setTimeout(() => { $('aviso').hidden = true; }, 3400);
+    }
+    const barra = $('jefe');
+    barra.hidden = true; void barra.offsetWidth; barra.hidden = false;
+  }
+
+  function numero(g) {
+    const el = document.createElement('div');
+    el.className = `dano${g.critico ? ' critico' : ''}`;
+    el.append(`-${g.dano}`);
+    const quien = document.createElement('small');
+    quien.textContent = g.quien;
+    el.append(quien);
+    // Debajo de la barra, repartidos a lo ancho.
+    el.style.left = `${700 + Math.random() * 700}px`;
+    el.style.top = `${g.critico ? 205 : 220 + Math.random() * 50}px`;
+    $('danos').append(el);
+    setTimeout(() => el.remove(), 1600);
+    const emblema = $('emblema');
+    emblema.classList.remove('golpe'); void emblema.getBoundingClientRect(); emblema.classList.add('golpe');
+  }
+
+  function acaba(f) {
+    finalVisto = f.id;
+    // Los números que quedaran volando taparían el rótulo.
+    $('danos').replaceChildren();
+    const derrotado = f.resultado === 'derrotado';
+    const caja = $('final');
+    caja.className = `final ${derrotado ? '' : 'escapa'}`;
+    $('titular').textContent = derrotado ? '¡Derrotado!' : '¡Se escapa!';
+    $('subtitulo').textContent = derrotado
+      ? `${mayuscula(f.nombre)} ha caído`
+      : `${mayuscula(f.nombre)} huye con ${f.vida} de vida`;
+    const medallas = ['🥇', '🥈', '🥉'];
+    $('podio').replaceChildren(...f.podio.map((p, i) => {
+      const d = document.createElement('div');
+      d.className = 'puesto';
+      const m = document.createElement('div'); m.className = 'medalla'; m.textContent = medallas[i];
+      const q = document.createElement('div'); q.className = 'quien'; q.textContent = p.quien;
+      const c = document.createElement('div'); c.className = 'cuanto'; c.textContent = `${p.dano} de daño`;
+      d.append(m, q, c);
+      return d;
+    }));
+    caja.hidden = true; void caja.offsetWidth; caja.hidden = false;
+    sonar(derrotado ? 'legendario.wav' : 'maldicion.wav');
+    setTimeout(() => { if (finalVisto === f.id) caja.hidden = true; }, 9000);
+  }
+
+  // ---------- De dónde salen los datos ----------
+
+  const params = new URLSearchParams(location.search);
+  if (params.get('demo') === '1') demo();
+  else {
+    const api = new URL('/api/overlay/jefe', location.href);
+    const preguntar = () =>
+      fetch(api, { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && pintar(d))
+        .catch(() => {})
+        .finally(() => setTimeout(preguntar, 500));
+    preguntar();
+  }
+
+  /** Un combate de mentira: aparece, recibe golpes, cae y enseña el podio. */
+  function demo() {
+    const nombres = ['Crid4m', 'crid4n', 'Pepe', 'Ana_la_Tanque'];
+    const vidaMax = 400;
+    let vida = vidaMax, n = 0, segundos = 180;
+    const golpes = [];
+    const danos = {};
+    const estado = () => ({ jefe: vida > 0 ? { id: 1, nombre: 'el Dragón de Escarcha', vida, vidaMax, quedanSeg: segundos, golpes: golpes.slice(-20) } : null, final: null });
+    pintar(estado());
+    setTimeout(function pega() {
+      const quien = nombres[Math.floor(Math.random() * nombres.length)];
+      const critico = Math.random() < 0.15;
+      const dano = Math.round((8 + Math.random() * 14) * (critico ? 2 : 1));
+      vida = Math.max(0, vida - dano); segundos = Math.max(0, segundos - 3);
+      golpes.push({ n: ++n, quien, dano, critico });
+      danos[quien] = (danos[quien] || 0) + dano;
+      pintar(estado());
+      if (vida > 0) return setTimeout(pega, 450 + Math.random() * 500);
+      const podio = Object.entries(danos).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([quien, dano]) => ({ quien, dano }));
+      setTimeout(() => pintar({ jefe: null, final: { id: 1, nombre: 'el Dragón de Escarcha', resultado: 'derrotado', vida: 0, vidaMax, podio } }), 700);
+    }, 3800);
+  }
+</script>
+</body>
+</html>

@@ -896,6 +896,7 @@ const PREPARABLES = [
   { id: 'maldicion', titulo: 'Maldición', que: 'Filtro «FX Maldicion» en blanco y negro, apagado', necesita: 'fuente' },
   { id: 'lag', titulo: 'Lag', que: 'Filtro «FX Lag» que congela la imagen, apagado', necesita: 'fuente', plugin: true },
   { id: 'botin', titulo: 'Banner del Loot', que: 'Fuente «FX Botin»: el banner de cada cofre, oculta', necesita: 'escena' },
+  { id: 'jefe', titulo: 'Barra del jefe', que: 'Fuente «FX Jefe»: la barra de vida del jefe de raid. Visible, pero sin jefe no se ve nada', necesita: 'escena' },
 ];
 
 // Lo que elegiste la última vez, para no tener que volver a elegirlo.

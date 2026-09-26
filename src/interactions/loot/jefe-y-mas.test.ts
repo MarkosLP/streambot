@@ -255,6 +255,27 @@ describe('🐉 jefe de raid', () => {
     assert.equal(botin[0]!.origen, 'jefe');
   });
 
+  test('el overlay ve la vida, cada golpe y, al final, el podio', async () => {
+    await handleEvent(mensaje('ana'));
+    await jefe.invocar({ azar: () => 0 });
+    cooldowns.reset();
+    await handleEvent(mensaje('ana', '!atacar'));
+    const durante = jefe.paraOverlay();
+    assert.equal(durante.jefe!.golpes.length, 1);
+    assert.equal(durante.jefe!.golpes[0]!.quien, 'ana');
+    assert.equal(durante.jefe!.vida, durante.jefe!.vidaMax - durante.jefe!.golpes[0]!.dano);
+    let n = 0;
+    while (jefe.estado() && n++ < 100) {
+      cooldowns.reset();
+      await handleEvent(mensaje('ana', '!atacar'));
+    }
+    const despues = jefe.paraOverlay();
+    assert.equal(despues.jefe, null);
+    assert.equal(despues.final!.resultado, 'derrotado');
+    assert.equal(despues.final!.podio[0]!.quien, 'ana');
+    assert.equal(jefe.paraOverlay(Date.now() + 20_000).final, null, 'el rótulo final se va solo');
+  });
+
   test('si se acaba el tiempo, se escapa sin botín', async () => {
     await handleEvent(mensaje('ana'));
     await jefe.invocar();

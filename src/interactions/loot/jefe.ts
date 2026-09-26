@@ -47,8 +47,19 @@ export const JEFES = [
   'el Lag Primigenio',
 ];
 
+/** Un golpe, para el overlay: los números de daño que saltan. */
+export interface Golpe {
+  n: number;
+  quien: string;
+  dano: number;
+  critico: boolean;
+}
+
 interface Jefe {
+  /** Cambia con cada jefe: el overlay sabe así que es uno nuevo. */
+  id: number;
   nombre: string;
+  golpes: Golpe[];
   vidaMax: number;
   vida: number;
   hasta: number;
@@ -57,6 +68,22 @@ interface Jefe {
 }
 
 let jefe: Jefe | null = null;
+let contador = 0;
+let golpesTotales = 0;
+
+/** Cómo acabó el último jefe, para el rótulo final del overlay. */
+export interface Final {
+  id: number;
+  nombre: string;
+  resultado: 'derrotado' | 'escapa';
+  vida: number;
+  vidaMax: number;
+  podio: { quien: string; dano: number }[];
+  at: number;
+}
+let final: Final | null = null;
+/** Cuánto se queda el rótulo final en pantalla. */
+const FINAL_MS = 9000;
 let reloj: ReturnType<typeof setTimeout> | null = null;
 
 export type ResultadoInvocar = { ok: true; nombre: string; vida: number; enviado: boolean } | { ok: false; motivo: string };
@@ -66,7 +93,8 @@ export async function invocar({ azar = Math.random, now = Date.now() }: { azar?:
   if (jefe) return { ok: false, motivo: `${jefe.nombre} sigue en pie` };
   const nombre = JEFES[Math.floor(azar() * JEFES.length)]!;
   const vidaMax = VIDA_POR_PERSONA * Math.max(1, aventureros(now).length);
-  jefe = { nombre, vidaMax, vida: vidaMax, hasta: now + DURACION_MS, danos: new Map(), avisoMitad: false };
+  jefe = { id: ++contador, nombre, golpes: [], vidaMax, vida: vidaMax, hasta: now + DURACION_MS, danos: new Map(), avisoMitad: false };
+  final = null;
   reloj = setTimeout(() => void terminarPorTiempo(), DURACION_MS);
   reloj.unref?.();
 
@@ -99,7 +127,9 @@ export const atacar: Interaction<CtxComando> = {
   ],
   run: (ctx): Salida | null => {
     const j = jefe!;
-    const { dano } = golpe(lootDb.poder(ctx.viewer.id), ctx.azar ?? Math.random);
+    const { dano, critico } = golpe(lootDb.poder(ctx.viewer.id), ctx.azar ?? Math.random);
+    j.golpes.push({ n: ++golpesTotales, quien: ctx.viewer.displayName, dano, critico });
+    if (j.golpes.length > 20) j.golpes.shift();
     const antes = j.danos.get(ctx.viewer.id)?.dano ?? 0;
     j.danos.set(ctx.viewer.id, { viewer: ctx.viewer, dano: antes + dano });
     j.vida = Math.max(0, j.vida - dano);
@@ -124,6 +154,7 @@ function ranking(j: Jefe) {
 function derrotado(j: Jefe, azar: Azar): string {
   cerrar();
   const orden = ranking(j);
+  apuntarFinal(j, 'derrotado', orden);
   const conBotin = orden.filter(
     ({ viewer }) => juega(viewer.login) && !consent.haPedidoOlvido(viewer.id),
   );
@@ -150,6 +181,7 @@ async function terminarPorTiempo(): Promise<void> {
   if (!j) return;
   cerrar();
   const orden = ranking(j);
+  apuntarFinal(j, 'escapa', orden);
   const mejor = orden[0] ? ` Quien más pegó: ${orden[0].viewer.displayName} (${orden[0].dano}).` : ' Nadie le ha tocado.';
   try {
     const outcome = await send({
@@ -160,6 +192,38 @@ async function terminarPorTiempo(): Promise<void> {
   } catch (err) {
     log.error(`Jefe: fallo al anunciar la huida: ${String(err)}`);
   }
+}
+
+function apuntarFinal(j: Jefe, resultado: Final['resultado'], orden: ReturnType<typeof ranking>): void {
+  final = {
+    id: j.id,
+    nombre: j.nombre,
+    resultado,
+    vida: j.vida,
+    vidaMax: j.vidaMax,
+    podio: orden.slice(0, 3).map((d) => ({ quien: d.viewer.displayName, dano: d.dano })),
+    at: Date.now(),
+  };
+}
+
+/**
+ * Lo que pinta el overlay de OBS (biblioteca/overlays/jefe.html). Solo datos
+ * que ya salen en el chat: nombres y daño.
+ */
+export function paraOverlay(now = Date.now()) {
+  return {
+    jefe: jefe
+      ? {
+        id: jefe.id,
+        nombre: jefe.nombre,
+        vida: jefe.vida,
+        vidaMax: jefe.vidaMax,
+        quedanSeg: Math.max(0, Math.round((jefe.hasta - now) / 1000)),
+        golpes: jefe.golpes,
+      }
+      : null,
+    final: final && now - final.at < FINAL_MS ? final : null,
+  };
 }
 
 function cerrar(): void {
@@ -190,6 +254,7 @@ export function retirar(): boolean {
 /** Solo para tests. */
 export function reset(): void {
   cerrar();
+  final = null;
 }
 
 /** Solo para tests: que se acabe el tiempo ya. */

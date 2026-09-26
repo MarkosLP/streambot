@@ -154,6 +154,19 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
 
   const ruta = `${metodo} ${url.pathname}`;
 
+  // Lo que pinta la barra del jefe en OBS. El overlay corre en un origen
+  // propio (el sandbox de arriba), así que necesita CORS para leerlo. Solo se
+  // abre ESTA ruta, de lectura, y solo con lo que ya se ve en el chat.
+  if (ruta === 'GET /api/overlay/jefe') {
+    res.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'Access-Control-Allow-Origin': '*',
+    });
+    res.end(JSON.stringify(jefe.paraOverlay()));
+    return;
+  }
+
   if (ruta === 'GET /api/estado') {
     const desde = Number(url.searchParams.get('log') ?? 0) || 0;
     return json(res, 200, estado(sb, desde));

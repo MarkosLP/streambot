@@ -404,7 +404,7 @@ describe('preparar OBS', () => {
     assert.equal(body.conectado, true);
     assert.deepEqual(body.escenas, ['Escena juego', 'Charla']);
     assert.deepEqual(body.fuentes.map((f: any) => f.nombre), ['Juego']);
-    assert.deepEqual(body.existe, { pocion: false, botin: false, maldicion: false, lag: false });
+    assert.deepEqual(body.existe, { pocion: false, botin: false, jefe: false, maldicion: false, lag: false });
     assert.equal(body.pluginFreeze, false);
   });
 
@@ -424,6 +424,14 @@ describe('preparar OBS', () => {
     assert.match(fuente.settings.local_file, /biblioteca[\\/]overlays[\\/]pocion\.html$/);
     assert.equal(fuente.settings.shutdown, true);
     assert.equal(obs.items['Escena juego'].find((i) => i.sourceName === 'FX Pocion')!.enabled, false);
+  });
+
+  test('la barra del jefe se crea VISIBLE (sin jefe es transparente) y servida por el panel', async () => {
+    const r = await preparar({ escena: 'Escena juego', efectos: ['jefe'] });
+    assert.equal(r.body.resultados[0].ok, true);
+    const fuente = obs.entradas.find((e) => e.inputName === 'FX Jefe')!;
+    assert.match(fuente.settings.url, /^http:\/\/127\.0\.0\.1:\d+\/biblioteca\/overlays\/jefe\.html$/);
+    assert.equal(obs.items['Escena juego'].find((i) => i.sourceName === 'FX Jefe')!.enabled, true);
   });
 
   test('una fuente nueva ocupa todo el lienzo, sea del tamaño que sea', async () => {

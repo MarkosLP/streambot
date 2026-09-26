@@ -33,7 +33,8 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 - **`!usar`**: Cuerno de guerra 🟣 (Grito + cofre de guerra), Frasco de agua bendita 🔵 (¡Bebe agua! + purifica), Calavera que susurra 🟣 (Maldición + objeto maldito). Lanzan la Action de Streamer.bot de su recompensa; 2 min entre efectos.
 - Paneles de Twitch regenerados con `!dar`, `!usar` y `!atacar`: hay que volver a subir comandos.png y loot.png.
 - **El canal juega al Loot** como uno más (cofres, jefe, regalos, `!dar`). Interruptor «Yo también juego» en el panel; `LOOT_CANAL_JUEGA` en el `.env`.
-- Hay que **reiniciar el bot** para tenerlo. 397 tests.
+- **Barra del jefe en OBS** (`biblioteca/overlays/jefe.html`, fuente `FX Jefe`): emblema, vida con rastro, reloj, números de daño (críticos en dorado), aviso al aparecer y rótulo final con podio. Se crea desde Efectos → Preparar en OBS → «Barra del jefe». Queda VISIBLE siempre: sin jefe es transparente. Pregunta al bot cada 0,5 s por `GET /api/overlay/jefe` (única ruta con CORS). Vista previa: `jefe.html?demo=1`.
+- Hay que **reiniciar el bot** para tenerlo. 399 tests.
 
 ### Precios y límites acordados
 

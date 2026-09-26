@@ -8,7 +8,9 @@ import { config } from '../config.js';
  * a mano: la fuente del overlay de la poción y los filtros de maldición y lag.
  *
  * Todo se crea OCULTO o DESACTIVADO. Crear algo visible en mitad de un
- * directo sería lanzar el efecto sin que nadie lo haya canjeado.
+ * directo sería lanzar el efecto sin que nadie lo haya canjeado. La única
+ * excepción es «FX Jefe»: sin jefe es transparente, y tiene que estar visible
+ * para poder aparecer cuando lo invoques.
  *
  * Si ya existe, se actualiza en vez de duplicarse: se puede pulsar el botón
  * tantas veces como se quiera.
@@ -20,7 +22,11 @@ export const PREPARABLES = {
   maldicion: { nombre: 'FX Maldicion', tipo: 'filtro', donde: 'fuente' },
   lag: { nombre: 'FX Lag', tipo: 'filtro', donde: 'fuente', plugin: 'Freeze Filter' },
   botin: { nombre: 'FX Botin', tipo: 'fuente', donde: 'escena' },
+  jefe: { nombre: 'FX Jefe', tipo: 'fuente', donde: 'escena' },
 } as const;
+
+/** La barra del jefe: la sirve el panel, porque pregunta al bot cómo va el combate. */
+export const urlJefe = () => `http://127.0.0.1:${config.panel.port}/biblioteca/overlays/jefe.html`;
 
 /**
  * El banner del Loot lo sirve el panel y no un archivo local: así el bot
@@ -86,6 +92,7 @@ export async function estado(pedir: PedirObs, fuenteJuego?: string): Promise<Est
     existe: {
       pocion: entradas.inputs.some((i) => i.inputName === PREPARABLES.pocion.nombre),
       botin: entradas.inputs.some((i) => i.inputName === PREPARABLES.botin.nombre || i.inputName === NOMBRE_ANTIGUO_BOTIN),
+      jefe: entradas.inputs.some((i) => i.inputName === PREPARABLES.jefe.nombre),
       maldicion: filtros ? filtros.includes(PREPARABLES.maldicion.nombre) : null,
       lag: filtros ? filtros.includes(PREPARABLES.lag.nombre) : null,
     },
@@ -123,7 +130,7 @@ async function prepararUno(
   dirBiblioteca: string,
 ): Promise<string> {
   if (efecto === 'botin') await renombrarAntigua(pedir);
-  if (efecto === 'pocion' || efecto === 'botin') {
+  if (efecto === 'pocion' || efecto === 'botin' || efecto === 'jefe') {
     if (!escena) throw new ErrorObs('Elige la escena del juego.');
     const nombre = PREPARABLES[efecto].nombre;
     const comunes = {
@@ -133,17 +140,21 @@ async function prepararUno(
       shutdown: true,
       restart_when_active: true,
     };
+    // Sin jefe, su overlay es transparente: se queda visible siempre.
+    const visible = efecto === 'jefe';
     const ajustes = efecto === 'pocion'
       ? { ...comunes, is_local_file: true, local_file: join(dirBiblioteca, 'overlays', 'pocion.html') }
+      : efecto === 'jefe'
+      ? { ...comunes, shutdown: false, is_local_file: false, url: urlJefe(), reroute_audio: true }
       // La fanfarria la toca el propio overlay: con "controlar el audio desde
       // OBS" suena en el directo como una fuente más del mezclador.
       : { ...comunes, is_local_file: false, url: urlBotin(), reroute_audio: true };
     try {
       const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateInput', {
-        sceneName: escena, inputName: nombre, inputKind: 'browser_source', inputSettings: ajustes, sceneItemEnabled: false,
+        sceneName: escena, inputName: nombre, inputKind: 'browser_source', inputSettings: ajustes, sceneItemEnabled: visible,
       });
       await pantallaCompleta(pedir, escena, sceneItemId);
-      return `Fuente «${nombre}» creada en «${escena}», oculta.`;
+      return `Fuente «${nombre}» creada en «${escena}», ${visible ? 'visible (sin jefe no se ve nada)' : 'oculta'}.`;
     } catch (err) {
       if (!(err instanceof ErrorObs) || err.codigo !== YA_EXISTE) throw err;
       await pedir('SetInputSettings', { inputName: nombre, inputSettings: ajustes, overlay: true });
@@ -151,12 +162,12 @@ async function prepararUno(
       const items = await pedir<{ sceneItems: { sourceName: string; sceneItemId: number }[] }>('GetSceneItemList', { sceneName: escena });
       const item = items.sceneItems.find((i) => i.sourceName === nombre);
       if (item) {
-        await pedir('SetSceneItemEnabled', { sceneName: escena, sceneItemId: item.sceneItemId, sceneItemEnabled: false });
-        return `«${nombre}» ya existía en «${escena}»: actualizada y oculta.`;
+        await pedir('SetSceneItemEnabled', { sceneName: escena, sceneItemId: item.sceneItemId, sceneItemEnabled: visible });
+        return `«${nombre}» ya existía en «${escena}»: actualizada y ${visible ? 'visible' : 'oculta'}.`;
       }
-      const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: nombre, sceneItemEnabled: false });
+      const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: nombre, sceneItemEnabled: visible });
       await pantallaCompleta(pedir, escena, sceneItemId);
-      return `«${nombre}» ya existía: actualizada y añadida a «${escena}», oculta.`;
+      return `«${nombre}» ya existía: actualizada y añadida a «${escena}», ${visible ? 'visible' : 'oculta'}.`;
     }
   }
 
