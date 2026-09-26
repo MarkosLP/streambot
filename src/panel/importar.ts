@@ -97,7 +97,7 @@ function receta(e: Efecto, o: Required<OpcionesImportar>): SubAccion[] {
         sonido('maldicion.wav'),
         filtro('FX Maldicion', FILTRO_ENCENDIDO),
         chat('%user% ha maldecido al streamer 💀'),
-        esperar(30000),
+        esperar(10000),
         filtro('FX Maldicion', FILTRO_APAGADO),
       ];
     case 'lag':

@@ -123,7 +123,7 @@ export const EFECTOS: Efecto[] = [
     cooldownSeg: 1200,
     maxPorDirecto: 2,
     maxPorPersona: 1,
-    queHace: 'La pantalla se queda en blanco y negro 30 segundos.',
+    queHace: 'La pantalla se queda en blanco y negro 10 segundos.',
     necesita: null,
     material: ['sonidos/maldicion.wav'],
     obs: {
@@ -139,7 +139,7 @@ export const EFECTOS: Efecto[] = [
       pasos: [
         playSound('sonidos/maldicion.wav'),
         '**OBS** → **Filters** → **Set Filter State** (encender o apagar un filtro). Elige la fuente del juego, el filtro `FX Maldicion` y **Enabled** (encendido).',
-        delay(30000),
+        delay(10000),
         'Otra vez **Set Filter State**, igual que antes pero con **Disabled** (apagado).',
         'Opcional: **Twitch** → **Chat** → **Send Message to Channel** con `%user% ha maldecido al streamer 💀`.',
       ],

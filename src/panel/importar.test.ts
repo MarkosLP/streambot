@@ -60,7 +60,7 @@ describe('importar en Streamer.bot', () => {
     const reales = REAL_OBS.slice(2).map((s: any) => (({ index: _, ...r }) => r)(sinIds(s)));
     assert.deepEqual(filtros, reales);
     // Y entre medias, 30 segundos.
-    assert.ok(subs.some((s: any) => s.type === 1002 && s.value === '30000'));
+    assert.ok(subs.some((s: any) => s.type === 1002 && s.value === '10000'));
   });
 
   test('los índices van seguidos y los ids no se repiten', () => {

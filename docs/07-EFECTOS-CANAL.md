@@ -54,7 +54,7 @@ necesitan un plugin gratuito.
 |---|---|---:|---|---|---|
 | 1 | **Grito de guerra** | 750 | 10 min · máx. 4 por directo, 1 por persona | Suena un sonido | Nada |
 | 2 | **Poción de vida** | 500 | 10 min · máx. 2 por persona | Aparece "¡Bebe agua!" 5 s en pantalla | Nada |
-| 3 | **Maldición** | 2.500 | 20 min · máx. 2 por directo, 1 por persona | La pantalla se queda en blanco y negro 30 s | Nada |
+| 3 | **Maldición** | 2.500 | 20 min · máx. 2 por directo, 1 por persona | La pantalla se queda en blanco y negro 10 s | Nada |
 | 4 | **Terremoto** | 3.000 | 20 min · máx. 2 por directo, 1 por persona | La cámara tiembla 5 s | Plugin *Move* |
 | 5 | **Lag** | 5.000 | 30 min · máx. 1 por directo | La imagen se congela 5 s | Plugin *Freeze Filter* |
 | — | **Cofre del tesoro** | 1.500 | 5 min · máx. 2 por persona | Abre un cofre del Loot | Nada (lo abre el bot) |
@@ -150,7 +150,7 @@ al final de la ruta, pone "Cortesía de Nombre".
 
 **Sub-actions:**
 1. **OBS → Filters → Set Filter State** → fuente del juego, `FX Maldicion`, **Enabled**.
-2. **Core → Delay** → `30000` ms.
+2. **Core → Delay** → `10000` ms.
 3. **OBS → Filters → Set Filter State** → `FX Maldicion`, **Disabled**.
 4. Opcional: **Send Message to Channel** → `%user% ha maldecido al streamer 💀`.
 
