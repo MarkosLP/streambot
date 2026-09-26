@@ -32,6 +32,7 @@ const SUBSCRIPTIONS: StreamerbotEventsSubscription = {
     'Sub',
     'ReSub',
     'GiftSub',
+    'GiftBomb',
     'Cheer',
     'Raid',
     'StreamOnline',
@@ -144,7 +145,7 @@ export async function connect(): Promise<void> {
       client.on(eventName as any, async (payload: any) => {
         try {
           // Subs, regalos, bits y raids: su forma aún no se ha visto de verdad.
-          if (/^Twitch\.(Sub|ReSub|GiftSub|Cheer|Raid)$/.test(eventName)) captureRaw(eventName, payload?.data);
+          if (/^Twitch\.(Sub|ReSub|GiftSub|GiftBomb|Cheer|Raid)$/.test(eventName)) captureRaw(eventName, payload?.data);
           await handleEvent(normalize(eventName, payload?.data, 'streamerbot'));
         } catch (err) {
           // Un evento malformado nunca debe tumbar el proceso en mitad de un directo.

@@ -1,7 +1,7 @@
 import { config } from '../../config.js';
 import * as ajustes from '../../core/ajustes.js';
 import * as consent from '../../core/consent.js';
-import type { ChannelRaidEvent, Viewer, ViewerCheerEvent, ViewerGiftSubEvent, ViewerSubEvent } from '../../core/events.js';
+import type { ChannelRaidEvent, Viewer, ViewerCheerEvent, ViewerGiftBombEvent, ViewerGiftSubEvent, ViewerSubEvent } from '../../core/events.js';
 import { log } from '../../core/logger.js';
 import { send } from '../../core/output.js';
 import * as interactionLog from '../../data/interactions.js';
@@ -94,28 +94,41 @@ export async function alSuscribirse(e: ViewerSubEvent, azar: Azar = Math.random)
 export const TOPE_REGALADOR = 5;
 /** Desde cuántas de golpe llueven cofres para todo el chat. */
 export const LLUVIA_DESDE = 5;
-/** Una bomba de 10 son 10 avisos seguidos: se juntan durante este rato. */
-const VENTANA_MS = 3000;
+/**
+ * Una bomba llega como UN aviso de bomba, como N avisos sueltos, o como las
+ * dos cosas (según «Gift Bombs» en Streamer.bot). Todo lo de la misma
+ * persona se junta en una tanda, que se cierra cuando pasan estos ms sin
+ * nada nuevo: así no se cuenta dos veces ni sale un mensaje por regalo.
+ */
+const VENTANA_MS = 5000;
 
-interface Tanda { regala: Viewer | null; recibe: Viewer[]; bomba: number; reloj: ReturnType<typeof setTimeout> }
+interface Tanda { regala: Viewer | null; recibe: Viewer[]; bomba: number; prueba: boolean; reloj: ReturnType<typeof setTimeout> }
 const tandas = new Map<string, Tanda>();
 let ventanaMs = VENTANA_MS;
 
 export function alRegalar(e: ViewerGiftSubEvent, azar: Azar = Math.random): void {
-  if (e.recibe.id) suscriptores.apuntar(e.recibe.id, 1);
-  const clave = e.regala?.id || 'anonimo';
-  const tanda = tandas.get(clave);
-  if (tanda) {
-    tanda.recibe.push(e.recibe);
-    tanda.bomba = Math.max(tanda.bomba, e.bomba);
-    return;
+  sumarATanda(e.regala, [e.recibe], e.bomba, e.source === 'simulator', azar);
+}
+
+export function alBomba(e: ViewerGiftBombEvent, azar: Azar = Math.random): void {
+  sumarATanda(e.regala, e.recibe, e.cantidad, e.source === 'simulator', azar);
+}
+
+function sumarATanda(regala: Viewer | null, recibe: Viewer[], bomba: number, prueba: boolean, azar: Azar): void {
+  for (const v of recibe) if (v.id) suscriptores.apuntar(v.id, 1);
+  const clave = regala?.id || 'anonimo';
+  let t = tandas.get(clave);
+  if (t) clearTimeout(t.reloj);
+  else {
+    t = { regala, recibe: [], bomba: 0, prueba, reloj: setTimeout(() => {}, 0) };
+    tandas.set(clave, t);
   }
-  const nueva: Tanda = {
-    regala: e.regala, recibe: [e.recibe], bomba: e.bomba,
-    reloj: setTimeout(() => { tandas.delete(clave); void cerrarTanda(nueva, azar); }, ventanaMs),
-  };
-  nueva.reloj.unref?.();
-  tandas.set(clave, nueva);
+  // Sin repetir a nadie: el aviso de bomba y los sueltos pueden traer a los mismos.
+  for (const v of recibe) if (!t.recibe.some((x) => (x.id && x.id === v.id) || (x.login && x.login === v.login))) t.recibe.push(v);
+  t.bomba = Math.max(t.bomba, bomba);
+  const tanda = t;
+  tanda.reloj = setTimeout(() => { tandas.delete(clave); void cerrarTanda(tanda, azar); }, ventanaMs);
+  tanda.reloj.unref?.();
 }
 
 async function cerrarTanda(t: Tanda, azar: Azar): Promise<void> {
@@ -146,9 +159,10 @@ async function cerrarTanda(t: Tanda, azar: Azar): Promise<void> {
 
   const para = bienvenida.length === 1 ? `Cofre de bienvenida para @${bienvenida[0]!.viewer.displayName} → ${etiqueta(bienvenida[0]!.botin)}` :
     bienvenida.length ? `Cofre de bienvenida para ${bienvenida.length}` : '';
-  const recompensa = suyos.length ? ` · ${t.regala!.displayName} se lleva ${suyos.length === 1 ? `→ ${etiqueta(suyos[0]!)}` : `${suyos.length} cofres del tesoro (el mejor: ${etiqueta([...suyos].sort((a, b) => rango(b) - rango(a))[0]!)})`}` : '';
+  // El aviso de bomba puede no decir quién las recibe: entonces solo se nombra a quien regala.
+  const recompensa = suyos.length ? `${t.regala!.displayName} se lleva ${suyos.length === 1 ? `→ ${etiqueta(suyos[0]!)}` : `${suyos.length} cofres del tesoro (el mejor: ${etiqueta([...suyos].sort((a, b) => rango(b) - rango(a))[0]!)})`}` : '';
   await decir(
-    `🎁 ¡${quien} regala ${n === 1 ? 'una sub' : `${n} subs`}! ${para}${recompensa}`,
+    `🎁 ¡${quien} regala ${n === 1 ? 'una sub' : `${n} subs`}! ${[para, recompensa].filter(Boolean).join(' · ')}`.trim(),
     [...(t.regala ? [t.regala.login] : []), ...(bienvenida.length === 1 ? [bienvenida[0]!.viewer.login] : [])],
     `regalo ${n}: ${t.regala?.login ?? 'anónimo'}`,
     t.regala?.id,
@@ -156,8 +170,13 @@ async function cerrarTanda(t: Tanda, azar: Azar): Promise<void> {
 
   // Muchas de golpe: que llueva para todo el chat.
   if (n >= LLUVIA_DESDE) {
-    const r = await regalarCofre({ azar, inicio: `🌧️ ¡Lluvia de cofres por las ${n} subs de ${t.regala?.displayName ?? 'alguien anónimo'}! ` });
-    if (!r.ok) log.info(`Lluvia de cofres: ${r.motivo}`);
+    // En una prueba del panel, no se reparte nada a la gente de verdad del chat.
+    if (t.prueba) {
+      await decir(`🌧️ ¡Lluvia de cofres por las ${n} subs de ${t.regala?.displayName ?? 'alguien anónimo'}! (Es una prueba: en un regalo de verdad, cofre para todo el chat.)`, [], `lluvia de prueba ${n}`);
+    } else {
+      const r = await regalarCofre({ azar, inicio: `🌧️ ¡Lluvia de cofres por las ${n} subs de ${t.regala?.displayName ?? 'alguien anónimo'}! ` });
+      if (!r.ok) log.info(`Lluvia de cofres: ${r.motivo}`);
+    }
   }
 }
 

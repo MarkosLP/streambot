@@ -110,6 +110,19 @@ export interface ViewerGiftSubEvent extends BaseEvent {
   bomba: number;
 }
 
+/**
+ * Una bomba de regalos, de golpe. Con «Gift Bombs: Ignored» en Streamer.bot
+ * (como lo tiene Crid4m) es lo ÚNICO que llega: no hay avisos sueltos. Su
+ * forma no viene en los tipos de la librería: se lee con cuidado.
+ */
+export interface ViewerGiftBombEvent extends BaseEvent {
+  type: 'viewer.giftbomb';
+  regala: Viewer | null;
+  cantidad: number;
+  /** Quién las recibe, si el aviso lo dice (puede venir vacío). */
+  recibe: Viewer[];
+}
+
 export interface ViewerCheerEvent extends BaseEvent {
   type: 'viewer.cheer';
   viewer: Viewer;
@@ -129,6 +142,7 @@ export type DomainEvent =
   | StreamStateEvent
   | ViewerSubEvent
   | ViewerGiftSubEvent
+  | ViewerGiftBombEvent
   | ViewerCheerEvent
   | ChannelRaidEvent
   | RawEvent;
@@ -234,6 +248,18 @@ function persona(payload: any, pre = ''): Viewer {
   };
 }
 
+/**
+ * Alguien de la lista de receptores de una bomba: { id, login, name } o
+ * { userId, userName, displayName }. Aparte de persona(): en un aviso normal,
+ * `id` suele ser el del propio aviso, no el de nadie.
+ */
+function personaDeLista(r: any): Viewer {
+  const id = text(r?.userId, text(r?.user_id, r?.id != null ? String(r.id) : ''));
+  const login = text(r?.userName, text(r?.username, text(r?.user_login, text(r?.login)))).toLowerCase();
+  const nombre = text(r?.displayName, text(r?.user_name, text(r?.name, login)));
+  return { id, login, displayName: nombre || login, isBroadcaster: false, isModerator: false, isVip: false, isSubscriber: true, rawRole: null };
+}
+
 /** 1000/2000/3000 o 1/2/3, o "Prime": al nivel 1-3. */
 function nivelSub(v: unknown): number {
   const n = num(v, 1);
@@ -315,6 +341,19 @@ export function normalize(
       };
     }
 
+    case 'Twitch.GiftBomb': {
+      const anonimo = payload?.isAnonymous === true || payload?.is_anonymous === true || payload?.anonymous === true;
+      const lista: any[] = Array.isArray(payload?.recipients) ? payload.recipients : Array.isArray(payload?.recipientUsers) ? payload.recipientUsers : [];
+      const recibe = lista.map(personaDeLista).filter((v) => v.id || v.login);
+      return {
+        ...base,
+        type: 'viewer.giftbomb',
+        regala: anonimo ? null : persona(payload),
+        cantidad: Math.max(1, num(payload?.gifts, num(payload?.subBombCount, num(payload?.count, num(payload?.total, recibe.length))))),
+        recibe,
+      };
+    }
+
     case 'Twitch.Cheer':
       return { ...base, type: 'viewer.cheer', viewer: { ...persona(payload), isSubscriber: payload?.subscriber === true }, bits: num(payload?.bits) };
 
@@ -354,6 +393,8 @@ export function describe(event: DomainEvent): string {
       return `${event.viewer.displayName} se ${event.resub ? `resuscribe (${event.meses} meses)` : 'suscribe'}`;
     case 'viewer.giftsub':
       return `${event.regala?.displayName ?? 'un anónimo'} regala una sub a ${event.recibe.displayName}${event.bomba > 1 ? ` (de ${event.bomba})` : ''}`;
+    case 'viewer.giftbomb':
+      return `${event.regala?.displayName ?? 'un anónimo'} regala ${event.cantidad} subs de golpe`;
     case 'viewer.cheer':
       return `${event.viewer.displayName} manda ${event.bits} bits`;
     case 'channel.raid':

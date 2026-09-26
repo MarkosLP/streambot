@@ -74,9 +74,10 @@ export async function handleEvent(event: DomainEvent): Promise<void> {
   // Suscripciones, regalos, bits y raids (mecenas.ts). Se guarda también el
   // payload crudo: su forma sale de los tipos de la librería y hay que
   // comprobarla con el primero que llegue de verdad.
-  if (event.type === 'viewer.sub' || event.type === 'viewer.giftsub' || event.type === 'viewer.cheer' || event.type === 'channel.raid') {
+  if (event.type === 'viewer.sub' || event.type === 'viewer.giftsub' || event.type === 'viewer.giftbomb' || event.type === 'viewer.cheer' || event.type === 'channel.raid') {
     if (event.type === 'viewer.sub') await mecenas.alSuscribirse(event);
     else if (event.type === 'viewer.giftsub') mecenas.alRegalar(event);
+    else if (event.type === 'viewer.giftbomb') mecenas.alBomba(event);
     else if (event.type === 'viewer.cheer') await mecenas.alRecibirBits(event);
     else await mecenas.alRecibirRaid(event);
     return;

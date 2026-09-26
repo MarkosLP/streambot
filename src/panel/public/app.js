@@ -876,6 +876,29 @@ $('l-jefe').addEventListener('click', async (e) => {
   }
 });
 
+$('p-mecenas').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-prueba]');
+  if (!b) return;
+  b.disabled = true;
+  try {
+    await api('/api/pruebas/mecenas', { tipo: b.dataset.prueba });
+    tostada(`Prueba lanzada: ${b.textContent.trim()}`);
+    setTimeout(cargarLoot, b.dataset.prueba === 'regalo' || b.dataset.prueba === 'bomba' ? 6000 : 800);
+  } catch (err) {
+    tostada(err.message, true);
+  } finally {
+    b.disabled = false;
+  }
+});
+
+$('p-mecenas-borrar').addEventListener('click', async () => {
+  try {
+    const r = await api('/api/pruebas/mecenas/borrar', {});
+    tostada(`Borrado lo de las pruebas (${r.borrados} filas)`);
+    cargarLoot();
+  } catch (err) { tostada(err.message, true); }
+});
+
 $('l-regalo').addEventListener('submit', async (e) => {
   e.preventDefault();
   const para = $('l-regalo-para').value.trim().replace(/^@/, '');

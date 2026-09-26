@@ -135,6 +135,46 @@ describe('🎁 S2 · regalar subs = regalar cofres', () => {
   });
 });
 
+describe('💣 bombas de regalos («Gift Bombs: Ignored» en Streamer.bot)', () => {
+  const bomba = (de: string, n: number, recibe: string[] = []) => normalize('Twitch.GiftBomb', {
+    userId: `id-${de}`, userName: de, displayName: de, gifts: n, id: 'id-del-aviso',
+    recipients: recibe.map((r) => ({ id: `id-${r}`, login: r, name: r })),
+  }, 'streamerbot');
+
+  test('solo el aviso de bomba, con la lista: igual que los regalos sueltos', async () => {
+    await handleEvent(bomba('luis', 3, ['a1', 'a2', 'a3']));
+    await esperar(80);
+    assert.equal(enviados.filter((t) => t.includes('regala 3 subs')).length, 1);
+    assert.equal(objetos('luis').length, 3);
+    for (const r of ['a1', 'a2', 'a3']) assert.equal(objetos(r).length, 1, r);
+    assert.equal(objetos('id-del-aviso').length, 0, 'el id del aviso no es nadie');
+  });
+
+  test('sin lista de receptores: se premia a quien regala y se dice cuántas', async () => {
+    await handleEvent(bomba('luis', 2));
+    await esperar(80);
+    assert.match(enviados[0]!, /^🎁 ¡luis regala 2 subs! luis se lleva 2 cofres del tesoro/);
+    assert.equal(objetos('luis').length, 2);
+  });
+
+  test('bomba y avisos sueltos de la misma: no se cuenta dos veces', async () => {
+    await handleEvent(bomba('luis', 3, ['a1', 'a2', 'a3']));
+    for (const r of ['a1', 'a2', 'a3']) await handleEvent(regalo('luis', r, 3));
+    await esperar(80);
+    assert.equal(enviados.filter((t) => t.includes('regala')).length, 1);
+    assert.equal(objetos('luis').length, 3);
+    for (const r of ['a1', 'a2', 'a3']) assert.equal(objetos(r).length, 1, `${r}: un cofre, no dos`);
+  });
+
+  test('en una prueba del panel la lluvia no reparte a la gente de verdad', async () => {
+    loot.setChatters(async () => [{ id: 'id-real', login: 'real', displayName: 'real', isBroadcaster: false, isModerator: false, isVip: false, isSubscriber: false, rawRole: null }]);
+    await handleEvent(normalize('Twitch.GiftBomb', { userId: 'id-luis', userName: 'luis', displayName: 'luis', gifts: 6 }, 'simulator'));
+    await esperar(80);
+    assert.ok(enviados.some((t) => t.includes('Es una prueba')));
+    assert.equal(objetos('real').length, 0);
+  });
+});
+
 describe('⚔️ S3 · raid entrante', () => {
   test('cofre para quien la trae y, con 3 o más, un jefe a los pocos segundos', async () => {
     streams.open();

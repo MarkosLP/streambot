@@ -1,5 +1,6 @@
 import { getDb } from '../data/db.js';
 import * as lootDb from '../data/loot.js';
+import * as suscriptores from '../data/suscriptores.js';
 import { startOfLocalDay } from '../services/ai/budget.js';
 import * as ajustes from '../core/ajustes.js';
 
@@ -109,6 +110,17 @@ export function espectadores(): VistaEspectador[] {
     recuerdos: Number(r.recuerdos),
     poder: lootDb.poder(r.twitch_id),
   }));
+}
+
+/** Borra todo lo de la gente de prueba («prueba-…») que crean los botones de suscriptores. */
+export function borrarPruebas(): number {
+  const db = getDb();
+  let n = 0;
+  for (const tabla of ['loot', 'coleccion', 'duelos', 'suscriptores']) {
+    n += Number(db.prepare(`DELETE FROM ${tabla} WHERE twitch_id LIKE 'prueba-%'`).run().changes);
+  }
+  suscriptores.reset();
+  return n;
 }
 
 /**

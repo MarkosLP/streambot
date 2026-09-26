@@ -606,3 +606,22 @@ describe('terremoto', () => {
     await assert.rejects(obsFalso((pedir) => temblar(pedir, { fuente: 'No existe', ms: 100 })), /No encuentro la fuente «No existe»/);
   });
 });
+
+describe('pruebas de suscriptores', () => {
+  test('la prueba de sub da un cofre a la persona de prueba, y «borrar» lo quita', async () => {
+    const { getDb } = await import('../data/db.js');
+    const ajustes = await import('../core/ajustes.js');
+    ajustes.setLootActivo(true, 'test');
+    const r = await post('/api/pruebas/mecenas', { tipo: 'sub' });
+    assert.equal(r.status, 200);
+    const filas = () => (getDb().prepare("SELECT COUNT(*) n FROM loot WHERE twitch_id LIKE 'prueba-%'").get() as { n: number }).n;
+    assert.equal(filas(), 1);
+    const b = await post('/api/pruebas/mecenas/borrar', {});
+    assert.equal(b.status, 200);
+    assert.equal(filas(), 0);
+  });
+
+  test('una prueba que no existe, no', async () => {
+    assert.equal((await post('/api/pruebas/mecenas', { tipo: 'meteorito' })).status, 400);
+  });
+});

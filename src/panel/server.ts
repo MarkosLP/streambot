@@ -23,6 +23,8 @@ import * as lootComandos from '../interactions/loot/comandos.js';
 import * as jefe from '../interactions/loot/jefe.js';
 import * as terremoto from '../interactions/terremoto.js';
 import * as directo from '../core/directo.js';
+import { handleEvent } from '../core/handler.js';
+import { normalize } from '../core/events.js';
 import * as titulos from './titulos.js';
 import * as iaLocal from '../services/ia-local.js';
 import * as arena from '../interactions/loot/arena.js';
@@ -353,6 +355,32 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     } finally {
       laboratorioEnMarcha = false;
     }
+  }
+
+  // Pruebas de suscriptores: avisos de mentira por el mismo camino que los de
+  // Twitch (normalize + handleEvent), con gente «prueba_…». Streamer.bot 1.0
+  // no tiene un botón que mande estos avisos al bot. Los mensajes SÍ salen al
+  // chat: se avisa en el panel.
+  if (ruta === 'POST /api/pruebas/mecenas') {
+    const { tipo } = await cuerpo(req);
+    const p = (login: string) => ({ userId: `prueba-${login}`, userName: `prueba_${login}`, displayName: `Prueba_${login}` });
+    const receptores = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `prueba-r${i + 1}`, login: `prueba_r${i + 1}`, name: `Prueba_R${i + 1}` }));
+    const avisos: Record<string, [string, unknown]> = {
+      sub: ['Twitch.Sub', { ...p('sub'), subTier: 1000 }],
+      resub12: ['Twitch.ReSub', { ...p('veterano'), cumulativeMonths: 12, subTier: 1000 }],
+      regalo: ['Twitch.GiftSub', { ...p('regala'), recipientUserId: 'prueba-r1', recipientUsername: 'prueba_r1', recipientDisplayName: 'Prueba_R1', subTier: 1000 }],
+      bomba: ['Twitch.GiftBomb', { ...p('generoso'), gifts: 6, recipients: receptores(6) }],
+      raid: ['Twitch.Raid', { from_broadcaster_user_id: 'prueba-canal', from_broadcaster_user_login: 'prueba_canal', from_broadcaster_user_name: 'Prueba_Canal', viewers: 8 }],
+      bits: ['Twitch.Cheer', { ...p('bits'), username: 'prueba_bits', bits: 500 }],
+    };
+    const aviso = typeof tipo === 'string' ? avisos[tipo] : undefined;
+    if (!aviso) throw new ErrorHttp(400, 'prueba no válida');
+    await handleEvent(normalize(aviso[0], aviso[1], 'simulator'));
+    return json(res, 200, { ok: true });
+  }
+
+  if (ruta === 'POST /api/pruebas/mecenas/borrar') {
+    return json(res, 200, { borrados: datos.borrarPruebas() });
   }
 
   // Ajustes que se guardan (sobreviven a un reinicio).
