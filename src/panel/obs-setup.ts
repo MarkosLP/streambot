@@ -414,3 +414,38 @@ async function encajarEnHueco(pedir: PedirObs, escena: string, sceneItemId: numb
     },
   });
 }
+
+/** El avatar suelto (sin marco ni fondo), para ponerlo en cualquier escena. */
+export const FUENTE_AVATAR = 'ESC Avatar';
+export const urlAvatar = () => `http://127.0.0.1:${config.panel.port}/biblioteca/overlays/avatar.html`;
+
+/**
+ * Añade el avatar a una escena (la del juego, por ejemplo), abajo a la
+ * derecha y a 400×400. Queda VISIBLE en OBS, pero la página es transparente
+ * mientras el avatar esté apagado en el panel: se enciende desde allí.
+ * Si ya estaba en esa escena, no se mueve.
+ */
+export async function anadirAvatar(pedir: PedirObs, escena: string): Promise<string> {
+  const ajustes = { width: 800, height: 800, is_local_file: false, url: urlAvatar(), shutdown: false, restart_when_active: false, reroute_audio: false };
+  const { inputs } = await pedir<{ inputs: { inputName: string }[] }>('GetInputList');
+  let sceneItemId: number;
+  if (!inputs.some((i) => i.inputName === FUENTE_AVATAR)) {
+    ({ sceneItemId } = await pedir<{ sceneItemId: number }>('CreateInput', {
+      sceneName: escena, inputName: FUENTE_AVATAR, inputKind: 'browser_source', inputSettings: ajustes, sceneItemEnabled: true,
+    }));
+  } else {
+    await pedir('SetInputSettings', { inputName: FUENTE_AVATAR, inputSettings: ajustes, overlay: true });
+    const { sceneItems } = await pedir<{ sceneItems: { sourceName: string; sceneItemId: number }[] }>('GetSceneItemList', { sceneName: escena });
+    if (sceneItems.some((i) => i.sourceName === FUENTE_AVATAR)) return `El avatar ya estaba en «${escena}»: no lo he movido.`;
+    ({ sceneItemId } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: FUENTE_AVATAR, sceneItemEnabled: true }));
+  }
+  const v = await pedir<{ baseWidth: number; baseHeight: number }>('GetVideoSettings');
+  const sx = v.baseWidth / 1920;
+  const sy = v.baseHeight / 1080;
+  await pedir('SetSceneItemTransform', {
+    sceneName: escena,
+    sceneItemId,
+    sceneItemTransform: { positionX: (1920 - 440) * sx, positionY: (1080 - 420) * sy, alignment: 5, rotation: 0, scaleX: .5 * sx, scaleY: .5 * sy },
+  });
+  return `Avatar añadido a «${escena}», abajo a la derecha. Muévelo y cámbialo de tamaño como quieras en OBS.`;
+}

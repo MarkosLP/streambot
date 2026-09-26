@@ -996,3 +996,11 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
 .escena-botones a.boton { text-decoration: none; }
 .escena-resultado { margin: 0; padding: 0 16px 16px 34px; font-size: .84rem; color: var(--texto-2); display: grid; gap: 4px; }
 .escena-resultado[hidden] { display: none; }
+
+.avatar-bloque { display: grid; grid-template-columns: 200px 1fr; gap: 16px; align-items: start; }
+.avatar-vista { width: 200px; aspect-ratio: 1; border-radius: 12px; overflow: hidden; border: 1px solid var(--borde); background: #07060a; }
+.avatar-vista iframe { width: 100%; height: 100%; border: 0; display: block; color-scheme: light; }
+.avatar-mandos { display: grid; gap: 10px; }
+.avatar-mandos .nota b { color: var(--texto); font-weight: 600; }
+.escenas-avatar select { padding: 9px 12px; border-radius: 9px; border: 1px solid var(--borde-2); background: var(--fondo); color: var(--texto); font: inherit; }
+@media (max-width: 620px) { .avatar-bloque { grid-template-columns: 1fr; } }

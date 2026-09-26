@@ -395,11 +395,22 @@
               <input type="checkbox" class="toggle" id="e-avatar">
             </label>
           </header>
-          <p class="nota">Para cuando tengas que apagar la cámara: en la escena Charla, un encapuchado con los ojos brillantes ocupa su hueco. Parpadea, respira, mira al chat cuando alguien escribe, celebra el botín y se duerme si nadie dice nada.</p>
-          <form class="escenas-avatar" id="e-avatar-form">
-            <label class="campo"><span>Lo que dice su bocadillo</span><input type="text" id="e-avatar-dice" maxlength="90" autocomplete="off"></label>
-            <button class="boton" type="submit">Guardar</button>
-          </form>
+          <div class="avatar-bloque">
+            <div class="avatar-vista"><iframe id="e-avatar-vista" sandbox="allow-scripts" title="Avatar" tabindex="-1"></iframe></div>
+            <div class="avatar-mandos">
+              <p class="nota">Para cuando apagues la cámara. Enciéndelo aquí y aparece <b>en la escena Charla</b> (en el hueco de la cámara) y <b>donde hayas añadido el avatar</b> (la escena del juego, por ejemplo). Apagado, es transparente.</p>
+              <p class="nota">Respira, parpadea, mira al chat cuando alguien escribe, se alegra con el botín (y se sorprende con un legendario) y se duerme si el chat calla 90 s.</p>
+              <form class="escenas-avatar" id="e-avatar-form">
+                <label class="campo"><span>Su bocadillo en Charla</span><input type="text" id="e-avatar-dice" maxlength="90" autocomplete="off"></label>
+                <button class="boton" type="submit">Guardar</button>
+              </form>
+              <form class="escenas-avatar" id="e-avatar-obs">
+                <label class="campo"><span>Añadirlo a una escena de OBS</span><select id="e-avatar-escena"><option value="">Cargando escenas…</option></select></label>
+                <button class="boton primario" type="submit">🎬 Añadir</button>
+              </form>
+              <p class="nota" id="e-avatar-resultado"></p>
+            </div>
+          </div>
         </article>
       </div>
 

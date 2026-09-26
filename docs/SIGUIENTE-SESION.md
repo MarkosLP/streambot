@@ -64,6 +64,8 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 
 ### Escenas (27 sep 2026, 488 tests)
 
+- **Rehecho el mismo día** tras «un poco cutre, no quería copia de los paneles»: Crid4m eligió **cinemático oscuro**. Paisaje generado (montañas en capas con semilla fija, castillo con ventanas, luna, luz volumétrica, niebla entre capas, ceniza y lumbres, grano, viñeta, leve zoom), luz distinta por escena (ámbar, noche fría, amanecer), tipografía Cormorant Garamond + Inter, interfaz de líneas finas sin cajas. `?intro=0` quita la entrada animada (para capturas).
+- **Avatar aparte** (`biblioteca/overlays/avatar.html`), «solo el personaje» sobre transparente: errante encapuchado con pañuelo, hombrera de acero, correaje y luz de borde. Sigue el interruptor del panel (apagado = transparente), así que la fuente `ESC Avatar` puede quedarse siempre en OBS; Escenas → «Añadir a una escena» la pone abajo a la derecha a 400×400. En Charla se incrusta en el hueco de la cámara (`?fondo=1&siempre=1&bocadillo=todo`).
 - **Pestaña Escenas** del panel y un solo overlay, `biblioteca/overlays/escena.html?tipo=inicio|charla|pausa|final`, con el estilo de los paneles de Twitch (oro, morado, brasas, círculo de runas). Lee `GET /api/overlay/escena` (CORS abierto, solo lectura, como la del jefe).
   - **Empezamos**: título, cuenta atrás (o «en breve»), evento de la semana, podio de la temporada y últimos botines.
   - **Charla** (Just Chatting): marco dorado con el hueco de la cámara (48, 48, 1280×720, el mismo que `HUECO_CAMARA` en obs-setup.ts), chat en pantalla con emotes y colores, evento, podio y próximo cofre/jefe. `?fondo=0` lo deja sin fondo.

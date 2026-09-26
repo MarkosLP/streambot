@@ -1498,6 +1498,8 @@ async function cargarEscenas() {
   // Las tarjetas, una vez: rehacerlas recargaría las vistas previas.
   if (escenasPintadas) return;
   escenasPintadas = true;
+  $('e-avatar-vista').src = '/biblioteca/overlays/avatar.html?siempre=1&fondo=1&bocadillo=reacciones';
+  cargarEscenasObs();
   $('e-lista').replaceChildren(...escenas.escenas.map((e) => {
     const info = ESCENAS_INFO[e.tipo];
     const ruta = `/biblioteca/overlays/escena.html?tipo=${e.tipo}`;
@@ -1575,6 +1577,32 @@ $('e-avatar-form').addEventListener('submit', (ev) => {
   ev.preventDefault();
   guardarEscenas({ avatarTexto: $('e-avatar-dice').value }, 'Bocadillo guardado');
 });
+/** Las escenas de OBS, para elegir dónde va el avatar. Por defecto, la que está en emisión. */
+async function cargarEscenasObs() {
+  const sel = $('e-avatar-escena');
+  try {
+    const o = await api('/api/obs');
+    if (!o.conectado) { sel.replaceChildren(h('option', { value: '' }, 'OBS no está conectado')); return; }
+    sel.replaceChildren(...o.escenas.map((e) => h('option', { value: e, selected: e === o.escenaActual }, e === o.escenaActual ? `${e} (en emisión)` : e)));
+  } catch {
+    sel.replaceChildren(h('option', { value: '' }, 'OBS no está conectado'));
+  }
+}
+
+$('e-avatar-obs').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const escena = $('e-avatar-escena').value;
+  if (!escena) return tostada('Abre OBS para elegir la escena', true);
+  if (!confirm(`Se añadirá el avatar a «${escena}», abajo a la derecha.\n\nMientras esté apagado aquí es transparente: no se verá nada hasta que lo enciendas. ¿Sigo?`)) return;
+  try {
+    const r = await api('/api/escenas/obs', { tipo: 'avatar', escena });
+    $('e-avatar-resultado').textContent = r.hecho.join(' ');
+    tostada('Avatar añadido en OBS');
+  } catch (err) {
+    tostada(err.message, true);
+  }
+});
+
 $('e-textos').addEventListener('submit', (ev) => {
   ev.preventDefault();
   const cambios = {};
@@ -1591,6 +1619,10 @@ $('e-textos').addEventListener('submit', (ev) => {
  * sale vacía (sin jefe es transparente) y el banner, siempre Legendario.
  */
 const VARIANTES_OVERLAY = {
+  'avatar.html': [
+    { nombre: 'Con fondo', q: '?demo=1&fondo=1&bocadillo=todo' },
+    { nombre: 'Transparente', q: '?demo=1' },
+  ],
   'escena.html': [
     { nombre: '🌅 Empezamos', q: '?tipo=inicio&demo=1' },
     { nombre: '💬 Charla', q: '?tipo=charla&demo=1' },

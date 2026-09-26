@@ -1,0 +1,325 @@
+<!doctype html>
+<!--
+  Avatar para cuando no hay cámara (27 sep 2026): un encapuchado con los ojos
+  encendidos, sobre fondo TRANSPARENTE, para ponerlo en cualquier escena como
+  si fuera la cámara (una esquina de la escena del juego, por ejemplo).
+
+  Se enciende y se apaga desde el panel (Escenas → «Sin cámara»): con el
+  avatar apagado esta página es transparente, así que la fuente puede quedarse
+  siempre en OBS. Se escala sola al tamaño de la fuente (mejor cuadrada).
+
+    ?siempre=1           se ve aunque el avatar esté apagado en el panel
+    ?bocadillo=0         sin bocadillo
+    ?bocadillo=todo      con el texto del panel siempre, y las reacciones
+    (por defecto)        solo las reacciones: al chat, al botín
+    ?fondo=1             con fondo oscuro (lo usa la escena Charla)
+    ?demo=1              datos de mentira y reacciones de prueba
+
+  Qué hace: respira, parpadea, mira de vez en cuando; cuando alguien escribe
+  mira hacia el chat; con el botín se alegra (y se sorprende si es
+  legendario); a los 90 s sin chat se queda dormido.
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Avatar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&display=swap">
+<style>
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+  body.fondo { background:
+    radial-gradient(55% 60% at 72% 30%, rgba(255, 165, 90, .14), transparent 70%),
+    radial-gradient(70% 60% at 20% 90%, rgba(90, 120, 200, .10), transparent 70%),
+    linear-gradient(180deg, #0f0d15, #050408); }
+  #escena { position: absolute; inset: 0; transition: opacity 1.2s ease, filter 1.2s ease; }
+  #escena.fuera { opacity: 0; filter: blur(12px); }
+  svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  /* Movimiento de base */
+  .cuerpo { transform-origin: 500px 1000px; animation: respira 5.2s ease-in-out infinite; }
+  @keyframes respira { 50% { transform: scale(1.008, 1.018); } }
+  .cabeza { transform-origin: 506px 640px; transition: transform 1.1s cubic-bezier(.3, 1.3, .4, 1); }
+  .ojos { transition: transform .6s cubic-bezier(.3, 1.4, .5, 1); }
+  .aura { transform-origin: 506px 440px; animation: aura 6s ease-in-out infinite; }
+  @keyframes aura { 50% { opacity: .65; transform: scale(1.06); } }
+  .gema { animation: gema 3.4s ease-in-out infinite; }
+  @keyframes gema { 50% { opacity: .55; } }
+
+  /* Ojos y expresiones */
+  .ojo { transform-box: fill-box; transform-origin: center; animation: parpadea 6s infinite; }
+  .ojo.d { animation-delay: .04s; }
+  @keyframes parpadea { 0%, 93%, 100% { transform: scaleY(1); } 95.5% { transform: scaleY(.06); } }
+  .arco, .circulo { opacity: 0; transition: opacity .25s; }
+  .almendra { transition: opacity .25s; }
+  .feliz .almendra, .sorpresa .almendra { opacity: 0; }
+  .feliz .arco { opacity: 1; }
+  .sorpresa .circulo { opacity: 1; }
+  .dormido .ojo { animation: none; transform: scaleY(.18); }
+  .dormido .luz-ojos { opacity: .35; }
+  .habla .luz-ojos { animation: habla .5s ease-in-out 3; }
+  @keyframes habla { 50% { opacity: 1.6; filter: brightness(1.6); } }
+  .luz-ojos { transition: opacity 1s; }
+
+  /* Bocadillo */
+  .bocadillo { position: absolute; left: 60%; top: 9%; max-width: 36%; padding: 1.6vmin 2.4vmin; border-radius: 1.4vmin;
+    font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-weight: 500; font-size: 3.7vmin; line-height: 1.22; color: #f1e6d2;
+    background: rgba(12, 10, 17, .84); border: 1px solid rgba(232, 162, 74, .55); box-shadow: 0 1vmin 4vmin rgba(0, 0, 0, .6), 0 0 3vmin rgba(232, 162, 74, .12);
+    opacity: 0; transform: translateY(1vmin); transition: opacity .5s ease, transform .5s ease; }
+  .bocadillo.ve { opacity: 1; transform: none; }
+  .bocadillo::after { content: ""; position: absolute; left: -1.2vmin; bottom: 2vmin; width: 2vmin; height: 2vmin; transform: rotate(45deg);
+    background: rgba(12, 10, 17, .84); border-left: 1px solid rgba(232, 162, 74, .55); border-bottom: 1px solid rgba(232, 162, 74, .55); }
+  .zzz { position: absolute; left: 60%; top: 30%; font-family: "Cormorant Garamond", serif; font-style: italic; font-weight: 600; font-size: 6vmin; color: #ffd08a; opacity: 0; }
+  .dormido ~ .zzz, .zzz.ve { animation: zzz 3.4s ease-in infinite; }
+  @keyframes zzz { 0% { opacity: 0; transform: translate(0, 0) scale(.6); } 30% { opacity: .9; } 100% { opacity: 0; transform: translate(6vmin, -14vmin) scale(1.3); } }
+</style>
+</head>
+<body>
+<div id="escena">
+  <svg viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+    <defs>
+      <radialGradient id="g-aura" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffb35c" stop-opacity=".26"/><stop offset=".55" stop-color="#ff8a3d" stop-opacity=".06"/><stop offset="1" stop-color="#ff8a3d" stop-opacity="0"/></radialGradient>
+      <linearGradient id="g-tela" x1=".2" y1="0" x2=".8" y2="1"><stop offset="0" stop-color="#3a3446"/><stop offset=".4" stop-color="#26212e"/><stop offset="1" stop-color="#0c0b10"/></linearGradient>
+      <radialGradient id="g-hueco" cx="50%" cy="30%" r="75%"><stop offset="0" stop-color="#000"/><stop offset=".7" stop-color="#040306"/><stop offset="1" stop-color="#15121b"/></radialGradient>
+      <linearGradient id="g-sombra-ala" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".85"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>
+      <linearGradient id="g-panuelo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a2a2c"/><stop offset=".6" stop-color="#2c1719"/><stop offset="1" stop-color="#170c0e"/></linearGradient>
+      <radialGradient id="g-reflejo" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffb35c" stop-opacity=".42"/><stop offset="1" stop-color="#ffb35c" stop-opacity="0"/></radialGradient>
+      <linearGradient id="g-acero" x1="0" y1="0" x2=".6" y2="1"><stop offset="0" stop-color="#c9d0dc"/><stop offset=".35" stop-color="#7d8697"/><stop offset="1" stop-color="#2c313b"/></linearGradient>
+      <linearGradient id="g-oro" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe7b0"/><stop offset=".5" stop-color="#c8923f"/><stop offset="1" stop-color="#6b4516"/></linearGradient>
+      <linearGradient id="g-cuero" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4b3223"/><stop offset=".5" stop-color="#3a2619"/><stop offset="1" stop-color="#24170f"/></linearGradient>
+      <radialGradient id="g-gema" cx="40%" cy="35%" r="65%"><stop offset="0" stop-color="#fff1c9"/><stop offset=".4" stop-color="#ff9a3c"/><stop offset="1" stop-color="#7a1f08"/></radialGradient>
+      <linearGradient id="g-desvanece" x1="0" y1="0" x2="0" y2="1"><stop offset=".8" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+      <linearGradient id="g-derecha" x1="0" y1="0" x2="1" y2="0"><stop offset=".45" stop-color="#000"/><stop offset=".85" stop-color="#fff"/></linearGradient>
+      <linearGradient id="g-izquierda" x1="0" y1="0" x2="1" y2="0"><stop offset=".15" stop-color="#fff"/><stop offset=".5" stop-color="#000"/></linearGradient>
+      <mask id="m-abajo"><rect width="1000" height="1000" fill="url(#g-desvanece)"/></mask>
+      <mask id="m-derecha"><rect width="1000" height="1000" fill="url(#g-derecha)"/></mask>
+      <mask id="m-izquierda"><rect width="1000" height="1000" fill="url(#g-izquierda)"/></mask>
+      <path id="silueta" d="M522 150 C470 156 404 204 368 282 C334 352 322 438 326 520 C330 598 310 656 266 708 C204 758 142 842 112 1000 L888 1000 C858 842 800 768 742 722 C700 674 682 608 688 522 C694 432 682 352 646 286 C624 244 598 212 570 192 C596 184 626 186 652 198 C628 168 572 146 522 150 Z"/>
+      <clipPath id="c-silueta"><use href="#silueta"/></clipPath>
+      <path id="hueco" d="M506 292 C444 294 402 346 396 426 C390 510 422 590 506 618 C590 590 622 510 616 426 C610 346 568 294 506 292 Z"/>
+      <clipPath id="c-hueco"><use href="#hueco"/></clipPath>
+      <filter id="f-brillo" x="-100%" y="-300%" width="300%" height="700%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="a"/>
+        <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="b"/>
+        <feGaussianBlur in="SourceGraphic" stdDeviation="30" result="c"/>
+        <feMerge><feMergeNode in="c"/><feMergeNode in="b"/><feMergeNode in="a"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="f-borde" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="6"/></filter>
+      <filter id="f-fino" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="2"/></filter>
+    </defs>
+
+    <circle class="aura" cx="506" cy="440" r="400" fill="url(#g-aura)"/>
+
+    <g mask="url(#m-abajo)">
+      <g class="cuerpo">
+        <!-- Capa y capucha, una sola pieza -->
+        <use href="#silueta" fill="url(#g-tela)"/>
+        <g clip-path="url(#c-silueta)">
+          <!-- Pliegues -->
+          <path d="M270 1000 C282 900 320 830 372 790 M740 1000 C726 902 690 836 640 796 M430 1000 C434 930 452 880 480 850 M600 1000 C596 936 580 886 556 856" stroke="#08070b" stroke-width="16" fill="none" opacity=".5" stroke-linecap="round" filter="url(#f-fino)"/>
+          <path d="M384 300 C356 370 346 450 352 540 M630 300 C654 372 664 452 660 540 M470 176 C440 212 418 256 404 304" stroke="#4a4358" stroke-width="5" fill="none" opacity=".45" stroke-linecap="round" filter="url(#f-fino)"/>
+          <!-- Luz de borde, recortada a la silueta: cálida a la derecha, fría a la izquierda -->
+          <use href="#silueta" fill="none" stroke="#ffae5a" stroke-width="22" mask="url(#m-derecha)" filter="url(#f-borde)" opacity=".75"/>
+          <use href="#silueta" fill="none" stroke="#8fa8d6" stroke-width="16" mask="url(#m-izquierda)" filter="url(#f-borde)" opacity=".32"/>
+        </g>
+
+        <!-- Correaje cruzado con hebilla -->
+        <path d="M300 792 L360 770 L760 1000 L672 1000 Z" fill="url(#g-cuero)"/>
+        <path d="M322 790 L700 1000 M348 778 L740 1000" stroke="#b58a52" stroke-width="2" stroke-dasharray="7 7" opacity=".55"/>
+        <g transform="translate(538 890) rotate(30)">
+          <rect x="-26" y="-20" width="52" height="40" rx="5" fill="none" stroke="url(#g-oro)" stroke-width="7"/>
+          <rect x="-4" y="-20" width="8" height="40" fill="url(#g-oro)"/>
+        </g>
+
+        <!-- Hombrera de acero (solo un lado) -->
+        <g transform="translate(300 770) rotate(-14)">
+          <path d="M-120 40 C-110 -30 -40 -64 40 -58 C96 -54 130 -20 132 22 C80 8 -40 12 -120 40 Z" fill="url(#g-acero)" stroke="#15171c" stroke-width="4"/>
+          <path d="M-126 76 C-114 16 -44 -18 36 -14 C94 -10 128 20 132 58 C80 44 -40 48 -126 76 Z" fill="url(#g-acero)" stroke="#15171c" stroke-width="4"/>
+          <path d="M-128 112 C-116 54 -46 22 32 26 C92 30 126 58 130 94 C80 82 -40 86 -128 112 Z" fill="url(#g-acero)" stroke="#15171c" stroke-width="4"/>
+          <path d="M-120 40 C-40 12 80 8 132 22 M-126 76 C-40 48 80 44 132 58 M-128 112 C-40 86 80 82 130 94" stroke="url(#g-oro)" stroke-width="3" fill="none"/>
+          <circle cx="-60" cy="20" r="4.5" fill="#e8d9b0"/><circle cx="40" cy="12" r="4.5" fill="#e8d9b0"/><circle cx="-64" cy="58" r="4.5" fill="#e8d9b0"/><circle cx="36" cy="50" r="4.5" fill="#e8d9b0"/>
+          <path d="M-40 -48 C10 -60 70 -54 110 -30" stroke="#ffffff" stroke-width="3" fill="none" opacity=".35" stroke-linecap="round"/>
+        </g>
+
+        <g class="cabeza" id="cabeza">
+          <!-- El hueco de la cara, con la sombra del ala de la capucha -->
+          <use href="#hueco" fill="url(#g-hueco)"/>
+          <g clip-path="url(#c-hueco)">
+            <ellipse cx="506" cy="300" rx="150" ry="70" fill="url(#g-sombra-ala)"/>
+            <g class="luz-ojos"><ellipse cx="506" cy="462" rx="140" ry="80" fill="url(#g-reflejo)"/></g>
+          </g>
+          <use href="#hueco" fill="none" stroke="#524a61" stroke-width="9" opacity=".75"/>
+          <path d="M572 312 C604 344 618 392 616 440" stroke="#ffae5a" stroke-width="4" fill="none" opacity=".5" filter="url(#f-fino)"/>
+
+          <!-- Ojos -->
+          <g class="ojos" id="ojos" filter="url(#f-brillo)">
+            <g class="ojo i">
+              <path class="almendra" d="M432 452 Q458 432 488 446 Q462 462 432 452 Z" fill="#ffe2a6"/>
+              <path class="arco" d="M434 458 Q460 430 486 456" stroke="#ffe2a6" stroke-width="9" fill="none" stroke-linecap="round"/>
+              <circle class="circulo" cx="460" cy="450" r="17" fill="#ffe2a6"/>
+            </g>
+            <g class="ojo d">
+              <path class="almendra" d="M580 452 Q554 432 524 446 Q550 462 580 452 Z" fill="#ffe2a6"/>
+              <path class="arco" d="M526 456 Q552 430 578 458" stroke="#ffe2a6" stroke-width="9" fill="none" stroke-linecap="round"/>
+              <circle class="circulo" cx="552" cy="450" r="17" fill="#ffe2a6"/>
+            </g>
+          </g>
+
+          <!-- El pañuelo que tapa la boca -->
+          <path d="M398 492 C440 512 472 518 506 518 C540 518 572 512 614 492 C626 556 606 610 566 648 C546 666 524 676 506 676 C488 676 466 666 446 648 C406 610 386 556 398 492 Z" fill="url(#g-panuelo)"/>
+          <path d="M430 526 C470 560 520 600 560 648 M470 522 C500 548 540 582 580 626 M404 540 C430 580 460 620 480 664 M556 520 C576 540 596 566 606 590" stroke="#120809" stroke-width="6" fill="none" opacity=".5" stroke-linecap="round"/>
+          <path d="M440 536 C478 566 522 604 556 640" stroke="#6a3c3e" stroke-width="3" fill="none" opacity=".45" stroke-linecap="round"/>
+          <path d="M398 492 C440 512 472 518 506 518 C540 518 572 512 614 492" stroke="#ffb35c" stroke-width="3" fill="none" opacity=".35" filter="url(#f-fino)"/>
+          <path d="M600 520 C612 560 604 600 580 630" stroke="#ffae5a" stroke-width="5" fill="none" opacity=".35" filter="url(#f-fino)"/>
+        </g>
+
+        <!-- Broche de la capa -->
+        <g transform="translate(640 770)">
+          <circle r="22" fill="url(#g-oro)" stroke="#2a1a07" stroke-width="3"/>
+          <circle r="14" fill="#1a1208"/>
+          <circle class="gema" r="9" fill="url(#g-gema)" filter="url(#f-brillo)"/>
+        </g>
+      </g>
+    </g>
+    <g id="lumbres"></g>
+  </svg>
+  <div class="bocadillo" id="bocadillo"></div>
+  <div class="zzz" id="zzz">z z</div>
+</div>
+
+<script>
+'use strict';
+const q = new URLSearchParams(location.search);
+const DEMO = q.get('demo') === '1';
+const SIEMPRE = q.get('siempre') === '1' || DEMO;
+const MODO = q.get('bocadillo') ?? 'reacciones'; // '0' | 'reacciones' | 'todo'
+if (q.get('fondo') === '1') document.body.classList.add('fondo');
+const $ = (id) => document.getElementById(id);
+const escena = $('escena');
+
+// ---------------- Lumbres que suben alrededor ----------------
+(function lumbres() {
+  const NS = 'http://www.w3.org/2000/svg';
+  const g = $('lumbres');
+  const ps = Array.from({ length: 16 }, () => {
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('fill', '#ffb35c');
+    c.setAttribute('filter', 'url(#f-borde)');
+    g.append(c);
+    return { c, x: 0, y: 0, v: 0, r: 0, f: 0, vida: 0 };
+  });
+  const nueva = (p) => Object.assign(p, { x: 200 + Math.random() * 600, y: 1000 + Math.random() * 200, v: .5 + Math.random() * 1.1, r: 1.5 + Math.random() * 3, f: Math.random() * 6.3 });
+  ps.forEach((p) => { nueva(p); p.y = 400 + Math.random() * 600; });
+  (function paso() {
+    for (const p of ps) {
+      p.y -= p.v; p.f += .03; p.x += Math.sin(p.f) * .6;
+      if (p.y < 250) nueva(p);
+      const a = Math.min(1, (1000 - p.y) / 200) * Math.min(1, (p.y - 250) / 250) * .8;
+      p.c.setAttribute('cx', p.x.toFixed(1)); p.c.setAttribute('cy', p.y.toFixed(1)); p.c.setAttribute('r', p.r.toFixed(1)); p.c.setAttribute('opacity', a.toFixed(2));
+    }
+    requestAnimationFrame(paso);
+  })();
+})();
+
+// ---------------- Gestos ----------------
+function mirar(x, y = 0, giro = 0) {
+  $('ojos').style.transform = `translate(${x}px, ${y}px)`;
+  $('cabeza').style.transform = `translate(${x * .35 + giro * .6}px, ${y * .4}px)`;
+}
+let gestoHasta = 0;
+function gesto(clase, ms) {
+  escena.classList.remove('feliz', 'sorpresa', 'habla');
+  void escena.offsetWidth;
+  escena.classList.add(clase);
+  gestoHasta = Date.now() + ms;
+  setTimeout(() => { if (Date.now() >= gestoHasta) escena.classList.remove(clase); }, ms);
+}
+let fijo = '';
+let decirHasta = 0;
+function decir(texto, ms = 4500) {
+  if (MODO === '0') return;
+  const b = $('bocadillo');
+  b.textContent = texto;
+  b.classList.add('ve');
+  decirHasta = Date.now() + ms;
+  setTimeout(() => { if (Date.now() >= decirHasta) volverAlFijo(); }, ms);
+}
+function volverAlFijo() {
+  const b = $('bocadillo');
+  if (MODO === 'todo' && fijo) { b.textContent = fijo; b.classList.add('ve'); } else b.classList.remove('ve');
+}
+// Por su cuenta: mira a un lado y a otro de vez en cuando.
+setInterval(() => {
+  if (escena.classList.contains('dormido') || Date.now() < gestoHasta) return;
+  const x = [-14, 12, 0, 6][Math.floor(Math.random() * 4)];
+  mirar(x, 0, x / 5);
+  setTimeout(() => mirar(0, 0, 0), 2000);
+}, 6500);
+
+// ---------------- Reacciones ----------------
+let ultimaActividad = Date.now();
+function despertar() {
+  ultimaActividad = Date.now();
+  escena.classList.remove('dormido');
+  $('zzz').classList.remove('ve');
+}
+setInterval(() => {
+  const dormido = Date.now() - ultimaActividad > 90_000;
+  escena.classList.toggle('dormido', dormido);
+  $('zzz').classList.toggle('ve', dormido);
+}, 2000);
+
+function alChat(m) {
+  despertar();
+  mirar(16, 4, 5);
+  gesto('habla', 1600);
+  setTimeout(() => mirar(0, 0, 0), 2400);
+  if (!m.canal && MODO !== '0' && Math.random() < .4) decir(`Te leo, ${m.nombre}`);
+}
+function alBotin(b) {
+  despertar();
+  if (b.rareza === 'legendario') { gesto('sorpresa', 3200); decir(`¡Un legendario, ${b.quien}!`); }
+  else if (b.maldito) { gesto('sorpresa', 2400); decir(`Uy… eso está maldito, ${b.quien}`); }
+  else { gesto('feliz', 2600); decir(`¡Bien, ${b.quien}!`); }
+}
+
+// ---------------- Datos ----------------
+const vistosChat = new Set();
+const vistosBotin = new Set();
+let primera = true;
+function pintar(d) {
+  const visible = SIEMPRE || d.config.avatar;
+  escena.classList.toggle('fuera', !visible);
+  fijo = d.config.avatarTexto || '';
+  if (Date.now() >= decirHasta) volverAlFijo();
+  for (const m of d.chat) {
+    if (vistosChat.has(m.n)) continue;
+    vistosChat.add(m.n);
+    if (!primera && visible) alChat(m);
+  }
+  for (const b of [...d.botin].reverse()) {
+    if (vistosBotin.has(b.id)) continue;
+    vistosBotin.add(b.id);
+    if (!primera && visible) alBotin(b);
+  }
+  primera = false;
+}
+
+if (DEMO) {
+  pintar({ config: { avatar: true, avatarTexto: 'Vuelvo a cámara enseguida' }, chat: [], botin: [] });
+  // Una pequeña función: alguien escribe, cae un botín, un legendario.
+  setTimeout(() => pintar({ config: { avatar: true, avatarTexto: 'Vuelvo a cámara enseguida' }, chat: [{ n: 1, nombre: 'raftaei' }], botin: [] }), 3000);
+  setTimeout(() => pintar({ config: { avatar: true, avatarTexto: 'Vuelvo a cámara enseguida' }, chat: [{ n: 1, nombre: 'raftaei' }], botin: [{ id: 1, quien: 'Ana', rareza: 'epico' }] }), 8000);
+  setTimeout(() => pintar({ config: { avatar: true, avatarTexto: 'Vuelvo a cámara enseguida' }, chat: [{ n: 1, nombre: 'raftaei' }], botin: [{ id: 2, quien: 'Pepe', rareza: 'legendario' }, { id: 1 }] }), 14000);
+} else {
+  const api = new URL('/api/overlay/escena', location.href);
+  api.searchParams.set('tipo', 'charla');
+  const preguntar = () => fetch(api, { cache: 'no-store' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => { if (d) pintar(d); })
+    .catch(() => {})
+    .finally(() => setTimeout(preguntar, 1500));
+  preguntar();
+}
+</script>
+</body>
+</html>

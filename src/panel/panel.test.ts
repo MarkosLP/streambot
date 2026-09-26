@@ -740,3 +740,18 @@ describe('Escenas', () => {
     assert.equal((await post('/api/escenas/obs', { tipo: 'otra' })).status, 400);
   });
 });
+
+describe('Avatar sin cámara', () => {
+  test('se añade a la escena elegida, abajo a la derecha, y no se duplica', async () => {
+    const r = await post('/api/escenas/obs', { tipo: 'avatar', escena: 'Escena juego' });
+    assert.equal(r.status, 200);
+    const item = obs.items['Escena juego']!.find((i) => i.sourceName === 'ESC Avatar')!;
+    assert.ok(item.enabled, 'visible: la página es transparente mientras el avatar esté apagado');
+    assert.equal(obs.transformes[item.sceneItemId].scaleX, 0.5 * (2560 / 1920));
+    assert.match(obs.entradas.find((e) => e.inputName === 'ESC Avatar')!.settings.url, /avatar\.html$/);
+    const otra = await post('/api/escenas/obs', { tipo: 'avatar', escena: 'Escena juego' });
+    assert.match(otra.body.hecho[0], /ya estaba/);
+    assert.equal(obs.items['Escena juego']!.filter((i) => i.sourceName === 'ESC Avatar').length, 1);
+    assert.equal((await post('/api/escenas/obs', { tipo: 'avatar' })).status, 400);
+  });
+});

@@ -503,6 +503,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     return json(res, 200, {
       config: escenas.leer(),
       escenas: escenas.TIPOS.map((tipo) => ({ tipo, ...obsSetup.ESCENAS_OBS[tipo], url: obsSetup.urlEscena(tipo) })),
+      avatar: { fuente: obsSetup.FUENTE_AVATAR, url: obsSetup.urlAvatar() },
     });
   }
 
@@ -513,7 +514,16 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   // Crea o completa la escena en OBS. Solo cuando lo pulsas; nunca cambia la
   // escena en emisión.
   if (ruta === 'POST /api/escenas/obs') {
-    const { tipo } = await cuerpo(req);
+    const { tipo, escena } = await cuerpo(req);
+    // El avatar suelto va a la escena que elijas (la del juego, por ejemplo).
+    if (tipo === 'avatar') {
+      if (typeof escena !== 'string' || !escena.trim()) throw new ErrorHttp(400, 'elige la escena');
+      const hecho = await obs((pedir) => obsSetup.anadirAvatar(pedir, escena)).catch((err) => {
+        throw new ErrorHttp(502, err instanceof Error ? err.message : String(err));
+      });
+      log.info(`Panel → OBS: ${hecho}`);
+      return json(res, 200, { hecho: [hecho] });
+    }
     if (!escenas.TIPOS.includes(tipo as escenas.Tipo)) throw new ErrorHttp(400, 'escena no válida');
     const hecho = await obs((pedir) => obsSetup.crearEscena(pedir, tipo as escenas.Tipo)).catch((err) => {
       throw new ErrorHttp(502, err instanceof Error ? err.message : String(err));
