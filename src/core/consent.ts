@@ -1,4 +1,5 @@
 import { getDb, nowIso } from '../data/db.js';
+import * as suscriptores from '../data/suscriptores.js';
 import { log } from './logger.js';
 
 /**
@@ -62,6 +63,8 @@ export function olvidar(twitchId: string): Borrado {
   const loot = db.prepare('DELETE FROM loot WHERE twitch_id = ?').run(twitchId);
   db.prepare('DELETE FROM coleccion WHERE twitch_id = ?').run(twitchId);
   db.prepare('DELETE FROM duelos WHERE twitch_id = ?').run(twitchId);
+  db.prepare('DELETE FROM suscriptores WHERE twitch_id = ?').run(twitchId);
+  suscriptores.reset();
 
   const borrado: Borrado = {
     memories: Number(memories.changes),

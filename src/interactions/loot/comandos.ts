@@ -5,6 +5,7 @@ import { log } from '../../core/logger.js';
 import * as streams from '../../data/streams.js';
 import type { Ctx, Interaction } from '../../core/interaction.js';
 import * as lootDb from '../../data/loot.js';
+import * as suscriptores from '../../data/suscriptores.js';
 import {
   ESTILO,
   FORJA_CANTIDAD,
@@ -83,7 +84,9 @@ export const poder: Interaction<CtxComando> = {
     const d = lootDb.duelos(ctx.viewer.id);
     const puesto = p ? ` · puesto ${p.puesto} de ${p.de}` : '';
     const duelos = d.ganados + d.perdidos > 0 ? ` · duelos ${d.ganados}-${d.perdidos}` : '';
-    return { text: `@${conTitulo(ctx.viewer)} ⚔️ Poder ${inv.poder}${puesto}${duelos}`, allowedMentions: [ctx.viewer.login] };
+    const meses = suscriptores.meses(ctx.viewer.id);
+    const sub = suscriptores.esSub(ctx.viewer.id) ? ` · 💜 suscriptor${meses > 1 ? ` · ${meses} meses` : ''}` : '';
+    return { text: `@${conTitulo(ctx.viewer)} ⚔️ Poder ${inv.poder}${puesto}${duelos}${sub}`, allowedMentions: [ctx.viewer.login] };
   },
 };
 
@@ -339,8 +342,8 @@ export const dar: Interaction<CtxComando> = {
       const nada = numero !== null ? `No tienes el número ${numero}: van del 1 al ${objetos.length}` : `No llevas nada que encaje con «${que}»`;
       return { text: `${inicio}${nada}. Escribe !dar para ver la lista.`, ...mencion(ctx) };
     }
-    if (lootDb.contar(para.id) >= MOCHILA_MAX) {
-      return { text: `${inicio}La mochila de ${para.displayName} está llena (${MOCHILA_MAX}).`, ...mencion(ctx) };
+    if (lootDb.contar(para.id) >= lootDb.capacidad(para.id)) {
+      return { text: `${inicio}La mochila de ${para.displayName} está llena (${lootDb.capacidad(para.id)}).`, ...mencion(ctx) };
     }
     const clave = cooldowns.keys.user('loot-dar-regalo', yo.id);
     const falta = cooldowns.remaining(clave, DAR_COOLDOWN_MS);
@@ -449,7 +452,7 @@ export const top: Interaction<CtxComando> = {
     if (!lista.length) return { text: '🏆 Todavía nadie tiene botín. ¡El primer cofre marca el ranking!' };
     const medallas = ['🥇', '🥈', '🥉'];
     const podio = lista
-      .map((m, i) => `${medallas[i]} ${m.display_name}${m.titulo ? ` «${m.titulo}»` : ''} ⚔️ ${m.poder}`)
+      .map((m, i) => `${medallas[i]} ${m.display_name}${suscriptores.esSub(m.twitch_id) ? ' 💜' : ''}${m.titulo ? ` «${m.titulo}»` : ''} ⚔️ ${m.poder}`)
       .join(' · ');
     const yo = lista.some((m) => m.twitch_id === ctx.viewer.id) ? null : lootDb.puesto(ctx.viewer.id);
     const tuyo = yo ? ` · Tú: puesto ${yo.puesto} de ${yo.de}` : '';

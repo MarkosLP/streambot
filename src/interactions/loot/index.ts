@@ -12,6 +12,7 @@ import * as interactionLog from '../../data/interactions.js';
 import * as lootDb from '../../data/loot.js';
 import * as streams from '../../data/streams.js';
 import * as users from '../../data/users.js';
+import * as suscriptores from '../../data/suscriptores.js';
 import { esBot } from '../../core/bots.js';
 import * as arena from './arena.js';
 import { ESTILO, MOCHILA_MAX, RAREZAS, etiqueta, tirar, tirarMaldito, type Azar, type Botin } from './objetos.js';
@@ -142,7 +143,7 @@ export function aventureros(now = Date.now()): Viewer[] {
 // El botín en pantalla
 // ---------------------------------------------------------------------------
 
-export type OrigenPantalla = 'cofre' | 'oro' | 'panel' | 'regalo' | 'jefe' | 'fidelidad' | 'prueba' | 'forja' | 'presumir' | 'guerra' | 'maldicion' | 'purificar';
+export type OrigenPantalla = 'cofre' | 'oro' | 'panel' | 'regalo' | 'jefe' | 'fidelidad' | 'suscriptor' | 'raid' | 'bits' | 'prueba' | 'forja' | 'presumir' | 'guerra' | 'maldicion' | 'purificar';
 export type Pantalla = (quien: string, botin: Botin, origen: OrigenPantalla) => Promise<void>;
 let pantalla: Pantalla | null = null;
 let fila: Promise<void> = Promise.resolve();
@@ -184,9 +185,11 @@ export interface Reparto {
 }
 
 /** `crid4n «Cazatesoros»`: el nombre con su título, si lo tiene. */
+/** `crid4n 💜 «Cazatesoros»`: el nombre, la marca de suscriptor (S4) y el título. */
 export function conTitulo(viewer: Viewer): string {
   const t = lootDb.titulo(viewer.id);
-  return t ? `${viewer.displayName} «${t}»` : viewer.displayName;
+  const sub = suscriptores.esSub(viewer.id) ? ' 💜' : '';
+  return `${viewer.displayName}${sub}${t ? ` «${t}»` : ''}`;
 }
 
 /** Lo que hay que contar además del objeto: mochila llena, lo que se tiró. */
@@ -198,7 +201,7 @@ export function notaMochila(r?: lootDb.Resultado): string {
 }
 
 /** `🏆 crid4n gana el título «Cazatesoros»`, si alguien lo acaba de ganar. */
-function anunciosDeTitulo(reparto: Reparto[]): string {
+export function anunciosDeTitulo(reparto: Reparto[]): string {
   return reparto
     .filter((r) => r.resultado?.tituloNuevo)
     .map((r) => ` · 🏆 ${r.viewer.displayName} completa una colección: «${r.resultado!.tituloNuevo}»`)
@@ -408,7 +411,7 @@ async function buscarPersona(login: string, now: number): Promise<Viewer | null>
  * cofre de guerra pendiente: ese es de quien gritó, no tuyo.
  */
 export async function regalarCofre(
-  { para = '', tipo = 'cofre', azar = Math.random, now = Date.now() }: { para?: string; tipo?: 'cofre' | 'oro'; azar?: Azar; now?: number } = {},
+  { para = '', tipo = 'cofre', azar = Math.random, now = Date.now(), inicio }: { para?: string; tipo?: 'cofre' | 'oro'; azar?: Azar; now?: number; inicio?: string } = {},
 ): Promise<ResultadoCofre> {
   let gente: Viewer[];
   if (para.trim()) {
@@ -432,7 +435,7 @@ export async function regalarCofre(
   const texto = uno
     ? `🎁 ${streamer()} le regala ${nombreCofre} a @${uno.viewer.displayName} → ${etiqueta(uno.botin)}` +
       `${uno.botin.rareza === 'legendario' ? ' ✨✨✨' : ''}${notaMochila(uno.resultado)}${anunciosDeTitulo(reparto)}`
-    : componerCofre(reparto, `🎁 ¡${streamer()} regala ${nombreCofre} a todo el chat! `);
+    : componerCofre(reparto, inicio ?? `🎁 ¡${streamer()} regala ${nombreCofre} a todo el chat! `);
 
   const outcome = await send({ text: texto, reason: NAME, allowedMentions: uno ? [uno.viewer.login] : undefined, solicitado: true });
   interactionLog.record({
@@ -650,7 +653,7 @@ export const efectosBindings = [
 // ---------------------------------------------------------------------------
 
 
-export function componerInventario(displayName: string, inv: lootDb.Inventario): string {
+export function componerInventario(displayName: string, inv: lootDb.Inventario, capacidad = MOCHILA_MAX): string {
   if (inv.total === 0) {
     return `@${displayName} tu mochila está vacía 🎒 Quédate por el chat: cada 20-30 min cae un cofre para quien esté hablando.`;
   }
@@ -659,7 +662,7 @@ export function componerInventario(displayName: string, inv: lootDb.Inventario):
     .join(' ');
   const mejor = inv.mejor ? ` · Tu mejor pieza: ${etiqueta(inv.mejor)}` : '';
   const malditos = inv.malditos ? ` · ☠️ ${inv.malditos} maldito${inv.malditos === 1 ? '' : 's'}` : '';
-  return `@${displayName} 🎒 ${inv.total}/${MOCHILA_MAX}: ${cuenta} · ⚔️ Poder ${inv.poder}${malditos}${mejor}`;
+  return `@${displayName} 🎒 ${inv.total}/${capacidad}: ${cuenta} · ⚔️ Poder ${inv.poder}${malditos}${mejor}`;
 }
 
 export const inventario: Interaction<Ctx> = {
@@ -674,7 +677,7 @@ export const inventario: Interaction<Ctx> = {
     },
   ],
   run: (ctx) => ({
-    text: componerInventario(ctx.viewer.displayName, lootDb.inventario(ctx.viewer.id)),
+    text: componerInventario(conTitulo(ctx.viewer), lootDb.inventario(ctx.viewer.id), lootDb.capacidad(ctx.viewer.id)),
     allowedMentions: [ctx.viewer.login],
   }),
 };

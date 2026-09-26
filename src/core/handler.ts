@@ -25,6 +25,8 @@ import * as preguntaIa from '../interactions/pregunta-ia.js';
 import * as preguntaIncomoda from '../interactions/pregunta-incomoda.js';
 import * as loot from '../interactions/loot/index.js';
 import * as lootComandos from '../interactions/loot/comandos.js';
+import * as mecenas from '../interactions/loot/mecenas.js';
+import * as suscriptores from '../data/suscriptores.js';
 import * as registry from '../interactions/index.js';
 import { budget } from '../services/ai/index.js';
 
@@ -66,6 +68,17 @@ export async function handleEvent(event: DomainEvent): Promise<void> {
 
   if (event.type === 'viewer.redeem') {
     await handleRedeem(event);
+    return;
+  }
+
+  // Suscripciones, regalos, bits y raids (mecenas.ts). Se guarda también el
+  // payload crudo: su forma sale de los tipos de la librería y hay que
+  // comprobarla con el primero que llegue de verdad.
+  if (event.type === 'viewer.sub' || event.type === 'viewer.giftsub' || event.type === 'viewer.cheer' || event.type === 'channel.raid') {
+    if (event.type === 'viewer.sub') await mecenas.alSuscribirse(event);
+    else if (event.type === 'viewer.giftsub') mecenas.alRegalar(event);
+    else if (event.type === 'viewer.cheer') await mecenas.alRecibirBits(event);
+    else await mecenas.alRecibirRaid(event);
     return;
   }
 
@@ -124,6 +137,9 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   // Quién anda por el chat, para poder retarle a un duelo. Incluye al dueño
   // del canal; los bots no.
   if (!esBot(viewer.login)) loot.recordarVisto(viewer);
+  // La insignia de suscriptor: así el bot sabe quién lo es aunque se
+  // suscribiera antes de que llegara ningún aviso (S4, S5).
+  if (viewer.id && !esBot(viewer.login)) suscriptores.desdeChat(viewer.id, viewer.isSubscriber);
 
   // Los comandos de control se atienden antes que nada: tienen que funcionar
   // aunque el resto del sistema esté apagado.

@@ -707,7 +707,7 @@ const RAREZA_LOOT = {
   epico: { clase: 'r-epico', nombre: 'Épico' },
   legendario: { clase: 'r-legendario', nombre: 'Legendario' },
 };
-const ORIGEN = { cofre: 'cofre', oro: 'Cofre del tesoro', panel: 'desde el panel', regalo: 'regalo', jefe: 'jefe de raid', fidelidad: 'fidelidad', forja: 'forjado', guerra: 'cofre de guerra', maldicion: 'Maldición' };
+const ORIGEN = { cofre: 'cofre', oro: 'Cofre del tesoro', panel: 'desde el panel', regalo: 'regalo', jefe: 'jefe de raid', fidelidad: 'fidelidad', suscriptor: 'suscriptor', raid: 'incursión', bits: 'bits', forja: 'forjado', guerra: 'cofre de guerra', maldicion: 'Maldición' };
 
 function mmss(seg) {
   const m = Math.floor(seg / 60);

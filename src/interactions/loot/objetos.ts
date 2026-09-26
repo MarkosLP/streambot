@@ -33,13 +33,15 @@ export const ESTILO: Record<Rareza, { nombre: string; plural: string; emoji: str
  * `oro` es el Cofre del tesoro que se compra con puntos de canal. Tiene que
  * notarse que es mejor, o nadie gastará sus puntos en él.
  */
-export type TipoCofre = 'cofre' | 'oro' | 'guerra';
+export type TipoCofre = 'cofre' | 'oro' | 'guerra' | 'aniversario';
 
 export const PROBABILIDADES: Record<TipoCofre, Record<Rareza, number>> = {
   cofre: { comun: 60, raro: 26, epico: 10, legendario: 4 },
   oro: { comun: 35, raro: 35, epico: 22, legendario: 8 },
   // El cofre que atrae un Grito de guerra: solo armas, y con algo más de suerte.
   guerra: { comun: 45, raro: 33, epico: 16, legendario: 6 },
+  // El cofre de suscriptor en los aniversarios de 3, 6 y 9 meses (S1).
+  aniversario: { comun: 10, raro: 35, epico: 40, legendario: 15 },
 };
 
 export const OBJETOS: Record<Rareza, string[]> = {
@@ -152,6 +154,25 @@ export const OBJETOS: Record<Rareza, string[]> = {
 
 /** Objetos que caben en una mochila (decidido el 25 sep 2026). */
 export const MOCHILA_MAX = 20;
+/** La de los suscriptores (propuesta S5): comodidad, no fuerza. */
+export const MOCHILA_SUB = 30;
+
+/**
+ * La colección de mecenas (propuesta S6): solo caen en los cofres de
+ * suscriptor. Cosméticos: dan el poder de su rareza, como cualquier otro.
+ * NO están en OBJETOS, así que no cuentan para las colecciones de rareza
+ * (si contaran, un sub completaría «Épico» sin tener todos los épicos).
+ */
+export const OBJETOS_MECENAS: Botin[] = [
+  { objeto: 'Estandarte púrpura del mecenas', rareza: 'raro' },
+  { objeto: 'Capa de terciopelo real', rareza: 'raro' },
+  { objeto: 'Corona de amatista', rareza: 'epico' },
+  { objeto: 'Montura: grifo púrpura', rareza: 'epico' },
+  { objeto: 'Cáliz del Reino', rareza: 'legendario' },
+  { objeto: 'Trono portátil del mecenas', rareza: 'legendario' },
+];
+export const TITULO_MECENAS = 'Mecenas del Reino';
+export const esMecenas = (objeto: string) => OBJETOS_MECENAS.some((m) => m.objeto === objeto);
 
 /** Cuánto poder da cada objeto. Un Legendario vale lo que 20 Comunes. */
 export const PODER: Record<Rareza, number> = { comun: 1, raro: 3, epico: 8, legendario: 20 };
@@ -177,6 +198,12 @@ export const TITULOS: Record<Rareza, string> = {
   epico: 'Señor del Botín',
   legendario: 'Leyenda Viviente',
 };
+
+/** Un objeto de una rareza concreta (el aniversario de 12 meses: legendario). */
+export function tirarDe(rareza: Rareza, azar: Azar = Math.random): Botin {
+  const lista = OBJETOS[rareza];
+  return { objeto: lista[Math.min(lista.length - 1, Math.floor(azar() * lista.length))]!, rareza };
+}
 
 /** Un número entre 0 (incluido) y 1 (excluido). Se inyecta en los tests. */
 export type Azar = () => number;

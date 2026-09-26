@@ -82,10 +82,55 @@ export interface StreamStateEvent extends BaseEvent {
   type: 'stream.online' | 'stream.offline';
 }
 
+/**
+ * Suscripciones, regalos, bits y raids (26 sep 2026, propuestas S1-S7).
+ *
+ * Hasta entonces caían en `raw`. Su forma sale de los tipos de
+ * @streamerbot/client, pero con los canjes esos tipos NO coincidían con lo
+ * que llegaba de verdad (Fase 5): se leen de forma tolerante (camelCase,
+ * snake_case y `user` anidado) y el primer payload real de cada uno se
+ * guarda en logs/raw-events.log para comprobarlo.
+ */
+export interface ViewerSubEvent extends BaseEvent {
+  type: 'viewer.sub';
+  viewer: Viewer;
+  /** Meses acumulados. 1 en una suscripción nueva. */
+  meses: number;
+  /** 1, 2 o 3 (Twitch manda 1000/2000/3000; se normaliza). */
+  nivel: number;
+  resub: boolean;
+}
+
+export interface ViewerGiftSubEvent extends BaseEvent {
+  type: 'viewer.giftsub';
+  /** null si es anónimo. */
+  regala: Viewer | null;
+  recibe: Viewer;
+  /** Cuántas regala de golpe (una bomba de 10 son 10 avisos con esto a 10). */
+  bomba: number;
+}
+
+export interface ViewerCheerEvent extends BaseEvent {
+  type: 'viewer.cheer';
+  viewer: Viewer;
+  bits: number;
+}
+
+export interface ChannelRaidEvent extends BaseEvent {
+  type: 'channel.raid';
+  /** El canal que te trae la raid. */
+  desde: Viewer;
+  espectadores: number;
+}
+
 export type DomainEvent =
   | ViewerMessageEvent
   | ViewerRedeemEvent
   | StreamStateEvent
+  | ViewerSubEvent
+  | ViewerGiftSubEvent
+  | ViewerCheerEvent
+  | ChannelRaidEvent
   | RawEvent;
 
 // ---------------------------------------------------------------------------
@@ -171,6 +216,31 @@ function normalizeRedeemViewer(payload: any): Viewer {
 }
 
 /**
+ * Alguien, desde un payload de sub/regalo/bits: acepta userId / user_id /
+ * user.id y compañía. `pre` es el prefijo de otro usuario del mismo payload
+ * (recipientUserId, from_broadcaster_user_id…).
+ */
+function persona(payload: any, pre = ''): Viewer {
+  const p = payload ?? {};
+  // El `user` anidado es de la persona principal: nunca de quien recibe un regalo.
+  const u = pre ? {} : (p.user ?? {});
+  const cap = (k: string) => (pre ? pre + k.charAt(0).toUpperCase() + k.slice(1) : k);
+  const id = text(p[cap('userId')], text(p[`${pre}${pre ? '_' : ''}user_id`], text(u.id, u.id != null ? String(u.id) : '')));
+  const login = text(p[cap('userName')], text(p[cap('username')], text(p[`${pre}${pre ? '_' : ''}user_login`], text(u.login)))).toLowerCase();
+  const nombre = text(p[cap('displayName')], text(p[`${pre}${pre ? '_' : ''}user_name`], text(u.name, login)));
+  return {
+    id, login, displayName: nombre || login,
+    isBroadcaster: false, isModerator: false, isVip: false, isSubscriber: true, rawRole: null,
+  };
+}
+
+/** 1000/2000/3000 o 1/2/3, o "Prime": al nivel 1-3. */
+function nivelSub(v: unknown): number {
+  const n = num(v, 1);
+  return n >= 1000 ? Math.min(3, Math.round(n / 1000)) : Math.max(1, Math.min(3, n || 1));
+}
+
+/**
  * Punto de entrada único de la normalización.
  *
  * Lo llaman TANTO el transporte real COMO el simulador. Esa es la razón de que
@@ -221,6 +291,38 @@ export function normalize(
       };
     }
 
+    case 'Twitch.Sub':
+    case 'Twitch.ReSub': {
+      const resub = eventName === 'Twitch.ReSub';
+      return {
+        ...base,
+        type: 'viewer.sub',
+        viewer: persona(payload),
+        meses: resub ? Math.max(1, num(payload?.cumulativeMonths, num(payload?.cumulative_months, 1))) : 1,
+        nivel: nivelSub(payload?.subTier ?? payload?.tier),
+        resub,
+      };
+    }
+
+    case 'Twitch.GiftSub': {
+      const anonimo = payload?.isAnonymous === true || payload?.is_anonymous === true;
+      return {
+        ...base,
+        type: 'viewer.giftsub',
+        regala: anonimo ? null : persona(payload),
+        recibe: persona(payload, 'recipient'),
+        bomba: payload?.fromSubBomb ? Math.max(1, num(payload?.subBombCount, 1)) : 1,
+      };
+    }
+
+    case 'Twitch.Cheer':
+      return { ...base, type: 'viewer.cheer', viewer: { ...persona(payload), isSubscriber: payload?.subscriber === true }, bits: num(payload?.bits) };
+
+    case 'Twitch.Raid': {
+      const desde = persona(payload, 'from_broadcaster');
+      return { ...base, type: 'channel.raid', desde: { ...desde, isSubscriber: false }, espectadores: num(payload?.viewers, num(payload?.viewerCount)) };
+    }
+
     case 'Twitch.StreamOnline':
       return { ...base, type: 'stream.online' };
 
@@ -248,6 +350,14 @@ export function describe(event: DomainEvent): string {
     case 'viewer.redeem':
       return `${event.viewer.displayName} canjeó "${event.rewardTitle}" (${event.rewardCost} pts)` +
         (event.userInput ? ` -> "${event.userInput}"` : '');
+    case 'viewer.sub':
+      return `${event.viewer.displayName} se ${event.resub ? `resuscribe (${event.meses} meses)` : 'suscribe'}`;
+    case 'viewer.giftsub':
+      return `${event.regala?.displayName ?? 'un anónimo'} regala una sub a ${event.recibe.displayName}${event.bomba > 1 ? ` (de ${event.bomba})` : ''}`;
+    case 'viewer.cheer':
+      return `${event.viewer.displayName} manda ${event.bits} bits`;
+    case 'channel.raid':
+      return `raid de ${event.desde.displayName} con ${event.espectadores} personas`;
     case 'stream.online':
       return 'el directo ha empezado';
     case 'stream.offline':

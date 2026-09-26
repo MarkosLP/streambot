@@ -216,6 +216,36 @@ export const atacar: Interaction<CtxComando> = {
   },
 };
 
+/**
+ * Bits contra el jefe (propuesta S7): 100 bits, un golpe (hasta 5); 500 o
+ * más, un crítico asegurado además. Pagados, así que pegan aunque estés
+ * congelado o atrapado, y sin esperar. Devuelve lo que se dice en el chat, o
+ * null si no hay jefe (entonces los bits van a un cofre: mecenas.ts). Uno o
+ * dos mensajes: el segundo, el reparto si lo tumban.
+ */
+export function golpesDeBits(viewer: Viewer, bits: number, azar: Azar = Math.random): string[] | null {
+  const j = jefe;
+  if (!j || bits < 100) return null;
+  const golpes = Math.min(5, Math.floor(bits / 100));
+  let total = 0;
+  for (let i = 0; i < golpes && j.vida > 0; i++) {
+    const g = golpe(lootDb.poder(viewer.id), azar);
+    const critico = bits >= 500 && i === 0 ? true : g.critico;
+    const dano = critico && !g.critico ? g.dano * 2 : g.dano;
+    apuntarGolpe(j, { quien: viewer.displayName, dano, critico, tipo: 'golpe', icono: '💎' });
+    j.danos.set(viewer.id, { viewer, dano: (j.danos.get(viewer.id)?.dano ?? 0) + dano });
+    j.vida = Math.max(0, j.vida - dano);
+    total += dano;
+  }
+  const inicio = `💎 ¡${viewer.displayName} lanza ${bits} bits contra ${j.nombre}: ${golpes} golpe${golpes === 1 ? '' : 's'}${bits >= 500 ? ' con crítico' : ''}, −${total}!`;
+  // Si lo tumban, el reparto va aparte: juntos podrían pasar del largo máximo.
+  if (j.vida === 0) return [inicio, derrotado(j, azar).text];
+  return [`${inicio} Le quedan ${j.vida}/${j.vidaMax}.`];
+}
+
+/** ¿Hay un jefe en pie? */
+export const hayJefe = () => jefe !== null;
+
 function apuntarGolpe(j: Jefe, g: Omit<Golpe, 'n'>): void {
   j.golpes.push({ ...g, n: ++golpesTotales });
   if (j.golpes.length > 20) j.golpes.shift();
