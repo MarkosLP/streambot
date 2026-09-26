@@ -27,17 +27,14 @@ y=0
 for p in comandos:490 recompensas:420 loot:425 jefes:395; do
   n=${p%%:*}; h=${p##*:}
   magick hoja-paneles.png -crop 640x$((h*2))+0+$((y*2)) +repage -strip \
-    "biblioteca/imagenes/twitch/paneles/$n.png"
+    -define png:compression-level=9 PNG24:"biblioteca/imagenes/twitch/paneles/$n.png"
   y=$((y+h))
 done
 rm hoja-paneles.png
-# Twitch rechaza las imágenes pesadas: a 256 colores pesan ~200 KB y se ven igual.
-for n in comandos recompensas loot jefes; do
-  f=biblioteca/imagenes/twitch/paneles/$n.png
-  magick $f -dither FloydSteinberg -colors 256 -define png:compression-level=9 -strip PNG8:$f
-done
 ```
 
 Las alturas (`490`, `420`, `425`, `395`) son las `--alto` de cada panel en `paneles.html`, en el mismo orden, y `--window-size` es su suma. Si cambias una, cambia las tres cosas. A veces Edge tarda un segundo en escribir la captura: si `magick` dice que no encuentra `hoja-paneles.png`, vuelve a lanzarlo.
 
 Los retratos del panel de jefes son los del overlay (`biblioteca/overlays/jefe.html`, `TEMAS`), con los identificadores de sus degradados cambiados por jefe (`r-ojo` → `arana-ojo`) para que no se pisen en la misma página. Si cambias un retrato allí, cópialo aquí igual.
+
+**No reducir a 256 colores** (`-colors 256`, PNG8): pesan menos, pero los degradados y la textura del fondo se llenan de grano. Se probó el 27 sep y hubo que rehacerlos. A 640 px de ancho y a todo color pesan unos 600 KB cada uno.
