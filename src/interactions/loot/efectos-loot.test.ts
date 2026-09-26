@@ -16,6 +16,7 @@ import * as lootDb from '../../data/loot.js';
 import * as interactionLog from '../../data/interactions.js';
 import * as loot from './index.js';
 import * as comandos from './comandos.js';
+import * as arena from './arena.js';
 import { MOCHILA_MAX, OBJETOS, esArma, tirar } from './objetos.js';
 
 /**
@@ -200,7 +201,9 @@ describe('☠️ el maldito en los duelos', () => {
     assert.equal(lootDb.inventario('id-pepe').malditos, 0);
     assert.equal(lootDb.inventario('id-ana').malditos, 1);
     assert.equal(lootDb.coleccion('id-ana').porRareza.epico.tiene, 1, 'cuenta para su colección');
-    assert.equal(enPantalla[0], 'ana|epico|maldicion|maldito');
+    // En pantalla lo cuenta el overlay del duelo, no el banner del botín.
+    assert.equal(arena.recientes().at(-1)!.maldito, 'Corona del Liche');
+    assert.equal(enPantalla.length, 0);
   });
 
   test('quien gana conserva el suyo', async () => {

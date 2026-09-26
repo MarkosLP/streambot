@@ -1,6 +1,6 @@
 <!doctype html>
 <!--
-  Overlay "Jefe de raid" del Loot, para OBS.
+  Overlay de combate del Loot, para OBS: el jefe de raid y los duelos.
 
   NO se monta a mano: lo crea "Preparar en OBS" (fuente FX Jefe). Se queda
   SIEMPRE visible: sin jefe no pinta nada, es transparente.
@@ -12,12 +12,17 @@
     - un número por cada !atacar (los críticos, grandes y dorados)
     - al final: ¡DERROTADO! con el podio de daño, o ¡SE ESCAPA!
 
+  Y cada !duelo: los dos luchadores, VS, una aguja que recorre la barra de
+  probabilidades hasta el lado del ganador, y el resultado (7 s por duelo,
+  uno detrás de otro).
+
   ?demo=1 simula un combate entero sin bot, para verlo en la Biblioteca.
+  ?demo=duelo, unos cuantos duelos.
 -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>Jefe de raid</title>
+<title>Combate</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Chakra+Petch:wght@600;700&display=swap">
 <style>
@@ -191,6 +196,87 @@
   .puesto .medalla { font-size: 46px; line-height: 1; }
   .puesto .quien { font-size: 32px; font-weight: 700; color: var(--c); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .puesto .cuanto { font-size: 22px; color: rgba(255,255,255,.85); }
+
+  /* ---------- Duelo ---------- */
+  .duelo {
+    position: absolute; left: 0; right: 0; top: 50%; height: 420px; transform: translateY(-50%);
+    animation: duelo-sale .5s ease-in 6.6s forwards;
+  }
+  @keyframes duelo-sale { to { opacity: 0; transform: translateY(-50%) scale(1.03); } }
+  .duelo-fondo {
+    position: absolute; inset: 40px 0 20px;
+    background: linear-gradient(90deg, rgba(10, 30, 70, 0), rgba(10, 30, 70, .82) 18%, rgba(8, 8, 14, .9) 50%, rgba(70, 10, 20, .82) 82%, rgba(70, 10, 20, 0));
+    animation: aparece .35s ease-out both;
+  }
+  @keyframes aparece { from { opacity: 0; transform: scaleY(0); } }
+  .luchador {
+    position: absolute; top: 70px; width: 640px; text-align: center;
+    animation: .55s cubic-bezier(.2, 1.3, .4, 1) both;
+  }
+  .luchador.izq { left: 150px; animation-name: entra-izq; }
+  .luchador.der { right: 150px; animation-name: entra-der; }
+  @keyframes entra-izq { from { transform: translateX(-900px); } }
+  @keyframes entra-der { from { transform: translateX(900px); } }
+  .luchador .quien {
+    font-family: "Cinzel", Georgia, serif; font-weight: 900; font-size: 64px; line-height: 1.05;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: #fff; text-shadow: 0 4px 0 #000, 0 0 22px var(--brillo);
+  }
+  .luchador.izq { --brillo: rgba(90, 160, 255, .8); }
+  .luchador.der { --brillo: rgba(255, 90, 90, .8); }
+  .luchador .titulo { font-size: 24px; font-weight: 700; color: #ffd36b; letter-spacing: .06em; min-height: 30px; text-shadow: 0 2px 0 #000; }
+  .luchador .poder { margin-top: 6px; font-size: 30px; font-weight: 700; color: rgba(255,255,255,.92); text-shadow: 0 2px 0 #000; }
+  .luchador .sello {
+    position: absolute; left: 50%; top: -64px; transform: translateX(-50%) rotate(-6deg) scale(0);
+    padding: 4px 26px; border: 4px solid #ffd24a; border-radius: 10px;
+    font-family: "Cinzel", Georgia, serif; font-weight: 900; font-size: 40px; color: #ffd24a; background: rgba(40, 24, 0, .85);
+    box-shadow: 0 0 30px rgba(255, 200, 60, .7); text-shadow: 0 0 12px rgba(255, 200, 60, .9);
+  }
+  .duelo.resuelto .luchador.gana .sello { animation: sello .45s cubic-bezier(.2, 1.6, .4, 1) forwards; }
+  @keyframes sello { to { transform: translateX(-50%) rotate(-6deg) scale(1); } }
+  .duelo.resuelto .luchador.gana .quien { animation: late 0.9s ease-in-out infinite; color: #fff6d6; text-shadow: 0 4px 0 #000, 0 0 34px rgba(255, 200, 60, .95); }
+  .duelo.resuelto .luchador.pierde { filter: grayscale(1) brightness(.55); transition: filter .5s; }
+  .duelo.resuelto .luchador.pierde .quien { animation: tiembla-p .35s steps(3); }
+  @keyframes tiembla-p { 33% { transform: translateX(-10px); } 66% { transform: translateX(8px); } }
+
+  .vs {
+    position: absolute; left: 50%; top: 58px; transform: translateX(-50%);
+    font-family: "Cinzel", Georgia, serif; font-weight: 900; font-size: 130px; line-height: 1;
+    background: linear-gradient(180deg, #fffbe8, #ffd24a 45%, #c2410c); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 6px 0 #000) drop-shadow(0 0 30px rgba(255, 160, 40, .9));
+    animation: vs .5s cubic-bezier(.2, 1.8, .4, 1) .45s both;
+  }
+  @keyframes vs { from { opacity: 0; transform: translateX(-50%) scale(3) rotate(-12deg); } }
+  .destello {
+    position: absolute; left: 50%; top: 120px; width: 900px; height: 900px; margin: -450px 0 0 -450px;
+    background: radial-gradient(circle, rgba(255, 240, 200, .9), rgba(255, 180, 60, 0) 45%);
+    opacity: 0; animation: destello .6s ease-out .5s;
+  }
+  @keyframes destello { 20% { opacity: 1; } 100% { opacity: 0; transform: scale(1.4); } }
+
+  .ruleta { position: absolute; left: 50%; top: 262px; width: 900px; transform: translateX(-50%); animation: aparece .3s ease-out .8s both; }
+  .ruleta-barra {
+    position: relative; height: 26px; border-radius: 13px; overflow: visible;
+    box-shadow: 0 0 0 3px #0b0703, 0 0 0 5px #b98a3a, 0 8px 20px rgba(0,0,0,.6);
+  }
+  .ruleta-a, .ruleta-b { position: absolute; top: 0; bottom: 0; }
+  .ruleta-a { left: 0; border-radius: 13px 0 0 13px; background: linear-gradient(180deg, #8cc4ff, #2f6fd6); }
+  .ruleta-b { right: 0; border-radius: 0 13px 13px 0; background: linear-gradient(180deg, #ff9a9a, #c0262e); }
+  .ruleta-pct { display: flex; justify-content: space-between; margin-top: 8px; font-size: 24px; font-weight: 700; text-shadow: 0 2px 0 #000; }
+  .ruleta-pct .a { color: #9cc9ff; } .ruleta-pct .b { color: #ff9f9f; }
+  .aguja {
+    position: absolute; top: -16px; bottom: -16px; width: 6px; margin-left: -3px; border-radius: 3px;
+    background: #fff; box-shadow: 0 0 14px #fff, 0 0 30px rgba(255, 220, 120, .9);
+    left: 50%;
+  }
+  .aguja::before {
+    content: ""; position: absolute; left: 50%; top: -14px; transform: translateX(-50%);
+    border: 10px solid transparent; border-top: 14px solid #fff;
+  }
+  .extra { position: absolute; left: 50%; top: 340px; transform: translateX(-50%); white-space: nowrap; text-align: center; font-size: 26px; font-weight: 700; text-shadow: 0 2px 0 #000, 0 0 10px #000; opacity: 0; }
+  .duelo.resuelto .extra { animation: aparece .4s ease-out .3s forwards; }
+  .extra .sorpresa { color: #ffd24a; letter-spacing: .2em; margin-right: 12px; }
+  .extra .maldito { color: #a6ff7a; }
 </style>
 </head>
 <body>
@@ -273,6 +359,20 @@
   </div>
 </div>
 
+<!-- Duelo -->
+<div class="duelo" id="duelo" hidden>
+  <div class="duelo-fondo"></div>
+  <div class="destello"></div>
+  <div class="luchador izq" id="d-a"><div class="sello">¡GANA!</div><div class="quien"></div><div class="titulo"></div><div class="poder"></div></div>
+  <div class="vs">VS</div>
+  <div class="luchador der" id="d-b"><div class="sello">¡GANA!</div><div class="quien"></div><div class="titulo"></div><div class="poder"></div></div>
+  <div class="ruleta">
+    <div class="ruleta-barra"><div class="ruleta-a" id="d-pa"></div><div class="ruleta-b" id="d-pb"></div><div class="aguja" id="d-aguja"></div></div>
+    <div class="ruleta-pct"><span class="a" id="d-pcta"></span><span class="b" id="d-pctb"></span></div>
+  </div>
+  <div class="extra" id="d-extra"></div>
+</div>
+
 <!-- Final -->
 <div class="final" id="final" hidden>
   <div class="rayos"></div>
@@ -295,6 +395,9 @@
   let actual = null;      // id del jefe que se está pintando
   let visto = 0;          // último golpe pintado
   let finalVisto = null;  // id del jefe cuyo final ya se enseñó
+  let dueloVisto = null;  // último duelo enseñado (o puesto en la cola)
+  const colaDuelos = [];
+  let enseñandoDuelo = false;
 
   function pintar(d) {
     const j = d.jefe;
@@ -314,6 +417,72 @@
       setTimeout(() => { $('jefe').hidden = true; $('jefe').classList.remove('sale'); }, 650);
     }
     if (d.final && d.final.id !== finalVisto) acaba(d.final);
+    for (const duelo of d.duelos || []) {
+      // Al cargar el overlay, los duelos que ya había no se repiten.
+      if (dueloVisto === null) { dueloVisto = Math.max(...d.duelos.map((x) => x.n)); break; }
+      if (duelo.n > dueloVisto) { dueloVisto = duelo.n; colaDuelos.push(duelo); }
+    }
+    if (dueloVisto === null) dueloVisto = 0;
+    siguienteDuelo();
+  }
+
+  // ---------- Duelos ----------
+
+  const DUELO_MS = 7200;
+  const ANIMA_RULETA_MS = 2000;
+
+  function siguienteDuelo() {
+    if (enseñandoDuelo || !colaDuelos.length) return;
+    enseñandoDuelo = true;
+    duelo(colaDuelos.shift());
+    setTimeout(() => { $('duelo').hidden = true; enseñandoDuelo = false; siguienteDuelo(); }, DUELO_MS);
+  }
+
+  function luchador(el, l) {
+    el.querySelector('.quien').textContent = l.nombre;
+    el.querySelector('.titulo').textContent = l.titulo ? `«${l.titulo}»` : '';
+    el.querySelector('.poder').textContent = `⚔️ Poder ${l.poder}`;
+    el.classList.remove('gana', 'pierde');
+  }
+
+  function duelo(d) {
+    const caja = $('duelo');
+    caja.classList.remove('resuelto');
+    luchador($('d-a'), d.retador);
+    luchador($('d-b'), d.rival);
+    const pa = Math.round(d.prob * 100);
+    $('d-pa').style.width = `${pa}%`;
+    $('d-pb').style.width = `${100 - pa}%`;
+    $('d-pcta').textContent = `${pa} %`;
+    $('d-pctb').textContent = `${100 - pa} %`;
+    $('d-extra').replaceChildren();
+    caja.hidden = true; void caja.offsetWidth; caja.hidden = false;
+    sonar('grito-de-guerra.wav');
+
+    // La aguja: va y viene y se para en el lado de quien gana, dentro de su parte.
+    const destino = d.ganaRetador ? 4 + Math.random() * Math.max(1, pa - 8) : pa + 4 + Math.random() * Math.max(1, 100 - pa - 8);
+    const aguja = $('d-aguja');
+    aguja.getAnimations().forEach((a) => a.cancel());
+    aguja.animate(
+      [{ left: '50%' }, { left: '8%' }, { left: '92%' }, { left: '25%' }, { left: '75%' }, { left: `${destino}%` }],
+      { duration: ANIMA_RULETA_MS, delay: 1100, easing: 'cubic-bezier(.3, .1, .2, 1)', fill: 'forwards' },
+    );
+
+    setTimeout(() => {
+      $(d.ganaRetador ? 'd-a' : 'd-b').classList.add('gana');
+      $(d.ganaRetador ? 'd-b' : 'd-a').classList.add('pierde');
+      const probGanador = d.ganaRetador ? d.prob : 1 - d.prob;
+      const extra = [];
+      if (probGanador < 0.4) { const e = document.createElement('span'); e.className = 'sorpresa'; e.textContent = '¡SORPRESA!'; extra.push(e); }
+      if (d.maldito) {
+        const e = document.createElement('span'); e.className = 'maldito';
+        e.textContent = `☠️ ${d.maldito} pasa a ${d.ganaRetador ? d.retador.nombre : d.rival.nombre}`;
+        extra.push(e);
+      }
+      $('d-extra').replaceChildren(...extra);
+      caja.classList.add('resuelto');
+      sonar('cofre.wav');
+    }, 1100 + ANIMA_RULETA_MS + 150);
   }
 
   function aparece(j) {
@@ -380,6 +549,7 @@
 
   const params = new URLSearchParams(location.search);
   if (params.get('demo') === '1') demo();
+  else if (params.get('demo') === 'duelo') demoDuelos();
   else {
     const api = new URL('/api/overlay/jefe', location.href);
     const preguntar = () =>
@@ -389,6 +559,17 @@
         .catch(() => {})
         .finally(() => setTimeout(preguntar, 500));
     preguntar();
+  }
+
+  /** Unos duelos de mentira, uno detrás de otro. */
+  function demoDuelos() {
+    const duelos = [
+      { n: 1, retador: { nombre: 'crid4n', titulo: null, poder: 12 }, rival: { nombre: 'Crid4m', titulo: 'Cazatesoros', poder: 34 }, prob: 0.26, ganaRetador: true, maldito: null },
+      { n: 2, retador: { nombre: 'Ana_la_Tanque', titulo: 'Trotamundos', poder: 40 }, rival: { nombre: 'Pepe', titulo: null, poder: 22 }, prob: 0.65, ganaRetador: true, maldito: 'Corona del Liche' },
+      { n: 3, retador: { nombre: 'Pepe', titulo: null, poder: 9 }, rival: { nombre: 'crid4n', titulo: null, poder: 15 }, prob: 0.38, ganaRetador: false, maldito: null },
+    ];
+    pintar({ jefe: null, final: null, duelos: [] });
+    duelos.forEach((d, i) => setTimeout(() => pintar({ jefe: null, final: null, duelos: duelos.slice(0, i + 1) }), 300 + i * 150));
   }
 
   /** Un combate de mentira: aparece, recibe golpes, cae y enseña el podio. */

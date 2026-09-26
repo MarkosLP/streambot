@@ -19,6 +19,7 @@ import * as loot from '../interactions/loot/index.js';
 import * as lootDb from '../data/loot.js';
 import * as lootComandos from '../interactions/loot/comandos.js';
 import * as jefe from '../interactions/loot/jefe.js';
+import * as arena from '../interactions/loot/arena.js';
 import { MOCHILA_MAX, PROBABILIDADES, tirar } from '../interactions/loot/objetos.js';
 import * as cooldowns from '../core/cooldowns.js';
 import { conObs, type PedirObs } from '../transport/obs.js';
@@ -163,7 +164,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       'Cache-Control': 'no-store',
       'Access-Control-Allow-Origin': '*',
     });
-    res.end(JSON.stringify(jefe.paraOverlay()));
+    res.end(JSON.stringify({ ...jefe.paraOverlay(), duelos: arena.recientes() }));
     return;
   }
 

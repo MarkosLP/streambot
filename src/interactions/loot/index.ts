@@ -13,6 +13,7 @@ import * as lootDb from '../../data/loot.js';
 import * as streams from '../../data/streams.js';
 import * as users from '../../data/users.js';
 import { esBot } from '../../core/bots.js';
+import * as arena from './arena.js';
 import { ESTILO, MOCHILA_MAX, RAREZAS, etiqueta, tirar, type Azar, type Botin } from './objetos.js';
 
 /**
@@ -718,6 +719,7 @@ export function reset(): void {
   cofreDeGuerra = null;
   purificaciones.clear();
   pantalla = null;
+  arena.reset();
   chatters = null;
   lanzador = null;
   enElSuelo = null;

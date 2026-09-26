@@ -31,6 +31,7 @@ import {
   puedePurificar,
   type EfectoCanal,
 } from './index.js';
+import * as arena from './arena.js';
 import * as jefe from './jefe.js';
 
 const sinTildes = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase();
@@ -131,7 +132,15 @@ export const duelo: Interaction<CtxComando> = {
     lootDb.apuntarDuelo(ganador.id, perdedor.id);
     // La patata caliente: el maldito más fuerte del perdedor cambia de manos.
     const maldito = lootDb.traspasarMaldito(perdedor.id, ganador.id, ganador.displayName);
-    if (maldito) enPantalla(ganador.displayName, maldito, 'maldicion');
+    // En pantalla lo enseña el overlay del duelo, maldito incluido: el banner
+    // del botín saldría a la vez, en el mismo sitio.
+    arena.registrarDuelo({
+      retador: { nombre: yo.displayName, titulo: lootDb.titulo(yo.id), poder: pa },
+      rival: { nombre: rival.displayName, titulo: lootDb.titulo(rival.id), poder: pb },
+      prob,
+      ganaRetador: ganaYo,
+      maldito: maldito ? maldito.objeto : null,
+    });
     const sorpresa = (ganaYo ? prob : 1 - prob) < 0.4 ? ' ¡Sorpresa!' : '';
     const traspaso = maldito ? ` ☠️ ${etiqueta(maldito)} pasa a ${ganador.displayName}.` : '';
     return {

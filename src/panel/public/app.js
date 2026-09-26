@@ -896,7 +896,7 @@ const PREPARABLES = [
   { id: 'maldicion', titulo: 'Maldición', que: 'Filtro «FX Maldicion» en blanco y negro, apagado', necesita: 'fuente' },
   { id: 'lag', titulo: 'Lag', que: 'Filtro «FX Lag» que congela la imagen, apagado', necesita: 'fuente', plugin: true },
   { id: 'botin', titulo: 'Banner del Loot', que: 'Fuente «FX Botin»: el banner de cada cofre, oculta', necesita: 'escena' },
-  { id: 'jefe', titulo: 'Barra del jefe', que: 'Fuente «FX Jefe»: la barra de vida del jefe de raid. Visible, pero sin jefe no se ve nada', necesita: 'escena' },
+  { id: 'jefe', titulo: 'Jefe y duelos', que: 'Fuente «FX Jefe»: la barra del jefe de raid y cada !duelo. Visible, pero cuando no pasa nada no se ve', necesita: 'escena' },
 ];
 
 // Lo que elegiste la última vez, para no tener que volver a elegirlo.
@@ -1174,7 +1174,7 @@ async function cargarBiblioteca() {
  * sale vacía (sin jefe es transparente) y el banner, siempre Legendario.
  */
 const VARIANTES_OVERLAY = {
-  'jefe.html': [{ nombre: 'Combate de prueba', q: '?demo=1' }],
+  'jefe.html': [{ nombre: 'Jefe', q: '?demo=1' }, { nombre: 'Duelos', q: '?demo=duelo' }],
   'botin.html': [
     { nombre: 'Legendario', q: '?rareza=legendario&item=Espada%20del%20Amanecer%20Eterno' },
     { nombre: 'Épico', q: '?rareza=epico&item=Capa%20de%20las%20Sombras' },

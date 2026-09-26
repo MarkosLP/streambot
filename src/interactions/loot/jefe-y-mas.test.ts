@@ -14,6 +14,7 @@ import * as streams from '../../data/streams.js';
 import * as lootDb from '../../data/loot.js';
 import * as loot from './index.js';
 import * as jefe from './jefe.js';
+import * as arena from './arena.js';
 import type { Rareza } from './objetos.js';
 
 /**
@@ -230,6 +231,23 @@ describe('✨ !usar', () => {
     meter('pepe', 'Mapa arrugado', 'comun');
     await handleEvent(mensaje('pepe', '!usar mapa'));
     assert.match(enviados.at(-1)!, /no hace nada al usarlo/);
+  });
+});
+
+describe('⚔️ el duelo en el overlay', () => {
+  test('cada duelo queda para el overlay: quién, su poder, la probabilidad y quién ganó', async () => {
+    meter('pepe', 'Arco de tejo élfico', 'raro');
+    meter('ana', 'Mapa arrugado', 'comun');
+    await handleEvent(mensaje('ana'));
+    await handleEvent(mensaje('pepe', '!duelo ana'));
+    const d = arena.recientes().at(-1)!;
+    assert.equal(d.retador.nombre, 'pepe');
+    assert.equal(d.retador.poder, 3);
+    assert.equal(d.rival.nombre, 'ana');
+    assert.equal(d.rival.poder, 1);
+    assert.equal(d.prob, 0.75);
+    assert.equal(typeof d.ganaRetador, 'boolean');
+    assert.match(enviados.at(-1)!, d.ganaRetador ? /¡Gana pepe!/ : /¡Gana ana!/, 'el chat y el overlay dicen lo mismo');
   });
 });
 

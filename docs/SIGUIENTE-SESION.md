@@ -36,7 +36,9 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 - **Barra del jefe en OBS** (`biblioteca/overlays/jefe.html`, fuente `FX Jefe`): emblema, vida con rastro, reloj, números de daño (críticos en dorado), aviso al aparecer y rótulo final con podio. Se crea desde Efectos → Preparar en OBS → «Barra del jefe». Queda VISIBLE siempre: sin jefe es transparente. Pregunta al bot cada 0,5 s por `GET /api/overlay/jefe` (única ruta con CORS). Vista previa: `jefe.html?demo=1`.
 - **Dos techos de mensajes**: 12/hora lo que el bot dice solo (`BOT_MESSAGES_PER_HOUR`) y 60/hora las respuestas a comandos, canjes y botones del panel (`BOT_RESPUESTAS_PER_HOUR`). Antes era uno solo de 12, y un jefe con regalos lo agotó en 10 min dejando a la gente sin `!inventario`.
 - **Biblioteca**: galería con subcarpetas, visor, filtros y vistas previas de overlays con variantes.
-- Hay que **reiniciar el bot** para tenerlo. 403 tests.
+- **`!dar` rehecho**: `!dar` solo enseña tus objetos numerados; `!dar ana` pregunta qué le das; `!dar ana 2` le da el 2. Siguen valiendo rareza y parte del nombre.
+- **Duelos en OBS**: en la misma fuente `FX Jefe` (nada que montar). VS, barra de probabilidades con una aguja que cae en el lado del ganador, ¡GANA!, ¡SORPRESA! y el maldito que cambia de manos. Vista previa: `jefe.html?demo=duelo`.
+- Hay que **reiniciar el bot** para tenerlo. 406 tests.
 
 ### Precios y límites acordados
 
