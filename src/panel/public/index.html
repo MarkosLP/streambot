@@ -125,6 +125,15 @@
         </div>
       </div>
 
+      <article class="tarjeta previa" id="t-previa">
+        <header>
+          <h2>🩺 Revisión previa</h2>
+          <span class="nota" id="previa-nota">Antes de darle a «Iniciar transmisión». Solo mira, no cambia nada.</span>
+          <button class="boton primario" type="button" id="previa-lanzar">Comprobar todo</button>
+        </header>
+        <ul class="previa-lista" id="previa-lista" hidden></ul>
+      </article>
+
       <article class="tarjeta revision" id="t-revision" hidden>
         <header><h2><span class="punto-vivo"></span>Esperando tu aprobación</h2></header>
         <div id="pendientes"></div>
@@ -172,6 +181,14 @@
           </article>
         </div>
       </div>
+
+      <article class="tarjeta resumen" id="t-resumen">
+        <header>
+          <h2>📊 Resumen del directo</h2>
+          <select id="resumen-directo" aria-label="Qué directo"></select>
+        </header>
+        <div id="resumen-cuerpo"><p class="nota">Cargando…</p></div>
+      </article>
     </section>
 
     <!-- EFECTOS -->
@@ -296,6 +313,22 @@
         <header><h2>Jefe de raid</h2><span class="nota">El chat le pega con !atacar durante 3 min</span></header>
         <div class="jefe" id="l-jefe"></div>
       </article>
+
+      <div class="dos-col">
+        <article class="tarjeta">
+          <header><h2 id="l-temporada-titulo">🏆 Temporada</h2><span class="nota" id="l-temporada-quedan"></span></header>
+          <p class="nota">Puntos: cada objeto suma lo que vale su poder, cada duelo ganado +5 y el MVP de un jefe +10. Al acabar el mes, 🥇🟠 🥈🟣 🥉🔵 a la mochila y el título «Campeón de…» para el primero. Tú no entras en el podio.</p>
+          <ol class="mochilas" id="l-temporada"></ol>
+          <h3 class="subtitulo">Salón de la Fama</h3>
+          <ol class="salon" id="l-salon"></ol>
+        </article>
+        <article class="tarjeta">
+          <header><h2>📅 Evento de la semana</h2><span class="nota" id="l-evento-cambia"></span></header>
+          <div class="evento-actual" id="l-evento-actual"></div>
+          <label class="campo"><span>Qué evento</span><select id="l-evento-eleccion"></select></label>
+          <ul class="eventos" id="l-eventos"></ul>
+        </article>
+      </div>
 
       <div class="dos-col">
         <article class="tarjeta">

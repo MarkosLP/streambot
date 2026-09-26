@@ -3,6 +3,8 @@ import * as lootDb from '../data/loot.js';
 import * as suscriptores from '../data/suscriptores.js';
 import { startOfLocalDay } from '../services/ai/budget.js';
 import * as ajustes from '../core/ajustes.js';
+import { config } from '../config.js';
+import { esBot } from '../core/bots.js';
 
 /**
  * Consultas de solo lectura para el panel.
@@ -116,11 +118,137 @@ export function espectadores(): VistaEspectador[] {
 export function borrarPruebas(): number {
   const db = getDb();
   let n = 0;
-  for (const tabla of ['loot', 'coleccion', 'duelos', 'suscriptores']) {
+  for (const tabla of ['loot', 'coleccion', 'duelos', 'suscriptores', 'temporada_puntos', 'salon_fama']) {
     n += Number(db.prepare(`DELETE FROM ${tabla} WHERE twitch_id LIKE 'prueba-%'`).run().changes);
   }
   suscriptores.reset();
   return n;
+}
+
+// ---------------------------------------------------------------------------
+// Resumen del directo (27 sep 2026)
+// ---------------------------------------------------------------------------
+
+/** Los últimos directos, para elegir cuál resumir. */
+export function directos(limite = 15): Array<{ id: number; desde: string; hasta: string | null }> {
+  return (getDb().prepare('SELECT id, started_at, ended_at FROM streams ORDER BY id DESC LIMIT ?').all(limite) as Array<{ id: number; started_at: string; ended_at: string | null }>)
+    .map((s) => ({ id: s.id, desde: s.started_at, hasta: s.ended_at }));
+}
+
+/** Cómo se llama cada cosa del registro en el resumen. */
+const ETIQUETAS: Record<string, string> = {
+  loot: 'Cofres',
+  'loot-cofre-oro': 'Cofre del tesoro',
+  'loot-jefe': 'Jefe (aparece o huye)',
+  'loot-mecenas': 'Subs, bits y raids',
+  'loot-temporada': 'Anuncio del directo',
+  'loot-temporada-ver': '!temporada',
+  'loot-inventario': '!inventario',
+  'loot-grito': 'Grito de guerra',
+  'loot-maldicion': 'Maldición',
+  'loot-pocion': 'Poción de vida',
+  'loot-ayuda': '!loot',
+  olvidame: '!olvidame',
+  'sonda-verificacion': '!ping',
+  panel: 'Escrito desde el panel',
+};
+
+export function etiqueta(interaccion: string): string {
+  return ETIQUETAS[interaccion]
+    ?? FICHAS.find((f) => f.nombre === interaccion)?.titulo
+    ?? (interaccion.startsWith('loot-') ? `!${interaccion.slice(5)}` : interaccion);
+}
+
+const MOTIVOS: Record<string, string> = {
+  'hourly-budget': 'Tope de mensajes por hora',
+  'mention-not-allowed': 'Mención no permitida',
+  killswitch: 'Bot apagado',
+  'too-long': 'Demasiado largo',
+  'not-approved': 'No aprobado (modo revisión)',
+  'transport-error': 'Fallo al enviar',
+  'no-sender': 'Sin conexión con el chat',
+};
+
+/**
+ * Qué pasó en un directo: quién vino, qué se usó, qué cayó y qué se quedó
+ * sin decir. Sin id, el último. Todo sale de tablas que ya existen: el
+ * registro de interacciones, las mochilas y los usuarios.
+ */
+export function resumenDirecto(id?: number) {
+  const db = getDb();
+  const s = (id
+    ? db.prepare('SELECT id, started_at, ended_at FROM streams WHERE id = ?').get(id)
+    : db.prepare('SELECT id, started_at, ended_at FROM streams ORDER BY id DESC LIMIT 1').get()) as
+    | { id: number; started_at: string; ended_at: string | null }
+    | undefined;
+  if (!s) return null;
+  const desde = s.started_at;
+  const hasta = s.ended_at ?? new Date().toISOString();
+
+  const filas = db
+    .prepare('SELECT interaction, twitch_id, status, detail FROM interactions WHERE at >= ? AND at <= ?')
+    .all(desde, hasta) as Array<{ interaction: string; twitch_id: string | null; status: string; detail: string | null }>;
+
+  const contar = <T>(lista: T[], clave: (x: T) => string) => {
+    const m = new Map<string, number>();
+    for (const x of lista) m.set(clave(x), (m.get(clave(x)) ?? 0) + 1);
+    return [...m.entries()].map(([k, n]) => ({ k, n })).sort((a, b) => b.n - a.n);
+  };
+
+  const enviadas = filas.filter((f) => f.status === 'sent');
+  const bloqueadas = filas.filter((f) => f.status === 'blocked');
+  const detalle = (f: { detail: string | null }) => f.detail ?? '';
+
+  // Quién vino: quien sale en el registro o recibió botín en ese rato.
+  const botin = db
+    .prepare('SELECT twitch_id, display_name, objeto, rareza, origen, maldito FROM loot WHERE at >= ? AND at <= ?')
+    .all(desde, hasta) as Array<{ twitch_id: string; display_name: string; objeto: string; rareza: string; origen: string; maldito: number }>;
+  const ids = new Set<string>([...filas.map((f) => f.twitch_id).filter((x): x is string => !!x), ...botin.map((b) => b.twitch_id)]);
+  ids.forEach((x) => { if (x.startsWith('prueba-')) ids.delete(x); });
+  const nombre = db.prepare('SELECT display_name FROM users WHERE twitch_id = ?');
+  const nombres = [...ids]
+    .map((x) => (nombre.get(x) as { display_name: string } | undefined)?.display_name ?? botin.find((b) => b.twitch_id === x)?.display_name)
+    .filter((x): x is string => !!x)
+    // Ni el canal ni los bots: «quién vino» es el público.
+    .filter((n) => n.toLowerCase() !== config.broadcasterLogin && !esBot(n))
+    .sort((a, b) => a.localeCompare(b));
+  const nuevos = (db.prepare('SELECT display_name FROM users WHERE first_seen >= ? AND first_seen <= ? ORDER BY first_seen').all(desde, hasta) as Array<{ display_name: string }>)
+    .map((u) => u.display_name);
+
+  const cofres = filas.filter((f) => f.interaction === 'loot');
+  const tipoCofre = (d: string) =>
+    d.startsWith('regalo') ? 'Regalados por ti' : d.startsWith('fidelidad') ? 'De fidelidad' : d.startsWith('suelo') || d.startsWith('guerra') ? 'De guerra'
+      : d.startsWith('panel') ? 'Soltados desde el panel' : 'Del chat (cada 20-30 min)';
+
+  return {
+    id: s.id,
+    desde,
+    hasta: s.ended_at,
+    enCurso: s.ended_at === null,
+    minutos: Math.round((new Date(hasta).getTime() - new Date(desde).getTime()) / 60_000),
+    personas: { total: nombres.length, nombres, nuevos },
+    mensajes: { enviados: enviadas.length, bloqueados: bloqueadas.length },
+    // Lo que más se ha usado, con su nombre de verdad.
+    usos: contar(enviadas, (f) => f.interaction).slice(0, 12).map(({ k, n }) => ({ que: etiqueta(k), n })),
+    bloqueos: contar(bloqueadas, (f) => detalle(f).split(':')[0]!.trim()).map(({ k, n }) => ({ motivo: MOTIVOS[k] ?? 'Otro motivo (mira el registro)', n })),
+    bloqueosPor: contar(bloqueadas, (f) => f.interaction).slice(0, 6).map(({ k, n }) => ({ que: etiqueta(k), n })),
+    loot: {
+      cofres: contar(cofres, (f) => tipoCofre(detalle(f))).map(({ k, n }) => ({ tipo: k, n })),
+      cofresTesoro: enviadas.filter((f) => f.interaction === 'loot-cofre-oro').length,
+      // Solo lo que sigue en alguna mochila: lo forjado o regalado ya no está.
+      destacados: botin
+        .filter((b) => b.rareza === 'legendario' || b.rareza === 'epico')
+        .sort((a, b) => (a.rareza === b.rareza ? 0 : a.rareza === 'legendario' ? -1 : 1))
+        .slice(0, 10)
+        .map((b) => ({ quien: b.display_name, objeto: b.objeto, rareza: b.rareza, maldito: b.maldito === 1 })),
+    },
+    jefes: {
+      aparecen: filas.filter((f) => f.interaction === 'loot-jefe' && detalle(f).startsWith('aparece')).length,
+      derrotados: filas.filter((f) => detalle(f).startsWith('jefe derrotado')).length,
+      escapan: filas.filter((f) => f.interaction === 'loot-jefe' && detalle(f).startsWith('se escapa')).length,
+    },
+    duelos: enviadas.filter((f) => f.interaction === 'loot-duelo').length,
+  };
 }
 
 /**

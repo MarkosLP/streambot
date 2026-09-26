@@ -930,3 +930,50 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
 .ficha-datos { display: flex; gap: 8px 18px; flex-wrap: wrap; font-size: 0.88rem; }
 .ficha-datos b { color: var(--oro-claro); }
 .ficha-mochila { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* Revisión previa (Inicio) */
+.previa > header { flex-wrap: wrap; align-items: center; }
+.previa > header .nota { margin-left: 0; flex: 1 1 240px; }
+.nota.regular { color: var(--ambar); }
+.nota.bien { color: var(--verde); }
+.previa-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.previa-lista li { display: grid; grid-template-columns: 22px minmax(120px, 190px) 1fr; gap: 10px; align-items: baseline; padding: 6px 0; font-size: 0.86rem; }
+.previa-lista .previa-grupo { display: block; padding: 12px 0 2px; font-family: var(--titulos); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--texto-3); }
+.previa-lista .previa-grupo:first-child { padding-top: 0; }
+.previa-detalle { color: var(--texto-2); }
+.previa-fallo strong, .previa-fallo .previa-detalle { color: var(--rojo); }
+.previa-aviso strong { color: var(--ambar); }
+@media (max-width: 560px) { .previa-lista li { grid-template-columns: 22px 1fr; } .previa-detalle { grid-column: 2; } }
+
+/* Resumen del directo (Inicio) */
+.resumen { margin-top: 20px; }
+.resumen > header select { margin-left: auto; padding: 7px 10px; border-radius: 9px; border: 1px solid var(--borde-2); background: var(--fondo); color: var(--texto); font: inherit; font-size: 0.85rem; max-width: 100%; }
+.cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.cifra { display: grid; gap: 2px; padding: 12px 14px; border-radius: 11px; background: var(--tarjeta-2); border: 1px solid var(--borde); }
+.cifra strong { font-family: var(--titulos); font-size: 1.45rem; line-height: 1.1; color: var(--oro-claro); font-variant-numeric: tabular-nums; }
+.cifra span { font-size: 0.82rem; color: var(--texto-2); }
+.cifra small { font-size: 0.74rem; color: var(--texto-3); }
+.resumen-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px 22px; }
+.resumen-lista ol { list-style: none; margin: 0; padding: 0; display: grid; }
+.resumen-lista li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--borde); font-size: 0.86rem; min-width: 0; }
+.resumen-lista li:first-child { border-top: 0; }
+.resumen-lista li .dato, .resumen-lista li .quien { margin-left: auto; color: var(--texto-3); font-size: 0.8rem; }
+.resumen-lista li.mal span:first-child { color: var(--rojo); }
+.resumen-lista li.nuevo .dato { color: var(--verde); }
+.subtitulo { font-family: var(--titulos); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--texto-3); margin: 0 0 8px; }
+
+/* Temporada y evento (Loot) */
+#l-temporada { margin: 12px 0 18px; }
+.salon { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 0.85rem; }
+.salon li { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.salon li strong { text-transform: capitalize; min-width: 90px; }
+.salon-puesto { color: var(--texto-2); }
+.evento-actual { padding: 12px 14px; border-radius: 11px; margin-bottom: 14px; border: 1px solid color-mix(in srgb, var(--oro) 45%, transparent); background: color-mix(in srgb, var(--oro) 8%, transparent); }
+.evento-actual strong { font-family: var(--titulos); font-size: 1.05rem; color: var(--oro-claro); }
+.evento-actual .nota { margin-top: 4px; }
+.eventos { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; font-size: 0.84rem; }
+.eventos li { display: grid; grid-template-columns: 22px auto 1fr; gap: 8px; align-items: baseline; opacity: 0.72; }
+.eventos li.activo { opacity: 1; }
+.eventos li.activo strong { color: var(--oro-claro); }
+@media (max-width: 560px) { .eventos li { grid-template-columns: 22px 1fr; } .eventos li .nota { grid-column: 2; } }
+.previa-lista[hidden] { display: none; }

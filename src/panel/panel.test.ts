@@ -625,3 +625,60 @@ describe('pruebas de suscriptores', () => {
     assert.equal((await post('/api/pruebas/mecenas', { tipo: 'meteorito' })).status, 400);
   });
 });
+
+describe('Inicio: revisión previa y resumen del directo', () => {
+  test('la revisión previa lo mira todo y dice qué falta, sin tocar OBS', async () => {
+    const antes = JSON.stringify(obs);
+    const r = await pedir('GET', '/api/previa');
+    assert.equal(r.status, 200);
+    const por = (nombre: string) => r.body.find((c: any) => c.nombre === nombre);
+    assert.equal(por('Interruptor').nivel, 'ok');
+    assert.equal(por('Conexión').nivel, 'ok');
+    assert.equal(por('Fuentes de efectos').nivel, 'aviso');
+    assert.match(por('Efectos').detalle, /Sin su Action/);
+    assert.equal(JSON.stringify(obs), antes, 'solo lee');
+  });
+
+  test('sin OBS, la revisión lo marca como fallo y no revienta', async () => {
+    obsCaido = true;
+    const r = await pedir('GET', '/api/previa');
+    const obsFila = r.body.find((c: any) => c.grupo === 'OBS');
+    assert.equal(obsFila.nivel, 'fallo');
+  });
+
+  test('el resumen cuenta el último directo: gente, usos, bloqueos y botín', async () => {
+    const { getDb } = await import('../data/db.js');
+    const db = getDb();
+    const hace = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
+    db.prepare('INSERT INTO streams (started_at, ended_at) VALUES (?, ?)').run(hace(90), hace(5));
+    db.prepare("INSERT INTO users (twitch_id, login, display_name, first_seen, last_seen) VALUES ('id-ana', 'ana', 'Ana', ?, ?)").run(hace(60), hace(10));
+    const reg = db.prepare('INSERT INTO interactions (interaction, twitch_id, at, status, detail) VALUES (?, ?, ?, ?, ?)');
+    reg.run('loot-poder', 'id-ana', hace(50), 'sent', null);
+    reg.run('loot-poder', 'id-ana', hace(40), 'sent', null);
+    reg.run('loot-duelo', 'id-ana', hace(30), 'sent', null);
+    reg.run('loot', null, hace(20), 'blocked', 'cofre: ana=raro');
+    reg.run('primer-mensaje', 'id-luis', hace(25), 'blocked', 'hourly-budget: tope');
+    reg.run('loot-poder', 'id-ana', hace(200), 'sent', null);
+    db.prepare("INSERT INTO loot (twitch_id, display_name, objeto, rareza, origen, at) VALUES ('id-ana', 'Ana', 'Filo del Vacío', 'legendario', 'cofre', ?)").run(hace(20));
+
+    const r = await pedir('GET', '/api/resumen');
+    assert.equal(r.status, 200);
+    const s = r.body.resumen;
+    assert.equal(s.minutos, 85);
+    assert.equal(s.personas.total, 1, 'luis no tiene ficha ni botín: solo cuenta quien tiene nombre');
+    assert.deepEqual(s.personas.nuevos, ['Ana']);
+    assert.deepEqual(s.usos[0], { que: '!poder', n: 2 }, 'lo de antes del directo no cuenta');
+    assert.equal(s.duelos, 1);
+    assert.deepEqual(s.bloqueos, [{ motivo: 'Tope de mensajes por hora', n: 1 }, { motivo: 'Otro motivo (mira el registro)', n: 1 }]);
+    assert.equal(s.loot.cofres[0].tipo, 'Del chat (cada 20-30 min)');
+    assert.equal(s.loot.destacados[0].objeto, 'Filo del Vacío');
+    assert.equal(r.body.directos.length, 1);
+  });
+
+  test('el evento de la semana se fija y se quita desde el panel', async () => {
+    assert.equal((await post('/api/loot/evento', { eleccion: 'arena' })).body.actual.id, 'arena');
+    assert.equal((await post('/api/loot/evento', { eleccion: 'ninguno' })).body.actual, null);
+    assert.equal((await post('/api/loot/evento', { eleccion: 'no-existe' })).status, 400);
+    await post('/api/loot/evento', { eleccion: 'auto' });
+  });
+});

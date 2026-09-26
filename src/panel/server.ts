@@ -26,6 +26,10 @@ import * as directo from '../core/directo.js';
 import { handleEvent } from '../core/handler.js';
 import { normalize } from '../core/events.js';
 import * as titulos from './titulos.js';
+import * as previa from './previa.js';
+import * as eventos from '../interactions/loot/eventos.js';
+import * as temporada from '../interactions/loot/temporada.js';
+import * as temporadas from '../data/temporadas.js';
 import * as iaLocal from '../services/ia-local.js';
 import * as arena from '../interactions/loot/arena.js';
 import { MOCHILA_MAX, PROBABILIDADES, tirar } from '../interactions/loot/objetos.js';
@@ -269,7 +273,39 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       mochilas: lootDb.mochilas(10),
       comandos: lootComandos.LISTA,
       mochilaMax: MOCHILA_MAX,
+      evento: eventos.estado(),
+      temporada: {
+        nombre: temporadas.nombre(temporadas.deFecha()),
+        diasQuedan: temporadas.diasQuedan(),
+        ranking: temporada.rankingActual(10),
+        salon: temporadas.salon(12).map((t) => ({ ...t, nombre: temporadas.nombre(t.temporada) })),
+      },
     });
+  }
+
+  if (ruta === 'POST /api/loot/evento') {
+    const { eleccion } = await cuerpo(req);
+    if (!eventos.elegir(eleccion, 'desde el panel')) throw new ErrorHttp(400, 'evento no válido');
+    return json(res, 200, eventos.estado());
+  }
+
+  // El resumen de un directo (sin id, el último) y la lista para elegir.
+  if (ruta === 'GET /api/resumen') {
+    const id = Number(url.searchParams.get('id')) || undefined;
+    return json(res, 200, { directos: datos.directos(), resumen: datos.resumenDirecto(id) });
+  }
+
+  // La revisión de antes de empezar: solo lee, no cambia nada.
+  if (ruta === 'GET /api/previa') {
+    return json(res, 200, await previa.revisar({
+      streamerbot: sb.estado,
+      efectos: async () => {
+        const e = await efectos(sb);
+        return e.conectado ? e.efectos.map((x) => ({ nombre: x.recompensa, montado: x.montado })) : null;
+      },
+      obs,
+      iaLocal: iaLocal.estado,
+    }));
   }
 
   if (ruta === 'POST /api/loot/ajustes') {
@@ -403,6 +439,8 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     const body = await cuerpo(req);
     if (body.volverAlEnv === true) {
       ajustes.volverAlEnv('desde el panel');
+      // Su fila también se ha borrado: vuelve a rotar solo.
+      eventos.olvidar();
       return json(res, 200, { ok: true });
     }
     const setters = {

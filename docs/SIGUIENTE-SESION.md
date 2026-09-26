@@ -53,6 +53,15 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 - **PENDIENTE para los subs**: Streamer.bot 1.0 no tiene botón que mande esos avisos al bot, así que el panel (Loot → «Probar suscriptores») los simula; los mensajes salen al chat de verdad. Con el PRIMER aviso real de cada tipo, mirar logs/raw-events.log: la forma sale de los tipos de la librería (con los canjes no coincidía). Crid4m tiene «Gift Bombs: Ignored»: una bomba llega como UN aviso GiftBomb (ahora escuchado); bomba y sueltos se juntan en una tanda de 5 s sin contar dos veces.
 - Hay que **reiniciar el bot** para tenerlo. 458 tests.
 
+### Añadido el 26-27 sep por la noche (481 tests)
+
+- **Temporadas** (`loot/temporada.ts`, `data/temporadas.ts`): cada mes, un ranking que empieza de cero; las mochilas no se tocan. Puntos: lo que vale el poder de cada objeto conseguido, +5 por duelo ganado y +10 para el MVP de un jefe. Al cambiar de mes, el podio va al Salón de la Fama con premio a la mochila (🥇 legendario, 🥈 épico, 🥉 raro), y el primero se queda para siempre el título «Campeón de <mes>» (por debajo solo de Leyenda Viviente). El canal y la gente `prueba-` no entran en el podio. `!top` es ahora el podio de la temporada; `!top poder` es el de siempre. `!temporada` explica los puntos. Los puntos empiezan a contar desde esta versión: septiembre sale casi vacío.
+- **Evento de la semana** (`loot/eventos.ts`): cambia solo cada lunes entre Fiebre del oro, Semana maldita, Forja al rojo vivo, Coleccionista, Arena y Caza mayor. En panel → Loot se puede fijar uno o quitarlo (se guarda en `ajustes`, clave `evento`). Se anuncia en el chat con el primer mensaje de una persona en cada directo, junto al final de temporada si toca. `!evento` lo dice. En los tests no hay evento (lo quita `loot.reset`).
+- **`!pj [nombre]`**: la ficha en una línea: poder y puesto, temporada, colección, duelos, racha, mochila y mejor pieza. **`!fundir`** es el mismo `!forjar`, que ya existía.
+- **Inicio → Revisión previa**: comprueba el bot, Streamer.bot y sus Actions, OBS, la fuente del juego, las fuentes FX, el plugin Freeze, el Loot y Ollama. Solo lee.
+- **Inicio → Resumen del directo**: duración, quién vino (y quién era nuevo), lo más usado, lo que no salió y por qué, cofres, jefes, duelos y botín destacado. Se puede elegir cualquier directo anterior.
+- Panel de Twitch «Comandos» regenerado (`!pj`, `!top`, `!temporada`, `!evento`): hay que volver a subir **comandos.png**.
+
 ### Precios y límites acordados
 
 | Recompensa | Coste | Espera (s) | Máx. por directo | Máx. por persona |

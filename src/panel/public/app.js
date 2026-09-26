@@ -92,6 +92,7 @@ function duracion(desdeIso) {
 // ---------------------------------------------------------------------------
 
 const cargadores = {
+  directo: () => cargarResumen(),
   efectos: () => { cargarEfectos(); cargarObs(); },
   biblioteca: cargarBiblioteca,
   ajustes: cargarAjustes,
@@ -240,6 +241,111 @@ for (const [id, ruta, cuerpo, texto] of [
 }
 setInterval(() => { if (!$('v-directo').hidden) pintarLootInicio(); }, 5000);
 pintarLootInicio();
+
+// ---------------------------------------------------------------------------
+// Inicio: revisión previa
+// ---------------------------------------------------------------------------
+
+const NIVEL_PREVIA = { ok: '✅', aviso: '⚠️', fallo: '❌' };
+const plural = (n, palabra) => `${n} ${palabra}${n === 1 ? '' : 's'}`;
+
+$('previa-lanzar').addEventListener('click', async (e) => {
+  const b = e.currentTarget;
+  b.disabled = true;
+  b.textContent = 'Comprobando…';
+  try {
+    const lista = await api('/api/previa');
+    const fallos = lista.filter((c) => c.nivel === 'fallo').length;
+    const avisos = lista.filter((c) => c.nivel === 'aviso').length;
+    $('previa-nota').textContent = fallos
+      ? `❌ ${plural(fallos, 'cosa')} por arreglar${avisos ? ` y ${plural(avisos, 'aviso')}` : ''}`
+      : avisos ? `Todo listo, con ${plural(avisos, 'aviso')}` : '✅ Todo listo para empezar';
+    $('previa-nota').className = `nota ${fallos ? 'mal' : avisos ? 'regular' : 'bien'}`;
+    $('previa-lista').hidden = false;
+    let grupo = null;
+    $('previa-lista').replaceChildren(...lista.flatMap((c) => {
+      const cabeza = c.grupo !== grupo ? [h('li', { class: 'previa-grupo' }, (grupo = c.grupo))] : [];
+      return [...cabeza, h('li', { class: `previa-${c.nivel}` },
+        h('span', { class: 'previa-icono', 'aria-hidden': 'true' }, NIVEL_PREVIA[c.nivel]),
+        h('strong', {}, c.nombre),
+        h('span', { class: 'previa-detalle' }, c.detalle))];
+    }));
+  } catch (err) {
+    tostada(err.message === 'no existe' ? 'Reinicia el bot para usar la revisión previa' : err.message, true);
+  } finally {
+    b.disabled = false;
+    b.textContent = 'Comprobar otra vez';
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Inicio: resumen del directo
+// ---------------------------------------------------------------------------
+
+let resumenElegido = '';
+
+function fechaDirecto(iso) {
+  return new Date(iso).toLocaleString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function minutosTexto(min) {
+  return min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')} min` : `${min} min`;
+}
+
+async function cargarResumen() {
+  let d;
+  try {
+    d = await api(`/api/resumen${resumenElegido ? `?id=${resumenElegido}` : ''}`);
+  } catch {
+    $('resumen-cuerpo').replaceChildren(h('p', { class: 'nota' }, 'Reinicia el bot para ver el resumen del directo.'));
+    return;
+  }
+  const sel = $('resumen-directo');
+  if (document.activeElement !== sel) {
+    sel.replaceChildren(...d.directos.map((x) => h('option', { value: String(x.id), selected: String(x.id) === String(d.resumen?.id) },
+      `${fechaDirecto(x.desde)}${x.hasta ? '' : ' · en curso'}`)));
+  }
+  const r = d.resumen;
+  if (!r) {
+    $('resumen-cuerpo').replaceChildren(h('p', { class: 'nota' }, 'Aún no hay ningún directo registrado. Se marca solo cuando OBS empieza a emitir.'));
+    return;
+  }
+
+  const cifra = (valor, etiqueta, sub) => h('div', { class: 'cifra' }, h('strong', {}, String(valor)), h('span', {}, etiqueta), sub ? h('small', {}, sub) : null);
+  const cofres = r.loot.cofres.reduce((n, c) => n + c.n, 0) + r.loot.cofresTesoro;
+  const nuevos = r.personas.nuevos.length;
+  const lista = (titulo, filas, vacio) => h('div', { class: 'resumen-lista' },
+    h('h3', { class: 'subtitulo' }, titulo),
+    filas.length ? h('ol', {}, filas) : h('p', { class: 'nota' }, vacio));
+
+  $('resumen-cuerpo').replaceChildren(
+    h('div', { class: 'cifras' },
+      cifra(minutosTexto(r.minutos), r.enCurso ? 'en curso' : 'de directo', fechaDirecto(r.desde)),
+      cifra(r.personas.total, r.personas.total === 1 ? 'persona' : 'personas', nuevos ? `${nuevos} nueva${nuevos === 1 ? '' : 's'}` : null),
+      cifra(r.mensajes.enviados, 'mensajes del bot', r.mensajes.bloqueados ? `${r.mensajes.bloqueados} sin salir` : 'ninguno bloqueado'),
+      cifra(cofres, cofres === 1 ? 'cofre' : 'cofres', r.loot.cofresTesoro ? `${r.loot.cofresTesoro} del tesoro` : null),
+      cifra(r.jefes.derrotados, r.jefes.derrotados === 1 ? 'jefe derrotado' : 'jefes derrotados',
+        r.jefes.aparecen ? `de ${r.jefes.aparecen}${r.jefes.escapan ? ` · ${r.jefes.escapan} huyeron` : ''}` : null),
+      cifra(r.duelos, r.duelos === 1 ? 'duelo' : 'duelos')),
+    h('div', { class: 'resumen-cols' },
+      lista('Lo más usado', r.usos.map((u) => h('li', {}, h('span', {}, u.que), h('span', { class: 'dato' }, String(u.n)))), 'Nada todavía.'),
+      lista('Lo que no salió', [
+        ...r.bloqueos.map((b) => h('li', { class: 'mal' }, h('span', {}, b.motivo), h('span', { class: 'dato' }, String(b.n)))),
+        ...(r.bloqueosPor.length ? [h('li', { class: 'nota' }, `Sobre todo: ${r.bloqueosPor.map((b) => `${b.que} (${b.n})`).join(', ')}`)] : []),
+      ], '✅ Todo lo que el bot quiso decir, salió.'),
+      lista('Botín destacado', r.loot.destacados.map((b) => h('li', {}, pildoraBotin(b), h('span', { class: 'quien' }, b.quien))), 'Ningún épico ni legendario.'),
+      lista(`Quién vino (${r.personas.total})`, r.personas.nombres.map((n) => {
+        const nuevo = r.personas.nuevos.includes(n);
+        return h('li', { class: nuevo ? 'nuevo' : null }, h('span', {}, n), nuevo ? h('span', { class: 'dato' }, 'nuevo') : null);
+      }), 'Nadie escribió.')));
+}
+
+$('resumen-directo').addEventListener('change', (e) => {
+  resumenElegido = e.target.value;
+  cargarResumen();
+});
+setInterval(() => { if (!$('v-directo').hidden && !resumenElegido) cargarResumen(); }, 60_000);
+cargarResumen();
 
 // ---------------------------------------------------------------------------
 // Ajustes
@@ -707,12 +813,57 @@ const RAREZA_LOOT = {
   epico: { clase: 'r-epico', nombre: 'Épico' },
   legendario: { clase: 'r-legendario', nombre: 'Legendario' },
 };
-const ORIGEN = { cofre: 'cofre', oro: 'Cofre del tesoro', panel: 'desde el panel', regalo: 'regalo', jefe: 'jefe de raid', fidelidad: 'fidelidad', suscriptor: 'suscriptor', raid: 'incursión', bits: 'bits', forja: 'forjado', guerra: 'cofre de guerra', maldicion: 'Maldición' };
+const ORIGEN = { cofre: 'cofre', oro: 'Cofre del tesoro', panel: 'desde el panel', regalo: 'regalo', jefe: 'jefe de raid', fidelidad: 'fidelidad', suscriptor: 'suscriptor', raid: 'incursión', bits: 'bits', forja: 'forjado', guerra: 'cofre de guerra', maldicion: 'Maldición', temporada: 'premio de temporada' };
 
 function mmss(seg) {
   const m = Math.floor(seg / 60);
   return m >= 1 ? `${m} min ${String(seg % 60).padStart(2, '0')} s` : `${seg} s`;
 }
+
+const MEDALLA = ['🥇', '🥈', '🥉'];
+
+function pintarTemporada(d) {
+  const t = d.temporada;
+  if (t) {
+    $('l-temporada-titulo').textContent = `🏆 Temporada de ${t.nombre}`;
+    $('l-temporada-quedan').textContent = t.diasQuedan === 1 ? 'Último día' : `Quedan ${t.diasQuedan} días`;
+    $('l-temporada').replaceChildren(...(t.ranking.length
+      ? t.ranking.map((p, i) => h('li', {},
+        h('span', { class: 'puesto' }, String(i + 1)),
+        h('div', { class: 'mochila-quien' }, h('strong', {}, p.display_name), h('span', { class: 'dato' }, `${p.puntos} puntos`))))
+      : [h('li', { class: 'vacio-lista' }, 'Nadie tiene puntos este mes todavía.')]));
+    $('l-salon').replaceChildren(...(t.salon.length
+      ? t.salon.map((s) => h('li', {}, h('strong', {}, s.nombre),
+        s.podio.map((p, i) => h('span', { class: 'salon-puesto' }, `${MEDALLA[i]} ${p.display_name} (${p.puntos})`))))
+      : [h('li', { class: 'vacio-lista' }, 'Vacío: la primera temporada se cierra al acabar el mes.')]));
+  }
+
+  const e = d.evento;
+  if (!e) return;
+  $('l-evento-cambia').textContent = e.eleccion === 'auto'
+    ? (e.cambiaEnDias === 1 ? 'Cambia mañana' : `Cambia en ${e.cambiaEnDias} días`)
+    : 'Fijado por ti';
+  $('l-evento-actual').replaceChildren(e.actual
+    ? h('div', {}, h('strong', {}, `${e.actual.emoji} ${e.actual.nombre}`), h('p', { class: 'nota' }, `Esta semana ${e.actual.texto}.`))
+    : h('p', { class: 'nota' }, 'Sin evento: el Loot con sus reglas de siempre.'));
+  const sel = $('l-evento-eleccion');
+  if (document.activeElement !== sel) {
+    sel.replaceChildren(
+      h('option', { value: 'auto', selected: e.eleccion === 'auto' }, `🔄 Rotar solo (esta semana: ${e.rotacion.nombre})`),
+      h('option', { value: 'ninguno', selected: e.eleccion === 'ninguno' }, '⏸️ Ninguno'),
+      ...e.eventos.map((x) => h('option', { value: x.id, selected: e.eleccion === x.id }, `${x.emoji} ${x.nombre}`)));
+  }
+  $('l-eventos').replaceChildren(...e.eventos.map((x) => h('li', { class: e.actual?.id === x.id ? 'activo' : null },
+    h('span', { 'aria-hidden': 'true' }, x.emoji), h('strong', {}, x.nombre), h('span', { class: 'nota' }, x.texto))));
+}
+
+$('l-evento-eleccion').addEventListener('change', async (ev) => {
+  try {
+    await api('/api/loot/evento', { eleccion: ev.target.value });
+    tostada('Evento de la semana cambiado');
+    cargarLoot();
+  } catch (err) { tostada(err.message, true); }
+});
 
 function pildoraBotin(b) {
   const r = RAREZA_LOOT[b.rareza];
@@ -789,6 +940,7 @@ async function cargarLoot() {
     : [h('li', { class: 'vacio-lista' }, 'Todavía no ha caído nada. El primer cofre llegará en el próximo directo.')]));
 
   $('l-comandos').replaceChildren(...d.comandos.map(([cmd, que]) => h('li', {}, chipCopiar(cmd, cmd), h('span', {}, que))));
+  pintarTemporada(d);
 
   $('l-mochilas').replaceChildren(...(d.mochilas.length
     ? d.mochilas.map((m, i) => h('li', {},

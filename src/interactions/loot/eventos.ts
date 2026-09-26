@@ -65,6 +65,11 @@ export function elegir(v: unknown, quien: string): boolean {
   return true;
 }
 
+/** Tras «Volver a lo del .env» (que borra su fila): otra vez rota solo. */
+export function olvidar(): void {
+  eleccion = 'auto';
+}
+
 /** El lunes (hora local) de la semana de una fecha. */
 function lunes(fecha: Date): Date {
   const d = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
