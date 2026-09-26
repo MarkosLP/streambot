@@ -47,9 +47,9 @@
   .esquina.c { left: 0; bottom: 0; transform: scaleY(-1); } .esquina.d { right: 0; bottom: 0; transform: scale(-1, -1); }
 
   /* ---------- Cabecera: medallón y pergamino ---------- */
-  .cab { position: relative; height: 78px; margin-bottom: 8px; }
+  .cab { position: relative; height: 62px; margin-bottom: 6px; }
   .cinta {
-    position: absolute; left: 30px; right: 0; top: 14px; height: 50px; padding-left: 62px;
+    position: absolute; left: 24px; right: 0; top: 10px; height: 42px; padding-left: 50px;
     display: flex; flex-direction: column; justify-content: center;
     background: linear-gradient(180deg, #5a3e14, #2e1f07 60%, #402c0c);
     clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 50%, 100% 100%, 0 100%);
@@ -57,82 +57,83 @@
   }
   .cinta::before { content: ""; position: absolute; inset: 3px 16px 3px 3px; border-top: 1px solid rgba(245, 197, 66, .45); border-bottom: 1px solid rgba(245, 197, 66, .45); }
   .cinta h2 {
-    margin: 0; font-family: "Cinzel", Georgia, serif; font-weight: 900; font-size: 19px; letter-spacing: .8px; line-height: 1;
+    margin: 0; font-family: "Cinzel", Georgia, serif; font-weight: 900; font-size: 17px; letter-spacing: .6px; line-height: 1;
     text-transform: uppercase; white-space: nowrap;
     background: linear-gradient(180deg, var(--oro-claro) 0%, var(--oro) 50%, #c47a12 100%);
     -webkit-background-clip: text; background-clip: text; color: transparent;
     filter: drop-shadow(0 2px 0 #000) drop-shadow(0 0 10px rgba(245, 197, 66, .45));
   }
-  .cinta small { margin-top: 3px; font-size: 11px; font-weight: 600; letter-spacing: .4px; color: #e9d8a8; white-space: nowrap; }
+  .cinta small { margin-top: 2px; font-size: 10.5px; font-weight: 600; letter-spacing: .4px; color: #e9d8a8; white-space: nowrap; }
   .medallon {
-    position: absolute; left: 0; top: 0; width: 78px; height: 78px; z-index: 1;
+    position: absolute; left: 0; top: 0; width: 62px; height: 62px; z-index: 1;
     display: grid; place-items: center; border-radius: 50%;
     background: radial-gradient(circle at 50% 40%, #3b2a52, #150d20 70%);
     box-shadow: 0 0 0 4px var(--oro-osc), 0 0 0 5px #000, 0 0 0 7px rgba(245, 197, 66, .5), 0 0 22px rgba(245, 197, 66, .5), 0 4px 10px #000;
   }
-  .medallon img { width: 50px; height: 50px; filter: drop-shadow(0 2px 0 #0008); }
-  .medallon::after { content: ""; position: absolute; inset: -11px; border-radius: 50%; border: 1.5px dashed rgba(245, 197, 66, .6); }
+  .medallon img { width: 40px; height: 40px; filter: drop-shadow(0 2px 0 #0008); }
+  .medallon::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 1.5px dashed rgba(245, 197, 66, .6); }
 
   /* ---------- Separadores con rombo ---------- */
   .seccion {
-    display: flex; align-items: center; gap: 8px; margin: 8px 2px 4px;
+    display: flex; align-items: center; gap: 8px; margin: 6px 2px 3px;
     font-family: "Cinzel", Georgia, serif; font-weight: 700; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--oro);
   }
   .seccion::before, .seccion::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(245, 197, 66, .6), transparent); }
   .seccion span::before, .seccion span::after { content: "◆"; font-size: 7px; margin: 0 6px; vertical-align: 2px; }
 
   /* ---------- Comandos ---------- */
-  .cmd { display: flex; align-items: center; gap: 8px; padding: 4px 4px; }
-  .cmd + .cmd { border-top: 1px solid rgba(255, 255, 255, .06); }
+  .cmds { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
+  .cmd { display: grid; gap: 2px; justify-items: start; padding: 4px 2px 5px; border-top: 1px solid rgba(255, 255, 255, .06); }
+  .cmds .cmd:nth-child(-n+2) { border-top: 0; }
   .cmd code {
     flex: none; min-width: 0;
-    font-family: Consolas, "Cascadia Mono", monospace; font-size: 12.5px; font-weight: 700;
+    font-family: Consolas, "Cascadia Mono", monospace; font-size: 12px; font-weight: 700;
     color: #2b1d08; background: linear-gradient(180deg, #fff1b8, var(--oro) 55%, #d69a1e);
     border: 1.5px solid var(--borde); border-radius: 4px; padding: 1px 6px;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), 0 1px 0 #000, 0 0 8px rgba(245, 197, 66, .25);
   }
   .cmd code i { font-style: normal; font-weight: 400; opacity: .65; }
-  .cmd span { font-size: 12.3px; line-height: 1.25; }
-  .cmd em { font-style: normal; color: var(--tenue); font-size: 11px; }
+  .cmd span { font-size: 11px; line-height: 1.2; color: #ddd3ea; }
+  .cmd em { font-style: normal; color: var(--tenue); font-size: 10px; }
 
   /* ---------- Recompensas ---------- */
   .rec {
-    display: grid; grid-template-columns: 42px 1fr auto; gap: 9px; align-items: center;
-    margin: 6px 0; padding: 6px 8px 6px 6px; border-radius: 8px;
+    display: grid; grid-template-columns: 32px 1fr auto; gap: 8px; align-items: center;
+    margin: 5px 0; padding: 4px 8px 4px 5px; border-radius: 8px;
     background: linear-gradient(90deg, color-mix(in srgb, var(--r) 18%, transparent), rgba(0, 0, 0, .25) 70%);
     border: 1px solid color-mix(in srgb, var(--r) 55%, transparent); border-left: 3px solid var(--r);
     box-shadow: inset 0 0 12px color-mix(in srgb, var(--r) 12%, transparent);
   }
   .rec.comun { --r: var(--comun); } .rec.raro { --r: var(--raro); } .rec.epico { --r: var(--epico); } .rec.legendario { --r: var(--legendario); }
-  .rec > img { width: 42px; height: 42px; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--r) 60%, transparent)); }
-  .rec b { display: block; font-size: 13.5px; line-height: 1.15; }
-  .rec span { display: block; font-size: 11px; color: var(--tenue); line-height: 1.25; margin-top: 1px; }
-  .precio { display: flex; align-items: center; gap: 4px; font-weight: 700; font-size: 14px; color: var(--oro); text-shadow: 0 1px 0 #000, 0 0 8px rgba(245, 197, 66, .4); }
-  .precio img { width: 17px; height: 17px; }
+  .rec > img { width: 32px; height: 32px; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--r) 60%, transparent)); }
+  .rec b { display: block; font-size: 12.5px; line-height: 1.15; }
+  .rec span { display: block; font-size: 10.5px; color: var(--tenue); line-height: 1.2; margin-top: 1px; white-space: nowrap; }
+  .precio { display: flex; align-items: center; gap: 3px; font-weight: 700; font-size: 13px; color: var(--oro); text-shadow: 0 1px 0 #000, 0 0 8px rgba(245, 197, 66, .4); }
+  .precio img { width: 15px; height: 15px; }
 
   /* ---------- Loot ---------- */
-  .texto { font-size: 12.5px; line-height: 1.45; margin: 4px 2px 8px; }
+  .texto { font-size: 11.5px; line-height: 1.35; margin: 2px 2px 6px; }
   .texto b { color: var(--oro); }
-  .rarezas { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0 4px; }
+  .rarezas { display: grid; grid-template-columns: repeat(4, auto); gap: 4px; margin: 4px 0 2px; }
   .rareza {
-    display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700;
-    padding: 5px 8px; border-radius: 6px; background: linear-gradient(90deg, color-mix(in srgb, currentColor 16%, transparent), rgba(0,0,0,.35));
+    display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 10px; font-weight: 700;
+    padding: 3px 4px; border-radius: 5px; background: linear-gradient(90deg, color-mix(in srgb, currentColor 16%, transparent), rgba(0,0,0,.35));
     border: 1.5px solid currentColor; box-shadow: 0 0 10px color-mix(in srgb, currentColor 30%, transparent);
   }
-  .rareza::before { content: ""; width: 9px; height: 9px; transform: rotate(45deg); background: currentColor; box-shadow: 0 0 8px currentColor; }
+  .rareza::before { content: ""; width: 6px; height: 6px; transform: rotate(45deg); background: currentColor; box-shadow: 0 0 8px currentColor; }
   .comun-t { color: var(--comun); } .raro-t { color: var(--raro); } .epico-t { color: var(--epico); } .legendario-t { color: var(--legendario); }
-  .extra { display: grid; grid-template-columns: 26px 1fr; gap: 6px; align-items: start; margin: 7px 2px; font-size: 12px; line-height: 1.35; }
-  .extra .ico { font-size: 18px; text-align: center; line-height: 1.1; }
+  .extra { display: grid; grid-template-columns: 20px 1fr; gap: 5px; align-items: start; margin: 4px 2px; font-size: 11px; line-height: 1.3; }
+  .extra .ico { font-size: 14px; text-align: center; line-height: 1.1; }
   .extra b { color: var(--oro); }
 
   /* ---------- Jefes ---------- */
-  .jefes { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 8px; margin-top: 4px; }
-  .jefe { display: grid; grid-template-columns: 50px 1fr; gap: 6px; align-items: center; padding: 4px 5px; border-radius: 8px; background: rgba(0, 0, 0, .28); border: 1px solid rgba(255, 255, 255, .07); }
-  .jefe svg { width: 50px; height: 50px; filter: drop-shadow(0 0 6px var(--g)); }
-  .jefe b { display: block; font-family: "Cinzel", Georgia, serif; font-size: 10.5px; line-height: 1.15; color: #fff; }
-  .jefe span { display: block; margin-top: 2px; font-size: 10px; line-height: 1.2; color: var(--g2); font-weight: 600; }
+  .jefes { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 6px; margin-top: 2px; }
+  .jefe { display: grid; grid-template-columns: 40px 1fr; gap: 5px; align-items: center; padding: 3px 4px; border-radius: 8px; background: rgba(0, 0, 0, .28); border: 1px solid rgba(255, 255, 255, .07); }
+  .jefe svg { width: 40px; height: 40px; filter: drop-shadow(0 0 6px var(--g)); }
+  .jefe b { display: block; font-family: "Cinzel", Georgia, serif; font-size: 10px; line-height: 1.15; color: #fff; }
+  .jefe span { display: block; margin-top: 1px; font-size: 9.5px; line-height: 1.2; color: var(--g2); font-weight: 600; }
 
-  .pie { position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; font-size: 11.5px; color: var(--tenue); }
+  .pie { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; font-size: 11px; color: var(--tenue); }
   .pie code { font-family: Consolas, monospace; font-weight: 700; color: var(--oro); }
 </style>
 </head>
@@ -149,65 +150,69 @@
   </svg>
 </template>
 
-<!-- 1. COMANDOS · alto 640 -->
-<section class="panel" id="comandos" style="--alto: 640px">
+<!-- 1. COMANDOS · alto 490 -->
+<section class="panel" id="comandos" style="--alto: 490px">
   <div class="cab">
     <div class="cinta"><h2>Comandos</h2><small>Escríbelos en el chat</small></div>
     <div class="medallon"><img src="../../biblioteca/imagenes/twitch/grito-112.png" alt=""></div>
   </div>
   <div class="seccion"><span>Loot</span></div>
-  <div class="cmd"><code>!loot</code><span>Cómo funciona el Loot</span></div>
-  <div class="cmd"><code>!inventario</code><span>Tu mochila (20 huecos)</span></div>
-  <div class="cmd"><code>!pj</code><span>Tu ficha: poder, puesto y temporada</span></div>
-  <div class="cmd"><code>!top</code><span>El podio de la temporada del mes</span></div>
-  <div class="cmd"><code>!temporada</code><span>Tus puntos y los premios del mes</span></div>
-  <div class="cmd"><code>!evento</code><span>El evento de la semana</span></div>
-  <div class="cmd"><code>!duelo <i>nombre</i></code><span>Reta a alguien del chat</span></div>
-  <div class="cmd"><code>!dar</code><span>Regala un objeto <em>(!dar ana 2)</em></span></div>
-  <div class="cmd"><code>!usar</code><span>Usa un objeto mágico en el directo</span></div>
-  <div class="cmd"><code>!atacar</code><span>Pega al jefe cuando aparezca</span></div>
-  <div class="cmd"><code>!forjar</code><span>3 iguales → 1 de más rareza <em>(o !fundir)</em></span></div>
-  <div class="cmd"><code>!presumir</code><span>Tu mejor pieza, en pantalla</span></div>
-  <div class="cmd"><code>!coleccion</code><span>Lo que llevas y tus títulos</span></div>
-  <div class="cmd"><code>!purificar</code><span>Limpia un objeto maldito <em>(con Poción)</em></span></div>
+  <div class="cmds">
+    <div class="cmd"><code>!loot</code><span>Cómo funciona</span></div>
+    <div class="cmd"><code>!pj</code><span>Tu ficha de personaje</span></div>
+    <div class="cmd"><code>!inventario</code><span>Tu mochila</span></div>
+    <div class="cmd"><code>!top</code><span>Podio del mes</span></div>
+    <div class="cmd"><code>!temporada</code><span>Tus puntos y premios</span></div>
+    <div class="cmd"><code>!evento</code><span>Evento de la semana</span></div>
+    <div class="cmd"><code>!duelo <i>nombre</i></code><span>Reta a alguien</span></div>
+    <div class="cmd"><code>!dar <i>ana 2</i></code><span>Regala un objeto</span></div>
+    <div class="cmd"><code>!usar</code><span>Usa un objeto mágico</span></div>
+    <div class="cmd"><code>!atacar</code><span>Pega al jefe</span></div>
+    <div class="cmd"><code>!forjar</code><span>3 iguales → 1 mejor</span></div>
+    <div class="cmd"><code>!presumir</code><span>Tu mejor pieza en pantalla</span></div>
+    <div class="cmd"><code>!coleccion</code><span>Colección y títulos</span></div>
+    <div class="cmd"><code>!purificar</code><span>Limpia un maldito <em>(Poción)</em></span></div>
+  </div>
   <div class="seccion"><span>Con el bot</span></div>
-  <div class="cmd"><code>!pregunta <i>texto</i></code><span>Pregúntale a Crid4m AI</span></div>
-  <div class="cmd"><code>!incomoda</code><span>Una pregunta incómoda <em>(subs)</em></span></div>
+  <div class="cmds">
+    <div class="cmd"><code>!pregunta <i>…</i></code><span>Pregúntale a la IA</span></div>
+    <div class="cmd"><code>!incomoda</code><span>Pregunta incómoda <em>(subs)</em></span></div>
+  </div>
 </section>
 
-<!-- 2. RECOMPENSAS · alto 520 -->
-<section class="panel" id="recompensas" style="--alto: 520px">
+<!-- 2. RECOMPENSAS · alto 420 -->
+<section class="panel" id="recompensas" style="--alto: 420px">
   <div class="cab">
     <div class="cinta"><h2>Recompensas</h2><small>Con Oros, los puntos del canal</small></div>
     <div class="medallon"><img src="../../biblioteca/imagenes/twitch/oro-moneda-112.png" alt=""></div>
   </div>
   <div class="rec comun"><img src="../../biblioteca/imagenes/twitch/pocion-112.png" alt="">
-    <div><b>Poción de vida</b><span>«¡Bebe agua!» en pantalla y te deja usar !purificar</span></div>
+    <div><b>Poción de vida</b><span>«¡Bebe agua!» y !purificar</span></div>
     <div class="precio"><img src="../../biblioteca/imagenes/twitch/oro-moneda-56.png" alt="">500</div></div>
   <div class="rec comun"><img src="../../biblioteca/imagenes/twitch/grito-112.png" alt="">
-    <div><b>Grito de guerra</b><span>Suena en el directo y cae un cofre de armas</span></div>
+    <div><b>Grito de guerra</b><span>Cae un cofre de armas</span></div>
     <div class="precio"><img src="../../biblioteca/imagenes/twitch/oro-moneda-56.png" alt="">750</div></div>
   <div class="rec raro"><img src="../../biblioteca/imagenes/twitch/cofre-112.png" alt="">
-    <div><b>Cofre del tesoro</b><span>Abres un cofre con mejor suerte, al momento</span></div>
+    <div><b>Cofre del tesoro</b><span>Mejor suerte, al momento</span></div>
     <div class="precio"><img src="../../biblioteca/imagenes/twitch/oro-moneda-56.png" alt="">1.500</div></div>
   <div class="rec epico"><img src="../../biblioteca/imagenes/twitch/maldicion-112.png" alt="">
-    <div><b>Maldición</b><span>Pantalla en blanco y negro y un objeto maldito</span></div>
+    <div><b>Maldición</b><span>Blanco y negro + objeto maldito</span></div>
     <div class="precio"><img src="../../biblioteca/imagenes/twitch/oro-moneda-56.png" alt="">2.500</div></div>
   <div class="rec epico"><img src="../../biblioteca/imagenes/twitch/terremoto-112.png" alt="">
-    <div><b>Terremoto</b><span>La imagen del juego tiembla 5 segundos</span></div>
+    <div><b>Terremoto</b><span>El juego tiembla 5 s</span></div>
     <div class="precio"><img src="../../biblioteca/imagenes/twitch/oro-moneda-56.png" alt="">3.000</div></div>
   <div class="rec legendario"><img src="../../biblioteca/imagenes/twitch/lag-112.png" alt="">
-    <div><b>Lag</b><span>La imagen se congela 5 segundos</span></div>
+    <div><b>Lag</b><span>La imagen se congela 5 s</span></div>
     <div class="precio"><img src="../../biblioteca/imagenes/twitch/oro-moneda-56.png" alt="">5.000</div></div>
 </section>
 
-<!-- 3. LOOT · alto 680 -->
-<section class="panel" id="loot" style="--alto: 680px">
+<!-- 3. LOOT · alto 425 -->
+<section class="panel" id="loot" style="--alto: 425px">
   <div class="cab">
     <div class="cinta"><h2>Loot del chat</h2><small>Botín por estar en el directo</small></div>
     <div class="medallon"><img src="../../biblioteca/imagenes/twitch/cofre-112.png" alt=""></div>
   </div>
-  <p class="texto">Cada <b>20-30 minutos</b> cae un cofre para quien haya escrito en el chat hace poco. Lo que sale va a tu mochila y aparece en pantalla.</p>
+  <p class="texto">Cada <b>20-30 min</b> cae un cofre para quien haya escrito hace poco. Va a tu mochila y sale en pantalla.</p>
   <div class="rarezas">
     <div class="rareza comun-t">Común</div>
     <div class="rareza raro-t">Raro</div>
@@ -215,20 +220,21 @@
     <div class="rareza legendario-t">Legendario</div>
   </div>
   <div class="seccion"><span>Y además</span></div>
-  <div class="extra"><span class="ico">🔥</span><span><b>3 directos seguidos</b>: cofre de fidelidad en cada directo.</span></div>
-  <div class="extra"><span class="ico">🐉</span><span><b>Jefes de raid</b>: todos a !atacar. Botín para quien pegue; el mejor, Cofre del tesoro.</span></div>
-  <div class="extra"><span class="ico">🏆</span><span><b>Temporada del mes</b>: el podio gana premio y título. Cada lunes, un evento nuevo.</span></div>
-  <div class="extra"><span class="ico">⚔️</span><span><b>Duelos, forja y colecciones</b>: sube tu poder y gana títulos.</span></div>
+  <div class="extra"><span class="ico">🔥</span><span><b>3 directos seguidos</b>: cofre de fidelidad.</span></div>
+  <div class="extra"><span class="ico">🐉</span><span><b>Jefes</b>: todos a !atacar; botín para quien pegue.</span></div>
+  <div class="extra"><span class="ico">🏆</span><span><b>Temporada</b>: cada mes, podio con premio y título.</span></div>
+  <div class="extra"><span class="ico">📅</span><span><b>Cada lunes</b>, un evento que cambia las reglas.</span></div>
+  <div class="extra"><span class="ico">⚔️</span><span><b>Duelos, forja y colecciones</b> con título.</span></div>
   <div class="seccion"><span>Subs, bits y raids</span></div>
-  <div class="extra"><span class="ico">💜</span><span><b>Sub o resub</b>: cofre de suscriptor (legendario cada 12 meses), mochila de 30 y colección exclusiva.</span></div>
-  <div class="extra"><span class="ico">🎁</span><span><b>Regalar subs</b>: cofre para quien la recibe y Cofre del tesoro para ti. Con 5 o más, ¡lluvia de cofres para todo el chat!</span></div>
-  <div class="extra"><span class="ico">💎</span><span><b>Bits</b>: cada 100, un golpe al jefe. Sin jefe, desde 300 cae un cofre.</span></div>
-  <div class="extra"><span class="ico">🛡️</span><span><b>Raid</b>: cofre para quien la trae. Con 3 o más, aparece un jefe.</span></div>
+  <div class="extra"><span class="ico">💜</span><span><b>Sub</b>: cofre (legendario al año) y mochila de 30.</span></div>
+  <div class="extra"><span class="ico">🎁</span><span><b>Regalar subs</b>: cofre para ambos; 5+, ¡lluvia de cofres!</span></div>
+  <div class="extra"><span class="ico">💎</span><span><b>Bits</b>: 100 = un golpe al jefe; sin jefe, 300 = cofre.</span></div>
+  <div class="extra"><span class="ico">🛡️</span><span><b>Raid</b>: cofre para quien la trae; con 3+, un jefe.</span></div>
   <div class="pie">Todos los comandos: <code>!loot</code></div>
 </section>
 
-<!-- 4. JEFES · alto 485 -->
-<section class="panel" id="jefes" style="--alto: 485px">
+<!-- 4. JEFES · alto 395 -->
+<section class="panel" id="jefes" style="--alto: 395px">
   <div class="cab">
     <div class="cinta"><h2>Jefes de raid</h2><small>Aparecen en el directo: ¡!atacar!</small></div>
     <div class="medallon"><img src="../../biblioteca/imagenes/icono-maldicion.png" alt=""></div>
