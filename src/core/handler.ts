@@ -140,7 +140,10 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   if (!esBot(viewer.login)) loot.recordarVisto(viewer);
   // La insignia de suscriptor: así el bot sabe quién lo es aunque se
   // suscribiera antes de que llegara ningún aviso (S4, S5).
-  if (viewer.id && !esBot(viewer.login)) suscriptores.desdeChat(viewer.id, viewer.isSubscriber);
+  // El canal no: Twitch lo marca como «suscrito» a sí mismo, y saldría con 💜.
+  if (viewer.id && !esBot(viewer.login) && viewer.login !== config.broadcasterLogin) {
+    suscriptores.desdeChat(viewer.id, viewer.isSubscriber);
+  }
 
   // Los comandos de control se atienden antes que nada: tienen que funcionar
   // aunque el resto del sistema esté apagado.

@@ -236,6 +236,12 @@ describe('💜 S4-S6 · marca, mochila y colección de mecenas', () => {
     assert.equal(suscriptores.esSub('id-ana'), false);
   });
 
+  test('el canal no cuenta como sub aunque Twitch lo marque así', async () => {
+    const { config } = await import('../../config.js');
+    await handleEvent(msg(config.broadcasterLogin, 'hola', true));
+    assert.equal(suscriptores.esSub(`id-${config.broadcasterLogin}`), false);
+  });
+
   test('mochila de 30 para los subs, de 20 para el resto', () => {
     suscriptores.apuntar('id-ana', 1);
     for (let i = 0; i < 30; i++) lootDb.dar('id-ana', 'ana', { objeto: OBJETOS.comun[i % OBJETOS.comun.length]!, rareza: 'comun' }, 'cofre');
