@@ -86,6 +86,25 @@
   .vineta { position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 42%, transparent 45%, rgba(0, 0, 0, .78) 100%); }
   .sombra-baja { position: absolute; left: 0; right: 0; bottom: 0; height: 460px; background: linear-gradient(180deg, transparent, rgba(4, 4, 7, .85)); }
 
+  /* Con un fondo de verdad (generado con IA en el panel), el paisaje dibujado
+     se retira y quedan solo la luz, la niebla, la ceniza y el grano encima. */
+  .foto { position: absolute; inset: 0; background: center / cover no-repeat; opacity: 0; }
+  body.con-foto .foto { opacity: 1; animation: deriva-foto 70s ease-in-out infinite alternate; }
+  @keyframes deriva-foto { from { transform: translate(0, 0); } to { transform: translate(-1.2%, -.8%); } }
+  body.con-foto .cielo, body.con-foto .estrellas, body.con-foto .halo, body.con-foto .rayos, body.con-foto .luna, body.con-foto #paisaje { display: none; }
+  .niebla.suelta { display: none; }
+  body.con-foto .niebla.suelta { display: block; }
+  .velo { position: absolute; inset: 0; opacity: 0; transition: opacity 1.6s ease;
+    background: radial-gradient(60% 46% at 50% 34%, rgba(4, 4, 8, .78), transparent 80%); }
+  /* El velo se ajusta a lo clara que sea la foto (--velo, lo calcula el script). */
+  body.con-foto .velo { opacity: var(--velo, 1); }
+  body.con-foto .sobre, body.con-foto .lema, body.con-foto .cifra span, body.con-foto .dato .sub, body.con-foto .dato .etq,
+  body.con-foto .rollo h4, body.con-foto .rollo small { text-shadow: 0 1px 3px rgba(0, 0, 0, .9), 0 2px 14px rgba(0, 0, 0, .8); }
+  body.con-foto.t-charla .velo { opacity: 0; }
+  body.con-foto .vineta { background: radial-gradient(130% 100% at 50% 42%, transparent 60%, rgba(0, 0, 0, .42) 100%); }
+  body.con-foto .sombra-baja { height: 340px; background: linear-gradient(180deg, transparent, rgba(4, 4, 7, .78)); }
+  body.con-foto .foto { filter: saturate(1.08) contrast(1.04); }
+
   /* En Charla el mundo es solo ambiente: más oscuro, y con el hueco de la cámara. */
   .t-charla #mundo {
     -webkit-mask: linear-gradient(#000 0 0) 0 0 / 100% 100% no-repeat, linear-gradient(#000 0 0) 48px 48px / 1280px 720px no-repeat;
@@ -196,6 +215,7 @@
 
 <div id="mundo">
   <div class="camara">
+    <div class="foto" id="foto"></div>
     <div class="cielo"></div>
     <svg class="estrellas" id="estrellas" viewBox="0 0 2000 600" preserveAspectRatio="none" aria-hidden="true"></svg>
     <div class="halo"></div>
@@ -203,6 +223,9 @@
     <div class="luna"></div>
     <div id="paisaje"></div>
   </div>
+  <div class="niebla suelta" style="--y:700px;--alto:300px;--o:.22;--t:140s"></div>
+  <div class="niebla suelta" style="--y:860px;--alto:260px;--o:.18;--t:100s"></div>
+  <div class="velo"></div>
   <canvas id="ceniza" width="1920" height="1080"></canvas>
   <div class="sombra-baja"></div>
   <div class="vineta"></div>
@@ -457,6 +480,7 @@ function pintar(d) {
   ultimo = d;
   desfase = new Date(d.ahora).getTime() - Date.now();
   const cfg = d.config;
+  pintarFoto(q.get('foto') || cfg.fondos?.[TIPO] || '');
 
   if (TIPO === 'inicio' || TIPO === 'pausa') {
     $('v-portada').hidden = false;
@@ -486,6 +510,47 @@ function pintar(d) {
   if (TIPO !== 'final' && (!antes || JSON.stringify([antes.evento, antes.temporada, antes.jefe]) !== JSON.stringify([d.evento, d.temporada, d.jefe]))) pintarFranja(d);
   if (TIPO !== 'final') avisos(d.botin);
   primera = false;
+}
+
+let fotoPuesta = null;
+/** El fondo de la escena: solo rutas de biblioteca/imagenes/fondos. */
+function pintarFoto(ruta) {
+  if (!/^imagenes\/fondos\/[\w.-]+\.(png|jpe?g|webp)$/i.test(ruta)) ruta = '';
+  if (ruta === fotoPuesta) return;
+  fotoPuesta = ruta;
+  const el = $('foto');
+  if (!ruta) { document.body.classList.remove('con-foto'); return; }
+  // Se carga antes de enseñarla: así entra con un fundido, sin parpadeo.
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    if (fotoPuesta !== ruta) return;
+    el.style.backgroundImage = `url("../${ruta}")`;
+    document.body.classList.add('con-foto');
+    document.body.style.setProperty('--velo', String(veloPara(img)));
+  };
+  img.src = `../${ruta}`;
+}
+
+/**
+ * Cuánto velo hace falta detrás del título: mide lo clara que es la zona
+ * central de arriba de la foto. Una noche oscura casi no necesita; un
+ * amanecer, bastante. Si no se puede leer la imagen, un término medio.
+ */
+function veloPara(img) {
+  try {
+    const cv = document.createElement('canvas');
+    cv.width = 64; cv.height = 36;
+    const cx = cv.getContext('2d', { willReadFrequently: true });
+    cx.drawImage(img, 0, 0, 64, 36);
+    const d = cx.getImageData(16, 4, 32, 20).data;
+    let luz = 0;
+    for (let i = 0; i < d.length; i += 4) luz += (d[i] * .3 + d[i + 1] * .59 + d[i + 2] * .11);
+    luz /= (d.length / 4) * 255;
+    return Math.min(1, Math.max(.25, (luz - .08) * 2.4)).toFixed(2);
+  } catch {
+    return .6;
+  }
 }
 
 function pintarCuenta() {

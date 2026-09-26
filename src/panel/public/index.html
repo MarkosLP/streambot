@@ -400,6 +400,12 @@
             <div class="avatar-mandos">
               <p class="nota">Para cuando apagues la cámara. Enciéndelo aquí y aparece <b>en la escena Charla</b> (en el hueco de la cámara) y <b>donde hayas añadido el avatar</b> (la escena del juego, por ejemplo). Apagado, es transparente.</p>
               <p class="nota">Respira, parpadea, mira al chat cuando alguien escribe, se alegra con el botín (y se sorprende con un legendario) y se duerme si el chat calla 90 s.</p>
+              <label class="campo"><span>Personaje</span><select id="e-avatar-personaje"></select></label>
+              <details class="avatar-crear">
+                <summary>🎨 Crear otro personaje con IA</summary>
+                <label class="campo"><span>Cómo es (en castellano)</span><textarea id="e-avatar-desc" rows="3" maxlength="600" spellcheck="false"></textarea></label>
+                <div class="escena-botones"><button class="boton" type="button" id="e-avatar-generar">🎨 Crear personaje</button><span class="nota">3 imágenes · ~1 min · unos céntimos de tu OpenAI</span></div>
+              </details>
               <form class="escenas-avatar" id="e-avatar-form">
                 <label class="campo"><span>Su bocadillo en Charla</span><input type="text" id="e-avatar-dice" maxlength="90" autocomplete="off"></label>
                 <button class="boton" type="submit">Guardar</button>

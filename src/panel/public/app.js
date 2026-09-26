@@ -1478,6 +1478,28 @@ const ESCENAS_INFO = {
 
 let escenas = null;
 let escenasPintadas = false;
+/** El selector de fondo de cada escena, para rellenarlo cada vez que se carga. */
+const selectoresFondo = {};
+
+function fechaFondo(iso) {
+  return new Date(iso).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function pintarSelectoresFondo() {
+  for (const [tipo, sel] of Object.entries(selectoresFondo)) {
+    if (document.activeElement === sel) continue;
+    const elegido = escenas.config.fondos?.[tipo];
+    // Sin elegir: el último de esta escena (lo mismo que hace el overlay).
+    const actual = elegido === 'dibujado' ? 'dibujado' : elegido ?? escenas.fondos.find((f) => f.escena === tipo)?.ruta ?? 'dibujado';
+    const propios = escenas.fondos.filter((f) => f.escena === tipo);
+    const otros = escenas.fondos.filter((f) => f.escena !== tipo);
+    const opcion = (f) => h('option', { value: f.ruta, selected: f.ruta === actual }, `${ESCENAS_INFO[f.escena]?.icono ?? '🖼️'} ${fechaFondo(f.at)}`);
+    sel.replaceChildren(
+      h('option', { value: 'dibujado', selected: actual === 'dibujado' }, 'Paisaje dibujado (sin imagen)'),
+      propios.length ? h('optgroup', { label: 'De esta escena' }, propios.map(opcion)) : null,
+      otros.length ? h('optgroup', { label: 'De otras escenas' }, otros.map(opcion)) : null);
+  }
+}
 
 async function cargarEscenas() {
   try {
@@ -1494,11 +1516,15 @@ async function cargarEscenas() {
   $('e-avatar').checked = c.avatar;
   $('e-avatar-texto-estado').textContent = c.avatar ? 'Avatar encendido' : 'Avatar apagado';
   pintarCuentaEscenas();
+  if (escenasPintadas) pintarSelectoresFondo();
+  pintarPersonajes();
 
   // Las tarjetas, una vez: rehacerlas recargaría las vistas previas.
   if (escenasPintadas) return;
   escenasPintadas = true;
   $('e-avatar-vista').src = '/biblioteca/overlays/avatar.html?siempre=1&fondo=1&bocadillo=reacciones';
+  $('e-avatar-desc').value = escenas.descripcionAvatar ?? '';
+  $('e-avatar-generar').disabled = !escenas.imagenIa;
   cargarEscenasObs();
   $('e-lista').replaceChildren(...escenas.escenas.map((e) => {
     const info = ESCENAS_INFO[e.tipo];
@@ -1522,8 +1548,36 @@ async function cargarEscenas() {
         crear.disabled = false;
       }
     });
+    // El fondo: uno de los generados, o generar otro con IA.
+    const selFondo = h('select', { 'aria-label': `Fondo de ${info.nombre}` });
+    selectoresFondo[e.tipo] = selFondo;
+    selFondo.addEventListener('change', () => guardarEscenas({ fondos: { [e.tipo]: selFondo.value || null } }, 'Fondo cambiado: sale en unos segundos'));
+    const descripcion = h('textarea', { rows: '2', maxlength: '600', spellcheck: 'false' });
+    descripcion.value = escenas.descripciones?.[e.tipo] ?? '';
+    const generar = h('button', { class: 'boton', type: 'button', disabled: !escenas.imagenIa }, '🎨 Generar fondo con IA');
+    generar.addEventListener('click', async () => {
+      generar.disabled = true;
+      generar.textContent = '🎨 Generando… (unos 30 s)';
+      try {
+        await api('/api/escenas/fondo', { escena: e.tipo, descripcion: descripcion.value });
+        tostada(`Fondo nuevo en ${info.nombre}`);
+        await cargarEscenas();
+      } catch (err) {
+        tostada(err.message, true);
+      } finally {
+        generar.disabled = !escenas.imagenIa;
+        generar.textContent = '🎨 Generar fondo con IA';
+      }
+    });
+    const bloqueFondo = h('div', { class: 'escena-fondo' },
+      h('label', { class: 'campo' }, h('span', {}, 'Fondo'), selFondo),
+      h('label', { class: 'campo' }, h('span', {}, 'Qué quieres de fondo (en castellano)'), descripcion),
+      h('div', { class: 'escena-botones' }, generar,
+        h('span', { class: 'nota' }, escenas.imagenIa ? 'GPT Image de tu OpenAI · ~30 s · unos céntimos' : 'Falta OPENAI_API_KEY en el .env')));
+
     return h('article', { class: 'tarjeta escena' },
       vista,
+      bloqueFondo,
       h('div', { class: 'escena-pie' },
         h('div', {}, h('h2', {}, `${info.icono} ${info.nombre}`), h('p', { class: 'nota' }, info.que),
           h('p', { class: 'nota' }, 'En OBS: ', h('code', {}, e.escena))),
@@ -1533,6 +1587,7 @@ async function cargarEscenas() {
           botonCopiar(e.url, 'Copiar dirección'))),
       resultado);
   }));
+  pintarSelectoresFondo();
 }
 
 function pintarCuentaEscenas() {
@@ -1577,6 +1632,33 @@ $('e-avatar-form').addEventListener('submit', (ev) => {
   ev.preventDefault();
   guardarEscenas({ avatarTexto: $('e-avatar-dice').value }, 'Bocadillo guardado');
 });
+function pintarPersonajes() {
+  const sel = $('e-avatar-personaje');
+  if (document.activeElement === sel) return;
+  const actual = escenas.config.avatarImagen ?? '';
+  sel.replaceChildren(
+    ...(escenas.personajes ?? []).map((p) => h('option', { value: p.ruta, selected: p.ruta === actual },
+      p.ruta.endsWith('/errante') ? 'El errante (el primero)' : `Creado el ${fechaFondo(p.at)}`)),
+    h('option', { value: '', selected: !actual }, 'Dibujado (sin imagen)'));
+}
+
+$('e-avatar-personaje').addEventListener('change', (ev) => guardarEscenas({ avatarImagen: ev.target.value || null }, 'Personaje cambiado'));
+$('e-avatar-generar').addEventListener('click', async (ev) => {
+  const b = ev.currentTarget;
+  b.disabled = true;
+  b.textContent = '🎨 Creando… (≈1 min)';
+  try {
+    await api('/api/escenas/avatar-ia', { descripcion: $('e-avatar-desc').value });
+    tostada('Personaje nuevo: ya es el del avatar');
+    await cargarEscenas();
+  } catch (err) {
+    tostada(err.message, true);
+  } finally {
+    b.disabled = !escenas.imagenIa;
+    b.textContent = '🎨 Crear personaje';
+  }
+});
+
 /** Las escenas de OBS, para elegir dónde va el avatar. Por defecto, la que está en emisión. */
 async function cargarEscenasObs() {
   const sel = $('e-avatar-escena');

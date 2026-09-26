@@ -28,6 +28,9 @@ import { normalize } from '../core/events.js';
 import * as titulos from './titulos.js';
 import * as previa from './previa.js';
 import * as escenas from './escenas.js';
+import * as fondos from './fondos.js';
+import * as avatarIa from './avatar-ia.js';
+import * as iaImagen from '../services/ia-imagen.js';
 import * as eventos from '../interactions/loot/eventos.js';
 import * as temporada from '../interactions/loot/temporada.js';
 import * as temporadas from '../data/temporadas.js';
@@ -121,6 +124,8 @@ export async function arrancar(sb: PuertoStreamerbot): Promise<Server | null> {
 // ---------------------------------------------------------------------------
 
 let laboratorioEnMarcha = false;
+/** El fondo que se está generando con IA (una escena), o null. */
+let generandoFondo: string | null = null;
 
 /** npm run laboratorio -- --json, esperando el resultado (unos segundos). */
 function lanzarLaboratorio(): Promise<unknown> {
@@ -184,6 +189,9 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       // Un overlay es una página con scripts. Así corre en un origen propio
       // y no puede usar el panel aunque se abra directamente.
       'Content-Security-Policy': 'sandbox allow-scripts',
+      // Las imágenes, legibles desde los overlays (van en su sandbox, con origen propio):
+      // el avatar busca dónde tiene los ojos leyendo los píxeles. Solo lectura.
+      ...(archivo.tipo.startsWith('image/') && { 'Access-Control-Allow-Origin': '*' }),
     });
     res.end(contenido);
     return;
@@ -504,11 +512,50 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       config: escenas.leer(),
       escenas: escenas.TIPOS.map((tipo) => ({ tipo, ...obsSetup.ESCENAS_OBS[tipo], url: obsSetup.urlEscena(tipo) })),
       avatar: { fuente: obsSetup.FUENTE_AVATAR, url: obsSetup.urlAvatar() },
+      fondos: await fondos.lista(),
+      descripciones: fondos.DESCRIPCIONES,
+      imagenIa: iaImagen.disponible(),
+      personajes: await avatarIa.lista(),
+      descripcionAvatar: avatarIa.DESCRIPCION,
+      generando: generandoFondo,
     });
   }
 
   if (ruta === 'POST /api/escenas') {
     return json(res, 200, { config: escenas.cambiar(await cuerpo(req)) });
+  }
+
+  // Un fondo nuevo con IA (GPT Image): tarda ~30 s y cuesta unos céntimos. Uno
+  // a la vez; al terminar se pone en esa escena.
+  if (ruta === 'POST /api/escenas/fondo') {
+    const { escena, descripcion } = await cuerpo(req);
+    if (!escenas.TIPOS.includes(escena as escenas.Tipo)) throw new ErrorHttp(400, 'escena no válida');
+    if (generandoFondo) throw new ErrorHttp(409, 'Ya se está generando un fondo: espera a que termine');
+    generandoFondo = escena as string;
+    try {
+      const nueva = await fondos.generar(escena as fondos.EscenaFondo, typeof descripcion === 'string' ? descripcion : '');
+      const config = escenas.cambiar({ fondos: { [escena as string]: nueva } });
+      return json(res, 200, { ruta: nueva, config });
+    } catch (err) {
+      throw new ErrorHttp(err instanceof iaImagen.ErrorImagen ? 502 : 500, err instanceof Error ? err.message : String(err));
+    } finally {
+      generandoFondo = null;
+    }
+  }
+
+  // Un personaje nuevo para el avatar: tres imágenes (~1 min, unos céntimos).
+  if (ruta === 'POST /api/escenas/avatar-ia') {
+    const { descripcion } = await cuerpo(req);
+    if (generandoFondo) throw new ErrorHttp(409, 'Ya se está generando una imagen: espera a que termine');
+    generandoFondo = 'avatar';
+    try {
+      const nuevo = await avatarIa.generar(typeof descripcion === 'string' ? descripcion : '');
+      return json(res, 200, { ruta: nuevo, config: escenas.cambiar({ avatarImagen: nuevo }) });
+    } catch (err) {
+      throw new ErrorHttp(err instanceof iaImagen.ErrorImagen ? 502 : 500, err instanceof Error ? err.message : String(err));
+    } finally {
+      generandoFondo = null;
+    }
   }
 
   // Crea o completa la escena en OBS. Solo cuando lo pulsas; nunca cambia la

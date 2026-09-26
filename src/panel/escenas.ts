@@ -10,6 +10,8 @@ import * as eventos from '../interactions/loot/eventos.js';
 import * as temporada from '../interactions/loot/temporada.js';
 import * as temporadas from '../data/temporadas.js';
 import * as datos from './datos.js';
+import { DIBUJADO, rutaValida, ultimoDe } from './fondos.js';
+import { rutaValida as avatarValido } from './avatar-ia.js';
 
 /**
  * Escenas del directo (27 sep 2026): Empezamos, Charla, Pausa y Final.
@@ -39,6 +41,10 @@ export interface ConfigEscenas {
   avatar: boolean;
   /** Lo que dice el bocadillo del avatar. */
   avatarTexto: string;
+  /** El fondo de cada escena ('imagenes/fondos/…'); sin él, el paisaje dibujado. */
+  fondos: Partial<Record<Tipo, string>>;
+  /** El personaje del avatar generado con IA ('imagenes/avatar/…'); sin él, el dibujado. */
+  avatarImagen: string | null;
 }
 
 export const POR_DEFECTO: ConfigEscenas = {
@@ -50,6 +56,8 @@ export const POR_DEFECTO: ConfigEscenas = {
   hasta: null,
   avatar: false,
   avatarTexto: 'Un momento, vuelvo a cámara enseguida 🙈',
+  fondos: {},
+  avatarImagen: 'imagenes/avatar/errante',
 };
 
 const CLAVE = 'escenas';
@@ -75,6 +83,12 @@ function limpiar(v: any): Partial<ConfigEscenas> {
     if (typeof v[k] === 'string') r[k] = v[k].replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, LARGO_MAX);
   }
   if (typeof v.avatar === 'boolean') r.avatar = v.avatar;
+  if (v.avatarImagen === null || avatarValido(v.avatarImagen)) r.avatarImagen = v.avatarImagen;
+  if (v.fondos && typeof v.fondos === 'object') {
+    const f: Partial<Record<Tipo, string>> = {};
+    for (const t of TIPOS) if (rutaValida(v.fondos[t]) || v.fondos[t] === DIBUJADO) f[t] = v.fondos[t];
+    r.fondos = f;
+  }
   if (v.hasta === null) r.hasta = null;
   else if (typeof v.hasta === 'string' && !Number.isNaN(Date.parse(v.hasta))) r.hasta = new Date(v.hasta).toISOString();
   return r;
@@ -86,7 +100,14 @@ export function cambiar(cambios: unknown): ConfigEscenas {
   for (const k of Object.keys(limpio) as Array<keyof ConfigEscenas>) {
     if (limpio[k] === '') (limpio as any)[k] = POR_DEFECTO[k];
   }
-  actual = { ...leer(), ...limpio };
+  // Los fondos se cambian de uno en uno: { fondos: { inicio: '…' } } no borra los demás.
+  // null quita el de esa escena.
+  const antes = leer();
+  const fondos = { ...antes.fondos, ...(limpio.fondos ?? {}) };
+  if (cambios && typeof cambios === 'object' && (cambios as any).fondos) {
+    for (const t of TIPOS) if ((cambios as any).fondos[t] === null) delete fondos[t];
+  }
+  actual = { ...antes, ...limpio, fondos };
   try {
     getDb()
       .prepare('INSERT INTO ajustes (clave, valor, at) VALUES (?, ?, ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor, at = excluded.at')
@@ -115,10 +136,16 @@ export function paraOverlay(tipo: string) {
   const l = loot.estado();
   const r = tipo === 'final' ? datos.resumenDirecto() : null;
   const directo = streams.current();
+  const cfg = leer();
+  // Sin fondo elegido, el último generado para esa escena; «dibujado», ninguno.
+  const fondos = Object.fromEntries(TIPOS.map((t) => {
+    const f = cfg.fondos[t];
+    return [t, f === DIBUJADO ? null : f ?? ultimoDe(t)];
+  }));
   return {
     ahora: new Date().toISOString(),
     canal: nombreCanal(),
-    config: leer(),
+    config: { ...cfg, fondos },
     directo: directo ? { desde: directo.started_at } : null,
     evento: e ? { emoji: e.emoji, nombre: e.nombre, texto: e.texto } : null,
     temporada: {

@@ -120,6 +120,20 @@ export const config = {
     keepAlive: str('OLLAMA_KEEP_ALIVE', '2m'),
   },
 
+  /**
+   * Imágenes con IA (panel → Escenas, 27 sep 2026): GPT Image de OpenAI, con
+   * la OPENAI_API_KEY que ya usaba Crid4m para sus libros de colorear. Solo
+   * se llama cuando pulsas «Generar»: cada imagen cuesta unos céntimos.
+   * SDXL en local se probó y se descartó: en una RTX 2060 queda muy por debajo.
+   */
+  imagen: {
+    apiKey: str('OPENAI_API_KEY', ''),
+    modelo: str('IMAGEN_MODELO', 'gpt-image-2'),
+    /** Para el avatar, con fondo transparente (gpt-image-2 no lo admite). */
+    modeloTransparente: str('IMAGEN_MODELO_TRANSPARENTE', 'gpt-image-1.5'),
+    calidad: str('IMAGEN_CALIDAD', 'medium'),
+  },
+
   logLevel: levelRaw as LogLevel,
   captureRawEvents: bool('CAPTURE_RAW_EVENTS', true),
   broadcasterLogin: str('BROADCASTER_LOGIN', 'crid4m').toLowerCase(),

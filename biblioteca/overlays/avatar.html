@@ -60,6 +60,26 @@
   @keyframes habla { 50% { opacity: 1.6; filter: brightness(1.6); } }
   .luz-ojos { transition: opacity 1s; }
 
+  /* El personaje pintado (generado con IA en el panel). Solo la zona de los
+     ojos cambia entre imágenes: el resto del personaje no se mueve al parpadear. */
+  .retrato { position: absolute; left: 50%; bottom: 0; height: 100%; aspect-ratio: 1; max-width: 100%; transform: translateX(-50%); }
+  .retrato .salto, .retrato .mueve { position: absolute; inset: 0; }
+  .retrato .mueve { transform-origin: 50% 100%; animation: respira 5.2s ease-in-out infinite; }
+  .retrato img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .retrato .ojos-img { opacity: 0; transition: opacity .1s linear; -webkit-mask-image: var(--mascara); mask-image: var(--mascara); }
+  #escena.parpadeo #r-cerrados, #escena.dormido #r-cerrados { opacity: 1; }
+  #escena.feliz #r-contento, #escena.sorpresa #r-contento { opacity: 1; }
+  #escena.dormido .mueve { animation-duration: 8s; }
+  #escena.habla .salto { animation: salta .42s ease-in-out 2; }
+  #escena.sorpresa .salto { animation: sorpresa .7s cubic-bezier(.3, 1.6, .5, 1); }
+  @keyframes salta { 50% { transform: translateY(-2.2%); } }
+  @keyframes sorpresa { 30% { transform: translateY(-3%) scale(1.03); } }
+  .brillo-ojos { position: absolute; left: var(--ox); top: var(--oy); width: var(--ow); height: var(--oh); transform: translate(-50%, -50%); border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(255, 190, 90, .55), transparent); mix-blend-mode: screen; opacity: .25; transition: opacity .4s; pointer-events: none; }
+  #escena.habla .brillo-ojos, #escena.feliz .brillo-ojos, #escena.sorpresa .brillo-ojos { opacity: .8; }
+  #escena.dormido .brillo-ojos { opacity: 0; }
+  body.pintado #vector { display: none; }
+
   /* Bocadillo */
   .bocadillo { position: absolute; left: 60%; top: 9%; max-width: 36%; padding: 1.6vmin 2.4vmin; border-radius: 1.4vmin;
     font-family: "Cormorant Garamond", Georgia, serif; font-style: italic; font-weight: 500; font-size: 3.7vmin; line-height: 1.22; color: #f1e6d2;
@@ -109,7 +129,7 @@
 
     <circle class="aura" cx="506" cy="440" r="400" fill="url(#g-aura)"/>
 
-    <g mask="url(#m-abajo)">
+    <g mask="url(#m-abajo)" id="vector">
       <g class="cuerpo">
         <!-- Capa y capucha, una sola pieza -->
         <use href="#silueta" fill="url(#g-tela)"/>
@@ -182,6 +202,14 @@
     </g>
     <g id="lumbres"></g>
   </svg>
+  <div class="retrato" id="retrato" hidden>
+    <div class="salto"><div class="mueve">
+      <img id="r-base" alt="">
+      <img id="r-cerrados" class="ojos-img" alt="">
+      <img id="r-contento" class="ojos-img" alt="">
+      <div class="brillo-ojos"></div>
+    </div></div>
+  </div>
   <div class="bocadillo" id="bocadillo"></div>
   <div class="zzz" id="zzz">z z</div>
 </div>
@@ -282,12 +310,79 @@ function alBotin(b) {
   else { gesto('feliz', 2600); decir(`¡Bien, ${b.quien}!`); }
 }
 
+// ---------------- El personaje pintado ----------------
+let retratoPuesto = null;
+/**
+ * Dónde están los ojos: los píxeles ámbar muy brillantes de la mitad de
+ * arriba. Así la máscara de los ojos sirve para cualquier personaje generado.
+ */
+function buscarOjos(img) {
+  const N = 256;
+  const cv = document.createElement('canvas');
+  cv.width = N; cv.height = N;
+  const cx = cv.getContext('2d', { willReadFrequently: true });
+  cx.drawImage(img, 0, 0, N, N);
+  let datos;
+  try { datos = cx.getImageData(0, 0, N, N).data; } catch { return null; }
+  const pts = [];
+  for (let y = 0; y < N * .55; y++) for (let x = 0; x < N; x++) {
+    const i = (y * N + x) * 4;
+    const [r, g, b, a] = [datos[i], datos[i + 1], datos[i + 2], datos[i + 3]];
+    if (a > 200 && r > 225 && g > 150 && b < 150 && r - b > 110) pts.push([x, y]);
+  }
+  if (pts.length < 4) return null;
+  const ys = pts.map((p) => p[1]).sort((a, b) => a - b);
+  const my = ys[Math.floor(ys.length / 2)];
+  const cerca = pts.filter((p) => Math.abs(p[1] - my) < N * .07);
+  const xs = cerca.map((p) => p[0]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const yy = cerca.map((p) => p[1]);
+  const y0 = Math.min(...yy), y1 = Math.max(...yy);
+  return { x: ((x0 + x1) / 2) / N, y: ((y0 + y1) / 2) / N, w: Math.max((x1 - x0) / N, .1), h: Math.max((y1 - y0) / N, .03) };
+}
+
+function ponerRetrato(ruta) {
+  if (!/^imagenes\/avatar\/[\w.-]+$/.test(ruta || '')) ruta = '';
+  if (ruta === retratoPuesto) return;
+  retratoPuesto = ruta;
+  if (!ruta) { document.body.classList.remove('pintado'); $('retrato').hidden = true; return; }
+  const base = $('r-base');
+  base.onload = () => {
+    if (retratoPuesto !== ruta) return;
+    const o = buscarOjos(base) ?? { x: .5, y: .3, w: .22, h: .06 };
+    const r = $('retrato');
+    // La zona que cambia: una elipse algo mayor que los ojos, con el borde suave.
+    const rx = (o.w * .5 + .07) * 100, ry = (o.h * .5 + .06) * 100;
+    r.style.setProperty('--mascara', `radial-gradient(ellipse ${rx}% ${ry}% at ${o.x * 100}% ${o.y * 100}%, #000 60%, transparent 100%)`);
+    r.style.setProperty('--ox', `${o.x * 100}%`); r.style.setProperty('--oy', `${o.y * 100}%`);
+    r.style.setProperty('--ow', `${(o.w + .12) * 100}%`); r.style.setProperty('--oh', `${(o.h + .1) * 100}%`);
+    r.hidden = false;
+    document.body.classList.add('pintado');
+  };
+  $('r-cerrados').src = `../${ruta}/cerrados.png`;
+  $('r-contento').src = `../${ruta}/contento.png`;
+  base.crossOrigin = 'anonymous';
+  base.src = `../${ruta}/base.png`;
+}
+
+// Parpadea solo, cada pocos segundos (el dibujado lo hace con CSS).
+(function parpadear() {
+  setTimeout(() => {
+    if (document.body.classList.contains('pintado') && !escena.classList.contains('feliz') && !escena.classList.contains('sorpresa')) {
+      escena.classList.add('parpadeo');
+      setTimeout(() => escena.classList.remove('parpadeo'), 140);
+    }
+    parpadear();
+  }, 3500 + Math.random() * 3500);
+})();
+
 // ---------------- Datos ----------------
 const vistosChat = new Set();
 const vistosBotin = new Set();
 let primera = true;
 function pintar(d) {
   const visible = SIEMPRE || d.config.avatar;
+  ponerRetrato(q.get('imagen') ?? d.config.avatarImagen ?? '');
   escena.classList.toggle('fuera', !visible);
   fijo = d.config.avatarTexto || '';
   if (Date.now() >= decirHasta) volverAlFijo();
@@ -305,11 +400,11 @@ function pintar(d) {
 }
 
 if (DEMO) {
-  pintar({ config: { avatar: true, avatarTexto: 'Vuelvo a cámara enseguida' }, chat: [], botin: [] });
+  pintar({ config: { avatar: true, avatarTexto: 'Vuelvo a cámara enseguida', avatarImagen: 'imagenes/avatar/errante' }, chat: [], botin: [] });
   // Una pequeña función: alguien escribe, cae un botín, un legendario.
-  setTimeout(() => pintar({ config: { avatar: true, avatarTexto: 'Vuelvo a cámara enseguida' }, chat: [{ n: 1, nombre: 'raftaei' }], botin: [] }), 3000);
-  setTimeout(() => pintar({ config: { avatar: true, avatarTexto: 'Vuelvo a cámara enseguida' }, chat: [{ n: 1, nombre: 'raftaei' }], botin: [{ id: 1, quien: 'Ana', rareza: 'epico' }] }), 8000);
-  setTimeout(() => pintar({ config: { avatar: true, avatarTexto: 'Vuelvo a cámara enseguida' }, chat: [{ n: 1, nombre: 'raftaei' }], botin: [{ id: 2, quien: 'Pepe', rareza: 'legendario' }, { id: 1 }] }), 14000);
+  setTimeout(() => pintar({ config: { avatar: true, avatarTexto: 'Vuelvo a cámara enseguida', avatarImagen: 'imagenes/avatar/errante' }, chat: [{ n: 1, nombre: 'raftaei' }], botin: [] }), 3000);
+  setTimeout(() => pintar({ config: { avatar: true, avatarTexto: 'Vuelvo a cámara enseguida', avatarImagen: 'imagenes/avatar/errante' }, chat: [{ n: 1, nombre: 'raftaei' }], botin: [{ id: 1, quien: 'Ana', rareza: 'epico' }] }), 8000);
+  setTimeout(() => pintar({ config: { avatar: true, avatarTexto: 'Vuelvo a cámara enseguida', avatarImagen: 'imagenes/avatar/errante' }, chat: [{ n: 1, nombre: 'raftaei' }], botin: [{ id: 2, quien: 'Pepe', rareza: 'legendario' }, { id: 1 }] }), 14000);
 } else {
   const api = new URL('/api/overlay/escena', location.href);
   api.searchParams.set('tipo', 'charla');

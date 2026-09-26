@@ -1004,3 +1004,12 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
 .avatar-mandos .nota b { color: var(--texto); font-weight: 600; }
 .escenas-avatar select { padding: 9px 12px; border-radius: 9px; border: 1px solid var(--borde-2); background: var(--fondo); color: var(--texto); font: inherit; }
 @media (max-width: 620px) { .avatar-bloque { grid-template-columns: 1fr; } }
+
+.escena-fondo { display: grid; gap: 10px; padding: 14px 16px 0; }
+.escena-fondo select, .escena-fondo textarea { padding: 9px 12px; border-radius: 9px; border: 1px solid var(--borde-2); background: var(--fondo); color: var(--texto); font: inherit; resize: vertical; }
+.escena-fondo .escena-botones .nota { margin: 0; }
+
+.avatar-crear { border: 1px solid var(--borde); border-radius: 10px; padding: 8px 12px; }
+.avatar-crear summary { cursor: pointer; font-weight: 600; font-size: .9rem; }
+.avatar-crear[open] { display: grid; gap: 10px; padding-bottom: 12px; }
+.avatar-crear textarea, #e-avatar-personaje { padding: 9px 12px; border-radius: 9px; border: 1px solid var(--borde-2); background: var(--fondo); color: var(--texto); font: inherit; resize: vertical; }
