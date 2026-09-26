@@ -249,7 +249,7 @@ describe('!coleccion y títulos', () => {
 describe('!loot y el olvido', () => {
   test('!loot explica los comandos', async () => {
     await handleEvent(mensaje('pepe', '!loot'));
-    assert.match(enviados[0]!, /!inventario !poder !duelo nombre !forjar !presumir !coleccion/);
+    assert.match(enviados[0]!, /!inventario !poder !duelo nombre !dar nombre !usar !forjar !presumir !coleccion/);
   });
 
   test('!olvidame borra mochila, colección y duelos', async () => {

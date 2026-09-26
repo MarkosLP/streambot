@@ -16,6 +16,7 @@ import { aprobadorPanel } from './panel/revision.js';
 import * as loot from './interactions/loot/index.js';
 import { mostrarBotin } from './panel/obs-setup.js';
 import { conObs } from './transport/obs.js';
+import { EFECTOS, mismoNombre } from './panel/efectos.js';
 import type { Server } from 'node:http';
 
 let panelServer: Server | null = null;
@@ -85,6 +86,16 @@ async function main(): Promise<void> {
     conObs((pedir) => mostrarBotin(pedir, { quien, objeto: botin.objeto, rareza: botin.rareza, origen, maldito: botin.maldito })),
   );
   loot.setChatters(() => streamerbot.espectadores());
+  // !usar: los objetos con efecto lanzan la Action de su recompensa, como si
+  // quien lo usa la hubiera canjeado. Se busca por nombre, como en el panel.
+  loot.setLanzarEfecto(async (efecto, quien) => {
+    const e = EFECTOS.find((x) => x.id === efecto);
+    if (!e) return false;
+    const accion = (await streamerbot.acciones()).find((a) => a.enabled && mismoNombre(a.name, e.accion));
+    if (!accion) return false;
+    await streamerbot.ejecutarAccion(accion.id, { user: quien.displayName, userName: quien.login });
+    return true;
+  });
   loot.arrancar();
 
   log.info('Escuchando. Ctrl+C para salir.');

@@ -600,7 +600,7 @@ const RAREZA_LOOT = {
   epico: { clase: 'r-epico', nombre: 'Épico' },
   legendario: { clase: 'r-legendario', nombre: 'Legendario' },
 };
-const ORIGEN = { cofre: 'cofre', oro: 'Cofre del tesoro', panel: 'desde el panel', regalo: 'regalo', forja: 'forjado', guerra: 'cofre de guerra', maldicion: 'Maldición' };
+const ORIGEN = { cofre: 'cofre', oro: 'Cofre del tesoro', panel: 'desde el panel', regalo: 'regalo', jefe: 'jefe de raid', forja: 'forjado', guerra: 'cofre de guerra', maldicion: 'Maldición' };
 
 function mmss(seg) {
   const m = Math.floor(seg / 60);
@@ -632,6 +632,29 @@ async function cargarLoot() {
     d.aventureros.length ? d.aventureros.join(', ') : `Nadie ha escrito en ${d.minutosActividad} min`);
   ficha('l-ultimo', '', d.ultimoCofre ? hace(d.ultimoCofre) : 'Ninguno', d.ultimoCofre ? hora(d.ultimoCofre) : 'desde que arrancó el bot');
   ficha('l-directo', d.directo ? 'vivo' : '', d.directo ? 'En marcha' : 'Sin directo', d.directo ? 'Los cofres pueden caer' : 'Sin directo no caen cofres');
+  $('l-suelo').hidden = !d.enElSuelo;
+  if (d.enElSuelo) {
+    $('l-suelo').textContent = `⚔️ El cofre de guerra de ${d.enElSuelo.de} está en el suelo: el primero que escriba en ${mmss(d.enElSuelo.quedanSeg)} se lo lleva.`;
+  }
+
+  const j = d.jefe;
+  $('l-jefe').replaceChildren(...(j
+    ? [
+      h('div', { class: 'jefe-cabeza' },
+        h('strong', {}, `🐉 ${j.nombre.charAt(0).toUpperCase()}${j.nombre.slice(1)}`),
+        h('span', { class: 'dato' }, `${j.vida}/${j.vidaMax} de vida · quedan ${mmss(j.quedanSeg)}`)),
+      h('div', { class: 'jefe-barra', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(j.vidaMax), 'aria-valuenow': String(j.vida) },
+        h('span', { style: `width:${Math.round((j.vida / j.vidaMax) * 100)}%` })),
+      h('p', { class: 'nota' }, j.atacantes.length
+        ? j.atacantes.map((a) => `${a.quien} ${a.dano}`).join(' · ')
+        : 'Nadie le ha pegado todavía.'),
+      h('button', { class: 'boton', type: 'button', 'data-jefe': 'retirar' }, 'Retirarlo sin botín'),
+    ]
+    : [
+      h('p', { class: 'nota' }, 'Aparece en el chat con 100 de vida por cada persona que esté hablando. Si cae, botín para todos los que peguen; Cofre del tesoro para quien más daño haga. El bot solo habla tres veces: al aparecer, a mitad de vida y al final.'),
+      h('button', { class: 'boton primario', type: 'button', 'data-jefe': 'invocar' }, '🐉 Invocar jefe'),
+    ]));
+
   const enChat = d.enElChat || [];
   $('l-en-chat').textContent = enChat.length
     ? `En el chat ahora: ${enChat.length} (sin bots ni tú)`
@@ -699,6 +722,21 @@ $('l-soltar').addEventListener('click', async () => {
     cargarLoot();
   } catch (err) {
     tostada(err.message, true);
+  }
+});
+
+$('l-jefe').addEventListener('click', async (e) => {
+  const boton = e.target.closest('[data-jefe]');
+  if (!boton) return;
+  const accion = boton.dataset.jefe;
+  boton.disabled = true;
+  try {
+    const r = await api('/api/loot/jefe', { accion });
+    tostada(accion === 'retirar' ? 'Jefe retirado' : `🐉 ${r.nombre} aparece con ${r.vida} de vida${r.enviado ? '' : ' (el mensaje no salió al chat)'}`, accion !== 'retirar' && !r.enviado);
+    cargarLoot();
+  } catch (err) {
+    tostada(err.message, true);
+    boton.disabled = false;
   }
 });
 

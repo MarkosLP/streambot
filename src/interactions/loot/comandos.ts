@@ -1,18 +1,37 @@
 import { config } from '../../config.js';
+import * as ajustes from '../../core/ajustes.js';
 import * as cooldowns from '../../core/cooldowns.js';
+import { log } from '../../core/logger.js';
+import * as streams from '../../data/streams.js';
 import type { Ctx, Interaction } from '../../core/interaction.js';
 import * as lootDb from '../../data/loot.js';
 import {
   ESTILO,
   FORJA_CANTIDAD,
+  MOCHILA_MAX,
   OBJETOS,
   RAREZAS,
   etiqueta,
   siguienteRareza,
+  tirar,
   type Azar,
   type Rareza,
 } from './objetos.js';
-import { buscarPresente, conTitulo, enPantalla, gastarPurificacion, inventario, notaMochila, puedePurificar } from './index.js';
+import {
+  atraerCofreDeGuerra,
+  buscarPresente,
+  conTitulo,
+  enPantalla,
+  gastarPurificacion,
+  inventario,
+  lanzarEfecto,
+  notaMochila,
+  puedePurificar,
+  type EfectoCanal,
+} from './index.js';
+import * as jefe from './jefe.js';
+
+const sinTildes = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase();
 
 /**
  * Para qué sirve el botín (decidido el 25 sep 2026: los cuatro usos).
@@ -226,6 +245,131 @@ export const purificar: Interaction<CtxComando> = {
 };
 
 // ---------------------------------------------------------------------------
+// !dar nombre [rareza u objeto]
+// ---------------------------------------------------------------------------
+
+const RAREZA_POR_NOMBRE: Record<string, Rareza> = {
+  ...NOMBRES_RAREZA,
+  legendario: 'legendario', legendarios: 'legendario',
+};
+
+/**
+ * Regalar un objeto a otra persona del chat. Sin nada más, el peor que lleves;
+ * con una rareza (`!dar ana epico`), el más antiguo de esa rareza; con parte
+ * del nombre (`!dar ana capa`), ese. Los malditos no se regalan.
+ */
+export const dar: Interaction<CtxComando> = {
+  name: 'loot-dar',
+  spontaneous: false,
+  guards: [(ctx) => (ctx.args.trim() ? { ok: true } : { ok: false, motivo: 'sin destinatario', registrar: false })],
+  cooldowns: [porPersona('loot-dar', 30_000)],
+  run: (ctx) => {
+    const yo = ctx.viewer;
+    const [nombre = '', ...resto] = ctx.args.trim().split(/\s+/);
+    const limpio = nombre.replace(/^@/, '');
+    const para = buscarPresente(limpio);
+    if (!para) {
+      return { text: `@${yo.displayName} 🎁 No veo a ${limpio} por el chat. Solo puedes dar algo a quien haya escrito hace poco.`, ...mencion(ctx) };
+    }
+    if (para.id === yo.id) return { text: `@${yo.displayName} 🎁 Pasarte algo de una mano a la otra no cuenta.`, ...mencion(ctx) };
+    if (para.login.toLowerCase() === config.broadcasterLogin) {
+      return { text: `@${yo.displayName} 🎁 ${para.displayName} no necesita botín: ¡quédatelo tú!`, ...mencion(ctx) };
+    }
+
+    const que = resto.join(' ');
+    const rareza = RAREZA_POR_NOMBRE[sinTildes(que)];
+    const fila = lootDb.elegir(yo.id, rareza ? { rareza } : { texto: que || undefined });
+    if (!fila) {
+      const nada = que ? `No llevas nada que encaje con «${que}»` : 'No llevas nada que dar';
+      return { text: `@${yo.displayName} 🎁 ${nada} (los objetos malditos no se regalan).`, ...mencion(ctx) };
+    }
+    if (lootDb.contar(para.id) >= MOCHILA_MAX) {
+      return { text: `@${yo.displayName} 🎁 La mochila de ${para.displayName} está llena (${MOCHILA_MAX}).`, ...mencion(ctx) };
+    }
+    const { tituloNuevo } = lootDb.pasar(fila.id, para.id, para.displayName);
+    const titulo = tituloNuevo ? ` · 🏆 ¡${para.displayName} completa una colección: «${tituloNuevo}»!` : '';
+    return {
+      text: `🎁 @${yo.displayName} le da ${etiqueta(fila)} a @${para.displayName}${titulo}`,
+      allowedMentions: [yo.login, para.login],
+    };
+  },
+};
+
+// ---------------------------------------------------------------------------
+// !usar [objeto]
+// ---------------------------------------------------------------------------
+
+/**
+ * Objetos con efecto de verdad en el directo: al usarlos se gastan y lanzan
+ * el efecto de una recompensa (su Action de Streamer.bot), además de su lado
+ * del Loot. Los nombres tienen que estar en el catálogo (objetos.ts).
+ */
+export const USABLES: Record<string, { efecto: EfectoCanal; que: string }> = {
+  'Cuerno de guerra': { efecto: 'grito', que: 'suena el Grito de guerra y atrae un cofre de guerra' },
+  'Frasco de agua bendita': { efecto: 'pocion', que: '«¡Bebe agua!» en pantalla y purifica tu objeto maldito' },
+  'Calavera que susurra': { efecto: 'maldicion', que: 'maldice la pantalla y te da un objeto maldito' },
+};
+
+/** Entre dos efectos en pantalla, sean de quien sean. */
+const PANTALLA_MS = 2 * 60_000;
+const CLAVE_PANTALLA = cooldowns.keys.interaction('loot-usar-pantalla');
+
+const listaUsables = () =>
+  Object.keys(USABLES)
+    .map((o) => etiqueta({ objeto: o, rareza: (Object.keys(OBJETOS) as Rareza[]).find((r) => OBJETOS[r].includes(o)) ?? 'comun' }))
+    .join(', ');
+
+export const usar: Interaction<CtxComando> = {
+  name: 'loot-usar',
+  spontaneous: false,
+  cooldowns: [porPersona('loot-usar', 30_000)],
+  run: async (ctx) => {
+    const yo = ctx.viewer;
+    const que = ctx.args.trim();
+    const fila = que
+      ? lootDb.elegir(yo.id, { texto: que })
+      : Object.keys(USABLES).map((o) => lootDb.elegir(yo.id, { texto: o })).find(Boolean) ?? null;
+
+    if (!fila) {
+      return { text: `@${yo.displayName} ✨ No llevas nada que se pueda usar. Salen en los cofres: ${listaUsables()}.`, ...mencion(ctx) };
+    }
+    const usable = USABLES[fila.objeto];
+    if (!usable) {
+      return { text: `@${yo.displayName} ✨ ${etiqueta(fila)} no hace nada al usarlo. Los que sí: ${listaUsables()}.`, ...mencion(ctx) };
+    }
+    const falta = cooldowns.remaining(CLAVE_PANTALLA, PANTALLA_MS);
+    if (falta > 0) {
+      return { text: `@${yo.displayName} ✨ La pantalla aún se está recuperando del último efecto: prueba en ${Math.ceil(falta / 1000)} s.`, ...mencion(ctx) };
+    }
+    if (usable.efecto === 'grito' && (!ajustes.lootActivo() || !streams.current())) {
+      return { text: `@${yo.displayName} 📯 Sin directo el cuerno no atrae nada: guárdalo para luego.`, ...mencion(ctx) };
+    }
+
+    // Todo lo que decide va antes del primer await: dos !usar seguidos no
+    // pueden gastar el mismo objeto ni pisarse la pantalla.
+    lootDb.gastar(fila.id);
+    cooldowns.tryConsume(CLAVE_PANTALLA, PANTALLA_MS);
+    let texto: string;
+    if (usable.efecto === 'grito') {
+      texto = `📯 ${yo.displayName} hace sonar el Cuerno de guerra. ${atraerCofreDeGuerra(yo.displayName, ctx.azar)}`;
+    } else if (usable.efecto === 'pocion') {
+      const limpio = lootDb.purificar(yo.id);
+      if (limpio) enPantalla(yo.displayName, limpio, 'purificar');
+      texto = `💧 ${yo.displayName} abre el Frasco de agua bendita: ¡a beber agua todo el mundo!` +
+        (limpio ? ` Y de paso purifica ${etiqueta(limpio)}.` : '');
+    } else {
+      const botin = { ...tirar('oro', ctx.azar), maldito: true };
+      lootDb.dar(yo.id, yo.displayName, botin, 'maldicion');
+      enPantalla(yo.displayName, botin, 'maldicion');
+      texto = `💀 ${yo.displayName} escucha a la Calavera que susurra… la pantalla se maldice y le devuelve ${etiqueta(botin)}.`;
+    }
+    const lanzado = await lanzarEfecto(usable.efecto, yo);
+    if (!lanzado) log.info(`loot-usar: ${fila.objeto} usado, pero su efecto de Streamer.bot no se lanzó (¿está montado y conectado?).`);
+    return { text: texto, detail: () => `${fila.objeto}${lanzado ? '' : ' (sin efecto en pantalla)'}` };
+  },
+};
+
+// ---------------------------------------------------------------------------
 // !coleccion
 // ---------------------------------------------------------------------------
 
@@ -256,7 +400,7 @@ export const ayuda: Interaction<CtxComando> = {
     text:
       `🎁 Loot: cada ${config.loot.minutosMin}-${config.loot.minutosMax} min cae un cofre para quien hable en el chat, ` +
       // Sin @ en el ejemplo del duelo: policy bloquea mencionar a quien no participa.
-      `y con Oros está el ${config.loot.cofreRewardTitle}. Comandos: !inventario !poder !duelo nombre !forjar !presumir !coleccion`,
+      `y con Oros está el ${config.loot.cofreRewardTitle}. Comandos: !inventario !poder !duelo nombre !dar nombre !usar !forjar !presumir !coleccion`,
   }),
 };
 
@@ -272,6 +416,9 @@ const COMANDOS: Array<[RegExp, Interaction<CtxComando>]> = [
   [/^!presumir\b/i, presumir],
   [/^!colecci[oó]n\b/i, coleccion],
   [/^!purificar\b/i, purificar],
+  [/^!dar\b/i, dar],
+  [/^!usar\b/i, usar],
+  [/^!(atacar|atk)\b/i, jefe.atacar],
   [/^!loot\b/i, ayuda],
 ];
 
@@ -293,6 +440,9 @@ export const LISTA = [
   ['!forjar', `${FORJA_CANTIDAD} objetos de una rareza → 1 de la siguiente. Se puede elegir: !forjar raros`],
   ['!presumir', 'Tu mejor pieza, en la pantalla del directo'],
   ['!coleccion', 'Cuántos objetos distintos has conseguido. Completar una rareza da título'],
+  ['!dar nombre', 'Regala tu peor objeto a alguien del chat. O uno concreto: !dar ana epico, !dar ana capa'],
+  ['!usar', 'Usa un objeto con efecto en el directo: Cuerno de guerra, Frasco de agua bendita, Calavera que susurra'],
+  ['!atacar', 'Pega al jefe cuando aparece. Botín para todos si cae; Cofre del tesoro para quien más daño haga'],
   ['!purificar', 'Tras canjear una Poción de vida: limpia tu objeto maldito (ya no lo pierdes, pero sin poder doble)'],
 ] as const;
 

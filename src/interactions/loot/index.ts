@@ -127,7 +127,7 @@ export function aventureros(now = Date.now()): Viewer[] {
 // El botín en pantalla
 // ---------------------------------------------------------------------------
 
-export type OrigenPantalla = 'cofre' | 'oro' | 'panel' | 'regalo' | 'prueba' | 'forja' | 'presumir' | 'guerra' | 'maldicion' | 'purificar';
+export type OrigenPantalla = 'cofre' | 'oro' | 'panel' | 'regalo' | 'jefe' | 'prueba' | 'forja' | 'presumir' | 'guerra' | 'maldicion' | 'purificar';
 export type Pantalla = (quien: string, botin: Botin, origen: OrigenPantalla) => Promise<void>;
 let pantalla: Pantalla | null = null;
 let fila: Promise<void> = Promise.resolve();
@@ -216,6 +216,42 @@ export function componerCofre(reparto: Reparto[], inicioPropio?: string): string
   return texto + titulos;
 }
 
+// ---------------------------------------------------------------------------
+// El cofre en el suelo
+// ---------------------------------------------------------------------------
+
+/** Un cofre de guerra que cayó sin nadie en el chat. */
+let enElSuelo: { de: string; hasta: number } | null = null;
+const SUELO_MS = 10 * 60_000;
+
+/**
+ * Lo llama el manejador con cada mensaje de una persona (nunca bots ni el
+ * canal). Si hay un cofre en el suelo, se lo lleva ella.
+ *
+ * La decisión es síncrona: el cofre sale del suelo ANTES del primer await,
+ * así que dos mensajes seguidos no se lo pueden llevar los dos.
+ */
+export function recogerDelSuelo(viewer: Viewer, azar: Azar = Math.random, now = Date.now()): Promise<void> | null {
+  if (!enElSuelo) return null;
+  if (enElSuelo.hasta < now) {
+    enElSuelo = null;
+    return null;
+  }
+  if (!ajustes.lootActivo() || consent.haPedidoOlvido(viewer.id)) return null;
+  const { de } = enElSuelo;
+  enElSuelo = null;
+  const botin = tirar('guerra', azar);
+  const resultado = lootDb.dar(viewer.id, viewer.displayName, botin, 'guerra');
+  enPantalla(viewer.displayName, botin, 'guerra');
+  return send({
+    text: `⚔️ @${viewer.displayName} llega el primero y abre el cofre de guerra de ${de} → ${etiqueta(botin)}${notaMochila(resultado)}${anunciosDeTitulo([{ viewer, botin, resultado }])}`,
+    reason: NAME,
+    allowedMentions: [viewer.login],
+  }).then((o) => {
+    interactionLog.record({ interaction: NAME, twitchId: viewer.id, status: o.sent ? 'sent' : 'blocked', detail: `suelo: ${botin.rareza}` });
+  });
+}
+
 export type ResultadoCofre =
   | { ok: true; reparto: Reparto[]; enviado: boolean }
   | { ok: false; motivo: string };
@@ -225,6 +261,20 @@ export async function soltarCofre(
 ): Promise<ResultadoCofre> {
   const gente = aventureros(now);
   if (!gente.length) {
+    // Un cofre normal sin nadie se pierde en silencio: anunciarlo cada 20
+    // minutos a un chat vacío sería spam. Pero el de guerra lo ha pagado
+    // alguien con Oros: se queda en el suelo para el primero que escriba.
+    if (cofreDeGuerra) {
+      const de = cofreDeGuerra;
+      cofreDeGuerra = null;
+      enElSuelo = { de, hasta: now + SUELO_MS };
+      const outcome = await send({
+        text: `⚔️ El cofre de guerra de ${de} ha caído… y no hay nadie para abrirlo. El primero que escriba en el chat en los próximos ${SUELO_MS / 60_000} min se lo lleva.`,
+        reason: NAME,
+      });
+      interactionLog.record({ interaction: NAME, status: outcome.sent ? 'sent' : 'blocked', detail: `guerra de ${de}: al suelo` });
+      return { ok: false, motivo: 'no había nadie: el cofre de guerra se queda en el suelo' };
+    }
     return { ok: false, motivo: `nadie ha escrito en el chat en los últimos ${config.loot.minutosActividad} minutos` };
   }
 
@@ -427,20 +477,48 @@ export const grito: Interaction<CtxEfecto> = {
         ? { ok: true }
         : { ok: false, motivo: 'sin directo marcado no caen cofres (panel → Loot → El directo ya ha empezado)', registrar: true },
   ],
-  run: (ctx) => {
-    // No se acumula: si ya viene uno de guerra, el grito se suma al que viene.
-    if (cofreDeGuerra !== null) {
-      const falta = proximo ? Math.max(0, Math.round((proximo - Date.now()) / 1000)) : null;
-      return {
-        text: `⚔️ ¡${ctx.viewer.displayName} se une al grito de ${cofreDeGuerra}! El cofre de guerra ya viene` +
-          `${falta !== null ? ` (${falta < 60 ? `${falta} s` : `${Math.ceil(falta / 60)} min`})` : ''}: quédate en el chat.`,
-      };
-    }
-    cofreDeGuerra = ctx.viewer.displayName;
-    programarEn((60 + ctx.azar() * 60) * 1000);
-    return { text: `⚔️ ¡A las armas! El grito de ${ctx.viewer.displayName} atrae un cofre de guerra: cae en 1-2 min para quien esté en el chat.` };
-  },
+  run: (ctx) => ({ text: atraerCofreDeGuerra(ctx.viewer.displayName, ctx.azar) }),
 };
+
+/**
+ * El lado del Loot de un Grito de guerra: el próximo cofre cae en 1-2 min y
+ * es de guerra. Lo usan la recompensa y el Cuerno de guerra (`!usar`).
+ * Devuelve lo que hay que decir en el chat.
+ */
+export function atraerCofreDeGuerra(quien: string, azar: Azar = Math.random): string {
+  // No se acumula: si ya viene uno de guerra, el grito se suma al que viene.
+  if (cofreDeGuerra !== null) {
+    const falta = proximo ? Math.max(0, Math.round((proximo - Date.now()) / 1000)) : null;
+    return `⚔️ ¡${quien} se une al grito de ${cofreDeGuerra}! El cofre de guerra ya viene` +
+      `${falta !== null ? ` (${falta < 60 ? `${falta} s` : `${Math.ceil(falta / 60)} min`})` : ''}: quédate en el chat.`;
+  }
+  cofreDeGuerra = quien;
+  programarEn((60 + azar() * 60) * 1000);
+  return `⚔️ ¡A las armas! El grito de ${quien} atrae un cofre de guerra: cae en 1-2 min para quien esté en el chat.`;
+}
+
+/**
+ * Lanza en el directo el efecto de una recompensa (su Action de Streamer.bot:
+ * sonido, filtro de OBS), como si `quien` la hubiera canjeado. Se inyecta
+ * desde index.ts. Devuelve si se lanzó.
+ */
+export type EfectoCanal = 'grito' | 'pocion' | 'maldicion';
+export type LanzarEfecto = (efecto: EfectoCanal, quien: Viewer) => Promise<boolean>;
+let lanzador: LanzarEfecto | null = null;
+
+export function setLanzarEfecto(fn: LanzarEfecto | null): void {
+  lanzador = fn;
+}
+
+export async function lanzarEfecto(efecto: EfectoCanal, quien: Viewer): Promise<boolean> {
+  if (!lanzador) return false;
+  try {
+    return await lanzador(efecto, quien);
+  } catch (err) {
+    log.warn(`Loot: el efecto ${efecto} no se lanzó (${err instanceof Error ? err.message : String(err)}).`);
+    return false;
+  }
+}
 
 export const maldicion: Interaction<CtxEfecto> = {
   name: 'loot-maldicion',
@@ -611,6 +689,7 @@ export function estado(now = Date.now()) {
     ultimoCofre: ultimoCofre ? new Date(ultimoCofre).toISOString() : null,
     aventureros: aventureros(now).map((v) => v.displayName),
     cofreDeGuerra,
+    enElSuelo: enElSuelo && enElSuelo.hasta >= now ? { de: enElSuelo.de, quedanSeg: Math.round((enElSuelo.hasta - now) / 1000) } : null,
     minutosActividad: config.loot.minutosActividad,
   };
 }
@@ -625,5 +704,7 @@ export function reset(): void {
   purificaciones.clear();
   pantalla = null;
   chatters = null;
+  lanzador = null;
+  enElSuelo = null;
   fila = Promise.resolve();
 }

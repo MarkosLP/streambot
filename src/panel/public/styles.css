@@ -774,3 +774,10 @@ strong.ui {
   .botonera { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .interruptor { width: 100%; }
 }
+
+/* Jefe de raid */
+.jefe { display: grid; gap: 10px; justify-items: start; }
+.jefe > .nota { margin: 0; }
+.jefe-cabeza { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.jefe-barra { width: 100%; height: 14px; border-radius: 99px; background: var(--fondo); border: 1px solid var(--borde-2); overflow: hidden; }
+.jefe-barra > span { display: block; height: 100%; background: linear-gradient(90deg, var(--rojo), var(--oro)); transition: width .4s ease; }

@@ -18,6 +18,7 @@ import * as importar from './importar.js';
 import * as loot from '../interactions/loot/index.js';
 import * as lootDb from '../data/loot.js';
 import * as lootComandos from '../interactions/loot/comandos.js';
+import * as jefe from '../interactions/loot/jefe.js';
 import { MOCHILA_MAX, PROBABILIDADES, tirar } from '../interactions/loot/objetos.js';
 import * as cooldowns from '../core/cooldowns.js';
 import { conObs, type PedirObs } from '../transport/obs.js';
@@ -218,6 +219,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     return json(res, 200, {
       ...loot.estado(),
       // Para el regalo: todo el que está en el chat, haya escrito o no.
+      jefe: jefe.estado(),
       enElChat: (await loot.enElChat()).map((v) => ({ login: v.login, nombre: v.displayName })),
       probabilidades: PROBABILIDADES,
       recientes: lootDb.recientes(25),
@@ -242,6 +244,18 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     const r = await loot.soltarCofre({ origen: 'panel' });
     if (!r.ok) throw new ErrorHttp(409, r.motivo);
     return json(res, 200, { enviado: r.enviado, reparto: r.reparto.map((x) => ({ quien: x.viewer.displayName, ...x.botin })) });
+  }
+
+  // El jefe de raid: aparece en el chat y se pelea con !atacar.
+  if (ruta === 'POST /api/loot/jefe') {
+    const { accion } = await cuerpo(req);
+    if (accion === 'retirar') {
+      if (!jefe.retirar()) throw new ErrorHttp(409, 'no hay ningún jefe');
+      return json(res, 200, { ok: true });
+    }
+    const r = await jefe.invocar();
+    if (!r.ok) throw new ErrorHttp(409, r.motivo);
+    return json(res, 200, r);
   }
 
   // Un cofre regalado: para todo el chat o para una persona, haya hablado o no.

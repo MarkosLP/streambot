@@ -107,6 +107,7 @@ export const OBJETOS: Record<Rareza, string[]> = {
     'Pergamino de teletransporte',
     'Mascota: gato negro del nigromante',
     'Poción de invisibilidad (casi)',
+    'Frasco de agua bendita',
   ],
   epico: [
     'Capa de las Sombras',
@@ -129,6 +130,8 @@ export const OBJETOS: Record<Rareza, string[]> = {
     'Tomo de la Muerte Blanca',
     'Montura: grifo real',
     'Mando con el botón de loot',
+    'Cuerno de guerra',
+    'Calavera que susurra',
   ],
   legendario: [
     'Espada del Amanecer Eterno',

@@ -206,6 +206,10 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   // Estar hablando es lo que hace que te toque un cofre del Loot. Va antes
   // del corte de las espontáneas: el Loot tiene su propio interruptor.
   loot.registrarActividad(viewer);
+  // Un cofre de guerra en el suelo es del primero que escriba. Sin await: la
+  // decisión ya está tomada dentro, y un await aquí rompería la regla de
+  // arriba (nada asíncrono antes de que las interacciones decidan).
+  loot.recogerDelSuelo(viewer)?.catch((err) => log.error(`Loot: fallo al recoger del suelo: ${String(err)}`));
 
   // A partir de aquí el bot hablaría sin que nadie se lo pida. Con las
   // interacciones espontáneas apagadas, solo responde a comandos.
