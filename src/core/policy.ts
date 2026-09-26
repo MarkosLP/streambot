@@ -34,6 +34,12 @@ export interface OutboundMessage {
    * contra el de lo que el bot dice solo.
    */
   solicitado?: boolean;
+  /**
+   * true si solo consulta (!inventario, !top…) y no cambia nada. Cuando el
+   * techo de respuestas se acaba, las consultas se frenan antes, para que las
+   * acciones (!dar, !forjar, duelos…) tengan hueco (config.reservaAcciones).
+   */
+  consulta?: boolean;
 }
 
 export type PolicyRejection =
@@ -109,6 +115,15 @@ export function evaluate(message: OutboundMessage, now = Date.now()): PolicyResu
     }
   }
 
+  // Lo último del techo de respuestas es para las acciones: una consulta no lo gasta.
+  const reserva = message.solicitado && message.consulta ? Math.ceil(config.respuestasPerHour * config.reservaAcciones) : 0;
+  if (message.solicitado && message.consulta && remainingRespuestas(now) <= reserva && remainingRespuestas(now) > 0) {
+    return {
+      ok: false,
+      rejection: 'hourly-budget',
+      detail: `quedan ${remainingRespuestas(now)} respuestas en la hora, guardadas para acciones (!dar, !forjar, duelos…)`,
+    };
+  }
   if (message.solicitado ? remainingRespuestas(now) <= 0 : remainingBudget(now) <= 0) {
     return {
       ok: false,

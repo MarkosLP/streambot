@@ -71,6 +71,7 @@ export async function run<C extends Ctx>(def: Interaction<C>, ctx: C): Promise<v
     allowedMentions: salida.allowedMentions,
     aiGenerated: salida.aiGenerated,
     solicitado: !def.spontaneous,
+    consulta: def.consulta === true,
   });
 
   interactionLog.record({

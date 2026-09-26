@@ -146,10 +146,21 @@ export const config = {
    * Techo aparte para lo que alguien PIDE: un comando, un canje, un botón del
    * panel. No es el bot hablando solo, así que no gasta del de arriba (el 26
    * sep 2026, un jefe y unos regalos lo agotaron en 10 minutos y dejaron a la
-   * gente sin !inventario). Twitch admite 20 mensajes cada 30 s: 60 por hora
-   * es solo un freno contra un bucle.
+   * gente sin !inventario).
+   *
+   * 200 y no 60: la prueba de resistencia (90 min, 6-12 personas) necesitó
+   * ~170 por hora y con 60 dejó 115 respuestas sin salir. Twitch admite unos
+   * 2.400 por hora; el spam lo frenan las esperas de cada comando.
    */
-  respuestasPerHour: int('BOT_RESPUESTAS_PER_HOUR', 60),
+  respuestasPerHour: int('BOT_RESPUESTAS_PER_HOUR', 200),
+
+  /**
+   * Parte del techo de respuestas guardada para lo que CAMBIA algo (!dar,
+   * !forjar, duelos, jefes, regalos). Cuando queda menos que esto, las
+   * consultas (!inventario, !top…) esperan: que un regalo o una forja nunca
+   * pase sin anunciarse porque el hueco se lo comieron los !inventario.
+   */
+  reservaAcciones: Number(str('BOT_RESERVA_ACCIONES', '0.2')),
 
   /** true = no envía nada a Twitch, solo registra. Útil para probar en directo sin riesgo. */
   dryRun: bool('DRY_RUN', false),

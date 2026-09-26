@@ -91,6 +91,12 @@ export interface Interaction<C extends Ctx> {
   spontaneous: boolean;
 
   /**
+   * Solo consulta (!inventario, !top…): no cambia nada. Con el techo de
+   * respuestas casi agotado, cede el hueco a las acciones (ver policy.ts).
+   */
+  consulta?: boolean;
+
+  /**
    * Se comprueban EN ORDEN y la primera que falle descarta la interacción.
    * El motivo se registra una sola vez; antes se escribía dos veces por
    * guarda, una para el log y otra para la base de datos, y ya habían

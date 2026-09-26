@@ -107,6 +107,15 @@ describe('policy', () => {
     assert.equal(policy.evaluate({ text: 'hola', reason: 'test', solicitado: true }, ahora).ok, true, 'la respuesta, no');
   });
 
+  test('las consultas dejan el final del techo a las acciones', () => {
+    const ahora = Date.now();
+    const reserva = Math.ceil(config.respuestasPerHour * config.reservaAcciones);
+    for (let i = 0; i < config.respuestasPerHour - reserva; i += 1) policy.registerSent(ahora, true);
+    const consulta = policy.evaluate({ text: 'hola', reason: 'test', solicitado: true, consulta: true }, ahora);
+    assert.equal(!consulta.ok && consulta.rejection, 'hourly-budget', 'una consulta ya no cabe');
+    assert.equal(policy.evaluate({ text: 'hola', reason: 'test', solicitado: true }, ahora).ok, true, 'una acción sí');
+  });
+
   test('y las respuestas no gastan del techo espontáneo, pero tienen el suyo', () => {
     const ahora = Date.now();
     for (let i = 0; i < config.respuestasPerHour; i += 1) policy.registerSent(ahora, true);

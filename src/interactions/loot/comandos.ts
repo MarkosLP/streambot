@@ -72,6 +72,7 @@ const mencion = (ctx: CtxComando) => ({ allowedMentions: [ctx.viewer.login] });
 export const poder: Interaction<CtxComando> = {
   name: 'loot-poder',
   spontaneous: false,
+  consulta: true,
   cooldowns: [porPersona('loot-poder', 60_000)],
   run: (ctx) => {
     const inv = lootDb.inventario(ctx.viewer.id);
@@ -437,6 +438,7 @@ export const usar: Interaction<CtxComando> = {
 export const top: Interaction<CtxComando> = {
   name: 'loot-top',
   spontaneous: false,
+  consulta: true,
   cooldowns: [
     porPersona('loot-top', 60_000),
     // Una línea cada 20 s como mucho, pida quien la pida: es la misma para todos.
@@ -462,6 +464,7 @@ export const top: Interaction<CtxComando> = {
 export const coleccion: Interaction<CtxComando> = {
   name: 'loot-coleccion',
   spontaneous: false,
+  consulta: true,
   cooldowns: [porPersona('loot-coleccion', 60_000)],
   run: (ctx) => {
     const c = lootDb.coleccion(ctx.viewer.id);
@@ -479,6 +482,7 @@ export const coleccion: Interaction<CtxComando> = {
 export const ayuda: Interaction<CtxComando> = {
   name: 'loot-ayuda',
   spontaneous: false,
+  consulta: true,
   cooldowns: [
     { key: () => cooldowns.keys.interaction('loot-ayuda'), ms: 2 * 60_000, motivo: (_c, f) => `cooldown, faltan ${f}s` },
   ],

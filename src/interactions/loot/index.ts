@@ -665,6 +665,7 @@ export function componerInventario(displayName: string, inv: lootDb.Inventario):
 export const inventario: Interaction<Ctx> = {
   name: NAME_INVENTARIO,
   spontaneous: false,
+  consulta: true,
   cooldowns: [
     {
       key: (ctx) => cooldowns.keys.user(NAME_INVENTARIO, ctx.viewer.id),
