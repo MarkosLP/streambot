@@ -41,18 +41,24 @@ export const DURACION_MS = 3 * 60_000;
 export const VIDA_POR_PERSONA = 200;
 export const ATAQUE_COOLDOWN_MS = 10_000;
 
+/**
+ * Los jefes. `tipo` es lo que usa el overlay para su retrato, sus colores y
+ * su ambiente (biblioteca/overlays/jefe.html, TEMAS): si añades uno aquí,
+ * añádelo allí también, o saldrá con el aspecto genérico.
+ */
 export const JEFES = [
-  'el Dragón de Escarcha',
-  'el Rey Esqueleto',
-  'la Hidra del Pantano',
-  'el Gólem de Obsidiana',
-  'el Liche sin Nombre',
-  'la Araña Reina',
-  'el Kraken del Foso',
-  'el Minotauro con Resaca',
-  'el Tanque que no sabe tanquear',
-  'el Lag Primigenio',
-];
+  { tipo: 'dragon', nombre: 'el Dragón de Escarcha' },
+  { tipo: 'esqueleto', nombre: 'el Rey Esqueleto' },
+  { tipo: 'hidra', nombre: 'la Hidra del Pantano' },
+  { tipo: 'golem', nombre: 'el Gólem de Obsidiana' },
+  { tipo: 'liche', nombre: 'el Liche sin Nombre' },
+  { tipo: 'arana', nombre: 'la Araña Reina' },
+  { tipo: 'kraken', nombre: 'el Kraken del Foso' },
+  { tipo: 'minotauro', nombre: 'el Minotauro con Resaca' },
+  { tipo: 'tanque', nombre: 'el Tanque que no sabe tanquear' },
+  { tipo: 'lag', nombre: 'el Lag Primigenio' },
+] as const;
+export type TipoJefe = (typeof JEFES)[number]['tipo'];
 
 /** Un golpe, para el overlay: los números de daño que saltan. */
 export interface Golpe {
@@ -65,6 +71,7 @@ export interface Golpe {
 interface Jefe {
   /** Cambia con cada jefe: el overlay sabe así que es uno nuevo. */
   id: number;
+  tipo: TipoJefe;
   nombre: string;
   golpes: Golpe[];
   vidaMax: number;
@@ -81,6 +88,7 @@ let golpesTotales = 0;
 /** Cómo acabó el último jefe, para el rótulo final del overlay. */
 export interface Final {
   id: number;
+  tipo: TipoJefe;
   nombre: string;
   resultado: 'derrotado' | 'escapa';
   vida: number;
@@ -95,12 +103,16 @@ let reloj: ReturnType<typeof setTimeout> | null = null;
 
 export type ResultadoInvocar = { ok: true; nombre: string; vida: number; enviado: boolean } | { ok: false; motivo: string };
 
-export async function invocar({ azar = Math.random, now = Date.now() }: { azar?: Azar; now?: number } = {}): Promise<ResultadoInvocar> {
+export async function invocar(
+  { azar = Math.random, now = Date.now(), tipo }: { azar?: Azar; now?: number; tipo?: string } = {},
+): Promise<ResultadoInvocar> {
   if (!ajustes.lootActivo()) return { ok: false, motivo: 'el Loot está apagado' };
   if (jefe) return { ok: false, motivo: `${jefe.nombre} sigue en pie` };
-  const nombre = JEFES[Math.floor(azar() * JEFES.length)]!;
+  // Uno concreto si lo eliges en el panel; si no, al azar.
+  const elegido = JEFES.find((x) => x.tipo === tipo) ?? JEFES[Math.floor(azar() * JEFES.length)]!;
+  const nombre = elegido.nombre;
   const vidaMax = VIDA_POR_PERSONA * Math.max(1, aventureros(now).length);
-  jefe = { id: ++contador, nombre, golpes: [], vidaMax, vida: vidaMax, hasta: now + DURACION_MS, danos: new Map(), avisoMitad: false };
+  jefe = { id: ++contador, tipo: elegido.tipo, nombre, golpes: [], vidaMax, vida: vidaMax, hasta: now + DURACION_MS, danos: new Map(), avisoMitad: false };
   final = null;
   reloj = setTimeout(() => void terminarPorTiempo(), DURACION_MS);
   reloj.unref?.();
@@ -207,6 +219,7 @@ async function terminarPorTiempo(): Promise<void> {
 function apuntarFinal(j: Jefe, resultado: Final['resultado'], orden: ReturnType<typeof ranking>): void {
   final = {
     id: j.id,
+    tipo: j.tipo,
     nombre: j.nombre,
     resultado,
     vida: j.vida,
@@ -225,6 +238,7 @@ export function paraOverlay(now = Date.now()) {
     jefe: jefe
       ? {
         id: jefe.id,
+        tipo: jefe.tipo,
         nombre: jefe.nombre,
         vida: jefe.vida,
         vidaMax: jefe.vidaMax,

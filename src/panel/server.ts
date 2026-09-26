@@ -234,6 +234,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       ...loot.estado(),
       // Para el regalo: todo el que está en el chat, haya escrito o no.
       jefe: jefe.estado(),
+      jefes: jefe.JEFES,
       enElChat: (await loot.enElChat()).map((v) => ({ login: v.login, nombre: v.displayName })),
       probabilidades: PROBABILIDADES,
       recientes: lootDb.recientes(25),
@@ -267,12 +268,12 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
 
   // El jefe de raid: aparece en el chat y se pelea con !atacar.
   if (ruta === 'POST /api/loot/jefe') {
-    const { accion } = await cuerpo(req);
+    const { accion, tipo } = await cuerpo(req);
     if (accion === 'retirar') {
       if (!jefe.retirar()) throw new ErrorHttp(409, 'no hay ningún jefe');
       return json(res, 200, { ok: true });
     }
-    const r = await jefe.invocar();
+    const r = await jefe.invocar({ tipo: typeof tipo === 'string' ? tipo : undefined });
     if (!r.ok) throw new ErrorHttp(409, r.motivo);
     return json(res, 200, r);
   }

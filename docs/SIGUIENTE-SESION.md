@@ -39,7 +39,8 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 - **`!dar` rehecho**: `!dar` solo enseña tus objetos numerados; `!dar ana` pregunta qué le das; `!dar ana 2` le da el 2. Siguen valiendo rareza y parte del nombre.
 - **Duelos en OBS**: en la misma fuente `FX Jefe` (nada que montar). VS, barra de probabilidades con una aguja que cae en el lado del ganador, ¡GANA!, ¡SORPRESA! y el maldito que cambia de manos. Vista previa: `jefe.html?demo=duelo`.
 - Prueba con raftaei (26 sep, 12:48-13:01): el jefe caía en 73 s y la mitad de los !atacar se perdían en la espera de 15 s → 200 de vida/persona y 10 s. El registro del final del jefe ya dice si el mensaje salió.
-- Hay que **reiniciar el bot** para tenerlo. 407 tests.
+- **Cada jefe con su aspecto**: retrato SVG propio en el medallón y en el aviso, colores de la barra y un ambiente en los bordes (nieve, almas, burbujas tóxicas, brasas con temblor en críticos, runas, telarañas y arañas colgando, tentáculos, «¡hic!», «MISS», glitch). En `jefe.html`, `TEMAS`; el tipo viene de `JEFES` en `jefe.ts`. En el panel se puede elegir qué jefe invocar. Vista previa: `jefe.html?demo=1&jefe=arana`.
+- Hay que **reiniciar el bot** para tenerlo. 409 tests.
 
 ### Precios y límites acordados
 

@@ -653,7 +653,11 @@ async function cargarLoot() {
     ]
     : [
       h('p', { class: 'nota' }, 'Aparece en el chat con 200 de vida por cada persona que esté hablando; cada una puede pegar cada 10 s. Si cae, botín para todos los que peguen; Cofre del tesoro para quien más daño haga. El bot solo habla tres veces: al aparecer, a mitad de vida y al final.'),
-      h('button', { class: 'boton primario', type: 'button', 'data-jefe': 'invocar' }, '🐉 Invocar jefe'),
+      h('div', { class: 'jefe-invocar' },
+        h('select', { id: 'l-jefe-tipo', 'aria-label': 'Qué jefe' },
+          h('option', { value: '' }, '🎲 Al azar'),
+          (d.jefes || []).map((x) => h('option', { value: x.tipo, selected: x.tipo === jefeElegido }, x.nombre.charAt(0).toUpperCase() + x.nombre.slice(1)))),
+        h('button', { class: 'boton primario', type: 'button', 'data-jefe': 'invocar' }, '🐉 Invocar jefe')),
     ]));
 
   const enChat = d.enElChat || [];
@@ -738,13 +742,19 @@ $('loot-canal-juega').addEventListener('change', async (e) => {
   }
 });
 
+// Qué jefe invocar. Se guarda aquí porque la tarjeta se repinta cada 5 s.
+let jefeElegido = '';
+$('l-jefe').addEventListener('change', (e) => {
+  if (e.target.id === 'l-jefe-tipo') jefeElegido = e.target.value;
+});
+
 $('l-jefe').addEventListener('click', async (e) => {
   const boton = e.target.closest('[data-jefe]');
   if (!boton) return;
   const accion = boton.dataset.jefe;
   boton.disabled = true;
   try {
-    const r = await api('/api/loot/jefe', { accion });
+    const r = await api('/api/loot/jefe', { accion, tipo: jefeElegido || undefined });
     tostada(accion === 'retirar' ? 'Jefe retirado' : `🐉 ${r.nombre} aparece con ${r.vida} de vida${r.enviado ? '' : ' (el mensaje no salió al chat)'}`, accion !== 'retirar' && !r.enviado);
     cargarLoot();
   } catch (err) {
@@ -1174,7 +1184,12 @@ async function cargarBiblioteca() {
  * sale vacía (sin jefe es transparente) y el banner, siempre Legendario.
  */
 const VARIANTES_OVERLAY = {
-  'jefe.html': [{ nombre: 'Jefe', q: '?demo=1' }, { nombre: 'Duelos', q: '?demo=duelo' }],
+  'jefe.html': [
+    ...[['dragon', '🐉 Dragón'], ['esqueleto', '💀 Esqueleto'], ['hidra', '🐍 Hidra'], ['golem', '🗿 Gólem'], ['liche', '☠️ Liche'],
+      ['arana', '🕷️ Araña'], ['kraken', '🐙 Kraken'], ['minotauro', '🐂 Minotauro'], ['tanque', '🛡️ Tanque'], ['lag', '📶 Lag']]
+      .map(([tipo, nombre]) => ({ nombre, q: `?demo=1&jefe=${tipo}` })),
+    { nombre: '⚔️ Duelos', q: '?demo=duelo' },
+  ],
   'botin.html': [
     { nombre: 'Legendario', q: '?rareza=legendario&item=Espada%20del%20Amanecer%20Eterno' },
     { nombre: 'Épico', q: '?rareza=epico&item=Capa%20de%20las%20Sombras' },

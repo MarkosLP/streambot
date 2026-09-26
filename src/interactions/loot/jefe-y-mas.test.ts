@@ -351,6 +351,21 @@ describe('🐉 jefe de raid', () => {
     assert.match(fila.detail!, /^jefe derrotado, el Dragón de Escarcha: ana=\d+ · el mensaje no salió/);
   });
 
+  test('se puede elegir el jefe, y el overlay sabe cuál es para vestirlo', async () => {
+    const r = await jefe.invocar({ tipo: 'arana' });
+    assert.ok(r.ok && r.nombre === 'la Araña Reina');
+    assert.equal(jefe.paraOverlay().jefe!.tipo, 'arana');
+    jefe.retirar();
+    const otro = await jefe.invocar({ tipo: 'no-existe', azar: () => 0 });
+    assert.ok(otro.ok && otro.nombre === 'el Dragón de Escarcha', 'un tipo raro: al azar');
+  });
+
+  test('todos los jefes tienen su aspecto en el overlay', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const html = await readFile(new URL('../../../biblioteca/overlays/jefe.html', import.meta.url), 'utf8');
+    for (const j of jefe.JEFES) assert.match(html, new RegExp(`\n    ${j.tipo}: \{`), `falta el tema de ${j.tipo}`);
+  });
+
   test('sin jefe, !atacar no contesta; y no se invocan dos a la vez', async () => {
     await handleEvent(mensaje('ana', '!atacar'));
     assert.equal(enviados.length, 0);

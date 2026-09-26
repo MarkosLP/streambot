@@ -871,3 +871,10 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
 .imagen-vista > img { position: absolute; inset: 12px; width: calc(100% - 24px); height: calc(100% - 24px); object-fit: contain; }
 .imagen .sonido-info { flex: 1 1 100%; }
 .imagen .overlay-pie > .copiar { margin-left: auto; }
+
+.jefe-invocar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.jefe-invocar select {
+  padding: 9px 12px; border-radius: 9px; border: 1px solid var(--borde-2);
+  background: var(--fondo); color: var(--texto); font: inherit;
+}
+.jefe-invocar select:focus { outline: none; border-color: var(--oro); }

@@ -16,7 +16,12 @@
   probabilidades hasta el lado del ganador, y el resultado (7 s por duelo,
   uno detrás de otro).
 
+  Cada jefe tiene su retrato, sus colores y su ambiente en los bordes de la
+  pantalla (TEMAS, más abajo). El tipo lo manda el bot (jefe.ts, JEFES).
+
   ?demo=1 simula un combate entero sin bot, para verlo en la Biblioteca.
+  ?demo=1&jefe=arana, con un jefe concreto (dragon, esqueleto, hidra, golem,
+  liche, arana, kraken, minotauro, tanque, lag).
   ?demo=duelo, unos cuantos duelos.
 -->
 <html lang="es">
@@ -27,7 +32,11 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Chakra+Petch:wght@600;700&display=swap">
 <style>
   html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
-  body { font-family: "Chakra Petch", "Segoe UI", sans-serif; color: #fff; }
+  body {
+    font-family: "Chakra Petch", "Segoe UI", sans-serif; color: #fff;
+    /* Colores del jefe: claro, principal, oscuro, brillo (r, g, b) y medallón. */
+    --t1: #ff7a5c; --t2: #e0212b; --t3: #8f0714; --tb: 255, 60, 30; --m1: #5a1010; --m2: #220405;
+  }
   [hidden] { display: none !important; }
 
   /* ---------- La barra ---------- */
@@ -42,7 +51,7 @@
 
   .emblema {
     position: absolute; left: -20px; top: -8px; width: 170px; height: 170px; z-index: 3;
-    filter: drop-shadow(0 6px 10px rgba(0,0,0,.7)) drop-shadow(0 0 22px rgba(255, 60, 30, .55));
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,.7)) drop-shadow(0 0 22px rgba(var(--tb), .6));
   }
   .emblema.golpe { animation: sacude .28s steps(3); }
   @keyframes sacude {
@@ -66,8 +75,8 @@
     display: flex; align-items: flex-end; gap: 18px; padding-left: 26px;
   }
   .etiqueta {
-    font-size: 17px; font-weight: 700; letter-spacing: .35em; color: #ff6b4a;
-    text-shadow: 0 0 10px rgba(255, 60, 30, .9), 0 2px 0 #000; padding-bottom: 7px;
+    font-size: 17px; font-weight: 700; letter-spacing: .35em; color: var(--t2);
+    text-shadow: 0 0 10px rgba(var(--tb), .9), 0 2px 0 #000; padding-bottom: 7px;
   }
   .nombre {
     font-family: "Cinzel", Georgia, serif; font-weight: 900; font-size: 40px; line-height: 1;
@@ -77,6 +86,7 @@
     filter: drop-shadow(0 3px 0 rgba(0,0,0,.85)) drop-shadow(0 0 14px rgba(255, 170, 60, .45));
     white-space: nowrap;
   }
+  .nombre.largo { font-size: 31px; }
   .reloj {
     margin-left: auto; margin-right: 8px; padding-bottom: 5px;
     font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums;
@@ -95,9 +105,9 @@
   .rastro, .vida { position: absolute; left: 0; top: 0; bottom: 0; }
   .rastro { background: linear-gradient(180deg, #fff3c4, #ffb03b); transition: width .9s ease-in .35s; }
   .vida {
-    background: linear-gradient(180deg, #ff7a5c 0%, #e0212b 40%, #8f0714 100%);
+    background: linear-gradient(180deg, var(--t1) 0%, var(--t2) 40%, var(--t3) 100%);
     transition: width .18s ease-out;
-    box-shadow: 4px 0 12px rgba(255, 80, 50, .8);
+    box-shadow: 4px 0 12px rgba(var(--tb), .8);
   }
   .vida::after {
     content: ""; position: absolute; inset: 0;
@@ -126,7 +136,8 @@
     text-shadow: 0 3px 0 #000, 0 0 10px rgba(0,0,0,.9);
     animation: salta 1.5s cubic-bezier(.2, .9, .4, 1) forwards;
   }
-  .dano small { display: block; font-size: 18px; color: #ffd9c9; letter-spacing: .04em; }
+  .dano { text-shadow: 0 3px 0 #000, 0 0 14px rgba(var(--tb), .9); }
+  .dano small { display: block; font-size: 18px; color: var(--t1); letter-spacing: .04em; }
   .dano.critico { font-size: 74px; color: #ffd24a; text-shadow: 0 4px 0 #6b2b00, 0 0 22px rgba(255, 170, 30, .95); animation-name: salta-critico; }
   .dano.critico::before { content: "¡CRÍTICO!"; display: block; font-size: 22px; letter-spacing: .3em; color: #fff3c4; }
   @keyframes salta {
@@ -147,15 +158,17 @@
     position: absolute; left: 0; right: 0; top: 50%; height: 190px; transform: translateY(-50%);
     display: grid; place-items: center;
     background:
-      repeating-linear-gradient(-45deg, rgba(255, 40, 30, .0) 0 38px, rgba(255, 40, 30, .16) 38px 76px),
-      linear-gradient(180deg, rgba(40, 0, 0, 0), rgba(60, 0, 0, .82) 22%, rgba(60, 0, 0, .82) 78%, rgba(40, 0, 0, 0));
+      repeating-linear-gradient(-45deg, rgba(var(--tb), 0) 0 38px, rgba(var(--tb), .16) 38px 76px),
+      linear-gradient(180deg, transparent, color-mix(in srgb, var(--m2) 85%, transparent) 22%, color-mix(in srgb, var(--m2) 85%, transparent) 78%, transparent);
     animation: aviso 3.4s ease-in-out forwards;
   }
-  .aviso::before, .aviso::after { content: ""; position: absolute; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, transparent, #ff4a3a, transparent); box-shadow: 0 0 18px #ff4a3a; }
+  .aviso::before, .aviso::after { content: ""; position: absolute; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, transparent, var(--t2), transparent); box-shadow: 0 0 18px var(--t2); }
   .aviso::before { top: 30px; } .aviso::after { bottom: 30px; }
   @keyframes aviso { 0% { opacity: 0; transform: translateY(-50%) scaleY(0); } 10%, 82% { opacity: 1; transform: translateY(-50%) scaleY(1); } 100% { opacity: 0; transform: translateY(-50%) scaleY(0); } }
   .aviso-texto { text-align: center; }
-  .aviso-texto span { display: block; font-size: 26px; font-weight: 700; letter-spacing: .6em; color: #ff8a70; text-shadow: 0 0 14px #ff3a2a; animation: brillo .5s steps(2) infinite; }
+  .aviso-texto span { display: block; font-size: 26px; font-weight: 700; letter-spacing: .6em; color: var(--t1); text-shadow: 0 0 14px var(--t2); animation: brillo .5s steps(2) infinite; }
+  .aviso-retrato { width: 150px; height: 150px; margin: 0 auto -6px; display: block; filter: drop-shadow(0 0 24px rgba(var(--tb), .8)); }
+  .aviso { height: 340px; }
   .aviso-texto strong {
     display: block; font-family: "Cinzel", Georgia, serif; font-weight: 900; font-size: 84px; line-height: 1.05; text-transform: uppercase;
     background: linear-gradient(180deg, #fff6d6, #ffcc5c 50%, #c2410c); -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -277,16 +290,79 @@
   .duelo.resuelto .extra { animation: aparece .4s ease-out .3s forwards; }
   .extra .sorpresa { color: #ffd24a; letter-spacing: .2em; margin-right: 12px; }
   .extra .maldito { color: #a6ff7a; }
+
+  /* ---------- Ambiente de cada jefe (bordes de la pantalla) ---------- */
+  #ambiente { position: absolute; inset: 0; pointer-events: none; overflow: hidden; transition: opacity 1.1s ease; }
+  #ambiente.apagando { opacity: 0; }
+  .particula {
+    position: absolute; top: 0; font-size: var(--tam); line-height: 1; white-space: nowrap; font-weight: 700;
+    animation-timing-function: linear; animation-iteration-count: infinite;
+  }
+  .p-cae { top: -60px; animation-name: cae; opacity: .8; text-shadow: 0 0 8px var(--col); }
+  @keyframes cae { to { transform: translate(var(--deriva), 1180px) rotate(200deg); } }
+  .p-sube { top: auto; bottom: -40px; animation-name: sube-p; }
+  @keyframes sube-p { 0% { opacity: 0; } 12% { opacity: 1; } 80% { opacity: .8; } 100% { opacity: 0; transform: translate(var(--deriva), -620px); } }
+  .p-flota { top: auto; bottom: 8%; animation-name: flota; opacity: 0; text-shadow: 0 0 12px var(--col), 0 2px 0 #000; }
+  @keyframes flota { 0% { opacity: 0; transform: translate(0, 0) scale(.7); } 20% { opacity: .9; } 75% { opacity: .7; } 100% { opacity: 0; transform: translate(var(--deriva), -520px) scale(1.1); } }
+  .alma { width: var(--tam); height: var(--tam); border-radius: 50%; background: radial-gradient(circle, #fff 0%, var(--col) 35%, transparent 70%); filter: blur(1px); }
+  .burbuja { width: var(--tam); height: var(--tam); border-radius: 50%; border: 2px solid var(--col); background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.55), transparent 45%); opacity: .7; }
+  .brasa { width: var(--tam); height: var(--tam); border-radius: 2px; background: var(--col); box-shadow: 0 0 10px #ff6a00, 0 0 20px #ff3a00; }
+  .runa { font-family: serif; font-weight: 700; text-shadow: 0 0 14px #b45cff, 0 0 4px #fff; }
+  .miss { font-family: "Chakra Petch", sans-serif; letter-spacing: .08em; text-shadow: 0 2px 0 #000, 0 0 8px #000; animation-name: cae-texto; }
+  @keyframes cae-texto { 0% { transform: translate(0, 0) rotate(-12deg); } 50% { transform: translate(calc(var(--deriva) / 2), 560px) rotate(10deg); } 100% { transform: translate(var(--deriva), 1180px) rotate(-8deg); } }
+  .glitchy { font-family: Consolas, monospace; text-shadow: 2px 0 #ff00c8, -2px 0 #00e5ff; }
+  .hipo { font-style: italic; }
+
+  .escarcha { position: absolute; top: 0; width: 520px; height: 420px; }
+  .escarcha.izq { left: 0; background: radial-gradient(ellipse at 0 0, rgba(230, 248, 255, .55), rgba(120, 200, 255, .18) 35%, transparent 65%); }
+  .escarcha.der { right: 0; background: radial-gradient(ellipse at 100% 0, rgba(230, 248, 255, .55), rgba(120, 200, 255, .18) 35%, transparent 65%); }
+  .niebla { position: absolute; left: 0; right: 0; bottom: 0; height: 220px; opacity: .75; background: linear-gradient(0deg, var(--niebla), transparent); animation: respira 5s ease-in-out infinite; }
+  @keyframes respira { 50% { opacity: .45; } }
+
+  .telarana { position: absolute; top: 0; width: 360px; height: 360px; }
+  .telarana svg { width: 100%; height: 100%; }
+  .telarana.izq { left: 0; }
+  .telarana.der { right: 0; transform: scaleX(-1); }
+  .colgada { position: absolute; top: 0; width: 46px; animation: cuelga ease-in-out infinite alternate; }
+  .colgada .hilo { position: absolute; left: 22px; bottom: 30px; width: 2px; height: 1200px; background: rgba(235, 235, 245, .6); }
+  .colgada svg { position: absolute; left: 0; top: 0; width: 46px; height: 46px; filter: drop-shadow(0 0 6px rgba(255, 40, 60, .6)); }
+  @keyframes cuelga { from { transform: translateY(-80px); } to { transform: translateY(var(--baja)); } }
+
+  .tentaculo { position: absolute; bottom: -60px; width: 150px; height: 520px; transform-origin: 50% 100%; animation: ondea 4.5s ease-in-out infinite; }
+  .tentaculo svg { width: 100%; height: 100%; filter: drop-shadow(0 0 16px rgba(40, 210, 200, .5)); }
+  .tentaculo.izq { left: 30px; }
+  .tentaculo.der { right: 30px; animation-delay: -2.2s; }
+  .tentaculo.der svg { transform: scaleX(-1); }
+  @keyframes ondea { 0%, 100% { transform: rotate(-6deg) translateY(40px); } 50% { transform: rotate(7deg) translateY(0); } }
+
+  .barrido { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0, 229, 255, .05) 0 2px, transparent 2px 5px); animation: parpadea 3s steps(6) infinite; }
+  @keyframes parpadea { 50% { opacity: .4; } }
+  body.glitch .jefe { filter: drop-shadow(6px 0 0 rgba(255, 0, 200, .8)) drop-shadow(-6px 0 0 rgba(0, 229, 255, .8)); transform: translate(calc(-50% + 8px), 2px) skewX(-4deg); }
+  body.glitch #ambiente { transform: translateX(-10px); }
+
+  /* El gólem hace temblar la pantalla con cada crítico. */
+  body.temblor .jefe, body.temblor #danos { animation: terremoto .45s steps(6); }
+  @keyframes terremoto { 20% { translate: -12px 6px; } 40% { translate: 10px -6px; } 60% { translate: -8px 4px; } 80% { translate: 6px -2px; } }
+
+  /* Retratos: pequeños detalles vivos. */
+  .emblema .vaho { animation: vaho 2s ease-out infinite; }
+  @keyframes vaho { from { opacity: .9; transform: translateY(0); } to { opacity: 0; transform: translateY(12px); } }
+  .emblema .grietas { animation: brillo .9s ease-in-out infinite; }
+  .emblema .runas { animation: brillo 1.8s ease-in-out infinite; }
+  .emblema .estrellas { transform-origin: 100px 30px; animation: gira 3s linear infinite; }
 </style>
 </head>
 <body>
+
+<!-- Ambiente del jefe: bordes de la pantalla -->
+<div id="ambiente"></div>
 
 <!-- La barra del jefe -->
 <div class="jefe" id="jefe" hidden>
   <svg class="emblema" id="emblema" viewBox="0 0 200 200" aria-hidden="true">
     <defs>
       <radialGradient id="fondo" cx="50%" cy="45%" r="60%">
-        <stop offset="0" stop-color="#5a1010"/><stop offset=".7" stop-color="#220405"/><stop offset="1" stop-color="#0c0102"/>
+        <stop offset="0" style="stop-color: var(--m1)"/><stop offset=".7" style="stop-color: var(--m2)"/><stop offset="1" stop-color="#050203"/>
       </radialGradient>
       <linearGradient id="oro" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#fff0b0"/><stop offset=".45" stop-color="#e2a53c"/><stop offset="1" stop-color="#7a4610"/>
@@ -308,28 +384,8 @@
     <!-- Medallón -->
     <circle cx="100" cy="100" r="82" fill="url(#fondo)" stroke="url(#oro)" stroke-width="9"/>
     <circle cx="100" cy="100" r="72" fill="none" stroke="#0c0102" stroke-width="3"/>
-    <!-- Cuernos -->
-    <path d="M62 78 C40 64 30 40 40 18 C46 40 60 52 78 60 Z" fill="url(#cuerno)" stroke="#e2a53c" stroke-width="2.5" stroke-linejoin="round"/>
-    <path d="M138 78 C160 64 170 40 160 18 C154 40 140 52 122 60 Z" fill="url(#cuerno)" stroke="#e2a53c" stroke-width="2.5" stroke-linejoin="round"/>
-    <!-- Calavera -->
-    <path d="M100 52 C70 52 56 72 56 96 C56 112 64 122 72 128 L72 144 C72 150 78 154 84 154 L116 154 C122 154 128 150 128 144 L128 128 C136 122 144 112 144 96 C144 72 130 52 100 52 Z"
-          fill="url(#hueso)" stroke="#1a0e08" stroke-width="4" stroke-linejoin="round"/>
-    <!-- Grieta -->
-    <path d="M104 54 L98 70 L106 78 L100 90" fill="none" stroke="#6b5a3c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    <!-- Cuencas y ojos -->
-    <path d="M70 98 C72 86 90 84 94 96 C96 106 84 112 76 110 C71 108 69 104 70 98 Z" fill="#150606"/>
-    <path d="M130 98 C128 86 110 84 106 96 C104 106 116 112 124 110 C129 108 131 104 130 98 Z" fill="#150606"/>
-    <g class="ojos">
-      <circle cx="82" cy="99" r="12" fill="url(#ojo)"/>
-      <circle cx="118" cy="99" r="12" fill="url(#ojo)"/>
-    </g>
-    <!-- Nariz -->
-    <path d="M100 112 L94 124 L106 124 Z" fill="#150606"/>
-    <!-- Dientes -->
-    <path d="M78 136 H122" stroke="#1a0e08" stroke-width="3"/>
-    <path d="M86 132 V148 M95 132 V150 M105 132 V150 M114 132 V148" stroke="#1a0e08" stroke-width="3" stroke-linecap="round"/>
-    <!-- Colmillos -->
-    <path d="M80 136 L84 150 L88 136 Z M112 136 L116 150 L120 136 Z" fill="#fbf4e4" stroke="#1a0e08" stroke-width="2" stroke-linejoin="round"/>
+    <!-- El retrato del jefe: lo pone vestir() -->
+    <g id="retrato"></g>
   </svg>
   <div class="insignia" id="insignia">🐉</div>
 
@@ -354,6 +410,7 @@
 <!-- Aviso al aparecer -->
 <div class="aviso" id="aviso" hidden>
   <div class="aviso-texto">
+    <svg class="aviso-retrato" id="aviso-retrato" viewBox="0 0 200 200" aria-hidden="true"></svg>
     <span>⚠ ¡APARECE UN JEFE! ⚠</span>
     <strong id="aviso-nombre">El Dragón de Escarcha</strong>
   </div>
@@ -384,13 +441,442 @@
 <script>
   // Todo como texto, nunca como HTML: los nombres los elige cada espectador.
   const $ = (id) => document.getElementById(id);
-  const INSIGNIAS = [
-    [/drag[oó]n/i, '🐉'], [/esqueleto/i, '💀'], [/hidra/i, '🐍'], [/g[oó]lem/i, '🗿'], [/liche/i, '☠️'],
-    [/ara[ñn]a/i, '🕷️'], [/kraken/i, '🐙'], [/minotauro/i, '🐂'], [/tanque/i, '🛡️'], [/lag/i, '📶'],
-  ];
+  const RETRATO_BASE = `<!-- Cuernos -->
+    <path d="M62 78 C40 64 30 40 40 18 C46 40 60 52 78 60 Z" fill="url(#cuerno)" stroke="#e2a53c" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M138 78 C160 64 170 40 160 18 C154 40 140 52 122 60 Z" fill="url(#cuerno)" stroke="#e2a53c" stroke-width="2.5" stroke-linejoin="round"/>
+    <!-- Calavera -->
+    <path d="M100 52 C70 52 56 72 56 96 C56 112 64 122 72 128 L72 144 C72 150 78 154 84 154 L116 154 C122 154 128 150 128 144 L128 128 C136 122 144 112 144 96 C144 72 130 52 100 52 Z"
+          fill="url(#hueso)" stroke="#1a0e08" stroke-width="4" stroke-linejoin="round"/>
+    <!-- Grieta -->
+    <path d="M104 54 L98 70 L106 78 L100 90" fill="none" stroke="#6b5a3c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Cuencas y ojos -->
+    <path d="M70 98 C72 86 90 84 94 96 C96 106 84 112 76 110 C71 108 69 104 70 98 Z" fill="#150606"/>
+    <path d="M130 98 C128 86 110 84 106 96 C104 106 116 112 124 110 C129 108 131 104 130 98 Z" fill="#150606"/>
+    <g class="ojos">
+      <circle cx="82" cy="99" r="12" fill="url(#ojo)"/>
+      <circle cx="118" cy="99" r="12" fill="url(#ojo)"/>
+    </g>
+    <!-- Nariz -->
+    <path d="M100 112 L94 124 L106 124 Z" fill="#150606"/>
+    <!-- Dientes -->
+    <path d="M78 136 H122" stroke="#1a0e08" stroke-width="3"/>
+    <path d="M86 132 V148 M95 132 V150 M105 132 V150 M114 132 V148" stroke="#1a0e08" stroke-width="3" stroke-linecap="round"/>
+    <!-- Colmillos -->
+    <path d="M80 136 L84 150 L88 136 Z M112 136 L116 150 L120 136 Z" fill="#fbf4e4" stroke="#1a0e08" stroke-width="2" stroke-linejoin="round"/>`;
   const mayuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   const sonar = (archivo) => { const a = new Audio(`../sonidos/${archivo}`); a.volume = 0.8; a.play().catch(() => {}); };
+
+  // ---------- Los jefes: retrato, colores y ambiente ----------
+  //
+  // Cada tipo (el de JEFES en src/interactions/loot/jefe.ts) tiene:
+  //   c: colores [claro, principal, oscuro], brillo (r, g, b) y fondo del medallón
+  //   insignia: el emoji pequeño junto al medallón
+  //   retrato: SVG dentro del medallón (viewBox 0 0 200 200, centro 100,100)
+  //   ambiente: lo que pasa en los bordes de la pantalla mientras está vivo
+  // Los retratos son nuestros, nunca datos del chat: por eso van con innerHTML.
+
+  const TEMAS = {
+    dragon: {
+      c: ['#eaffff', '#36b7ff', '#0b4a8a', '80, 190, 255', '#1b4b78', '#071a2c'],
+      insignia: '🐉',
+      retrato: `
+        <defs>
+          <linearGradient id="r-piel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f2fbff"/><stop offset=".5" stop-color="#7cc6ee"/><stop offset="1" stop-color="#1e4f82"/></linearGradient>
+          <radialGradient id="r-ojo"><stop offset="0" stop-color="#fff"/><stop offset=".45" stop-color="#8ff6ff"/><stop offset="1" stop-color="#00b3ff" stop-opacity="0"/></radialGradient>
+        </defs>
+        <path d="M72 70 C52 52 42 30 52 8 C58 32 70 46 88 56 Z" fill="#dff3ff" stroke="#0d2640" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M128 70 C148 52 158 30 148 8 C142 32 130 46 112 56 Z" fill="#dff3ff" stroke="#0d2640" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M60 86 L30 76 L54 98 L26 104 L56 114 L36 130 L64 124 Z" fill="#bfe8ff" stroke="#0d2640" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M140 86 L170 76 L146 98 L174 104 L144 114 L164 130 L136 124 Z" fill="#bfe8ff" stroke="#0d2640" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M100 42 C76 42 58 58 56 82 C55 96 62 108 72 116 L78 146 C82 162 92 170 100 172 C108 170 118 162 122 146 L128 116 C138 108 145 96 144 82 C142 58 124 42 100 42 Z" fill="url(#r-piel)" stroke="#0d2640" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M100 48 L90 64 L100 76 L110 64 Z M80 58 L74 70 L84 72 Z M120 58 L126 70 L116 72 Z" fill="#fff" opacity=".55"/>
+        <path d="M62 84 L96 97 L93 104 L60 93 Z" fill="#0d2640"/>
+        <path d="M138 84 L104 97 L107 104 L140 93 Z" fill="#0d2640"/>
+        <g class="ojos">
+          <ellipse cx="80" cy="106" rx="13" ry="7" fill="url(#r-ojo)" transform="rotate(20 80 106)"/>
+          <ellipse cx="120" cy="106" rx="13" ry="7" fill="url(#r-ojo)" transform="rotate(-20 120 106)"/>
+        </g>
+        <path d="M80 100 L80 112 M120 100 L120 112" stroke="#0d2640" stroke-width="3" stroke-linecap="round"/>
+        <path d="M84 138 C92 132 108 132 116 138" fill="none" stroke="#0d2640" stroke-width="3" stroke-linecap="round"/>
+        <ellipse cx="92" cy="147" rx="4" ry="2.6" fill="#0d2640"/><ellipse cx="108" cy="147" rx="4" ry="2.6" fill="#0d2640"/>
+        <path d="M80 148 L85 168 L90 152 Z M120 148 L115 168 L110 152 Z" fill="#fff" stroke="#0d2640" stroke-width="2" stroke-linejoin="round"/>
+        <g class="vaho" fill="#dff6ff"><circle cx="92" cy="178" r="4"/><circle cx="104" cy="182" r="5"/><circle cx="98" cy="190" r="3"/></g>`,
+      ambiente: (a) => {
+        escarcha(a);
+        particulas(a, { n: 28, texto: ['❄', '❅', '❆'], clase: 'p-cae', color: '#dff6ff', tam: [14, 32], dur: [9, 17], todo: true });
+      },
+    },
+
+    esqueleto: {
+      c: ['#e9ffe0', '#5dff8a', '#0b6b2a', '90, 255, 140', '#1f3a22', '#07130a'],
+      insignia: '💀',
+      retrato: `
+        <defs>
+          <linearGradient id="r-hueso" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbf4e4"/><stop offset=".6" stop-color="#d8c9a8"/><stop offset="1" stop-color="#8f7c5a"/></linearGradient>
+          <linearGradient id="r-oro" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0b0"/><stop offset=".5" stop-color="#e2a53c"/><stop offset="1" stop-color="#7a4610"/></linearGradient>
+          <radialGradient id="r-ojo"><stop offset="0" stop-color="#f4fff0"/><stop offset=".4" stop-color="#5dff8a"/><stop offset="1" stop-color="#0b8a35" stop-opacity="0"/></radialGradient>
+        </defs>
+        <path d="M100 56 C70 56 56 76 56 100 C56 116 64 126 72 132 L72 148 C72 154 78 158 84 158 L116 158 C122 158 128 154 128 148 L128 132 C136 126 144 116 144 100 C144 76 130 56 100 56 Z" fill="url(#r-hueso)" stroke="#1a0e08" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M112 60 L106 76 L114 84 L108 96" fill="none" stroke="#6b5a3c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M70 102 C72 90 90 88 94 100 C96 110 84 116 76 114 C71 112 69 108 70 102 Z" fill="#0c140c"/>
+        <path d="M130 102 C128 90 110 88 106 100 C104 110 116 116 124 114 C129 112 131 108 130 102 Z" fill="#0c140c"/>
+        <g class="ojos"><circle cx="82" cy="103" r="12" fill="url(#r-ojo)"/><circle cx="118" cy="103" r="12" fill="url(#r-ojo)"/></g>
+        <path d="M100 116 L94 128 L106 128 Z" fill="#0c140c"/>
+        <path d="M78 140 H122" stroke="#1a0e08" stroke-width="3"/>
+        <path d="M86 136 V152 M95 136 V154 M105 136 V154 M114 136 V152" stroke="#1a0e08" stroke-width="3" stroke-linecap="round"/>
+        <path d="M58 66 L62 28 L78 48 L90 18 L100 42 L110 18 L122 48 L138 28 L142 66 Z" fill="url(#r-oro)" stroke="#3a2404" stroke-width="3.5" stroke-linejoin="round"/>
+        <rect x="56" y="60" width="88" height="12" rx="3" fill="url(#r-oro)" stroke="#3a2404" stroke-width="3.5"/>
+        <circle cx="100" cy="46" r="5" fill="#5dff8a" stroke="#0b3a18" stroke-width="2"/>
+        <circle cx="76" cy="54" r="3.5" fill="#e0112b" stroke="#3a0008" stroke-width="1.5"/><circle cx="124" cy="54" r="3.5" fill="#e0112b" stroke="#3a0008" stroke-width="1.5"/>`,
+      ambiente: (a) => particulas(a, { n: 20, clase: 'p-sube alma', color: '#7dffb0', tam: [16, 36], dur: [6, 11] }),
+    },
+
+    hidra: {
+      c: ['#eaff9e', '#7ed321', '#2c6a0f', '140, 230, 60', '#23421a', '#081405'],
+      insignia: '🐍',
+      retrato: `
+        <defs>
+          <linearGradient id="r-escama" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c8f58a"/><stop offset=".55" stop-color="#4f9e2f"/><stop offset="1" stop-color="#173f12"/></linearGradient>
+        </defs>
+        <g fill="none" stroke-linecap="round">
+          <path d="M100 186 C96 150 70 130 62 92" stroke="#0e2a0a" stroke-width="22"/>
+          <path d="M100 186 C104 150 130 130 138 92" stroke="#0e2a0a" stroke-width="22"/>
+          <path d="M100 186 C100 140 100 110 100 74" stroke="#0e2a0a" stroke-width="24"/>
+          <path d="M100 186 C96 150 70 130 62 92" stroke="url(#r-escama)" stroke-width="16"/>
+          <path d="M100 186 C104 150 130 130 138 92" stroke="url(#r-escama)" stroke-width="16"/>
+          <path d="M100 186 C100 140 100 110 100 74" stroke="url(#r-escama)" stroke-width="18"/>
+        </g>
+        <defs><g id="r-cabeza">
+          <path d="M-20 12 C-24 -8 -12 -28 0 -30 C12 -28 24 -8 20 12 C14 22 -14 22 -20 12 Z" fill="url(#r-escama)" stroke="#0e2a0a" stroke-width="3.5" stroke-linejoin="round"/>
+          <path d="M-12 -20 L-4 -12 M12 -20 L4 -12" stroke="#0e2a0a" stroke-width="3" stroke-linecap="round"/>
+          <g class="ojos"><ellipse cx="-9" cy="-6" rx="5" ry="4" fill="#ffe14a"/><ellipse cx="9" cy="-6" rx="5" ry="4" fill="#ffe14a"/></g>
+          <path d="M-9 -10 V-2 M9 -10 V-2" stroke="#0e2a0a" stroke-width="2"/>
+          <path d="M-8 16 L-6 26 L-3 17 Z M8 16 L6 26 L3 17 Z" fill="#fff" stroke="#0e2a0a" stroke-width="1.5"/>
+        </g></defs>
+        <use href="#r-cabeza" transform="translate(58 80) rotate(-24) scale(.9)"/>
+        <use href="#r-cabeza" transform="translate(142 80) rotate(24) scale(.9)"/>
+        <use href="#r-cabeza" transform="translate(100 60) scale(1.1)"/>
+        <path d="M100 88 L100 100 L94 106 M100 100 L106 106" fill="none" stroke="#e0112b" stroke-width="2.5" stroke-linecap="round"/>`,
+      ambiente: (a) => {
+        niebla(a, 'rgba(110, 220, 60, .35)');
+        particulas(a, { n: 22, clase: 'p-sube burbuja', color: '#a8ff6a', tam: [10, 30], dur: [5, 10] });
+      },
+    },
+
+    golem: {
+      c: ['#fff0c0', '#ff7a1a', '#8a1f00', '255, 120, 30', '#3a2a26', '#0d0908'],
+      insignia: '🗿',
+      temblor: true,
+      retrato: `
+        <defs>
+          <linearGradient id="r-roca" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5d5a68"/><stop offset=".5" stop-color="#26232c"/><stop offset="1" stop-color="#0a090d"/></linearGradient>
+          <radialGradient id="r-lava"><stop offset="0" stop-color="#fff3b0"/><stop offset=".4" stop-color="#ff8a1a"/><stop offset="1" stop-color="#ff3a00" stop-opacity="0"/></radialGradient>
+        </defs>
+        <path d="M70 38 L88 30 L96 44 Z M112 42 L124 28 L134 46 Z" fill="#3a3740" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M60 50 L140 50 L154 96 L142 158 L112 170 L88 170 L58 158 L46 96 Z" fill="url(#r-roca)" stroke="#000" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M56 84 L96 90 L96 102 L54 96 Z M144 84 L104 90 L104 102 L146 96 Z" fill="#17151b" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+        <g class="ojos"><rect x="68" y="102" width="22" height="10" rx="2" fill="url(#r-lava)"/><rect x="110" y="102" width="22" height="10" rx="2" fill="url(#r-lava)"/>
+          <rect x="72" y="104" width="14" height="6" fill="#ffd36b"/><rect x="114" y="104" width="14" height="6" fill="#ffd36b"/></g>
+        <g class="grietas" fill="none" stroke="#ff8a1a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M100 52 L94 68 L104 78 L98 88"/><path d="M60 126 L74 132 L70 146"/><path d="M146 116 L132 126 L138 140"/><path d="M84 60 L78 72"/>
+        </g>
+        <path d="M74 136 L84 146 L94 138 L104 148 L114 138 L126 146 L130 134 L122 156 L78 156 Z" fill="#0a0507" stroke="#000" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M80 150 L120 150" stroke="#ff6a00" stroke-width="3" opacity=".9"/>`,
+      ambiente: (a) => {
+        niebla(a, 'rgba(255, 90, 20, .35)');
+        particulas(a, { n: 26, clase: 'p-sube brasa', color: '#ffb347', tam: [4, 9], dur: [4, 8] });
+      },
+    },
+
+    liche: {
+      c: ['#f1dcff', '#b45cff', '#4b0f8a', '180, 90, 255', '#3a1a5a', '#10061c'],
+      insignia: '☠️',
+      retrato: `
+        <defs>
+          <linearGradient id="r-capa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b3fa0"/><stop offset=".6" stop-color="#2c1146"/><stop offset="1" stop-color="#0d0418"/></linearGradient>
+          <radialGradient id="r-ojo"><stop offset="0" stop-color="#fff"/><stop offset=".4" stop-color="#d59bff"/><stop offset="1" stop-color="#8a2be2" stop-opacity="0"/></radialGradient>
+          <radialGradient id="r-sombra" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#000" stop-opacity=".2"/><stop offset="1" stop-color="#000" stop-opacity=".95"/></radialGradient>
+        </defs>
+        <path d="M100 22 C58 30 42 72 44 116 C45 146 54 166 62 180 L138 180 C146 166 155 146 156 116 C158 72 142 30 100 22 Z" fill="url(#r-capa)" stroke="#07020d" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M100 30 C86 60 84 90 84 120 M100 30 C114 60 116 90 116 120" fill="none" stroke="#8d5cc4" stroke-width="2" opacity=".6"/>
+        <ellipse cx="100" cy="112" rx="36" ry="46" fill="#07020d"/>
+        <path d="M100 76 C80 76 72 90 72 106 C72 118 78 126 84 130 L84 142 L116 142 L116 130 C122 126 128 118 128 106 C128 90 120 76 100 76 Z" fill="#cfc2dd" stroke="#1a0b28" stroke-width="3"/>
+        <ellipse cx="100" cy="112" rx="36" ry="46" fill="url(#r-sombra)"/>
+        <g class="ojos"><circle cx="88" cy="106" r="9" fill="url(#r-ojo)"/><circle cx="112" cy="106" r="9" fill="url(#r-ojo)"/>
+          <circle cx="88" cy="106" r="3" fill="#fff"/><circle cx="112" cy="106" r="3" fill="#fff"/></g>
+        <path d="M90 132 V140 M97 132 V142 M103 132 V142 M110 132 V140" stroke="#1a0b28" stroke-width="2.5" stroke-linecap="round"/>
+        <g fill="#d59bff" font-family="serif" font-size="18" text-anchor="middle" class="runas">
+          <text x="54" y="60">ᛟ</text><text x="146" y="60">ᚦ</text><text x="100" y="18">ᛉ</text>
+        </g>`,
+      ambiente: (a) => {
+        niebla(a, 'rgba(150, 70, 230, .3)');
+        particulas(a, { n: 20, texto: ['ᚠ', 'ᚢ', 'ᚦ', 'ᚨ', 'ᚱ', 'ᚲ', 'ᚷ', 'ᛉ', 'ᛟ', 'ᛞ'], clase: 'p-flota runa', color: '#e2bcff', tam: [28, 54], dur: [6, 11] });
+      },
+    },
+
+    arana: {
+      c: ['#ffb3b3', '#e0112b', '#5a0010', '255, 40, 60', '#3a0d18', '#0e0306'],
+      insignia: '🕷️',
+      retrato: `
+        <defs>
+          <radialGradient id="r-cuerpo" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#5a2a3a"/><stop offset=".5" stop-color="#22101a"/><stop offset="1" stop-color="#050204"/></radialGradient>
+          <radialGradient id="r-ojo"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="#ff3b4a"/><stop offset="1" stop-color="#8a0010"/></radialGradient>
+        </defs>
+        <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <g stroke="#050204" stroke-width="9">
+            <path d="M84 76 L58 44 L40 36"/><path d="M82 84 L48 66 L26 74"/><path d="M82 94 L48 104 L28 126"/><path d="M86 102 L62 130 L52 158"/>
+            <path d="M116 76 L142 44 L160 36"/><path d="M118 84 L152 66 L174 74"/><path d="M118 94 L152 104 L172 126"/><path d="M114 102 L138 130 L148 158"/>
+          </g>
+          <g stroke="#6b1a28" stroke-width="3.5">
+            <path d="M84 76 L58 44 L40 36"/><path d="M82 84 L48 66 L26 74"/><path d="M82 94 L48 104 L28 126"/><path d="M86 102 L62 130 L52 158"/>
+            <path d="M116 76 L142 44 L160 36"/><path d="M118 84 L152 66 L174 74"/><path d="M118 94 L152 104 L172 126"/><path d="M114 102 L138 130 L148 158"/>
+          </g>
+        </g>
+        <g fill="#ff3b4a"><circle cx="58" cy="44" r="3"/><circle cx="48" cy="66" r="3"/><circle cx="48" cy="104" r="3"/><circle cx="62" cy="130" r="3"/>
+          <circle cx="142" cy="44" r="3"/><circle cx="152" cy="66" r="3"/><circle cx="152" cy="104" r="3"/><circle cx="138" cy="130" r="3"/></g>
+        <ellipse cx="100" cy="136" rx="32" ry="36" fill="url(#r-cuerpo)" stroke="#000" stroke-width="3.5"/>
+        <path d="M100 116 L88 130 L112 130 Z M88 142 L112 142 L100 130 Z" fill="#e0112b" stroke="#3a0008" stroke-width="2" stroke-linejoin="round"/>
+        <circle cx="100" cy="86" r="24" fill="url(#r-cuerpo)" stroke="#000" stroke-width="3.5"/>
+        <path d="M90 64 C82 58 84 48 92 50 L96 64 Z M110 64 C118 58 116 48 108 50 L104 64 Z" fill="#1a0b12" stroke="#000" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M88 52 L84 60 M112 52 L116 60" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+        <g class="ojos">
+          <circle cx="93" cy="80" r="5.5" fill="url(#r-ojo)"/><circle cx="107" cy="80" r="5.5" fill="url(#r-ojo)"/>
+          <circle cx="86" cy="73" r="3" fill="url(#r-ojo)"/><circle cx="114" cy="73" r="3" fill="url(#r-ojo)"/>
+          <circle cx="96" cy="70" r="2.6" fill="url(#r-ojo)"/><circle cx="104" cy="70" r="2.6" fill="url(#r-ojo)"/>
+          <circle cx="84" cy="85" r="2.4" fill="url(#r-ojo)"/><circle cx="116" cy="85" r="2.4" fill="url(#r-ojo)"/>
+        </g>`,
+      ambiente: (a) => { telaranas(a); aranas(a, 4); },
+    },
+
+    kraken: {
+      c: ['#c9fff6', '#19c2b0', '#0d4a63', '40, 210, 200', '#0f3a4a', '#041018'],
+      insignia: '🐙',
+      retrato: `
+        <defs>
+          <linearGradient id="r-manto" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b58bd6"/><stop offset=".5" stop-color="#5c3a8a"/><stop offset="1" stop-color="#1d0f33"/></linearGradient>
+          <radialGradient id="r-ojo"><stop offset="0" stop-color="#fff9c0"/><stop offset=".6" stop-color="#ffc21a"/><stop offset="1" stop-color="#b36b00"/></radialGradient>
+        </defs>
+        <g fill="none" stroke-linecap="round">
+          <g stroke="#12071f" stroke-width="16">
+            <path d="M76 112 C56 128 42 150 56 168 C64 176 76 170 70 160"/><path d="M124 112 C144 128 158 150 144 168 C136 176 124 170 130 160"/>
+            <path d="M90 116 C84 140 78 160 90 178"/><path d="M110 116 C116 140 122 160 110 178"/>
+          </g>
+          <g stroke="url(#r-manto)" stroke-width="11">
+            <path d="M76 112 C56 128 42 150 56 168 C64 176 76 170 70 160"/><path d="M124 112 C144 128 158 150 144 168 C136 176 124 170 130 160"/>
+            <path d="M90 116 C84 140 78 160 90 178"/><path d="M110 116 C116 140 122 160 110 178"/>
+          </g>
+        </g>
+        <g fill="#f0d6ff"><circle cx="58" cy="146" r="2.5"/><circle cx="54" cy="158" r="2.5"/><circle cx="142" cy="146" r="2.5"/><circle cx="146" cy="158" r="2.5"/>
+          <circle cx="84" cy="146" r="2.2"/><circle cx="82" cy="160" r="2.2"/><circle cx="116" cy="146" r="2.2"/><circle cx="118" cy="160" r="2.2"/></g>
+        <path d="M100 26 C66 26 54 56 56 86 C58 104 68 116 80 120 L120 120 C132 116 142 104 144 86 C146 56 134 26 100 26 Z" fill="url(#r-manto)" stroke="#12071f" stroke-width="4" stroke-linejoin="round"/>
+        <g fill="#e2c4ff" opacity=".6"><circle cx="82" cy="50" r="5"/><circle cx="118" cy="46" r="4"/><circle cx="100" cy="38" r="3"/><circle cx="128" cy="66" r="3.5"/><circle cx="72" cy="70" r="3"/></g>
+        <g class="ojos"><ellipse cx="80" cy="94" rx="14" ry="11" fill="url(#r-ojo)" stroke="#12071f" stroke-width="3"/><ellipse cx="120" cy="94" rx="14" ry="11" fill="url(#r-ojo)" stroke="#12071f" stroke-width="3"/></g>
+        <rect x="70" y="92" width="20" height="4" rx="2" fill="#12071f"/><rect x="110" y="92" width="20" height="4" rx="2" fill="#12071f"/>
+        <path d="M66 82 L92 88 M134 82 L108 88" stroke="#12071f" stroke-width="4" stroke-linecap="round"/>`,
+      ambiente: (a) => {
+        tentaculos(a);
+        particulas(a, { n: 22, clase: 'p-sube burbuja', color: '#9ff5ec', tam: [8, 26], dur: [5, 10] });
+      },
+    },
+
+    minotauro: {
+      c: ['#ffe1b0', '#d9772b', '#6b2f0c', '230, 130, 50', '#4a2a15', '#140a04'],
+      insignia: '🐂',
+      retrato: `
+        <defs>
+          <linearGradient id="r-pelo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a5a2e"/><stop offset=".6" stop-color="#5e3016"/><stop offset="1" stop-color="#2a1206"/></linearGradient>
+          <linearGradient id="r-cuerno" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff6e0"/><stop offset="1" stop-color="#b8a27a"/></linearGradient>
+        </defs>
+        <path d="M66 70 C40 70 22 52 22 26 C34 44 50 50 70 52 Z" fill="url(#r-cuerno)" stroke="#2a1206" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M134 70 C160 70 178 52 178 26 C166 44 150 50 130 52 Z" fill="url(#r-cuerno)" stroke="#2a1206" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M58 84 C44 80 38 92 48 100 C54 104 62 100 64 96 Z M142 84 C156 80 162 92 152 100 C146 104 138 100 136 96 Z" fill="url(#r-pelo)" stroke="#2a1206" stroke-width="3"/>
+        <path d="M100 48 C72 48 58 66 60 92 C62 110 70 122 74 132 L76 150 C80 166 90 172 100 172 C110 172 120 166 124 150 L126 132 C130 122 138 110 140 92 C142 66 128 48 100 48 Z" fill="url(#r-pelo)" stroke="#2a1206" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M60 70 L140 64 L142 80 L60 86 Z" fill="#f4f1ea" stroke="#2a1206" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="M106 66 L106 82 M100 74 L112 74" stroke="#d62b2b" stroke-width="3"/>
+        <g class="ojos"><ellipse cx="82" cy="102" rx="10" ry="8" fill="#fff4e8"/><ellipse cx="118" cy="102" rx="10" ry="8" fill="#fff4e8"/>
+          <circle cx="82" cy="104" r="4" fill="#2a1206"/><circle cx="118" cy="104" r="4" fill="#2a1206"/>
+          <path d="M74 100 L80 104 M88 98 L84 104 M112 98 L116 104 M126 100 L120 104" stroke="#e0302b" stroke-width="1.5"/></g>
+        <path d="M70 98 C76 92 88 92 94 98 L94 102 L70 102 Z M130 98 C124 92 112 92 106 98 L106 102 L130 102 Z" fill="#5e3016" stroke="#2a1206" stroke-width="2"/>
+        <path d="M78 132 C80 150 120 150 122 132 C118 124 82 124 78 132 Z" fill="#c9a081" stroke="#2a1206" stroke-width="3"/>
+        <ellipse cx="90" cy="136" rx="4" ry="5" fill="#2a1206"/><ellipse cx="110" cy="136" rx="4" ry="5" fill="#2a1206"/>
+        <path d="M88 150 C88 162 112 162 112 150" fill="none" stroke="#e2a53c" stroke-width="5"/>
+        <path d="M142 96 C146 104 142 110 138 108 C134 106 136 100 142 96 Z" fill="#8fd3ff" stroke="#1a4a6a" stroke-width="1.5"/>`,
+      ambiente: (a) => particulas(a, { n: 16, texto: ['¡hic!', '✦', '¡hic!', '💫'], clase: 'p-flota hipo', color: '#ffe1b0', tam: [20, 36], dur: [5, 9] }),
+    },
+
+    tanque: {
+      c: ['#f2f5fa', '#9aa9bd', '#3b4658', '180, 200, 230', '#2b3342', '#0b0e14'],
+      insignia: '🛡️',
+      retrato: `
+        <defs>
+          <linearGradient id="r-acero" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#6d7a8c"/><stop offset=".35" stop-color="#e8edf4"/><stop offset=".7" stop-color="#9aa6b6"/><stop offset="1" stop-color="#4a5566"/></linearGradient>
+          <linearGradient id="r-escudo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3d6fc4"/><stop offset="1" stop-color="#16305e"/></linearGradient>
+        </defs>
+        <path d="M60 60 C60 36 78 26 100 26 C122 26 140 36 140 60 L142 128 C142 136 136 140 128 140 L72 140 C64 140 58 136 58 128 Z" fill="url(#r-acero)" stroke="#161b24" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M100 26 L100 140" stroke="#5a6678" stroke-width="3"/>
+        <path d="M70 84 L96 84 L96 92 L70 92 Z M104 84 L130 84 L130 92 L104 92 Z" fill="#0b0e14"/>
+        <g class="ojos" fill="#fff"><circle cx="82" cy="88" r="2.5"/><circle cx="118" cy="88" r="2.5"/></g>
+        <path d="M112 44 C118 50 124 48 128 54" fill="none" stroke="#3b4658" stroke-width="3" stroke-linecap="round"/>
+        <path d="M122 60 L114 70 L120 76 L112 84" fill="none" stroke="#161b24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <g transform="rotate(-18 76 50)"><rect x="60" y="44" width="32" height="12" rx="5" fill="#f0c9a0" stroke="#8a6a4a" stroke-width="2"/><path d="M72 46 V54 M80 46 V54" stroke="#c9a07a" stroke-width="1.5"/></g>
+        <path d="M100 116 L136 122 C136 150 122 168 100 180 C78 168 64 150 64 122 Z" fill="url(#r-escudo)" stroke="#0b1428" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M100 124 L100 172 M72 134 L128 134" stroke="#e2a53c" stroke-width="4"/>
+        <path d="M112 124 L104 142 L114 152 L106 170" fill="none" stroke="#0b1428" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <g class="estrellas" fill="#ffd24a" stroke="#6b4a00" stroke-width="1">
+          <path d="M60 22 l3 7 7 1 -5 5 1 7 -6 -3 -6 3 1 -7 -5 -5 7 -1 z"/><path d="M140 16 l2.4 5.6 5.6 .8 -4 4 .8 5.6 -4.8 -2.4 -4.8 2.4 .8 -5.6 -4 -4 5.6 -.8 z"/>
+        </g>`,
+      ambiente: (a) => particulas(a, { n: 16, texto: ['MISS', 'MISS', '¿AGGRO?', '🛡️'], clase: 'p-cae miss', color: '#dfe6f0', tam: [20, 34], dur: [6, 11] }),
+    },
+
+    lag: {
+      c: ['#eaffff', '#00e5ff', '#ff00c8', '0, 229, 255', '#1a1030', '#05030c'],
+      insignia: '📶',
+      glitch: true,
+      retrato: `
+        <defs>
+          <linearGradient id="r-pixel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2b2350"/><stop offset="1" stop-color="#0a0718"/></linearGradient>
+        </defs>
+        <g class="wifi" fill="none" stroke-linecap="round">
+          <path d="M62 50 C86 28 114 28 138 50" stroke="#00e5ff" stroke-width="6" opacity=".35"/>
+          <path d="M74 60 C90 46 110 46 126 60" stroke="#00e5ff" stroke-width="6" opacity=".6"/>
+          <path d="M86 70 C94 64 106 64 114 70" stroke="#00e5ff" stroke-width="6"/>
+          <path d="M126 24 L144 42 M144 24 L126 42" stroke="#ff2a6a" stroke-width="6"/>
+        </g>
+        <g transform="translate(-4 0)" opacity=".7"><rect x="56" y="80" width="88" height="80" rx="10" fill="none" stroke="#ff00c8" stroke-width="4"/></g>
+        <g transform="translate(4 0)" opacity=".7"><rect x="56" y="80" width="88" height="80" rx="10" fill="none" stroke="#00e5ff" stroke-width="4"/></g>
+        <rect x="56" y="80" width="88" height="80" rx="10" fill="url(#r-pixel)" stroke="#e8f8ff" stroke-width="4"/>
+        <g class="ojos" fill="#00e5ff"><rect x="72" y="100" width="16" height="16"/><rect x="112" y="100" width="16" height="16"/>
+          <rect x="76" y="104" width="8" height="8" fill="#fff"/><rect x="116" y="104" width="8" height="8" fill="#fff"/></g>
+        <path d="M76 138 H84 V132 H92 V138 H100 V132 H108 V138 H116 V132 H124" fill="none" stroke="#ff00c8" stroke-width="4"/>
+        <g fill="#00e5ff"><rect x="36" y="112" width="10" height="10"/><rect x="152" y="96" width="8" height="8"/><rect x="150" y="140" width="12" height="6" fill="#ff00c8"/><rect x="40" y="146" width="8" height="8" fill="#ff00c8"/></g>
+        <text x="100" y="182" text-anchor="middle" font-family="Consolas, monospace" font-size="15" font-weight="700" fill="#ff2a6a">999 ms</text>`,
+      ambiente: (a) => {
+        lineas(a);
+        particulas(a, { n: 14, texto: ['999 ms', 'PING', '⟳', 'LAG', '404'], clase: 'p-flota glitchy', color: '#00e5ff', tam: [20, 34], dur: [4, 8] });
+      },
+    },
+  };
+
+  /** Colores de siempre, para un jefe que el overlay no conozca. */
+  const TEMA_BASE = { c: ['#ff7a5c', '#e0212b', '#8f0714', '255, 60, 30', '#5a1010', '#220405'], insignia: '👹', retrato: null, ambiente: () => {} };
+
+  // ---------- Piezas de ambiente ----------
+
+  const azar = (a, b) => a + Math.random() * (b - a);
+  /** En los bordes: el centro de la pantalla es del juego. */
+  const xBorde = () => (Math.random() < 0.5 ? azar(0, 20) : azar(80, 100));
+
+  function particulas(capa, { n, texto, clase, color, tam, dur, todo = false }) {
+    for (let i = 0; i < n; i++) {
+      const p = document.createElement('span');
+      p.className = `particula ${clase}`;
+      p.textContent = texto ? texto[i % texto.length] : '';
+      const t = azar(...tam);
+      p.style.cssText = `left:${todo ? azar(0, 100) : xBorde()}%; --tam:${t}px; color:${color}; --col:${color};` +
+        `animation-duration:${azar(...dur)}s; animation-delay:${-azar(0, dur[1])}s; --deriva:${azar(-60, 60)}px;`;
+      capa.append(p);
+    }
+  }
+
+  function escarcha(capa) {
+    for (const lado of ['izq', 'der']) {
+      const e = document.createElement('div');
+      e.className = `escarcha ${lado}`;
+      capa.append(e);
+    }
+  }
+
+  function niebla(capa, color) {
+    const e = document.createElement('div');
+    e.className = 'niebla';
+    e.style.setProperty('--niebla', color);
+    capa.append(e);
+  }
+
+  const TELARANA = `<svg viewBox="0 0 200 200" fill="none" stroke="rgba(235,235,245,.55)" stroke-width="1.6">
+    <path d="M0 0 L200 40 M0 0 L170 110 M0 0 L110 170 M0 0 L40 200"/>
+    <path d="M34 7 Q30 22 29 29 Q20 31 7 34"/><path d="M76 15 Q66 44 62 62 Q44 67 15 76"/>
+    <path d="M122 24 Q104 70 96 96 Q70 104 24 122"/><path d="M168 34 Q142 98 130 130 Q98 142 34 168"/></svg>`;
+
+  function telaranas(capa) {
+    for (const lado of ['izq', 'der']) {
+      const e = document.createElement('div');
+      e.className = `telarana ${lado}`;
+      e.innerHTML = TELARANA;
+      capa.append(e);
+    }
+  }
+
+  const ARANITA = `<svg viewBox="0 0 40 40"><g stroke="#140810" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M14 16 L4 8 M14 20 L2 20 M14 24 L4 32 M16 26 L10 38 M26 16 L36 8 M26 20 L38 20 M26 24 L36 32 M24 26 L30 38"/></g>
+    <ellipse cx="20" cy="24" rx="8" ry="9" fill="#1a0b12"/><circle cx="20" cy="14" r="6" fill="#1a0b12"/>
+    <circle cx="18" cy="13" r="1.6" fill="#ff3b4a"/><circle cx="22" cy="13" r="1.6" fill="#ff3b4a"/>
+    <path d="M20 20 L17 24 L23 24 Z M17 26 L23 26 L20 22 Z" fill="#e0112b"/></svg>`;
+
+  function aranas(capa, n) {
+    for (let i = 0; i < n; i++) {
+      const e = document.createElement('div');
+      e.className = 'colgada';
+      e.style.left = `${i % 2 ? azar(82, 96) : azar(4, 18)}%`;
+      e.style.setProperty('--baja', `${azar(160, 420)}px`);
+      e.style.animationDuration = `${azar(5, 9)}s`;
+      e.style.animationDelay = `${-azar(0, 6)}s`;
+      e.innerHTML = `<div class="hilo"></div>${ARANITA}`;
+      capa.append(e);
+    }
+  }
+
+  const TENTACULO = `<svg viewBox="0 0 120 420"><path d="M60 420 C20 330 100 260 50 180 C20 130 70 70 50 20 C46 8 58 2 64 12"
+    fill="none" stroke="#2a1440" stroke-width="44" stroke-linecap="round"/><path d="M60 420 C20 330 100 260 50 180 C20 130 70 70 50 20 C46 8 58 2 64 12"
+    fill="none" stroke="#6a44a0" stroke-width="34" stroke-linecap="round"/>
+    <g fill="#e2c4ff"><circle cx="72" cy="300" r="6"/><circle cx="74" cy="250" r="5.5"/><circle cx="58" cy="200" r="5"/><circle cx="44" cy="150" r="4.5"/><circle cx="52" cy="100" r="4"/><circle cx="58" cy="60" r="3.5"/></g></svg>`;
+
+  function tentaculos(capa) {
+    for (const lado of ['izq', 'der']) {
+      const e = document.createElement('div');
+      e.className = `tentaculo ${lado}`;
+      e.innerHTML = TENTACULO;
+      capa.append(e);
+    }
+  }
+
+  function lineas(capa) {
+    const e = document.createElement('div');
+    e.className = 'barrido';
+    capa.append(e);
+  }
+
+  let glitchReloj = null;
+
+  /** Viste la pantalla con el jefe: colores, retrato, insignia y ambiente. */
+  function vestir(tipo) {
+    const t = TEMAS[tipo] || TEMA_BASE;
+    const raiz = document.body.style;
+    ['--t1', '--t2', '--t3', '--tb', '--m1', '--m2'].forEach((v, i) => raiz.setProperty(v, t.c[i]));
+    document.body.dataset.jefe = tipo || '';
+    $('retrato').innerHTML = t.retrato || RETRATO_BASE;
+    $('insignia').textContent = t.insignia;
+    const capa = $('ambiente');
+    capa.replaceChildren();
+    t.ambiente(capa);
+    clearInterval(glitchReloj);
+    if (t.glitch) {
+      glitchReloj = setInterval(() => {
+        document.body.classList.add('glitch');
+        setTimeout(() => document.body.classList.remove('glitch'), 260);
+      }, 2600);
+    }
+  }
+
+  /** Se va el jefe: fuera el ambiente. */
+  function desvestir() {
+    clearInterval(glitchReloj);
+    document.body.classList.remove('glitch');
+    const capa = $('ambiente');
+    capa.classList.add('apagando');
+    setTimeout(() => { capa.replaceChildren(); capa.classList.remove('apagando'); }, 1200);
+  }
 
   let actual = null;      // id del jefe que se está pintando
   let visto = 0;          // último golpe pintado
@@ -413,6 +899,7 @@
       for (const g of j.golpes) if (g.n > visto) { numero(g); visto = g.n; }
     } else if (actual !== null && !$('jefe').hidden) {
       // Se ha ido: pinta los últimos golpes (el que lo mató) y se retira.
+      desvestir();
       $('jefe').classList.add('sale');
       setTimeout(() => { $('jefe').hidden = true; $('jefe').classList.remove('sale'); }, 650);
     }
@@ -491,8 +978,10 @@
     if (j.golpes.length) visto = Math.max(visto, ...j.golpes.map((g) => g.n));
     const nombre = mayuscula(j.nombre);
     $('nombre').textContent = nombre;
+    $('nombre').classList.toggle('largo', nombre.length > 24);
     $('aviso-nombre').textContent = nombre;
-    $('insignia').textContent = (INSIGNIAS.find(([re]) => re.test(j.nombre)) || [, '👹'])[1];
+    vestir(j.tipo);
+    $('aviso-retrato').innerHTML = $('emblema').innerHTML;
     // El aviso solo si acaba de aparecer; si el overlay se carga a mitad, directo a la barra.
     if (j.vida === j.vidaMax && j.golpes.length === 0) {
       $('aviso').hidden = false;
@@ -517,6 +1006,9 @@
     setTimeout(() => el.remove(), 1600);
     const emblema = $('emblema');
     emblema.classList.remove('golpe'); void emblema.getBoundingClientRect(); emblema.classList.add('golpe');
+    if (g.critico && (TEMAS[document.body.dataset.jefe] || {}).temblor) {
+      document.body.classList.remove('temblor'); void document.body.offsetWidth; document.body.classList.add('temblor');
+    }
   }
 
   function acaba(f) {
@@ -579,8 +1071,13 @@
     let vida = vidaMax, n = 0, segundos = 180;
     const golpes = [];
     const danos = {};
-    const estado = () => ({ jefe: vida > 0 ? { id: 1, nombre: 'el Dragón de Escarcha', vida, vidaMax, quedanSeg: segundos, golpes: golpes.slice(-20) } : null, final: null });
+    const NOMBRES = { dragon: 'el Dragón de Escarcha', esqueleto: 'el Rey Esqueleto', hidra: 'la Hidra del Pantano', golem: 'el Gólem de Obsidiana', liche: 'el Liche sin Nombre', arana: 'la Araña Reina', kraken: 'el Kraken del Foso', minotauro: 'el Minotauro con Resaca', tanque: 'el Tanque que no sabe tanquear', lag: 'el Lag Primigenio' };
+    const tipos = Object.keys(NOMBRES);
+    const tipo = NOMBRES[params.get('jefe')] ? params.get('jefe') : tipos[Math.floor(Math.random() * tipos.length)];
+    const nombre = NOMBRES[tipo];
+    const estado = () => ({ jefe: vida > 0 ? { id: 1, tipo, nombre, vida, vidaMax, quedanSeg: segundos, golpes: golpes.slice(-20) } : null, final: null });
     pintar(estado());
+    if (params.get('quieto') === '1') return;
     setTimeout(function pega() {
       const quien = nombres[Math.floor(Math.random() * nombres.length)];
       const critico = Math.random() < 0.15;
@@ -591,7 +1088,7 @@
       pintar(estado());
       if (vida > 0) return setTimeout(pega, 450 + Math.random() * 500);
       const podio = Object.entries(danos).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([quien, dano]) => ({ quien, dano }));
-      setTimeout(() => pintar({ jefe: null, final: { id: 1, nombre: 'el Dragón de Escarcha', resultado: 'derrotado', vida: 0, vidaMax, podio } }), 700);
+      setTimeout(() => pintar({ jefe: null, final: { id: 1, tipo, nombre, resultado: 'derrotado', vida: 0, vidaMax, podio } }), 700);
     }, 3800);
   }
 </script>
