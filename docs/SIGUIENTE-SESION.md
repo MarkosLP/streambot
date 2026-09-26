@@ -28,7 +28,7 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 - **Grito y Maldición**: sí escribían en el chat, pero si algo lo impedía se callaban sin rastro. Ahora el motivo queda en el Registro, un segundo Grito se anuncia ("se une al grito") y el nombre de la recompensa vale con emojis o mayúsculas. Una recompensa que el bot no usa sale en la consola.
 - **Catálogo**: 51 → 94 objetos, con más armas en cada rareza para el cofre de guerra.
 - **Cofre de guerra sin nadie**: se queda en el suelo 10 min y se lo lleva el primero que escriba (antes se perdía en silencio: el canal no cuenta para los cofres).
-- **Jefe de raid** (panel → Loot → Invocar jefe): 100 de vida por persona hablando, 3 min, `!atacar`. Si cae, cofre para cada atacante y Cofre del tesoro para el MVP. El bot habla 3 veces por jefe (tope de 12 mensajes/hora).
+- **Jefe de raid** (panel → Loot → Invocar jefe): 200 de vida por persona hablando, un ataque cada 10 s, 3 min, `!atacar`. Si cae, cofre para cada atacante y Cofre del tesoro para el MVP. El bot habla 3 veces por jefe (tope de 12 mensajes/hora).
 - **`!dar nombre [rareza|objeto]`**: regalar objetos. Los malditos no se regalan.
 - **`!usar`**: Cuerno de guerra 🟣 (Grito + cofre de guerra), Frasco de agua bendita 🔵 (¡Bebe agua! + purifica), Calavera que susurra 🟣 (Maldición + objeto maldito). Lanzan la Action de Streamer.bot de su recompensa; 2 min entre efectos.
 - Paneles de Twitch regenerados con `!dar`, `!usar` y `!atacar`: hay que volver a subir comandos.png y loot.png.
@@ -38,7 +38,8 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 - **Biblioteca**: galería con subcarpetas, visor, filtros y vistas previas de overlays con variantes.
 - **`!dar` rehecho**: `!dar` solo enseña tus objetos numerados; `!dar ana` pregunta qué le das; `!dar ana 2` le da el 2. Siguen valiendo rareza y parte del nombre.
 - **Duelos en OBS**: en la misma fuente `FX Jefe` (nada que montar). VS, barra de probabilidades con una aguja que cae en el lado del ganador, ¡GANA!, ¡SORPRESA! y el maldito que cambia de manos. Vista previa: `jefe.html?demo=duelo`.
-- Hay que **reiniciar el bot** para tenerlo. 406 tests.
+- Prueba con raftaei (26 sep, 12:48-13:01): el jefe caía en 73 s y la mitad de los !atacar se perdían en la espera de 15 s → 200 de vida/persona y 10 s. El registro del final del jefe ya dice si el mensaje salió.
+- Hay que **reiniciar el bot** para tenerlo. 407 tests.
 
 ### Precios y límites acordados
 

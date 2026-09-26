@@ -652,7 +652,7 @@ async function cargarLoot() {
       h('button', { class: 'boton', type: 'button', 'data-jefe': 'retirar' }, 'Retirarlo sin botín'),
     ]
     : [
-      h('p', { class: 'nota' }, 'Aparece en el chat con 100 de vida por cada persona que esté hablando. Si cae, botín para todos los que peguen; Cofre del tesoro para quien más daño haga. El bot solo habla tres veces: al aparecer, a mitad de vida y al final.'),
+      h('p', { class: 'nota' }, 'Aparece en el chat con 200 de vida por cada persona que esté hablando; cada una puede pegar cada 10 s. Si cae, botín para todos los que peguen; Cofre del tesoro para quien más daño haga. El bot solo habla tres veces: al aparecer, a mitad de vida y al final.'),
       h('button', { class: 'boton primario', type: 'button', 'data-jefe': 'invocar' }, '🐉 Invocar jefe'),
     ]));
 

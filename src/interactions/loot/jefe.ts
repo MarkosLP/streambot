@@ -30,9 +30,16 @@ import { tirar, type Azar } from './objetos.js';
 
 export const NAME = 'loot-jefe';
 export const DURACION_MS = 3 * 60_000;
-/** Vida por cada persona que está hablando. Unos 8-10 ataques cada una. */
-export const VIDA_POR_PERSONA = 100;
-const ATAQUE_COOLDOWN_MS = 15_000;
+/**
+ * Vida por cada persona que está hablando, y espera entre ataques.
+ *
+ * Ajustado con la prueba del 26 sep 2026: a 100 de vida y 15 s, dos personas
+ * lo tumbaban en 73 s de 180, y la mayoría de los !atacar de quien escribía
+ * rápido se perdían en la espera. Con 200 y 10 s sale en torno a minuto y
+ * medio, y se pega más a menudo.
+ */
+export const VIDA_POR_PERSONA = 200;
+export const ATAQUE_COOLDOWN_MS = 10_000;
 
 export const JEFES = [
   'el Dragón de Escarcha',
@@ -135,7 +142,12 @@ export const atacar: Interaction<CtxComando> = {
     j.danos.set(ctx.viewer.id, { viewer: ctx.viewer, dano: antes + dano });
     j.vida = Math.max(0, j.vida - dano);
 
-    if (j.vida === 0) return { text: derrotado(j, ctx.azar ?? Math.random) };
+    if (j.vida === 0) {
+      const { text, resumen } = derrotado(j, ctx.azar ?? Math.random);
+      // Queda en el registro con lo que pasó DE VERDAD con el mensaje: antes
+      // se apuntaba «enviado» aunque el tope por hora lo hubiera bloqueado.
+      return { text, detail: (o) => (o.sent ? resumen : `${resumen} · el mensaje no salió: ${o.detail}`) };
+    }
     if (!j.avisoMitad && j.vida <= j.vidaMax / 2) {
       j.avisoMitad = true;
       const quedan = Math.max(0, Math.round((j.hasta - Date.now()) / 1000));
@@ -152,7 +164,7 @@ function ranking(j: Jefe) {
 }
 
 /** El jefe cae: reparte el botín y devuelve el mensaje. */
-function derrotado(j: Jefe, azar: Azar): string {
+function derrotado(j: Jefe, azar: Azar): { text: string; resumen: string } {
   cerrar();
   const orden = ranking(j);
   apuntarFinal(j, 'derrotado', orden);
@@ -165,16 +177,12 @@ function derrotado(j: Jefe, azar: Azar): string {
     return { viewer, botin, resultado: lootDb.dar(viewer.id, viewer.displayName, botin, 'jefe') };
   });
   for (const r of reparto) enPantalla(r.viewer.displayName, r.botin, 'jefe');
-  interactionLog.record({
-    interaction: NAME,
-    status: 'sent',
-    detail: `derrotado ${j.nombre}: ${orden.map((o) => `${o.viewer.login}=${o.dano}`).join(', ')}`,
-  });
+  const resumen = `jefe derrotado, ${j.nombre}: ${orden.map((o) => `${o.viewer.login}=${o.dano}`).join(', ')}`;
 
   const mvp = orden[0]!;
   const inicio = `🏆 ¡${mayuscula(j.nombre)} ha caído! MVP ${mvp.viewer.displayName} (${mvp.dano} de daño). `;
-  if (!reparto.length) return `${inicio}Sin nadie más para repartir el botín… ¡a la próxima!`;
-  return componerCofre(reparto, inicio);
+  if (!reparto.length) return { text: `${inicio}Sin nadie más para repartir el botín… ¡a la próxima!`, resumen };
+  return { text: componerCofre(reparto, inicio), resumen };
 }
 
 async function terminarPorTiempo(): Promise<void> {

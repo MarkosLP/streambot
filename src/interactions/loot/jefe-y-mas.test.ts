@@ -12,6 +12,7 @@ import * as killswitch from '../../core/killswitch.js';
 import * as ajustes from '../../core/ajustes.js';
 import * as streams from '../../data/streams.js';
 import * as lootDb from '../../data/loot.js';
+import * as interactionLog from '../../data/interactions.js';
 import * as loot from './index.js';
 import * as jefe from './jefe.js';
 import * as arena from './arena.js';
@@ -258,7 +259,7 @@ describe('🐉 jefe de raid', () => {
     const r = await jefe.invocar({ azar: () => 0 });
     assert.ok(r.ok);
     assert.equal(r.vida, 2 * jefe.VIDA_POR_PERSONA);
-    assert.match(enviados.at(-1)!, /^🐉 ¡Aparece el Dragón de Escarcha con 200 de vida!/);
+    assert.ok(enviados.at(-1)!.startsWith(`🐉 ¡Aparece el Dragón de Escarcha con ${2 * jefe.VIDA_POR_PERSONA} de vida!`), enviados.at(-1));
 
     // Ataques silenciosos hasta la mitad; luego un aviso; luego la caída.
     let vueltas = 0;
@@ -333,8 +334,21 @@ describe('🐉 jefe de raid', () => {
     cooldowns.reset();
     await handleEvent(mensaje('ana', '!atacar'));
     await jefe._terminarPorTiempo();
-    assert.match(enviados.at(-1)!, /se escapa con \d+\/100 de vida\. Quien más pegó: ana/);
+    assert.match(enviados.at(-1)!, new RegExp(`se escapa con \\d+/${jefe.VIDA_POR_PERSONA} de vida\\. Quien más pegó: ana`));
     assert.equal(lootDb.recientes(10).length, 0);
+  });
+
+  test('si el mensaje final no sale, el registro lo dice (antes apuntaba «enviado» igual)', async () => {
+    await jefe.invocar({ azar: () => 0 });
+    for (let i = 0; i < config.respuestasPerHour; i++) policy.registerSent(Date.now(), true);
+    let n = 0;
+    while (jefe.estado() && n++ < 200) {
+      cooldowns.reset();
+      await handleEvent(mensaje('ana', '!atacar'));
+    }
+    const fila = interactionLog.all().filter((r) => r.interaction === 'loot-atacar').at(-1)!;
+    assert.equal(fila.status, 'blocked');
+    assert.match(fila.detail!, /^jefe derrotado, el Dragón de Escarcha: ana=\d+ · el mensaje no salió/);
   });
 
   test('sin jefe, !atacar no contesta; y no se invocan dos a la vez', async () => {
