@@ -61,6 +61,21 @@ describe('sugerir títulos', () => {
     assert.deepEqual(l.juegos, ['World of Warcraft']);
   });
 
+  test('emojis: cuenta los compuestos como uno, y recorta los que sobran', () => {
+    assert.equal(titulos.contarEmojis('⚔️ Raid 🧙‍♂️ hoy 🔥'), 3);
+    assert.equal(titulos.recortarEmojis('⚔️ Raid 🧙‍♂️ hoy 🔥', 1), '⚔️ Raid  hoy ');
+    assert.equal(titulos.limpiarTitulo('⚔️ Raid 🧙‍♂️ hoy 🔥', 0), 'Raid hoy');
+  });
+
+  test('pide los emojis que toca, con la paleta del tono, y no deja pasar de más', async () => {
+    respuesta = { titulos: ['🔥⚔️🐉 Raid épica'], anuncio: '', etiquetas: [] };
+    const r = await titulos.sugerir({ ...PEDIDO, emojis: 2 });
+    assert.match(pedidos[0]!.usuario, /exactamente 2 emojis.*⚔️/);
+    assert.equal(r.titulos[0]!.texto, '🔥⚔️ Raid épica');
+    await titulos.sugerir({ ...PEDIDO, emojis: 0 });
+    assert.match(pedidos[1]!.usuario, /Sin emojis/);
+  });
+
   test('si no sale ningún título que sirva, lo dice', async () => {
     respuesta = { titulos: ['x'.repeat(300)], anuncio: '', etiquetas: [] };
     await assert.rejects(titulos.sugerir(PEDIDO), /ningún título/);

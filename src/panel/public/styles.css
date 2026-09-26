@@ -880,8 +880,8 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
 .jefe-invocar select:focus { outline: none; border-color: var(--oro); }
 
 /* ---------- Títulos ---------- */
-.titulos-form { display: grid; gap: 12px 14px; grid-template-columns: minmax(200px, 2fr) minmax(160px, 1fr) minmax(140px, 1fr); align-items: start; }
-.titulos-form .titulos-notas { grid-column: 1 / 3; }
+.titulos-form { display: grid; gap: 12px 14px; grid-template-columns: minmax(200px, 2fr) minmax(150px, 1fr) minmax(130px, 1fr) minmax(130px, 1fr); align-items: start; }
+.titulos-form .titulos-notas { grid-column: 1 / 4; }
 .titulos-form .titulos-canal { align-self: end; margin-bottom: 4px; }
 .titulos-form > .boton { grid-column: 1 / -1; justify-self: start; }
 .titulos-form small small { font-weight: 400; }

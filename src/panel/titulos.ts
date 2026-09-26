@@ -28,6 +28,8 @@ export interface Peticion {
   notas?: string;
   /** Usar lo que ha pasado en el minijuego del chat (jefes, legendarios…). */
   conCanal?: boolean;
+  /** Emojis por título, de 0 a 3. Por defecto, 1. */
+  emojis?: number;
 }
 
 export interface Sugerencia {
@@ -87,10 +89,57 @@ const alJefe = (nombre: string) => (/^el /i.test(nombre) ? `al ${nombre.slice(3)
 // ---------------------------------------------------------------------------
 
 /** Sin comillas alrededor, sin espacios dobles, y dentro del límite de Twitch. */
-export function limpiarTitulo(t: string): string | null {
-  const limpio = t.replace(/^["'«“\s]+|["'»”\s]+$/g, '').replace(/\s+/g, ' ').trim();
+export function limpiarTitulo(t: string, maxEmojis = 3): string | null {
+  const limpio = recortarEmojis(t, maxEmojis).replace(/^["'«“\s]+|["'»”\s]+$/g, '').replace(/\s+/g, ' ').trim();
   if (!limpio || limpio.length > MAX_TITULO) return null;
   return limpio;
+}
+
+// ---------------------------------------------------------------------------
+// Emojis
+// ---------------------------------------------------------------------------
+
+/**
+ * En el título de Twitch NO se ven los emotes de Twitch (PogChamp, KEKW): se
+ * vería el texto tal cual. Se ven los emojis, y son lo que hace destacar un
+ * título en la lista de directos. Estos son los que más se ven en títulos de
+ * Twitch en español, por tono; la IA elige de aquí.
+ */
+export const EMOJIS: Record<string, string[]> = {
+  base: ['🔴', '🔥', '‼️', '✨', '🎮'],
+  'Épico': ['⚔️', '🛡️', '🐉', '👑', '🏆', '💥', '🔥'],
+  Gracioso: ['😂', '🤣', '💀', '🤡', '🫠', '😭', '🙃'],
+  Misterioso: ['👀', '🌙', '🔮', '🕯️', '🗝️', '❓'],
+  Tranquilo: ['☕', '🌿', '🎧', '🌙', '✨', '🍵'],
+  Competitivo: ['🏆', '⚡', '🎯', '💪', '🥇', '🔥'],
+};
+
+const segmentos = new Intl.Segmenter('es', { granularity: 'grapheme' });
+const esEmoji = (g: string) => /\p{Extended_Pictographic}/u.test(g);
+
+/** Cuántos emojis lleva (⚔️ o 🧙‍♂️ cuentan como uno). */
+export function contarEmojis(t: string): number {
+  let n = 0;
+  for (const { segment } of segmentos.segment(t)) if (esEmoji(segment)) n++;
+  return n;
+}
+
+/** Deja los primeros `max` emojis y quita el resto. */
+export function recortarEmojis(t: string, max: number): string {
+  let n = 0;
+  let salida = '';
+  for (const { segment } of segmentos.segment(t)) {
+    if (esEmoji(segment) && ++n > max) continue;
+    salida += segment;
+  }
+  return salida;
+}
+
+function reglaEmojis(n: number, tono: string): string {
+  if (n <= 0) return 'Sin emojis.';
+  const paleta = [...new Set([...(EMOJIS[tono] ?? []), ...EMOJIS.base!])].join(' ');
+  return `Cada título lleva exactamente ${n} emoji${n === 1 ? '' : 's'}, al principio o al final, elegidos de estos ` +
+    `(los que más llaman la atención en Twitch para este tono): ${paleta}. No repitas la misma combinación en dos títulos seguidos.`;
 }
 
 /** Etiquetas de Twitch: una palabra, letras y números, hasta 25 caracteres, 10 como mucho. */
@@ -134,7 +183,7 @@ const ESQUEMA_CHAT = {
 };
 
 const ESTILO =
-  'Escribes títulos de directo: cortos (entre 30 y 90 caracteres), con gancho, variados entre sí, sin hashtags y con un emoji como mucho. ' +
+  'Escribes títulos de directo: cortos (entre 30 y 90 caracteres), con gancho, variados entre sí y sin hashtags. ' +
   'Mayúsculas como en español: solo al principio y en nombres propios, nunca en cada palabra. ' +
   'No inventes nombres de raids, jefes ni zonas del juego: si no te los dan en las notas, di «la raid», «el jefe», «la banda». ' +
   'Nunca prometes algo que no va a pasar. Respondes solo con el JSON pedido.';
@@ -154,10 +203,12 @@ export async function sugerir(p: Peticion): Promise<Sugerencia> {
     .prepare('SELECT texto FROM titulos WHERE favorito = 1 OR usado_at IS NOT NULL ORDER BY COALESCE(usado_at, at) DESC LIMIT 12')
     .all() as Array<{ texto: string }>).map((t) => t.texto);
 
+  const emojis = Math.max(0, Math.min(3, Math.round(p.emojis ?? 1)));
   const sesion = [
     `Juego: ${juego || 'sin decir'}.`,
     `Sesión: ${p.sesion}.`,
     `Tono: ${p.tono}.`,
+    reglaEmojis(emojis, p.tono),
     p.notas?.trim() ? `Notas de Crid4m: ${p.notas.trim()}.` : '',
     ya.length ? `Títulos que ya usó: no los repitas ni los copies: ${ya.map((t) => `«${t}»`).join(', ')}.` : '',
   ].filter(Boolean);
@@ -191,7 +242,7 @@ export async function sugerir(p: Peticion): Promise<Sugerencia> {
   const recoger = (lista: unknown, esDelChat: boolean, max: number) => {
     let n = 0;
     for (const t of Array.isArray(lista) ? lista : []) {
-      const limpio = typeof t === 'string' ? limpiarTitulo(t) : null;
+      const limpio = typeof t === 'string' ? limpiarTitulo(t, emojis) : null;
       if (!limpio || vistos.has(limpio.toLowerCase()) || n >= max) continue;
       vistos.add(limpio.toLowerCase());
       textos.push({ texto: limpio, delChat: esDelChat });

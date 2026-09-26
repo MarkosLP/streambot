@@ -396,13 +396,14 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   }
 
   if (ruta === 'POST /api/titulos/sugerir') {
-    const { juego, sesion, tono, notas, conCanal } = await cuerpo(req);
+    const { juego, sesion, tono, notas, conCanal, emojis } = await cuerpo(req);
     const texto = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : '');
     if (!texto(sesion, 40) || !texto(tono, 40)) throw new ErrorHttp(400, 'falta la sesión o el tono');
     try {
       titulos.podar();
       const r = await titulos.sugerir({
         juego: texto(juego, 80), sesion: texto(sesion, 40), tono: texto(tono, 40), notas: texto(notas, 300), conCanal: conCanal === true,
+        emojis: typeof emojis === 'number' ? emojis : 1,
       });
       return json(res, 200, r);
     } catch (err) {

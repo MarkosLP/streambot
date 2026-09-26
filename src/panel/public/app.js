@@ -1497,7 +1497,7 @@ $('r-biblioteca').addEventListener('click', cargarBiblioteca);
 // ---------------------------------------------------------------------------
 
 // Lo último que elegiste, para no tener que elegirlo cada vez.
-const tituloElegido = { juego: '', sesion: '', tono: '', canal: true };
+const tituloElegido = { juego: '', sesion: '', tono: '', canal: true, emojis: 1 };
 try { Object.assign(tituloElegido, JSON.parse(localStorage.getItem('panel-titulos') || '{}')); } catch { /* nada */ }
 let titulosCargados = false;
 
@@ -1522,6 +1522,7 @@ async function cargarTitulos() {
     $('t-tono').replaceChildren(...d.tonos.map((s) => h('option', { value: s, selected: s === tituloElegido.tono }, s)));
     $('t-juego').value = tituloElegido.juego || d.juegos[0] || '';
     $('t-canal').checked = tituloElegido.canal !== false;
+    $('t-emojis').value = String(tituloElegido.emojis ?? 1);
   }
   $('t-juegos').replaceChildren(...d.juegos.map((j) => h('option', { value: j })));
   const ctx = $('t-contexto');
@@ -1574,8 +1575,9 @@ $('t-form').addEventListener('submit', async (e) => {
     tono: $('t-tono').value,
     notas: $('t-notas').value.trim(),
     conCanal: $('t-canal').checked,
+    emojis: Number($('t-emojis').value),
   };
-  Object.assign(tituloElegido, { juego: pedido.juego, sesion: pedido.sesion, tono: pedido.tono, canal: pedido.conCanal });
+  Object.assign(tituloElegido, { juego: pedido.juego, sesion: pedido.sesion, tono: pedido.tono, canal: pedido.conCanal, emojis: pedido.emojis });
   try { localStorage.setItem('panel-titulos', JSON.stringify(tituloElegido)); } catch { /* nada */ }
 
   const boton = $('t-generar');
