@@ -464,10 +464,19 @@ const SONIDOS: Record<string, () => Senal> = {
   cofre,
 };
 
+/**
+ * Volumen de cada sonido respecto al resto (1 = el de siempre). Todos salen
+ * normalizados al mismo pico, pero el terremoto y el lag, graves y largos,
+ * se oían mucho más fuertes (26 sep 2026): al 70 %.
+ */
+const VOLUMEN: Record<string, number> = { terremoto: 0.7, lag: 0.7 };
+
 mkdirSync(DESTINO, { recursive: true });
 for (const [nombre, generar] of Object.entries(SONIDOS)) {
   const inicio = Date.now();
   const senal = generar();
+  const vol = VOLUMEN[nombre] ?? 1;
+  if (vol !== 1) for (let i = 0; i < senal.length; i++) senal[i] *= vol;
   const archivo = new URL(`${nombre}.wav`, DESTINO);
   writeFileSync(archivo, wav(senal));
   console.log(`${nombre}.wav · ${(senal.length / SR).toFixed(1)} s · ${Date.now() - inicio} ms`);
