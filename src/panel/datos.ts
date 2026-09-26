@@ -1,4 +1,5 @@
 import { getDb } from '../data/db.js';
+import * as lootDb from '../data/loot.js';
 import { startOfLocalDay } from '../services/ai/budget.js';
 import * as ajustes from '../core/ajustes.js';
 
@@ -79,6 +80,8 @@ export interface VistaEspectador {
   racha: number;
   mejorRacha: number;
   recuerdos: number;
+  /** Poder en el Loot (0 sin mochila). */
+  poder: number;
 }
 
 export function espectadores(): VistaEspectador[] {
@@ -104,5 +107,26 @@ export function espectadores(): VistaEspectador[] {
     racha: Number(r.racha),
     mejorRacha: Number(r.mejor),
     recuerdos: Number(r.recuerdos),
+    poder: lootDb.poder(r.twitch_id),
   }));
+}
+
+/**
+ * La ficha de un espectador en el panel: su mochila, su poder y su puesto,
+ * duelos, colección, título y racha. Lo mismo que ve en el chat con sus
+ * comandos, junto.
+ */
+export function ficha(twitchId: string) {
+  const racha = getDb().prepare('SELECT current, best FROM streaks WHERE twitch_id = ?').get(twitchId) as { current: number; best: number } | undefined;
+  const c = lootDb.coleccion(twitchId);
+  return {
+    mochila: lootDb.mochila(twitchId),
+    poder: lootDb.poder(twitchId),
+    puesto: lootDb.puesto(twitchId),
+    duelos: lootDb.duelos(twitchId),
+    titulo: lootDb.titulo(twitchId),
+    coleccion: { tiene: c.total, de: c.de },
+    racha: racha?.current ?? 0,
+    mejorRacha: racha?.best ?? 0,
+  };
 }

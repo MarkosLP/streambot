@@ -37,19 +37,23 @@
     <nav class="pestanas" role="tablist" aria-label="Secciones">
       <button role="tab" data-tab="directo" aria-selected="true">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8 8 0 0 0 0 11.4M17.7 6.3a8 8 0 0 1 0 11.4"/></svg>
-        Directo
-      </button>
-      <button role="tab" data-tab="efectos">
-        <svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>
-        Efectos
+        Inicio
       </button>
       <button role="tab" data-tab="loot">
         <svg viewBox="0 0 24 24"><path d="M3 10a5 5 0 0 1 5-5h8a5 5 0 0 1 5 5v9H3zM3 12h18M10 12v3h4v-3"/></svg>
         Loot
       </button>
+      <button role="tab" data-tab="efectos">
+        <svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>
+        Efectos
+      </button>
       <button role="tab" data-tab="titulos">
         <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7M17 14l1.5 3 3.5.5-2.5 2.4.6 3.4-3.1-1.6-3.1 1.6.6-3.4L12 17.5l3.5-.5z"/></svg>
         Títulos
+      </button>
+      <button role="tab" data-tab="espectadores">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/></svg>
+        Espectadores
       </button>
       <button role="tab" data-tab="biblioteca">
         <svg viewBox="0 0 24 24"><path d="M4 4h4v16H4zM10 4h4v16h-4zM15.5 5.2l3.9-1 3.6 14.6-3.9 1z"/></svg>
@@ -57,11 +61,11 @@
       </button>
       <button role="tab" data-tab="interacciones">
         <svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
-        Interacciones
+        IA y bot
       </button>
-      <button role="tab" data-tab="espectadores">
-        <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/></svg>
-        Espectadores
+      <button role="tab" data-tab="ajustes">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+        Ajustes
       </button>
       <button role="tab" data-tab="registro">
         <svg viewBox="0 0 24 24"><path d="M4 5h16M4 10h16M4 15h10M4 20h7"/></svg>
@@ -90,7 +94,7 @@
       <header class="cabecera-vista">
         <div>
           <p class="antetitulo" id="hoy"></p>
-          <h1>Directo</h1>
+          <h1>Inicio</h1>
         </div>
       </header>
 
@@ -152,21 +156,14 @@
           </article>
 
           <article class="tarjeta">
-            <header><h2>Ajustes</h2><span class="nota">Hasta reiniciar</span></header>
-            <label class="ajuste">
-              <span>
-                <strong>Interacciones espontáneas</strong>
-                <small>El bot habla sin que le invoquen: saludos, rachas, vueltas, continuará.</small>
-              </span>
-              <input type="checkbox" class="toggle" id="a-espontaneas">
-            </label>
-            <label class="ajuste">
-              <span>
-                <strong>Modo revisión</strong>
-                <small>Lo que escribe la IA espera tu aprobación antes de salir.</small>
-              </span>
-              <input type="checkbox" class="toggle" id="a-revision">
-            </label>
+            <header><h2>Acciones rápidas</h2><button class="enlace" data-ir="loot" type="button">Ir al Loot →</button></header>
+            <p class="nota rapido-estado" id="i-loot">—</p>
+            <div class="rapidas">
+              <button class="boton primario" type="button" id="i-jefe">🐉 Invocar jefe</button>
+              <button class="boton" type="button" id="i-regalo">🎁 Cofre a todo el chat</button>
+              <button class="boton" type="button" id="i-soltar">🎁 Soltar cofre</button>
+            </div>
+            <p class="nota">Los ajustes (espontáneas, revisión, Loot…) están en <button class="enlace" data-ir="ajustes" type="button">Ajustes</button>, y ahora se guardan.</p>
           </article>
 
           <article class="tarjeta">
@@ -312,6 +309,37 @@
       </div>
     </section>
 
+    <!-- AJUSTES -->
+    <section class="vista" id="v-ajustes" hidden>
+      <header class="cabecera-vista">
+        <div>
+          <p class="antetitulo">Se guardan: sobreviven a un reinicio</p>
+          <h1>Ajustes</h1>
+          <p class="nota">Lo que cambies aquí pasa por encima del <code>.env</code> hasta que pulses «Volver a lo del .env». El botón de apagar el bot no se guarda a propósito: al reiniciar, vuelve encendido.</p>
+        </div>
+        <button class="boton" type="button" id="aj-env">Volver a lo del .env</button>
+      </header>
+
+      <div class="dos-col">
+        <article class="tarjeta">
+          <header><h2>El bot</h2></header>
+          <div id="aj-lista"></div>
+        </article>
+        <div class="columna">
+          <article class="tarjeta">
+            <header><h2>Laboratorio de pruebas</h2><span class="nota">Unos segundos</span></header>
+            <p class="nota">Simula a 8 personas usando los comandos a la vez y comprueba que no se duplica ni se pierde nada. Usa una base de datos aparte: no toca el canal ni escribe en Twitch.</p>
+            <button class="boton primario" type="button" id="aj-lab">🧪 Lanzar pruebas</button>
+            <div id="aj-lab-resultado"></div>
+          </article>
+          <article class="tarjeta">
+            <header><h2>Del .env</h2><span class="nota">Se cambian allí y se reinicia</span></header>
+            <dl class="info-ajustes" id="aj-info"></dl>
+          </article>
+        </div>
+      </div>
+    </section>
+
     <!-- TÍTULOS -->
     <section class="vista" id="v-titulos" hidden>
       <header class="cabecera-vista">
@@ -451,7 +479,7 @@
       <div class="tabla-envoltorio">
         <table class="tabla">
           <thead>
-            <tr><th>Nombre</th><th>Última vez</th><th>Primera vez</th><th>Racha</th><th>Recuerdos</th><th></th></tr>
+            <tr><th>Nombre</th><th>Última vez</th><th>Primera vez</th><th>Racha</th><th>Poder</th><th>Recuerdos</th><th></th></tr>
           </thead>
           <tbody id="espectadores"></tbody>
         </table>

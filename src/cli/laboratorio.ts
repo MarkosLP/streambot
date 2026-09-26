@@ -37,6 +37,7 @@ import type { Rareza } from '../interactions/loot/objetos.js';
  *   npm run laboratorio               todas las pruebas
  *   npm run laboratorio -- --semilla=42   repetir una ejecución exacta
  *   npm run laboratorio -- --detalle  ver los mensajes del bot
+ *   npm run laboratorio -- --json     el resultado en JSON (lo usa el panel)
  */
 
 // ---------------------------------------------------------------------------
@@ -47,6 +48,8 @@ const args = process.argv.slice(2);
 const flag = (n: string) => args.find((a) => a.startsWith(`--${n}`))?.split('=')[1];
 const SEMILLA = Number(flag('semilla') ?? Date.now() % 100_000);
 const DETALLE = args.includes('--detalle');
+/** --json: sin texto, solo el resultado en una línea de JSON (lo usa el panel). */
+const JSON_SALIDA = args.includes('--json');
 
 let estadoAzar = SEMILLA >>> 0;
 function azar(): number {
@@ -75,7 +78,7 @@ function silenciar(): void {
 function hablar(): void {
   Object.assign(console, original);
 }
-const decir = (...x: unknown[]) => original.log(...x);
+const decir = (...x: unknown[]) => { if (!JSON_SALIDA) original.log(...x); };
 
 // ---------------------------------------------------------------------------
 // El chat de mentira
@@ -439,6 +442,7 @@ async function main(): Promise<void> {
   const malas = resultados.filter((r) => r.fallos.length);
   const eventos = resultados.reduce((n, r) => n + r.eventos, 0);
   decir(`\n${malas.length ? '✘' : '✔'} ${resultados.length - malas.length}/${resultados.length} pruebas bien · ${eventos} eventos simulados · semilla ${SEMILLA}\n`);
+  if (JSON_SALIDA) original.log(JSON.stringify({ semilla: SEMILLA, eventos, resultados }));
   jefe.reset();
   process.exit(malas.length ? 1 : 0);
 }

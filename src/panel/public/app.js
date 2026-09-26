@@ -94,6 +94,7 @@ function duracion(desdeIso) {
 const cargadores = {
   efectos: () => { cargarEfectos(); cargarObs(); },
   biblioteca: cargarBiblioteca,
+  ajustes: cargarAjustes,
   titulos: cargarTitulos,
   loot: cargarLoot,
   interacciones: cargarInteracciones,
@@ -198,27 +199,132 @@ $('interruptor').addEventListener('click', async () => {
   }
 });
 
-function pintarAjustes(bot) {
-  // No se pisa un interruptor mientras lo estás pulsando.
-  if (document.activeElement !== $('a-espontaneas')) $('a-espontaneas').checked = bot.espontaneas;
-  if (document.activeElement !== $('a-revision')) $('a-revision').checked = bot.revision;
+// Los interruptores viven ahora en la pestaña Ajustes (y se guardan).
+function pintarAjustes() {}
+
+// ---------------------------------------------------------------------------
+// Inicio: acciones rápidas
+// ---------------------------------------------------------------------------
+
+async function pintarLootInicio() {
+  try {
+    const d = await api('/api/loot');
+    const partes = [
+      d.jefe ? `🐉 ${d.jefe.nombre}: ${d.jefe.vida}/${d.jefe.vidaMax}` : null,
+      d.enElSuelo ? `⚔️ cofre de guerra en el suelo` : null,
+      !d.activo ? 'Loot apagado' : !d.directo ? 'Sin directo: no caen cofres solos' : d.proximoEnSeg !== null ? `Próximo cofre en ${mmss(d.proximoEnSeg)}` : null,
+      `${(d.enElChat || []).length} en el chat`,
+    ].filter(Boolean);
+    $('i-loot').textContent = partes.join(' · ');
+    $('i-jefe').disabled = Boolean(d.jefe);
+  } catch { /* sin bot: ya lo dice el aviso de arriba */ }
 }
 
-for (const [id, campo, textos] of [
-  ['a-espontaneas', 'espontaneas', ['Interacciones espontáneas encendidas', 'Interacciones espontáneas apagadas']],
-  ['a-revision', 'revision', ['Modo revisión activado', 'Modo revisión desactivado: la IA publica sin preguntar']],
+for (const [id, ruta, cuerpo, texto] of [
+  ['i-jefe', '/api/loot/jefe', { accion: 'invocar' }, (r) => `🐉 ${r.nombre} aparece con ${r.vida} de vida`],
+  ['i-regalo', '/api/loot/regalar', { tipo: 'cofre' }, (r) => `🎁 Cofre para ${r.reparto.length}`],
+  ['i-soltar', '/api/loot/soltar', {}, (r) => `🎁 Cofre para ${r.reparto.length}`],
 ]) {
-  $(id).addEventListener('change', async (e) => {
-    const valor = e.target.checked;
+  $(id).addEventListener('click', async (e) => {
+    const b = e.currentTarget;
+    b.disabled = true;
     try {
-      await api('/api/ajustes', { [campo]: valor });
-      tostada(valor ? textos[0] : textos[1]);
+      tostada(texto(await api(ruta, cuerpo)));
     } catch (err) {
-      e.target.checked = !valor;
       tostada(err.message, true);
+    } finally {
+      b.disabled = false;
+      pintarLootInicio();
     }
   });
 }
+setInterval(() => { if (!$('v-directo').hidden) pintarLootInicio(); }, 5000);
+pintarLootInicio();
+
+// ---------------------------------------------------------------------------
+// Ajustes
+// ---------------------------------------------------------------------------
+
+const AJUSTES = [
+  ['loot', 'Loot del chat', 'Cofres cada 20-30 min, jefes, duelos… Apagado, no cae nada solo.'],
+  ['canalJuega', 'Yo también juego', 'Recibes cofres, botín del jefe y regalos como uno más del chat.'],
+  ['espontaneas', 'Interacciones espontáneas', 'El bot habla sin que le invoquen: saludos, rachas, vueltas, continuará.'],
+  ['revision', 'Modo revisión', 'Lo que escribe la IA espera tu aprobación antes de salir.'],
+];
+
+async function cargarAjustes() {
+  let d;
+  try {
+    d = await api('/api/ajustes');
+  } catch (err) {
+    tostada(err.message === 'no existe' ? 'Reinicia el bot para ver Ajustes (Ctrl+C y npm start)' : err.message, true);
+    return;
+  }
+  $('aj-lista').replaceChildren(...AJUSTES.map(([clave, titulo, ayuda]) => {
+    const a = d.ajustes[clave];
+    const input = h('input', { type: 'checkbox', class: 'toggle', checked: a.valor });
+    input.addEventListener('change', async () => {
+      try {
+        await api('/api/ajustes', { [clave]: input.checked });
+        tostada(`${titulo}: ${input.checked ? 'sí' : 'no'} (guardado)`);
+        cargarAjustes();
+      } catch (err) {
+        input.checked = !input.checked;
+        tostada(err.message, true);
+      }
+    });
+    return h('label', { class: 'ajuste' },
+      h('span', {},
+        h('strong', {}, titulo,
+          a.guardado
+            ? h('span', { class: 'chip ok origen', title: `En el .env: ${a.env ? 'sí' : 'no'}` }, 'guardado')
+            : h('span', { class: 'chip origen' }, 'del .env')),
+        h('small', {}, ayuda)),
+      input);
+  }));
+  const i = d.info;
+  const fila = (k, v) => [h('dt', {}, k), h('dd', {}, v)];
+  $('aj-info').replaceChildren(
+    ...fila('Mensajes del bot solo', `${i.mensajesPorHora} por hora`),
+    ...fila('Respuestas a comandos', `${i.respuestasPorHora} por hora`),
+    ...fila('Cofres automáticos', `cada ${i.minutosCofre} min`),
+    ...fila('Fuente del juego', i.fuenteJuego),
+    ...fila('OBS', i.obs),
+    ...fila('IA del chat', i.modeloClaude),
+    ...fila('IA local', i.iaLocal.disponible ? i.iaLocal.modelo : `${i.iaLocal.modelo} (apagada)`),
+  );
+}
+
+$('aj-env').addEventListener('click', async () => {
+  if (!confirm('¿Volver a lo que dice el .env? Se olvida lo que has cambiado aquí.')) return;
+  try {
+    await api('/api/ajustes', { volverAlEnv: true });
+    tostada('Ajustes devueltos a lo del .env');
+    cargarAjustes();
+  } catch (err) { tostada(err.message, true); }
+});
+
+$('aj-lab').addEventListener('click', async (e) => {
+  const b = e.currentTarget;
+  b.disabled = true;
+  $('aj-lab-resultado').replaceChildren(h('p', { class: 'pensando' }, 'Simulando el chat…'));
+  try {
+    const r = await api('/api/laboratorio', {});
+    const malas = r.resultados.filter((p) => p.fallos.length);
+    $('aj-lab-resultado').replaceChildren(
+      h('p', { class: `lab-resumen ${malas.length ? 'mal' : 'ok'}` },
+        `${malas.length ? '✘' : '✔'} ${r.resultados.length - malas.length}/${r.resultados.length} pruebas bien · ${r.eventos} eventos · semilla ${r.semilla}`),
+      ...r.resultados.map((p) => h('div', { class: 'lab-prueba' },
+        h('strong', { class: p.fallos.length ? 'mal' : '' }, `${p.fallos.length ? '✘' : '✔'} ${p.nombre}`),
+        ...p.fallos.map((f) => h('span', {}, `✘ ${f}`)),
+        h('span', { class: 'nota' }, p.notas.join(' · ')))),
+    );
+  } catch (err) {
+    $('aj-lab-resultado').replaceChildren(h('p', { class: 'aviso' }, err.message));
+  } finally {
+    b.disabled = false;
+  }
+});
 
 function barra(etiqueta, valor, tope, texto) {
   const pct = tope > 0 ? Math.min(100, (valor / tope) * 100) : 0;
@@ -1543,6 +1649,27 @@ $('r-interacciones').addEventListener('click', cargarInteracciones);
 
 let espectadores = [];
 
+/** La ficha, en una fila debajo de la persona. Pulsar otra vez la cierra. */
+async function abrirFicha(e, fila) {
+  const siguiente = fila.nextElementSibling;
+  if (siguiente?.classList.contains('ficha')) { siguiente.remove(); return; }
+  let f;
+  try {
+    f = await api(`/api/espectadores/${e.twitchId}/ficha`);
+  } catch (err) { tostada(err.message, true); return; }
+  const datosFicha = h('div', { class: 'ficha-datos' },
+    h('span', {}, '⚔️ Poder ', h('b', {}, String(f.poder)), f.puesto ? ` · puesto ${f.puesto.puesto} de ${f.puesto.de}` : ''),
+    h('span', {}, '🎒 ', h('b', {}, `${f.mochila.length}/20`)),
+    h('span', {}, '📖 ', h('b', {}, `${f.coleccion.tiene}/${f.coleccion.de}`)),
+    h('span', {}, '⚔️ Duelos ', h('b', {}, `${f.duelos.ganados}-${f.duelos.perdidos}`)),
+    h('span', {}, '🔥 Racha ', h('b', {}, String(f.racha)), f.mejorRacha > f.racha ? ` (mejor ${f.mejorRacha})` : ''),
+    f.titulo && h('span', { class: 'titulo-loot' }, `«${f.titulo}»`));
+  const mochila = f.mochila.length
+    ? h('div', { class: 'ficha-mochila' }, f.mochila.map((b) => pildoraBotin(b)))
+    : h('p', { class: 'nota' }, 'La mochila está vacía.');
+  fila.after(h('tr', { class: 'ficha' }, h('td', { colspan: 7 }, h('div', { class: 'ficha-cuerpo' }, datosFicha, mochila))));
+}
+
 async function cargarEspectadores() {
   try {
     espectadores = await api('/api/espectadores');
@@ -1558,7 +1685,7 @@ function pintarEspectadores() {
   $('n-espectadores').textContent = `· ${espectadores.length}`;
 
   if (!lista.length) {
-    $('espectadores').replaceChildren(h('tr', {}, h('td', { class: 'vacio', colspan: 6 },
+    $('espectadores').replaceChildren(h('tr', {}, h('td', { class: 'vacio', colspan: 7 },
       espectadores.length ? 'Nadie coincide con la búsqueda.' : 'Todavía no ha escrito nadie.')));
     return;
   }
@@ -1569,8 +1696,12 @@ function pintarEspectadores() {
       h('td', {}, hace(e.ultimaVez)),
       h('td', { class: 'num' }, fecha(e.primeraVez)),
       h('td', { class: 'num' }, e.racha ? `🔥 ${e.racha}` : '—', e.mejorRacha > e.racha && h('span', { class: 'detalle' }, `mejor: ${e.mejorRacha}`)),
+      h('td', { class: 'num' }, e.poder ? `⚔️ ${e.poder}` : '—'),
       h('td', { class: 'num' }, e.recuerdos || '—'),
-      h('td', {}, h('button', {
+      h('td', { class: 'acciones-fila' }, h('button', {
+        class: 'boton pequeno', type: 'button',
+        onclick: (ev) => abrirFicha(e, ev.currentTarget.closest('tr')),
+      }, 'Ficha'), h('button', {
         class: 'boton pequeno peligro',
         type: 'button',
         onclick: async () => {

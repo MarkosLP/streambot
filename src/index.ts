@@ -1,6 +1,7 @@
 import { config } from './config.js';
 import { log } from './core/logger.js';
 import * as killswitch from './core/killswitch.js';
+import * as ajustes from './core/ajustes.js';
 import { setSender } from './core/output.js';
 import { setApprover } from './core/review.js';
 import { preguntarEnConsola, closeApprover } from './core/console-approver.js';
@@ -40,6 +41,8 @@ async function main(): Promise<void> {
   // enterarse con el chat aún sin escuchar que a mitad del primer mensaje.
   getDb();
   log.info(`SQLite: ${config.dbPath} · ${users.count()} usuario(s) conocidos`);
+  // Lo que cambiaste en el panel (Ajustes) pasa por encima del .env.
+  ajustes.cargarGuardados();
 
   // Los recuerdos caducados se borran al arrancar. Las lecturas ya filtran
   // por fecha, así que esto no arregla nada; lo que evita es guardar para

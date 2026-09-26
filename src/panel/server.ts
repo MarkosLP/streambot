@@ -1,5 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import type { AddressInfo } from 'node:net';
 import { config } from '../config.js';
 import { log, recientes } from '../core/logger.js';
@@ -111,6 +113,29 @@ export async function arrancar(sb: PuertoStreamerbot): Promise<Server | null> {
 
 // ---------------------------------------------------------------------------
 
+let laboratorioEnMarcha = false;
+
+/** npm run laboratorio -- --json, esperando el resultado (unos segundos). */
+function lanzarLaboratorio(): Promise<unknown> {
+  const raiz = fileURLToPath(new URL('../../', import.meta.url));
+  return new Promise((resolve, reject) => {
+    const hijo = spawn(process.execPath, ['--import', 'tsx', '--disable-warning=ExperimentalWarning', 'src/cli/laboratorio.ts', '--json'], {
+      cwd: raiz, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
+    });
+    let salida = '';
+    let errores = '';
+    hijo.stdout.on('data', (d) => { salida += d; });
+    hijo.stderr.on('data', (d) => { errores += d; });
+    const reloj = setTimeout(() => { hijo.kill(); reject(new ErrorHttp(504, 'El laboratorio ha tardado demasiado')); }, 180_000);
+    hijo.on('close', () => {
+      clearTimeout(reloj);
+      const linea = salida.trim().split(/\r?\n/).reverse().find((l) => l.startsWith('{'));
+      if (!linea) return reject(new ErrorHttp(500, `El laboratorio no ha terminado bien: ${errores.slice(-300) || 'sin detalle'}`));
+      try { resolve(JSON.parse(linea)); } catch { reject(new ErrorHttp(500, 'El laboratorio devolvió algo ilegible')); }
+    });
+  });
+}
+
 async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: IncomingMessage, res: ServerResponse) {
   const puerto = (server.address() as AddressInfo).port;
   const permitidos = [`127.0.0.1:${puerto}`, `localhost:${puerto}`];
@@ -185,13 +210,6 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     return json(res, 200, { ok: true });
   }
 
-  if (ruta === 'POST /api/ajustes') {
-    const body = await cuerpo(req);
-    if (typeof body.espontaneas === 'boolean') ajustes.setInteraccionesEspontaneas(body.espontaneas, 'desde el panel');
-    if (typeof body.revision === 'boolean') ajustes.setModoRevision(body.revision, 'desde el panel');
-    return json(res, 200, { ok: true });
-  }
-
   const decision = /^POST \/api\/revision\/([\w-]+)$/.exec(ruta);
   if (decision) {
     const { aprobar } = await cuerpo(req);
@@ -214,6 +232,9 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   if (ruta === 'GET /api/interacciones') return json(res, 200, datos.interacciones());
 
   if (ruta === 'GET /api/espectadores') return json(res, 200, datos.espectadores());
+
+  const fichaDe = /^GET \/api\/espectadores\/(\w+)\/ficha$/.exec(ruta);
+  if (fichaDe) return json(res, 200, datos.ficha(fichaDe[1]!));
 
   const olvido = /^POST \/api\/espectadores\/(\w+)\/olvidar$/.exec(ruta);
   if (olvido) return json(res, 200, consent.olvidar(olvido[1]));
@@ -322,6 +343,54 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
 
 
   // Títulos: sugerencias de la IA local. Nada se conecta a Twitch: se copian.
+  // El laboratorio de pruebas, en un proceso aparte: cambia la base de datos
+  // y el chat por unos de mentira, y eso no puede pasar dentro del bot.
+  if (ruta === 'POST /api/laboratorio') {
+    if (laboratorioEnMarcha) throw new ErrorHttp(409, 'El laboratorio ya está en marcha');
+    laboratorioEnMarcha = true;
+    try {
+      return json(res, 200, await lanzarLaboratorio());
+    } finally {
+      laboratorioEnMarcha = false;
+    }
+  }
+
+  // Ajustes que se guardan (sobreviven a un reinicio).
+  if (ruta === 'GET /api/ajustes') {
+    return json(res, 200, {
+      ajustes: ajustes.todos(),
+      info: {
+        mensajesPorHora: config.messagesPerHour,
+        respuestasPorHora: config.respuestasPerHour,
+        fuenteJuego: config.obs.fuenteJuego,
+        obs: config.obs.url,
+        iaLocal: await iaLocal.estado(),
+        modeloClaude: config.ai.model,
+        minutosCofre: `${config.loot.minutosMin}-${config.loot.minutosMax}`,
+      },
+    });
+  }
+
+  if (ruta === 'POST /api/ajustes') {
+    const body = await cuerpo(req);
+    if (body.volverAlEnv === true) {
+      ajustes.volverAlEnv('desde el panel');
+      return json(res, 200, { ok: true });
+    }
+    const setters = {
+      espontaneas: ajustes.setInteraccionesEspontaneas,
+      revision: ajustes.setModoRevision,
+      loot: ajustes.setLootActivo,
+      canalJuega: ajustes.setCanalJuega,
+    } as const;
+    let tocado = false;
+    for (const [clave, fn] of Object.entries(setters)) {
+      if (typeof body[clave] === 'boolean') { fn(body[clave] as boolean, 'desde el panel'); tocado = true; }
+    }
+    if (!tocado) throw new ErrorHttp(400, 'nada que cambiar');
+    return json(res, 200, { ok: true, ajustes: ajustes.todos() });
+  }
+
   if (ruta === 'GET /api/titulos') {
     return json(res, 200, { ia: await iaLocal.estado(), ...titulos.listado(), contexto: titulos.contextoCanal() });
   }

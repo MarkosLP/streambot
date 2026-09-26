@@ -908,3 +908,25 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
 .lista-titulos li { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
 .lista-titulos li .texto-titulo { flex: 1; }
 .lista-titulos .dato { font-size: 0.72rem; color: var(--texto-3); }
+
+/* ---------- Inicio: acciones rápidas ---------- */
+.rapidas { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px; }
+.rapido-estado { margin: 0 0 4px; }
+
+/* ---------- Ajustes ---------- */
+.ajuste .origen { margin-left: 6px; }
+.info-ajustes { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 0.88rem; }
+.info-ajustes dt { color: var(--texto-3); }
+.info-ajustes dd { margin: 0; font-variant-numeric: tabular-nums; }
+.lab-prueba { display: grid; gap: 2px; padding: 8px 0; border-top: 1px solid var(--borde); font-size: 0.86rem; }
+.lab-prueba strong.mal { color: var(--rojo); }
+.lab-prueba .nota { font-size: 0.78rem; }
+.lab-resumen { margin: 12px 0 4px; font-weight: 700; }
+.lab-resumen.ok { color: var(--verde); } .lab-resumen.mal { color: var(--rojo); }
+
+/* ---------- Ficha de espectador ---------- */
+.ficha td { background: var(--tarjeta-2); }
+.ficha-cuerpo { display: grid; gap: 10px; padding: 6px 2px; }
+.ficha-datos { display: flex; gap: 8px 18px; flex-wrap: wrap; font-size: 0.88rem; }
+.ficha-datos b { color: var(--oro-claro); }
+.ficha-mochila { display: flex; gap: 6px; flex-wrap: wrap; }
