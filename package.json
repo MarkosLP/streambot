@@ -15,7 +15,8 @@
     "ai:test": "tsx --disable-warning=ExperimentalWarning src/cli/ai-test.ts",
     "test": "tsx --disable-warning=ExperimentalWarning --test src/**/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm test"
+    "check": "npm run typecheck && npm test",
+    "laboratorio": "tsx --disable-warning=ExperimentalWarning src/cli/laboratorio.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

@@ -46,6 +46,7 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 - **El directo según OBS** (`core/directo.ts`): cada minuto pregunta a OBS si emite y abre o cierra el directo por el mismo camino que los avisos de Twitch. Si OBS deja de contestar 5 veces seguidas (y había contestado antes), lo cierra. «Marcar en directo para probar» del panel lo deja abierto aunque no emitas, hasta que lo cierres o haya una emisión de verdad.
 - El Lag (Freeze Filter) ya funciona. Paneles de Twitch rehechos (26 sep): más épicos, con Terremoto y Lag en Recompensas, `!top`, el cofre de fidelidad y un cuarto panel «Jefes de raid». Hay que subirlos otra vez.
 - **Cofre de fidelidad** (3+ directos seguidos, en el primer mensaje de cada directo) y **`!top`**. Las rachas se cuentan ya aunque las espontáneas estén apagadas.
+- **Laboratorio de pruebas**: `npm run laboratorio` simula 8 personas usando comandos A LA VEZ (12 escenarios: cofre en el suelo, !usar doble, !dar cruzado, jefe en multitud, duelos cruzados con maldito, regalo + cofre, forja + dar, terremotos, jefes dobles, todo mezclado, ráfaga de 120) y comprueba que no se duplica ni se pierde nada. Con `--semilla=N` se repite una ejecución. 30 semillas limpias el 26 sep. Encontró un fallo: con «Yo también juego» apagado después de escribir, el canal seguía recibiendo cofres 15 min (arreglado).
 - Hay que **reiniciar el bot** para tenerlo. 428 tests.
 
 ### Precios y límites acordados

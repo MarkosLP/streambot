@@ -129,6 +129,10 @@ export function aventureros(now = Date.now()): Viewer[] {
       continue;
     }
     if (consent.haPedidoOlvido(id)) continue;
+    // Se mira ahora, no al apuntarle: si apagas «Yo también juego» después de
+    // haber escrito, el canal no puede seguir recibiendo cofres 15 minutos.
+    // (Lo encontró el laboratorio de pruebas, 26 sep 2026.)
+    if (!juega(a.viewer.login)) continue;
     resultado.push(a.viewer);
   }
   return resultado;
