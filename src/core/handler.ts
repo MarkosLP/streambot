@@ -28,6 +28,7 @@ import * as lootComandos from '../interactions/loot/comandos.js';
 import * as mecenas from '../interactions/loot/mecenas.js';
 import * as temporada from '../interactions/loot/temporada.js';
 import * as suscriptores from '../data/suscriptores.js';
+import * as chatReciente from './chat-reciente.js';
 import * as registry from '../interactions/index.js';
 import { budget } from '../services/ai/index.js';
 
@@ -64,6 +65,13 @@ export async function handleEvent(event: DomainEvent): Promise<void> {
 
   if (event.type === 'viewer.message') {
     await handleMessage(event);
+    return;
+  }
+
+  // Lo que quita un moderador sale también del chat en pantalla (escenas).
+  if (event.type === 'chat.moderacion') {
+    const quitados = chatReciente.moderar(event);
+    if (quitados) log.info(`Chat en pantalla: ${quitados} mensaje(s) quitados por moderación.`);
     return;
   }
 
@@ -139,6 +147,9 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   // Quién anda por el chat, para poder retarle a un duelo. Incluye al dueño
   // del canal; los bots no.
   if (!esBot(viewer.login)) loot.recordarVisto(viewer);
+  // El chat en pantalla de la escena Charla: solo en memoria, y nunca de
+  // quien pidió el olvido.
+  if (!consent.haPedidoOlvido(viewer.id)) chatReciente.apuntar(event, viewer.login === config.broadcasterLogin);
   // La insignia de suscriptor: así el bot sabe quién lo es aunque se
   // suscribiera antes de que llegara ningún aviso (S4, S5).
   // El canal no: Twitch lo marca como «suscrito» a sí mismo, y saldría con 💜.
@@ -157,6 +168,7 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
       // que le olvidemos. Un users.touch() aquí volvería a crear la ficha que
       // el borrado acaba de eliminar.
       const borrado = consent.olvidar(viewer.id);
+      chatReciente.olvidar(viewer.id);
       await send({
         text:
           `@${viewer.displayName} hecho, no guardo nada tuyo y no volveré a hacerlo ` +

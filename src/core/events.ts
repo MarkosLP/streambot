@@ -48,6 +48,30 @@ export interface ViewerMessageEvent extends BaseEvent {
   /** Primera vez que esta persona escribe en el canal. Streamer.bot lo trackea él mismo. */
   isFirstMessage: boolean;
   isReturningChatter: boolean;
+  /** El id del mensaje en Twitch: para quitarlo del chat en pantalla si lo borran. */
+  messageId?: string;
+  /** El color del nombre en Twitch ('#1E90FF'), si llega. */
+  color?: string;
+  /** Emotes del mensaje, para pintarlos en el chat en pantalla. */
+  emotes?: Emote[];
+}
+
+export interface Emote {
+  nombre: string;
+  url: string;
+}
+
+/**
+ * Moderación del chat: un mensaje borrado, alguien expulsado o silenciado, o
+ * el chat vaciado. Solo sirve para que el chat en pantalla (escenas) no
+ * enseñe lo que un moderador ya ha quitado.
+ */
+export interface ChatModeracionEvent extends BaseEvent {
+  type: 'chat.moderacion';
+  accion: 'borrado' | 'fuera' | 'vaciado';
+  messageId: string;
+  userId: string;
+  login: string;
 }
 
 export interface ViewerRedeemEvent extends BaseEvent {
@@ -138,6 +162,7 @@ export interface ChannelRaidEvent extends BaseEvent {
 
 export type DomainEvent =
   | ViewerMessageEvent
+  | ChatModeracionEvent
   | ViewerRedeemEvent
   | StreamStateEvent
   | ViewerSubEvent
@@ -157,6 +182,38 @@ function nextId(): string {
 
 function text(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;
+}
+
+/** Solo '#RRGGBB': el color va a parar a un estilo del overlay. */
+function colorValido(c: string): string | undefined {
+  return /^#[0-9a-f]{6}$/i.test(c) ? c : undefined;
+}
+
+/** Hosts de los que se aceptan imágenes de emotes: Twitch, 7TV, BTTV y FFZ. */
+const HOSTS_EMOTES = ['static-cdn.jtvnw.net', 'cdn.7tv.app', 'cdn.betterttv.net', 'cdn.frankerfacez.com'];
+
+/**
+ * Los emotes de un mensaje, vengan como vengan: `emotes` (arriba o dentro de
+ * `message`) o `parts` con tipo 'emote'. Nunca se inventa nada: sin datos,
+ * lista vacía y el texto sale tal cual.
+ */
+function emotesDe(payload: any): Emote[] {
+  const crudos: any[] = [
+    ...(Array.isArray(payload?.emotes) ? payload.emotes : []),
+    ...(Array.isArray(payload?.message?.emotes) ? payload.message.emotes : []),
+    ...(Array.isArray(payload?.parts) ? payload.parts.filter((p: any) => p?.type === 'emote') : []),
+  ];
+  const vistos = new Map<string, Emote>();
+  for (const e of crudos) {
+    const nombre = text(e?.name, text(e?.text));
+    const url = text(e?.imageUrl, text(e?.image_url, text(e?.url)));
+    if (!nombre || !url || vistos.has(nombre)) continue;
+    try {
+      const u = new URL(url);
+      if (u.protocol === 'https:' && HOSTS_EMOTES.includes(u.hostname)) vistos.set(nombre, { nombre, url: u.href });
+    } catch { /* URL rara: fuera */ }
+  }
+  return [...vistos.values()].slice(0, 40);
 }
 
 function num(value: unknown, fallback = 0): number {
@@ -289,6 +346,22 @@ export function normalize(
         text: text(payload?.text),
         isFirstMessage: payload?.meta?.firstMessage === true,
         isReturningChatter: payload?.meta?.returningChatter === true,
+        messageId: text(payload?.messageId, text(payload?.message?.msgId, text(payload?.id))),
+        color: colorValido(text(payload?.user?.color, text(payload?.color, text(payload?.message?.color)))),
+        emotes: emotesDe(payload),
+      };
+
+    case 'Twitch.ChatMessageDeleted':
+    case 'Twitch.UserTimedOut':
+    case 'Twitch.UserBanned':
+    case 'Twitch.ChatCleared':
+      return {
+        ...base,
+        type: 'chat.moderacion',
+        accion: eventName === 'Twitch.ChatMessageDeleted' ? 'borrado' : eventName === 'Twitch.ChatCleared' ? 'vaciado' : 'fuera',
+        messageId: text(payload?.messageId, text(payload?.message_id, text(payload?.targetMessageId, text(payload?.target_message_id)))),
+        userId: text(payload?.user_id, text(payload?.userId, text(payload?.target_user_id, text(payload?.user?.id)))),
+        login: text(payload?.user_login, text(payload?.userName, text(payload?.target_user_login, text(payload?.user?.login)))).toLowerCase(),
       };
 
     case 'Twitch.RewardRedemption': {
@@ -376,6 +449,8 @@ export function normalize(
 /** Resumen de una línea para los logs. Nada de volcar el objeto entero. */
 export function describe(event: DomainEvent): string {
   switch (event.type) {
+    case 'chat.moderacion':
+      return `moderación: ${event.accion} ${event.login || event.userId || event.messageId}`;
     case 'viewer.message': {
       const flags = [
         event.isFirstMessage ? 'PRIMER MENSAJE' : null,

@@ -37,6 +37,11 @@ const SUBSCRIPTIONS: StreamerbotEventsSubscription = {
     'Raid',
     'StreamOnline',
     'StreamOffline',
+    // Para que el chat en pantalla (escenas) quite lo que borra un moderador.
+    'ChatMessageDeleted',
+    'UserTimedOut',
+    'UserBanned',
+    'ChatCleared',
   ],
 };
 

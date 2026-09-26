@@ -43,6 +43,10 @@
         <svg viewBox="0 0 24 24"><path d="M3 10a5 5 0 0 1 5-5h8a5 5 0 0 1 5 5v9H3zM3 12h18M10 12v3h4v-3"/></svg>
         Loot
       </button>
+      <button role="tab" data-tab="escenas">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M7 9l3 2-3 2M12 13h4"/></svg>
+        Escenas
+      </button>
       <button role="tab" data-tab="efectos">
         <svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>
         Efectos
@@ -354,6 +358,64 @@
           </article>
         </div>
       </div>
+    </section>
+
+    <!-- ESCENAS -->
+    <section class="vista" id="v-escenas" hidden>
+      <header class="cabecera-vista">
+        <div>
+          <p class="antetitulo">Empezamos · Charla · Pausa · Final</p>
+          <h1>Escenas</h1>
+          <p class="nota">Los textos, la cuenta atrás y el avatar se cambian aquí y salen en directo, sin tocar OBS. «Crear en OBS» solo añade: nunca cambia la escena que estás emitiendo.</p>
+        </div>
+      </header>
+
+      <div class="dos-col escenas-mandos">
+        <article class="tarjeta">
+          <header><h2>⏳ Cuenta atrás</h2><span class="nota" id="e-cuenta-estado">Sin cuenta atrás</span></header>
+          <div class="rapidas" id="e-cuenta">
+            <button class="boton" type="button" data-min="3">3 min</button>
+            <button class="boton" type="button" data-min="5">5 min</button>
+            <button class="boton" type="button" data-min="10">10 min</button>
+            <button class="boton" type="button" data-min="15">15 min</button>
+          </div>
+          <form class="escenas-hora" id="e-hora-form">
+            <label class="campo"><span>O a una hora</span><input type="time" id="e-hora" required></label>
+            <button class="boton" type="submit">Poner</button>
+            <button class="boton" type="button" id="e-quitar">Quitar</button>
+          </form>
+          <p class="nota">Sale en Empezamos («Empezamos en…») y en Pausa («Vuelvo en…»). Al llegar a cero: «¡Arrancamos!».</p>
+        </article>
+
+        <article class="tarjeta">
+          <header>
+            <h2>🧙 Sin cámara</h2>
+            <label class="interruptor-loot" title="En la escena Charla, un avatar tapa el hueco de la cámara">
+              <span id="e-avatar-texto-estado">Avatar apagado</span>
+              <input type="checkbox" class="toggle" id="e-avatar">
+            </label>
+          </header>
+          <p class="nota">Para cuando tengas que apagar la cámara: en la escena Charla, un encapuchado con los ojos brillantes ocupa su hueco. Parpadea, respira, mira al chat cuando alguien escribe, celebra el botín y se duerme si nadie dice nada.</p>
+          <form class="escenas-avatar" id="e-avatar-form">
+            <label class="campo"><span>Lo que dice su bocadillo</span><input type="text" id="e-avatar-dice" maxlength="90" autocomplete="off"></label>
+            <button class="boton" type="submit">Guardar</button>
+          </form>
+        </article>
+      </div>
+
+      <article class="tarjeta">
+        <header><h2>✍️ Textos</h2><span class="nota">Vacío = el de por defecto</span></header>
+        <form class="escenas-textos" id="e-textos">
+          <label class="campo"><span>Empezamos · título</span><input type="text" data-clave="titulo" maxlength="90" autocomplete="off"></label>
+          <label class="campo"><span>Empezamos · debajo</span><input type="text" data-clave="subtitulo" maxlength="90" autocomplete="off"></label>
+          <label class="campo"><span>Charla · rótulo</span><input type="text" data-clave="charla" maxlength="90" autocomplete="off"></label>
+          <label class="campo"><span>Pausa · debajo</span><input type="text" data-clave="pausa" maxlength="90" autocomplete="off"></label>
+          <label class="campo"><span>Final · despedida</span><input type="text" data-clave="final" maxlength="90" autocomplete="off"></label>
+          <button class="boton primario" type="submit">Guardar textos</button>
+        </form>
+      </article>
+
+      <div class="lista-escenas" id="e-lista"></div>
     </section>
 
     <!-- AJUSTES -->

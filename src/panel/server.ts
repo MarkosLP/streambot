@@ -27,6 +27,7 @@ import { handleEvent } from '../core/handler.js';
 import { normalize } from '../core/events.js';
 import * as titulos from './titulos.js';
 import * as previa from './previa.js';
+import * as escenas from './escenas.js';
 import * as eventos from '../interactions/loot/eventos.js';
 import * as temporada from '../interactions/loot/temporada.js';
 import * as temporadas from '../data/temporadas.js';
@@ -200,6 +201,19 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       'Access-Control-Allow-Origin': '*',
     });
     res.end(JSON.stringify({ ...jefe.paraOverlay(), duelos: arena.recientes() }));
+    return;
+  }
+
+  // Lo que pintan las escenas (Empezamos, Charla, Pausa, Final). Como la del
+  // jefe: CORS abierto porque el overlay corre en su sandbox, solo lectura y
+  // solo lo que ya se ve en el chat.
+  if (ruta === 'GET /api/overlay/escena') {
+    res.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'Access-Control-Allow-Origin': '*',
+    });
+    res.end(JSON.stringify(escenas.paraOverlay(url.searchParams.get('tipo') ?? '')));
     return;
   }
 
@@ -441,6 +455,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       ajustes.volverAlEnv('desde el panel');
       // Su fila también se ha borrado: vuelve a rotar solo.
       eventos.olvidar();
+      escenas.olvidar();
       return json(res, 200, { ok: true });
     }
     const setters = {
@@ -482,6 +497,29 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     if (!Number.isInteger(id)) throw new ErrorHttp(400, 'falta el id');
     titulos.marcar(id as number, { favorito: typeof favorito === "boolean" ? favorito : undefined, usado: usado === true });
     return json(res, 200, { ok: true });
+  }
+
+  if (ruta === 'GET /api/escenas') {
+    return json(res, 200, {
+      config: escenas.leer(),
+      escenas: escenas.TIPOS.map((tipo) => ({ tipo, ...obsSetup.ESCENAS_OBS[tipo], url: obsSetup.urlEscena(tipo) })),
+    });
+  }
+
+  if (ruta === 'POST /api/escenas') {
+    return json(res, 200, { config: escenas.cambiar(await cuerpo(req)) });
+  }
+
+  // Crea o completa la escena en OBS. Solo cuando lo pulsas; nunca cambia la
+  // escena en emisión.
+  if (ruta === 'POST /api/escenas/obs') {
+    const { tipo } = await cuerpo(req);
+    if (!escenas.TIPOS.includes(tipo as escenas.Tipo)) throw new ErrorHttp(400, 'escena no válida');
+    const hecho = await obs((pedir) => obsSetup.crearEscena(pedir, tipo as escenas.Tipo)).catch((err) => {
+      throw new ErrorHttp(502, err instanceof Error ? err.message : String(err));
+    });
+    for (const h of hecho) log.info(`Panel → OBS: ${h}`);
+    return json(res, 200, { hecho });
   }
 
   if (ruta === 'GET /api/biblioteca') return json(res, 200, await biblioteca.listar());

@@ -92,6 +92,7 @@ function duracion(desdeIso) {
 // ---------------------------------------------------------------------------
 
 const cargadores = {
+  escenas: cargarEscenas,
   directo: () => cargarResumen(),
   efectos: () => { cargarEfectos(); cargarObs(); },
   biblioteca: cargarBiblioteca,
@@ -1463,6 +1464,124 @@ async function cargarBiblioteca() {
   pintarGaleria();
 }
 
+
+// ---------------------------------------------------------------------------
+// Escenas (Empezamos, Charla, Pausa, Final)
+// ---------------------------------------------------------------------------
+
+const ESCENAS_INFO = {
+  inicio: { icono: '🌅', nombre: 'Empezamos', que: 'Antes de empezar: título, cuenta atrás, evento de la semana, podio y últimos botines.' },
+  charla: { icono: '💬', nombre: 'Charla', que: 'Just Chatting: marco para tu cámara, chat en pantalla con emotes, evento, podio y próximo cofre. Con el avatar, sin cámara.' },
+  pausa: { icono: '⏳', nombre: 'Pausa', que: 'Vuelvo enseguida: reloj de arena y cuenta atrás si la pones.' },
+  final: { icono: '🌙', nombre: 'Final', que: 'Gracias por venir: resumen del directo y los nombres de quien ha pasado, en créditos.' },
+};
+
+let escenas = null;
+let escenasPintadas = false;
+
+async function cargarEscenas() {
+  try {
+    escenas = await api('/api/escenas');
+  } catch (err) {
+    tostada(err.message === 'no existe' ? 'Reinicia el bot para ver las Escenas (Ctrl+C y npm start)' : err.message, true);
+    return;
+  }
+  const c = escenas.config;
+  for (const input of document.querySelectorAll('#e-textos [data-clave]')) {
+    if (document.activeElement !== input) input.value = c[input.dataset.clave] ?? '';
+  }
+  if (document.activeElement !== $('e-avatar-dice')) $('e-avatar-dice').value = c.avatarTexto;
+  $('e-avatar').checked = c.avatar;
+  $('e-avatar-texto-estado').textContent = c.avatar ? 'Avatar encendido' : 'Avatar apagado';
+  pintarCuentaEscenas();
+
+  // Las tarjetas, una vez: rehacerlas recargaría las vistas previas.
+  if (escenasPintadas) return;
+  escenasPintadas = true;
+  $('e-lista').replaceChildren(...escenas.escenas.map((e) => {
+    const info = ESCENAS_INFO[e.tipo];
+    const ruta = `/biblioteca/overlays/escena.html?tipo=${e.tipo}`;
+    const vista = h('div', { class: 'overlay-vista escena-vista' }, h('iframe', { src: ruta, sandbox: 'allow-scripts', title: info.nombre, tabindex: '-1' }));
+    escalarOverlay.observe(vista);
+    const resultado = h('ul', { class: 'escena-resultado', hidden: true });
+    const crear = h('button', { class: 'boton primario', type: 'button' }, '🎬 Crear en OBS');
+    crear.addEventListener('click', async () => {
+      const extra = e.tipo === 'charla' ? ' con el overlay, tu cámara en el hueco del marco y la barra del jefe' : ' con el overlay';
+      if (!confirm(`Se creará (o completará) la escena «${e.escena}» en OBS${extra}.\n\nNo cambia la escena que estás emitiendo ni borra nada. ¿Sigo?`)) return;
+      crear.disabled = true;
+      try {
+        const r = await api('/api/escenas/obs', { tipo: e.tipo });
+        resultado.hidden = false;
+        resultado.replaceChildren(...r.hecho.map((x) => h('li', {}, x)));
+        tostada(`«${e.escena}» lista en OBS`);
+      } catch (err) {
+        tostada(err.message, true);
+      } finally {
+        crear.disabled = false;
+      }
+    });
+    return h('article', { class: 'tarjeta escena' },
+      vista,
+      h('div', { class: 'escena-pie' },
+        h('div', {}, h('h2', {}, `${info.icono} ${info.nombre}`), h('p', { class: 'nota' }, info.que),
+          h('p', { class: 'nota' }, 'En OBS: ', h('code', {}, e.escena))),
+        h('div', { class: 'escena-botones' },
+          crear,
+          h('a', { class: 'boton', href: ruta, target: '_blank', rel: 'noopener' }, '↗ Ver en grande'),
+          botonCopiar(e.url, 'Copiar dirección'))),
+      resultado);
+  }));
+}
+
+function pintarCuentaEscenas() {
+  if (!escenas) return;
+  const hasta = escenas.config.hasta ? new Date(escenas.config.hasta) : null;
+  const falta = hasta ? hasta.getTime() - Date.now() : 0;
+  $('e-cuenta-estado').textContent = !hasta
+    ? 'Sin cuenta atrás'
+    : falta > 0
+      ? `Hasta las ${hasta.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} · faltan ${mmss(Math.ceil(falta / 1000))}`
+      : 'Terminada: sale «¡Arrancamos!»';
+}
+setInterval(() => { if (!$('v-escenas').hidden) pintarCuentaEscenas(); }, 1000);
+
+async function guardarEscenas(cambios, aviso) {
+  try {
+    escenas = { ...escenas, ...(await api('/api/escenas', cambios)) };
+    if (aviso) tostada(aviso);
+    cargarEscenas();
+  } catch (err) {
+    tostada(err.message, true);
+  }
+}
+
+$('e-cuenta').addEventListener('click', (ev) => {
+  const b = ev.target.closest('[data-min]');
+  if (!b) return;
+  guardarEscenas({ hasta: new Date(Date.now() + Number(b.dataset.min) * 60_000).toISOString() }, `Cuenta atrás de ${b.dataset.min} min`);
+});
+$('e-hora-form').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  const [hh, mm] = $('e-hora').value.split(':').map(Number);
+  const d = new Date();
+  d.setHours(hh, mm, 0, 0);
+  // Si esa hora ya ha pasado hoy, es la de mañana.
+  if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+  guardarEscenas({ hasta: d.toISOString() }, `Cuenta atrás hasta las ${$('e-hora').value}`);
+});
+$('e-quitar').addEventListener('click', () => guardarEscenas({ hasta: null }, 'Cuenta atrás quitada'));
+$('e-avatar').addEventListener('change', (ev) => guardarEscenas({ avatar: ev.target.checked }, ev.target.checked ? '🧙 Avatar en pantalla' : 'Vuelve la cámara'));
+$('e-avatar-form').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  guardarEscenas({ avatarTexto: $('e-avatar-dice').value }, 'Bocadillo guardado');
+});
+$('e-textos').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  const cambios = {};
+  for (const input of document.querySelectorAll('#e-textos [data-clave]')) cambios[input.dataset.clave] = input.value;
+  guardarEscenas(cambios, 'Textos guardados: ya salen en las escenas');
+});
+
 // ---------------------------------------------------------------------------
 // Galería de imágenes
 // ---------------------------------------------------------------------------
@@ -1472,6 +1591,13 @@ async function cargarBiblioteca() {
  * sale vacía (sin jefe es transparente) y el banner, siempre Legendario.
  */
 const VARIANTES_OVERLAY = {
+  'escena.html': [
+    { nombre: '🌅 Empezamos', q: '?tipo=inicio&demo=1' },
+    { nombre: '💬 Charla', q: '?tipo=charla&demo=1' },
+    { nombre: '🧙 Sin cámara', q: '?tipo=charla&demo=1&avatar=1' },
+    { nombre: '⏳ Pausa', q: '?tipo=pausa&demo=1' },
+    { nombre: '🌙 Final', q: '?tipo=final&demo=1' },
+  ],
   'jefe.html': [
     ...[['dragon', '🐉 Dragón'], ['esqueleto', '💀 Esqueleto'], ['hidra', '🐍 Hidra'], ['golem', '🗿 Gólem'], ['liche', '☠️ Liche'],
       ['arana', '🕷️ Araña'], ['kraken', '🐙 Kraken'], ['minotauro', '🐂 Minotauro'], ['tanque', '🛡️ Tanque'], ['lag', '📶 Lag']]

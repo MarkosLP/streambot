@@ -1,0 +1,732 @@
+<!doctype html>
+<!--
+  Escenas del directo, para OBS: un solo overlay para las cuatro.
+
+    escena.html?tipo=inicio   Empezamos en breve (cuenta atrás, evento, podio, botín)
+    escena.html?tipo=charla   Just Chatting: marco de cámara, chat, info. Con el
+                              «avatar» encendido en el panel, tapa la cámara.
+    escena.html?tipo=pausa    Vuelvo enseguida
+    escena.html?tipo=final    Gracias por venir: resumen y créditos del directo
+
+  Lo crea «Crear en OBS» (panel → Escenas). Los textos, la cuenta atrás y el
+  avatar se cambian desde el panel sin tocar OBS: el overlay pregunta al bot
+  cada pocos segundos (GET /api/overlay/escena).
+
+  ?demo=1 pinta datos de mentira (la vista previa de la Biblioteca).
+  ?fondo=0 en Charla: sin fondo, solo marcos y paneles (si quieres el tuyo).
+
+  El hueco de la cámara de Charla (CAM, abajo) es el mismo que
+  HUECO_CAMARA en src/panel/obs-setup.ts: si cambias uno, cambia el otro.
+
+  Todo lo que viene del chat se pinta con textContent, nunca como HTML.
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Escena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Chakra+Petch:wght@500;600;700&display=swap">
+<style>
+  :root {
+    --oro: #f5c542; --oro-claro: #fff0b0; --oro-osc: #a86d0c; --tinta: #f1ebf8; --tenue: #b9acd0;
+    --comun: #c9d1de; --raro: #58a6ff; --epico: #b98cff; --legendario: #ffb347; --maldito: #86ff5c;
+    --panel: linear-gradient(180deg, rgba(34, 22, 52, .92), rgba(16, 10, 26, .94));
+  }
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+  body { font-family: "Chakra Petch", "Segoe UI", sans-serif; color: var(--tinta); }
+  [hidden] { display: none !important; }
+
+  /* ---------------- Fondo: cielo, niebla, brasas, runas ---------------- */
+  #fondo { position: absolute; inset: 0; overflow: hidden; }
+  .cielo {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(60% 55% at 50% 38%, rgba(120, 70, 190, .45), transparent 70%),
+      radial-gradient(40% 40% at 12% 90%, rgba(245, 197, 66, .12), transparent 70%),
+      radial-gradient(45% 45% at 90% 10%, rgba(60, 110, 220, .18), transparent 70%),
+      linear-gradient(180deg, #150c24 0%, #0d0817 55%, #07040c 100%);
+  }
+  .niebla { position: absolute; width: 1400px; height: 900px; border-radius: 50%; filter: blur(90px); opacity: .5; mix-blend-mode: screen; }
+  .niebla.a { left: -300px; top: 250px; background: radial-gradient(circle, rgba(140, 80, 220, .55), transparent 65%); animation: deriva-a 38s ease-in-out infinite alternate; }
+  .niebla.b { right: -350px; top: -150px; background: radial-gradient(circle, rgba(60, 120, 255, .35), transparent 65%); animation: deriva-b 46s ease-in-out infinite alternate; }
+  @keyframes deriva-a { to { transform: translate(420px, -120px) scale(1.15); } }
+  @keyframes deriva-b { to { transform: translate(-380px, 200px) scale(.9); } }
+  #brasas { position: absolute; inset: 0; }
+  .runas { position: absolute; left: 50%; top: 360px; width: 900px; height: 900px; margin: -450px 0 0 -450px; opacity: .55; }
+  .runas .gira { transform-origin: 450px 450px; animation: gira 120s linear infinite; }
+  .runas .gira2 { transform-origin: 450px 450px; animation: gira 80s linear infinite reverse; }
+  @keyframes gira { to { transform: rotate(360deg); } }
+  .vineta { position: absolute; inset: 0; background: radial-gradient(75% 70% at 50% 45%, transparent 55%, rgba(0, 0, 0, .7)); }
+
+  /* ---------------- Marca y reloj ---------------- */
+  .marca { position: absolute; left: 56px; top: 44px; display: flex; align-items: center; gap: 16px; }
+  .marca .sello { width: 64px; height: 64px; }
+  .marca b { display: block; font-family: "Cinzel", serif; font-weight: 900; font-size: 34px; letter-spacing: 2px; line-height: 1; }
+  .marca small { display: block; margin-top: 4px; font-size: 17px; letter-spacing: 3px; text-transform: uppercase; color: var(--tenue); }
+  .hora { position: absolute; right: 60px; top: 50px; font-size: 30px; font-weight: 700; letter-spacing: 2px; color: var(--oro-claro); text-shadow: 0 2px 0 #000; font-variant-numeric: tabular-nums; }
+  .t-charla .marca, .t-charla .hora { display: none; }
+
+  .oro-texto {
+    font-family: "Cinzel", Georgia, serif; font-weight: 900; text-transform: uppercase;
+    background: linear-gradient(180deg, #fffbe6 0%, var(--oro-claro) 18%, var(--oro) 52%, #c47a12 78%, #ffe28a 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 4px 0 #1a0f02) drop-shadow(0 0 28px rgba(245, 197, 66, .45));
+  }
+  /* El brillo que cruza el título. */
+  .brillo { position: relative; }
+  .brillo::after {
+    content: attr(data-texto); position: absolute; inset: 0; color: transparent;
+    background: linear-gradient(100deg, transparent 40%, rgba(255, 255, 255, .95) 50%, transparent 60%) no-repeat;
+    background-size: 250% 100%; -webkit-background-clip: text; background-clip: text;
+    animation: cruza 6s ease-in-out infinite;
+  }
+  @keyframes cruza { 0%, 55% { background-position: 150% 0; } 100% { background-position: -100% 0; } }
+
+  /* ---------------- Vistas centradas (inicio, pausa) ---------------- */
+  .centro { position: absolute; left: 0; right: 0; top: 0; text-align: center; }
+  .emblema { position: absolute; left: 50%; top: 190px; width: 250px; height: 250px; margin-left: -125px; filter: drop-shadow(0 0 40px rgba(245, 197, 66, .45)); animation: flota 6s ease-in-out infinite; }
+  @keyframes flota { 50% { transform: translateY(-12px); } }
+  .titulo { position: absolute; left: 0; right: 0; top: 460px; margin: 0; font-size: 104px; letter-spacing: 6px; line-height: 1; }
+  .subtitulo { position: absolute; left: 0; right: 0; top: 585px; margin: 0; font-size: 34px; font-weight: 600; color: var(--tenue); letter-spacing: 1px; }
+  .cuenta { position: absolute; left: 50%; top: 648px; transform: translateX(-50%); display: flex; align-items: center; gap: 22px; }
+  .cuenta .placa-cuenta {
+    min-width: 330px; padding: 10px 38px 6px; border-radius: 14px; font-size: 92px; font-weight: 700; line-height: 1;
+    font-variant-numeric: tabular-nums; letter-spacing: 4px; color: #fff6d6; text-shadow: 0 0 22px rgba(245, 197, 66, .7), 0 3px 0 #000;
+    background: var(--panel); border: 3px solid var(--oro-osc); box-shadow: 0 0 0 1px #000, inset 0 0 30px rgba(245, 197, 66, .18), 0 12px 40px rgba(0, 0, 0, .6);
+  }
+  .cuenta .etiqueta { font-family: "Cinzel", serif; font-weight: 700; font-size: 24px; letter-spacing: 4px; text-transform: uppercase; color: var(--oro); }
+  .cuenta.fin .placa-cuenta { animation: late 1s ease-in-out infinite; font-size: 64px; padding: 26px 38px 20px; }
+  @keyframes late { 50% { transform: scale(1.05); box-shadow: 0 0 0 1px #000, inset 0 0 30px rgba(245, 197, 66, .3), 0 0 60px rgba(245, 197, 66, .6); } }
+  .puntos-espera { position: absolute; left: 0; right: 0; top: 670px; font-family: "Cinzel", serif; font-size: 30px; letter-spacing: 8px; color: var(--oro); }
+  .puntos-espera i { font-style: normal; animation: punto 1.4s infinite; opacity: .2; }
+  .puntos-espera i:nth-child(2) { animation-delay: .2s; } .puntos-espera i:nth-child(3) { animation-delay: .4s; }
+  @keyframes punto { 40% { opacity: 1; } }
+
+  /* Pausa: reloj de arena en vez de emblema. */
+  .t-pausa .emblema { top: 170px; width: 190px; height: 290px; margin-left: -95px; }
+  .arena-cae { animation: cae 1.2s linear infinite; }
+  @keyframes cae { to { stroke-dashoffset: -24; } }
+
+  /* ---------------- Tarjetas de abajo ---------------- */
+  .tarjetas { position: absolute; left: 110px; right: 110px; top: 800px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 34px; }
+  .tarjeta {
+    position: relative; height: 190px; box-sizing: border-box; padding: 22px 28px; border-radius: 16px; overflow: hidden;
+    background: var(--panel); border: 2px solid rgba(245, 197, 66, .45);
+    box-shadow: 0 0 0 1px #000, inset 0 0 0 1px rgba(255, 240, 176, .06), inset 0 0 40px rgba(120, 70, 190, .25), 0 16px 40px rgba(0, 0, 0, .55);
+  }
+  .tarjeta::before { content: ""; position: absolute; left: 20px; right: 20px; top: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--oro), transparent); }
+  .tarjeta h3 { margin: 0 0 12px; font-family: "Cinzel", serif; font-size: 20px; letter-spacing: 3px; text-transform: uppercase; color: var(--oro); }
+  .tarjeta .grande { font-size: 30px; font-weight: 700; line-height: 1.1; }
+  .tarjeta .grande .emoji { margin-right: 10px; }
+  .tarjeta p { margin: 8px 0 0; font-size: 20px; line-height: 1.3; color: var(--tenue); }
+  .podio { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 23px; }
+  .podio li { display: flex; gap: 10px; align-items: baseline; }
+  .podio li b { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .podio li span { color: var(--oro-claro); font-variant-numeric: tabular-nums; }
+  .botines { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; font-size: 20px; }
+  .botines li { display: flex; gap: 10px; align-items: center; white-space: nowrap; overflow: hidden; }
+  .botines li b { color: #fff; flex: none; }
+  .botines li span { overflow: hidden; text-overflow: ellipsis; color: var(--r); text-shadow: 0 0 10px color-mix(in srgb, var(--r) 55%, transparent); }
+  .gema { flex: none; width: 11px; height: 11px; transform: rotate(45deg); background: var(--r); box-shadow: 0 0 10px var(--r); }
+  .r-comun { --r: var(--comun); } .r-raro { --r: var(--raro); } .r-epico { --r: var(--epico); } .r-legendario { --r: var(--legendario); } .r-maldito { --r: var(--maldito); }
+  .vacio { color: var(--tenue); font-size: 20px; }
+
+  /* Consejos que van pasando, abajo del todo. */
+  .consejo { position: absolute; left: 0; right: 0; bottom: 26px; text-align: center; font-size: 22px; color: var(--tenue); letter-spacing: .5px; }
+  .consejo code { font-family: Consolas, monospace; font-weight: 700; color: #2b1d08; background: linear-gradient(180deg, #fff1b8, var(--oro) 55%, #d69a1e); padding: 1px 9px; border-radius: 5px; margin: 0 4px; }
+  .aparece { animation: aparece .7s ease both; }
+  @keyframes aparece { from { opacity: 0; transform: translateY(10px); } }
+
+  /* ---------------- Final ---------------- */
+  .t-final .titulo { top: 150px; font-size: 96px; }
+  .t-final .subtitulo { top: 268px; }
+  .cifras { position: absolute; left: 120px; top: 380px; width: 820px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .cifra { box-sizing: border-box; height: 160px; padding: 18px 26px; border-radius: 16px; background: var(--panel); border: 2px solid rgba(245, 197, 66, .4); box-shadow: 0 0 0 1px #000, 0 14px 34px rgba(0, 0, 0, .5); }
+  .cifra b { display: block; font-size: 50px; line-height: 1; color: #fff6d6; font-variant-numeric: tabular-nums; text-shadow: 0 0 18px rgba(245, 197, 66, .5); }
+  .cifra span { display: block; margin-top: 8px; font-size: 21px; color: var(--tenue); letter-spacing: 1px; }
+  .creditos { position: absolute; left: 1000px; top: 380px; width: 800px; height: 342px; box-sizing: border-box; border-radius: 16px; overflow: hidden;
+    background: var(--panel); border: 2px solid rgba(245, 197, 66, .4); box-shadow: 0 0 0 1px #000, 0 14px 34px rgba(0, 0, 0, .5);
+    -webkit-mask-image: linear-gradient(180deg, transparent, #000 16%, #000 84%, transparent); mask-image: linear-gradient(180deg, transparent, #000 16%, #000 84%, transparent); }
+  .rollo { position: absolute; left: 0; right: 0; top: 0; text-align: center; animation: rueda var(--dur, 30s) linear infinite; }
+  .rollo h4 { margin: 34px 0 10px; font-family: "Cinzel", serif; font-size: 22px; letter-spacing: 4px; color: var(--oro); text-transform: uppercase; }
+  .rollo p { margin: 8px 0; font-size: 32px; font-weight: 600; }
+  .rollo p.nuevo::after { content: " ✨ nuevo"; font-size: 18px; color: var(--oro-claro); }
+  .rollo p.botin { font-size: 24px; color: var(--r); }
+  @keyframes rueda { from { transform: translateY(70px); } to { transform: translateY(-100%); } }
+  .t-final .tarjetas { top: 860px; grid-template-columns: 1fr 1fr; left: 120px; right: 120px; }
+  .t-final .tarjetas { top: 855px; }
+  .t-final .tarjeta { height: 190px; }
+
+  /* ---------------- Charla ---------------- */
+  /* El fondo, con el hueco de la cámara recortado. */
+  .t-charla #fondo {
+    -webkit-mask: linear-gradient(#000 0 0) 0 0 / 100% 100% no-repeat, linear-gradient(#000 0 0) 48px 48px / 1280px 720px no-repeat;
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) 0 0 / 100% 100% no-repeat exclude, linear-gradient(#000 0 0) 48px 48px / 1280px 720px no-repeat;
+  }
+  .t-charla .runas { left: 1616px; top: 540px; opacity: .25; }
+  body.sin-fondo #fondo { display: none; }
+  .cam { position: absolute; left: 48px; top: 48px; width: 1280px; height: 720px; }
+  .cam .marco { position: absolute; inset: -10px; border-radius: 18px; pointer-events: none;
+    border: 6px solid var(--oro-osc); box-shadow: 0 0 0 2px #000, inset 0 0 0 2px #000, 0 0 0 9px rgba(245, 197, 66, .35), 0 0 40px rgba(245, 197, 66, .35), inset 0 0 30px rgba(0, 0, 0, .6); }
+  .cam .esq { position: absolute; width: 70px; height: 70px; }
+  .cam .esq.a { left: -22px; top: -22px; } .cam .esq.b { right: -22px; top: -22px; transform: scaleX(-1); }
+  .cam .esq.c { left: -22px; bottom: -22px; transform: scaleY(-1); } .cam .esq.d { right: -22px; bottom: -22px; transform: scale(-1, -1); }
+  .placa-nombre { position: absolute; left: 90px; top: 738px; height: 62px; padding: 0 44px 0 30px; display: flex; align-items: center; gap: 18px;
+    background: linear-gradient(180deg, #5a3e14, #2e1f07 60%, #402c0c); clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 50%, 100% 100%, 0 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 240, 176, .35); }
+  .placa-nombre b { font-size: 36px; letter-spacing: 3px; }
+  .placa-nombre span { font-size: 22px; font-weight: 700; color: #f3dfa8; letter-spacing: 1px; white-space: nowrap; }
+  .placa-nombre .vivo { width: 13px; height: 13px; border-radius: 50%; background: #ff4d4d; box-shadow: 0 0 12px #ff4d4d; animation: late 1.6s infinite; }
+
+  .info { position: absolute; left: 48px; top: 830px; width: 1280px; height: 202px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+  .info .tarjeta { height: 202px; padding: 20px 24px; }
+  .info .tarjeta h3 { font-size: 16px; letter-spacing: 2px; white-space: nowrap; }
+  .info .tarjeta .grande { font-size: 26px; }
+  .info .tarjeta p { font-size: 18px; }
+  .info .podio { font-size: 21px; }
+
+  .chat { position: absolute; left: 1360px; top: 38px; width: 520px; height: 994px; box-sizing: border-box; border-radius: 18px; overflow: hidden;
+    background: var(--panel); border: 2px solid rgba(245, 197, 66, .45); box-shadow: 0 0 0 1px #000, inset 0 0 40px rgba(120, 70, 190, .22), 0 16px 40px rgba(0, 0, 0, .55); }
+  .chat header { height: 64px; display: flex; align-items: center; justify-content: center; gap: 12px; border-bottom: 1px solid rgba(245, 197, 66, .3);
+    background: linear-gradient(180deg, rgba(245, 197, 66, .14), transparent); }
+  .chat header b { font-size: 26px; letter-spacing: 6px; }
+  .mensajes { position: absolute; left: 0; right: 0; top: 66px; bottom: 0; padding: 12px 20px 18px; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px;
+    -webkit-mask-image: linear-gradient(180deg, transparent, #000 18%); mask-image: linear-gradient(180deg, transparent, #000 18%); }
+  .msg { font-size: 24px; line-height: 1.35; overflow-wrap: anywhere; animation: entra-msg .45s cubic-bezier(.2, 1.3, .4, 1) both; }
+  @keyframes entra-msg { from { opacity: 0; transform: translateX(40px); } }
+  .msg .quien { font-weight: 700; margin-right: 8px; text-shadow: 0 2px 0 #000; }
+  .msg .insignia { margin-right: 5px; font-size: 20px; }
+  .msg img { height: 30px; vertical-align: -7px; margin: 0 2px; }
+  .msg.canal { padding: 8px 12px; border-radius: 10px; background: rgba(245, 197, 66, .1); border-left: 3px solid var(--oro); }
+  .chat .vacio { position: absolute; left: 0; right: 0; top: 45%; text-align: center; font-size: 22px; }
+
+  /* ---------------- El avatar (Charla sin cámara) ---------------- */
+  .avatar { position: absolute; left: 48px; top: 48px; width: 1280px; height: 720px; overflow: hidden; border-radius: 10px; }
+  .avatar > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .av-respira { transform-origin: 640px 720px; animation: respira 5s ease-in-out infinite; }
+  @keyframes respira { 50% { transform: scale(1.012, 1.02) translateY(-3px); } }
+  .av-cabeza { transform-origin: 640px 420px; transition: transform .8s cubic-bezier(.3, 1.4, .5, 1); }
+  .av-ojos { transition: transform .5s cubic-bezier(.3, 1.4, .5, 1); }
+  .av-parpado { transform-origin: center; transform-box: fill-box; animation: parpadea 5.5s infinite; }
+  @keyframes parpadea { 0%, 94%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.08); } }
+  .avatar.dormido .av-parpado { animation: none; transform: scaleY(.35); }
+  .avatar.contento .av-ojo-luz { fill: #fff6c8; }
+  .av-orbe { animation: orbe 4s ease-in-out infinite; transform-origin: 640px 640px; }
+  @keyframes orbe { 50% { transform: translateY(-10px); } }
+  .av-vela { animation: vela 2.4s ease-in-out infinite alternate; }
+  @keyframes vela { to { opacity: .7; } }
+  .bocadillo { position: absolute; left: 820px; top: 110px; max-width: 400px; padding: 22px 28px; border-radius: 22px; font-size: 28px; font-weight: 600; line-height: 1.3; color: #26170a;
+    background: linear-gradient(180deg, #fff9e3, #f3dfa8); box-shadow: 0 0 0 3px #3b2507, 0 12px 30px rgba(0, 0, 0, .5); transition: opacity .3s; }
+  .bocadillo::after { content: ""; position: absolute; left: -26px; bottom: 34px; border: 16px solid transparent; border-right: 26px solid #f3dfa8; border-left: 0; }
+  .zzz { position: absolute; left: 760px; top: 250px; font-family: "Cinzel", serif; font-size: 44px; font-weight: 900; color: var(--oro-claro); opacity: 0; }
+  .avatar.dormido .zzz { animation: zzz 3s ease-in infinite; }
+  @keyframes zzz { 0% { opacity: 0; transform: translate(0, 0) scale(.6); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(60px, -120px) scale(1.3); } }
+  .reaccion { position: absolute; left: 590px; top: 120px; font-size: 80px; opacity: 0; }
+  .reaccion.ve { animation: salta 1.8s ease both; }
+  @keyframes salta { 0% { opacity: 0; transform: translateY(30px) scale(.4); } 20% { opacity: 1; transform: translateY(-10px) scale(1.1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-40px); } }
+
+  /* ---------------- Aviso de botín (todas menos Final) ---------------- */
+  .aviso { position: absolute; left: 50%; top: 40px; transform: translateX(-50%); display: flex; align-items: center; gap: 18px; padding: 16px 34px; border-radius: 16px; white-space: nowrap;
+    background: var(--panel); border: 2px solid var(--r); box-shadow: 0 0 0 1px #000, 0 0 40px color-mix(in srgb, var(--r) 55%, transparent), 0 14px 34px rgba(0, 0, 0, .6);
+    font-size: 30px; animation: aviso 6s ease both; z-index: 5; }
+  .t-charla .aviso { left: 688px; top: 660px; }
+  .aviso b { color: #fff; } .aviso span { color: var(--r); font-weight: 700; text-shadow: 0 0 14px color-mix(in srgb, var(--r) 60%, transparent); }
+  .aviso .gema { width: 16px; height: 16px; }
+  @keyframes aviso { 0% { opacity: 0; transform: translate(-50%, -20px) scale(.8); } 8% { opacity: 1; transform: translate(-50%, 0) scale(1.04); } 12% { transform: translate(-50%, 0) scale(1); } 88% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -10px); } }
+</style>
+</head>
+<body>
+
+<div id="fondo">
+  <div class="cielo"></div>
+  <div class="niebla a"></div>
+  <div class="niebla b"></div>
+  <svg class="runas" viewBox="0 0 900 900" aria-hidden="true" id="runas"></svg>
+  <canvas id="brasas" width="1920" height="1080"></canvas>
+  <div class="vineta"></div>
+</div>
+
+<!-- El sello del canal: espadas cruzadas en un medallón. Se reutiliza. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="g-oro" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3c4"/><stop offset=".45" stop-color="#f5c542"/><stop offset="1" stop-color="#8a560a"/></linearGradient>
+    <linearGradient id="g-acero" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#c5d3e6"/><stop offset="1" stop-color="#5d6f8c"/></linearGradient>
+    <radialGradient id="g-medallon" cx="50%" cy="40%" r="65%"><stop offset="0" stop-color="#4a2f70"/><stop offset=".7" stop-color="#1a0f2b"/><stop offset="1" stop-color="#0b0612"/></radialGradient>
+    <symbol id="sello" viewBox="0 0 200 200">
+      <circle cx="100" cy="100" r="94" fill="none" stroke="url(#g-oro)" stroke-width="3" stroke-dasharray="9 6"/>
+      <circle cx="100" cy="100" r="84" fill="url(#g-medallon)" stroke="url(#g-oro)" stroke-width="9"/>
+      <circle cx="100" cy="100" r="72" fill="none" stroke="#f5c542" stroke-opacity=".35" stroke-width="1.5"/>
+      <g stroke="#1a0f02" stroke-width="3" stroke-linejoin="round">
+        <path d="M52 52 L118 118 L126 110 L60 44 L46 40 Z" fill="url(#g-acero)"/>
+        <path d="M148 52 L82 118 L74 110 L140 44 L154 40 Z" fill="url(#g-acero)"/>
+        <path d="M108 128 L128 108 L136 116 L116 136 Z M92 128 L72 108 L64 116 L84 136 Z" fill="url(#g-oro)"/>
+        <path d="M122 132 L140 150 M78 132 L60 150" stroke="#6b3f0a" stroke-width="9" stroke-linecap="round"/>
+        <circle cx="145" cy="155" r="8" fill="url(#g-oro)"/><circle cx="55" cy="155" r="8" fill="url(#g-oro)"/>
+      </g>
+      <path d="M100 26 l5 10 11 2 -8 8 2 11 -10 -5 -10 5 2 -11 -8 -8 11 -2 Z" fill="url(#g-oro)" stroke="#1a0f02" stroke-width="2"/>
+    </symbol>
+    <symbol id="esquina" viewBox="0 0 70 70">
+      <path d="M6 64 V22 Q6 6 22 6 H64" fill="none" stroke="#f5c542" stroke-width="4"/>
+      <path d="M14 64 V26 Q14 14 26 14 H64" fill="none" stroke="#a86d0c" stroke-width="2"/>
+      <path d="M6 6 L22 6 L6 22 Z" fill="#f5c542"/>
+      <circle cx="26" cy="26" r="6" fill="#ffb347" stroke="#2a1a04" stroke-width="2"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="marca">
+  <svg class="sello"><use href="#sello"/></svg>
+  <div><b class="oro-texto" id="canal">CRID4M</b><small id="marca-sub">En directo en Twitch</small></div>
+</header>
+<div class="hora" id="hora"></div>
+
+<!-- ============ Empezamos y Pausa ============ -->
+<section id="v-centro" class="centro" hidden>
+  <svg class="emblema" id="emblema-sello" viewBox="0 0 200 200"><use href="#sello"/></svg>
+  <svg class="emblema" id="emblema-arena" viewBox="0 0 190 290" hidden aria-hidden="true">
+    <defs>
+      <linearGradient id="g-vidrio" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff" stop-opacity=".25"/><stop offset=".5" stop-color="#b9e0ff" stop-opacity=".08"/><stop offset="1" stop-color="#ffffff" stop-opacity=".22"/></linearGradient>
+      <linearGradient id="g-arena" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe7a0"/><stop offset="1" stop-color="#e09a1f"/></linearGradient>
+    </defs>
+    <rect x="10" y="8" width="170" height="22" rx="6" fill="url(#g-oro)" stroke="#1a0f02" stroke-width="3"/>
+    <rect x="10" y="260" width="170" height="22" rx="6" fill="url(#g-oro)" stroke="#1a0f02" stroke-width="3"/>
+    <path d="M22 30 V38 C22 90 88 118 88 145 C88 172 22 200 22 252 V260 M168 30 V38 C168 90 102 118 102 145 C102 172 168 200 168 252 V260" fill="none" stroke="url(#g-oro)" stroke-width="7"/>
+    <path d="M30 34 C30 88 92 116 92 145 C92 174 30 202 30 256 H160 C160 202 98 174 98 145 C98 116 160 88 160 34 Z" fill="url(#g-vidrio)" stroke="#fff" stroke-opacity=".35" stroke-width="2"/>
+    <path id="arena-arriba" d="M52 70 Q95 78 138 70 C128 96 104 112 95 132 C86 112 62 96 52 70 Z" fill="url(#g-arena)"/>
+    <line class="arena-cae" x1="95" y1="132" x2="95" y2="236" stroke="#ffd36a" stroke-width="4" stroke-dasharray="8 4"/>
+    <path d="M40 252 Q95 196 150 252 Z" fill="url(#g-arena)"/>
+  </svg>
+  <h1 class="titulo oro-texto brillo" id="titulo"></h1>
+  <p class="subtitulo" id="subtitulo"></p>
+  <div class="cuenta" id="cuenta" hidden><span class="etiqueta" id="cuenta-etq">Empezamos en</span><span class="placa-cuenta" id="cuenta-num">00:00</span></div>
+  <div class="puntos-espera" id="espera" hidden>EN BREVE<i>.</i><i>.</i><i>.</i></div>
+</section>
+
+<!-- ============ Final ============ -->
+<section id="v-final" hidden>
+  <h1 class="titulo oro-texto brillo centro" id="f-titulo" data-texto="¡Gracias por venir!">¡Gracias por venir!</h1>
+  <p class="subtitulo centro" id="f-sub"></p>
+  <div class="cifras" id="f-cifras"></div>
+  <div class="creditos"><div class="rollo" id="f-rollo"></div></div>
+</section>
+
+<!-- ============ Charla ============ -->
+<section id="v-charla" hidden>
+  <div class="avatar" id="avatar" hidden>
+    <svg viewBox="0 0 1280 720" aria-hidden="true">
+      <defs>
+        <radialGradient id="av-fondo" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="#3a2360"/><stop offset=".6" stop-color="#170d28"/><stop offset="1" stop-color="#07040c"/></radialGradient>
+        <radialGradient id="av-luz" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffcf6b" stop-opacity=".55"/><stop offset="1" stop-color="#ffcf6b" stop-opacity="0"/></radialGradient>
+        <linearGradient id="av-capa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b2c78"/><stop offset=".6" stop-color="#2a1747"/><stop offset="1" stop-color="#150a26"/></linearGradient>
+        <linearGradient id="av-capucha" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5a3690"/><stop offset=".55" stop-color="#321c56"/><stop offset="1" stop-color="#1a0d2e"/></linearGradient>
+        <radialGradient id="av-hueco" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#05020a"/><stop offset=".8" stop-color="#0d0718"/><stop offset="1" stop-color="#221338"/></radialGradient>
+        <radialGradient id="av-ojo" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff9dc"/><stop offset=".35" stop-color="#ffd24a"/><stop offset="1" stop-color="#ff8a00" stop-opacity="0"/></radialGradient>
+        <radialGradient id="av-orbe" cx="40%" cy="35%" r="65%"><stop offset="0" stop-color="#e9fbff"/><stop offset=".35" stop-color="#7fd6ff"/><stop offset=".8" stop-color="#2d5bd6"/><stop offset="1" stop-color="#1a2a7a"/></radialGradient>
+      </defs>
+      <rect width="1280" height="720" fill="url(#av-fondo)"/>
+      <!-- La ventana de la torre, con luna y estrellas. -->
+      <g opacity=".85">
+        <path d="M150 560 V250 Q150 150 260 150 Q370 150 370 250 V560 Z" fill="#0b1433" stroke="#a86d0c" stroke-width="10"/>
+        <circle cx="300" cy="250" r="46" fill="#fff4cf"/><circle cx="318" cy="238" r="44" fill="#0b1433"/>
+        <g fill="#fff"><circle cx="200" cy="220" r="3"/><circle cx="235" cy="330" r="2"/><circle cx="330" cy="370" r="2.5"/><circle cx="190" cy="420" r="2"/><circle cx="290" cy="470" r="3"/></g>
+        <path d="M260 150 V560 M150 360 H370" stroke="#a86d0c" stroke-width="8"/>
+      </g>
+      <!-- Estantería con libros y la vela. -->
+      <g>
+        <rect x="960" y="300" width="250" height="14" fill="#5a3a12"/><rect x="960" y="430" width="250" height="14" fill="#5a3a12"/>
+        <g stroke="#0b0612" stroke-width="3"><rect x="975" y="230" width="26" height="70" fill="#7a2d3c"/><rect x="1003" y="215" width="22" height="85" fill="#2d5a7a"/><rect x="1027" y="240" width="30" height="60" fill="#6b5a1d"/>
+          <rect x="1065" y="222" width="24" height="78" fill="#3c2d6b"/><rect x="990" y="365" width="30" height="65" fill="#2d6b4a"/><rect x="1024" y="352" width="22" height="78" fill="#7a4a2d"/></g>
+        <circle class="av-vela" cx="1150" cy="250" r="90" fill="url(#av-luz)"/>
+        <rect x="1138" y="262" width="24" height="38" rx="4" fill="#f3e6c8"/><path d="M1150 232 Q1162 250 1150 262 Q1138 250 1150 232 Z" fill="#ffcf4a" class="av-vela"/>
+      </g>
+      <g class="av-respira" id="av-cuerpo">
+        <!-- Hombros y capa -->
+        <path d="M300 720 C320 590 430 520 540 500 L740 500 C850 520 960 590 980 720 Z" fill="url(#av-capa)" stroke="#0b0612" stroke-width="6"/>
+        <path d="M470 720 L560 520 M810 720 L720 520" stroke="#f5c542" stroke-opacity=".55" stroke-width="7"/>
+        <g class="av-cabeza" id="av-cabeza">
+          <!-- Capucha -->
+          <path d="M640 150 C520 150 440 250 430 380 C424 460 460 520 520 548 L760 548 C820 520 856 460 850 380 C840 250 760 150 640 150 Z" fill="url(#av-capucha)" stroke="#0b0612" stroke-width="7"/>
+          <path d="M640 150 C600 175 590 205 598 230" fill="none" stroke="#7b55b8" stroke-width="6" stroke-linecap="round" opacity=".7"/>
+          <path d="M640 238 C560 238 508 300 505 380 C502 450 548 505 640 510 C732 505 778 450 775 380 C772 300 720 238 640 238 Z" fill="url(#av-hueco)"/>
+          <path d="M505 380 C510 300 560 240 640 238 C720 240 770 300 775 380" fill="none" stroke="#f5c542" stroke-width="7" stroke-opacity=".8"/>
+          <!-- Ojos -->
+          <g class="av-ojos" id="av-ojos">
+            <g class="av-parpado"><ellipse cx="590" cy="390" rx="46" ry="32" fill="url(#av-ojo)"/><ellipse class="av-ojo-luz" cx="590" cy="390" rx="17" ry="12" fill="#fffbe6"/></g>
+            <g class="av-parpado"><ellipse cx="690" cy="390" rx="46" ry="32" fill="url(#av-ojo)"/><ellipse class="av-ojo-luz" cx="690" cy="390" rx="17" ry="12" fill="#fffbe6"/></g>
+          </g>
+        </g>
+        <!-- Broche con el sello del canal -->
+        <use href="#sello" x="600" y="520" width="80" height="80"/>
+        <!-- Orbe mágico -->
+        <g class="av-orbe"><circle cx="880" cy="630" r="58" fill="url(#av-orbe)" stroke="#0b1433" stroke-width="5"/><circle cx="862" cy="610" r="14" fill="#fff" opacity=".7"/>
+          <circle cx="880" cy="630" r="82" fill="none" stroke="#7fd6ff" stroke-opacity=".35" stroke-width="3" stroke-dasharray="6 10"/></g>
+      </g>
+    </svg>
+    <div class="bocadillo" id="bocadillo"></div>
+    <div class="zzz">z Z</div>
+    <div class="reaccion" id="reaccion"></div>
+  </div>
+  <div class="cam">
+    <div class="marco"></div>
+    <svg class="esq a"><use href="#esquina"/></svg><svg class="esq b"><use href="#esquina"/></svg>
+    <svg class="esq c"><use href="#esquina"/></svg><svg class="esq d"><use href="#esquina"/></svg>
+  </div>
+  <div class="placa-nombre"><span class="vivo"></span><b class="oro-texto" id="c-canal">CRID4M</b><span id="c-charla"></span></div>
+  <aside class="chat"><header><svg width="34" height="34"><use href="#sello"/></svg><b class="oro-texto">Chat</b></header><div class="mensajes" id="mensajes"></div><p class="vacio" id="chat-vacio">Escribe en el chat 👋</p></aside>
+  <div class="info" id="c-info"></div>
+</section>
+
+<div class="tarjetas" id="tarjetas" hidden></div>
+<p class="consejo" id="consejo"></p>
+<div id="avisos"></div>
+
+<script>
+'use strict';
+const q = new URLSearchParams(location.search);
+const TIPO = ['inicio', 'charla', 'pausa', 'final'].includes(q.get('tipo')) ? q.get('tipo') : 'inicio';
+const DEMO = q.get('demo') === '1';
+document.body.classList.add(`t-${TIPO}`);
+if (TIPO === 'charla' && q.get('fondo') === '0') document.body.classList.add('sin-fondo');
+const $ = (id) => document.getElementById(id);
+
+function h(tag, attrs = {}, ...hijos) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === 'class') el.className = v; else el.setAttribute(k, v);
+  }
+  for (const x of hijos.flat(Infinity)) if (x !== null && x !== undefined && x !== false) el.append(x instanceof Node ? x : document.createTextNode(String(x)));
+  return el;
+}
+
+// ---------------- Fondo: runas y brasas ----------------
+(function runas() {
+  const svg = $('runas');
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (t, a) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
+  const g1 = el('g', { class: 'gira' }), g2 = el('g', { class: 'gira2' });
+  g1.append(el('circle', { cx: 450, cy: 450, r: 430, fill: 'none', stroke: '#f5c542', 'stroke-opacity': .35, 'stroke-width': 2 }));
+  g1.append(el('circle', { cx: 450, cy: 450, r: 395, fill: 'none', stroke: '#f5c542', 'stroke-opacity': .25, 'stroke-width': 1, 'stroke-dasharray': '3 9' }));
+  const RUNAS = 'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ';
+  for (let i = 0; i < 48; i++) {
+    const a = (i / 48) * Math.PI * 2;
+    const x = 450 + Math.cos(a) * 412, y = 450 + Math.sin(a) * 412;
+    const t = el('text', { x, y, fill: '#f5c542', 'fill-opacity': .55, 'font-size': 22, 'text-anchor': 'middle', 'dominant-baseline': 'central', transform: `rotate(${(a * 180) / Math.PI + 90} ${x} ${y})`, 'font-family': 'Segoe UI Historic, Segoe UI Symbol, serif' });
+    t.textContent = RUNAS[i % RUNAS.length];
+    g1.append(t);
+  }
+  g2.append(el('circle', { cx: 450, cy: 450, r: 330, fill: 'none', stroke: '#b98cff', 'stroke-opacity': .3, 'stroke-width': 2 }));
+  const pts = [];
+  for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 - Math.PI / 2; pts.push([450 + Math.cos(a) * 330, 450 + Math.sin(a) * 330]); }
+  g2.append(el('path', { d: `M${pts[0]} L${pts[2]} L${pts[4]} Z M${pts[1]} L${pts[3]} L${pts[5]} Z`, fill: 'none', stroke: '#b98cff', 'stroke-opacity': .22, 'stroke-width': 2 }));
+  for (let i = 0; i < 72; i++) {
+    const a = (i / 72) * Math.PI * 2, r1 = i % 6 ? 300 : 280;
+    g2.append(el('line', { x1: 450 + Math.cos(a) * r1, y1: 450 + Math.sin(a) * r1, x2: 450 + Math.cos(a) * 318, y2: 450 + Math.sin(a) * 318, stroke: '#f5c542', 'stroke-opacity': .3, 'stroke-width': i % 6 ? 1 : 3 }));
+  }
+  svg.append(g1, g2);
+})();
+
+(function brasas() {
+  const cv = $('brasas');
+  const cx = cv.getContext('2d');
+  const N = TIPO === 'charla' ? 34 : 80;
+  const nueva = (y) => ({ x: Math.random() * 1920, y: y ?? 1080 + Math.random() * 200, v: .4 + Math.random() * 1.3, r: .8 + Math.random() * 2.6, f: Math.random() * 6.28, d: (Math.random() - .5) * .5, c: Math.random() < .75 ? '255,190,80' : '200,150,255' });
+  const ps = Array.from({ length: N }, () => nueva(Math.random() * 1080));
+  (function paso() {
+    cx.clearRect(0, 0, 1920, 1080);
+    for (const p of ps) {
+      p.y -= p.v; p.f += .05; p.x += Math.sin(p.f) * .6 + p.d;
+      if (p.y < -20) Object.assign(p, nueva());
+      const a = (.35 + Math.sin(p.f * 2) * .3) * Math.min(1, (1080 - p.y) / 300);
+      const g = cx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4);
+      g.addColorStop(0, `rgba(${p.c},${a})`); g.addColorStop(1, `rgba(${p.c},0)`);
+      cx.fillStyle = g; cx.beginPath(); cx.arc(p.x, p.y, p.r * 4, 0, 6.29); cx.fill();
+    }
+    requestAnimationFrame(paso);
+  })();
+})();
+
+// ---------------- Utilidades ----------------
+let desfase = 0; // hora del bot − hora de aquí
+const ahora = () => Date.now() + desfase;
+const dosCifras = (n) => String(n).padStart(2, '0');
+function reloj(ms) {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  const hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
+  return hh ? `${hh}:${dosCifras(mm)}:${dosCifras(ss)}` : `${dosCifras(mm)}:${dosCifras(ss)}`;
+}
+const RAREZA = (b) => (b.maldito ? 'r-maldito' : `r-${b.rareza}`);
+const MEDALLAS = ['🥇', '🥈', '🥉'];
+const PALETA = ['#ff7eb6', '#7ee0ff', '#ffd36a', '#9dff8a', '#c9a0ff', '#ff9d6a', '#6affd8', '#ffa3a3'];
+const colorDe = (nombre) => { let x = 0; for (const c of nombre) x = (x * 31 + c.charCodeAt(0)) >>> 0; return PALETA[x % PALETA.length]; };
+function ponerTitulo(el, texto) { el.textContent = texto; el.dataset.texto = texto; }
+
+const CONSEJOS = [
+  ['Escribe', '!pj', 'para ver tu ficha de aventurero'],
+  ['Cada 20-30 min cae un cofre para quien hable. Mira tu botín con', '!inventario', ''],
+  ['¿Quién va primero este mes?', '!top', ''],
+  ['Reta a alguien del chat:', '!duelo nombre', ''],
+  ['Tres iguales se funden en uno mejor:', '!forjar', ''],
+  ['El evento de esta semana:', '!evento', ''],
+  ['Enseña tu mejor pieza en pantalla:', '!presumir', ''],
+];
+let consejo = 0;
+function pasarConsejo() {
+  const [a, c, b] = CONSEJOS[consejo++ % CONSEJOS.length];
+  const p = $('consejo');
+  p.replaceChildren(a, ' ', h('code', {}, c), ' ', b);
+  p.classList.remove('aparece'); void p.offsetWidth; p.classList.add('aparece');
+}
+if (TIPO === 'inicio' || TIPO === 'pausa') { pasarConsejo(); setInterval(pasarConsejo, 9000); }
+
+setInterval(() => { $('hora').textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }); }, 1000);
+
+// ---------------- Tarjetas: evento, podio, botín ----------------
+function tarjetaEvento(d) {
+  const e = d.evento;
+  return h('div', { class: 'tarjeta' }, h('h3', {}, 'Evento de la semana'),
+    e ? [h('div', { class: 'grande' }, h('span', { class: 'emoji' }, e.emoji), e.nombre), h('p', {}, e.texto.charAt(0).toUpperCase() + e.texto.slice(1))]
+      : [h('div', { class: 'grande' }, 'Reglas de siempre'), h('p', {}, 'Esta semana no hay evento en el Loot.')]);
+}
+function tarjetaPodio(d) {
+  const t = d.temporada;
+  return h('div', { class: 'tarjeta' }, h('h3', {}, `Temporada de ${t.nombre}`),
+    t.podio.length
+      ? h('ol', { class: 'podio' }, t.podio.map((p, i) => h('li', {}, MEDALLAS[i], h('b', {}, p.nombre), h('span', {}, `${p.puntos} pts`))))
+      : h('p', { class: 'vacio' }, '¡Nadie tiene puntos aún! El primer cofre marca el ranking.'));
+}
+function tarjetaBotin(d) {
+  const lista = d.botin.slice(0, 4);
+  return h('div', { class: 'tarjeta' }, h('h3', {}, 'Últimos botines'),
+    lista.length
+      ? h('ul', { class: 'botines' }, lista.map((b) => h('li', { class: RAREZA(b) }, h('i', { class: 'gema' }), h('b', {}, b.quien), h('span', {}, b.objeto))))
+      : h('p', { class: 'vacio' }, 'Aún no ha caído nada.'));
+}
+function tarjetaDirecto(d) {
+  if (d.jefe) {
+    return h('div', { class: 'tarjeta' }, h('h3', {}, '¡Jefe de raid!'),
+      h('div', { class: 'grande' }, `🐉 ${d.jefe.nombre.charAt(0).toUpperCase()}${d.jefe.nombre.slice(1)}`),
+      h('p', {}, `${d.jefe.vida}/${d.jefe.vidaMax} de vida · escribe !atacar`));
+  }
+  const c = CONSEJOS[Math.floor(ahora() / 12000) % CONSEJOS.length];
+  return h('div', { class: 'tarjeta' }, h('h3', {}, 'Próximo cofre'),
+    h('div', { class: 'grande' }, d.loot.proximoEnSeg != null ? `🎁 en ${reloj(d.loot.proximoEnSeg * 1000)}` : '🎁 Cada 20-30 min'),
+    h('p', {}, `${c[0]} ${c[1]} ${c[2]}`.trim()));
+}
+
+// ---------------- Pintar cada escena ----------------
+let ultimo = null;
+function pintar(d) {
+  ultimo = d;
+  desfase = new Date(d.ahora).getTime() - Date.now();
+  const cfg = d.config;
+  $('canal').textContent = d.canal.toUpperCase();
+  $('marca-sub').textContent = d.directo ? '🔴 En directo' : 'En Twitch';
+
+  if (TIPO === 'inicio' || TIPO === 'pausa') {
+    $('v-centro').hidden = false;
+    $('emblema-sello').toggleAttribute('hidden', TIPO === 'pausa');
+    $('emblema-arena').toggleAttribute('hidden', TIPO !== 'pausa');
+    ponerTitulo($('titulo'), TIPO === 'pausa' ? 'Vuelvo enseguida' : cfg.titulo);
+    $('subtitulo').textContent = TIPO === 'pausa' ? cfg.pausa : cfg.subtitulo;
+    $('cuenta-etq').textContent = TIPO === 'pausa' ? 'Vuelvo en' : 'Empezamos en';
+    pintarCuenta();
+    const t = $('tarjetas');
+    t.hidden = false;
+    t.replaceChildren(tarjetaEvento(d), tarjetaPodio(d), tarjetaBotin(d));
+  }
+
+  if (TIPO === 'final') {
+    $('v-final').hidden = false;
+    $('f-sub').textContent = cfg.final;
+    pintarFinal(d);
+    const t = $('tarjetas');
+    t.hidden = false;
+    t.replaceChildren(tarjetaPodio(d), tarjetaEvento(d));
+  }
+
+  if (TIPO === 'charla') {
+    $('v-charla').hidden = false;
+    $('c-canal').textContent = d.canal.toUpperCase();
+    $('c-charla').textContent = cfg.charla;
+    $('c-info').replaceChildren(tarjetaEvento(d), tarjetaPodio(d), tarjetaDirecto(d));
+    pintarChat(d.chat);
+    pintarAvatar(d);
+  }
+
+  if (TIPO !== 'final') avisosDeBotin(d.botin);
+}
+
+function pintarCuenta() {
+  if (!ultimo) return;
+  const hasta = ultimo.config.hasta ? new Date(ultimo.config.hasta).getTime() : null;
+  const cuenta = $('cuenta');
+  if (hasta === null) {
+    cuenta.hidden = true;
+    $('espera').hidden = TIPO !== 'inicio';
+    return;
+  }
+  $('espera').hidden = true;
+  cuenta.hidden = false;
+  const falta = hasta - ahora();
+  cuenta.classList.toggle('fin', falta <= 0);
+  $('cuenta-etq').hidden = falta <= 0;
+  $('cuenta-num').textContent = falta > 0 ? reloj(falta) : TIPO === 'pausa' ? '¡Ya vuelvo!' : '¡Arrancamos!';
+}
+setInterval(pintarCuenta, 250);
+
+let rolloHecho = '';
+function pintarFinal(d) {
+  const f = d.final;
+  const horas = f ? f.minutos : 0;
+  const cifra = (valor, texto) => h('div', { class: 'cifra' }, h('b', {}, valor), h('span', {}, texto));
+  $('f-cifras').replaceChildren(
+    cifra(f ? (horas >= 60 ? `${Math.floor(horas / 60)}h ${dosCifras(horas % 60)}` : `${horas} min`) : '—', 'de directo'),
+    cifra(f ? f.personas.length : 0, f && f.personas.length === 1 ? 'persona' : 'personas'),
+    cifra(f ? f.nuevos.length : 0, f && f.nuevos.length === 1 ? 'cara nueva' : 'caras nuevas'),
+    cifra(f ? f.cofres : 0, 'cofres abiertos'),
+    cifra(f ? f.jefes : 0, f && f.jefes === 1 ? 'jefe derrotado' : 'jefes derrotados'),
+    cifra(f ? f.duelos : 0, f && f.duelos === 1 ? 'duelo' : 'duelos'));
+  // El rollo solo se rehace si cambia: si no, volvería a empezar cada vez.
+  const clave = JSON.stringify([f?.personas, f?.destacados]);
+  if (clave === rolloHecho) return;
+  rolloHecho = clave;
+  const rollo = $('f-rollo');
+  const personas = f?.personas ?? [];
+  rollo.replaceChildren(...[
+    h('h4', {}, 'Gracias a'),
+    personas.length ? personas.map((n) => h('p', { class: f.nuevos.includes(n) ? 'nuevo' : null }, n)) : h('p', {}, 'todos los que habéis pasado'),
+    f?.destacados?.length ? [h('h4', {}, 'Botín del día'), f.destacados.map((b) => h('p', { class: `botin ${RAREZA(b)}` }, `${b.quien} · ${b.objeto}`))] : null,
+    h('h4', {}, 'Nos vemos pronto'), h('p', {}, '⚔️')].flat(Infinity).filter(Boolean));
+  rollo.style.setProperty('--dur', `${Math.max(18, (personas.length + (f?.destacados?.length ?? 0)) * 2.2 + 12)}s`);
+}
+
+// ---------------- Chat ----------------
+const pintados = new Set();
+function trozosConEmotes(m) {
+  const emotes = new Map((m.emotes || []).map((e) => [e.nombre, e.url]));
+  if (!emotes.size) return [m.texto];
+  return m.texto.split(/(\s+)/).map((p) => (emotes.has(p) ? h('img', { src: emotes.get(p), alt: p }) : p));
+}
+function pintarChat(chat) {
+  const caja = $('mensajes');
+  $('chat-vacio').hidden = chat.length > 0;
+  const quedan = new Set(chat.map((m) => m.n));
+  for (const el of [...caja.children]) if (!quedan.has(Number(el.dataset.n))) { el.remove(); pintados.delete(Number(el.dataset.n)); }
+  for (const m of chat) {
+    if (pintados.has(m.n)) continue;
+    pintados.add(m.n);
+    const insignias = [m.canal ? '👑' : null, m.mod ? '⚔️' : null, m.sub ? '💜' : null].filter(Boolean);
+    caja.append(h('div', { class: `msg${m.canal ? ' canal' : ''}`, 'data-n': String(m.n) },
+      insignias.map((i) => h('span', { class: 'insignia' }, i)),
+      h('span', { class: 'quien', style: `color:${/^#[0-9a-f]{6}$/i.test(m.color || '') ? m.color : colorDe(m.nombre)}` }, m.nombre),
+      trozosConEmotes(m)));
+    reaccionarAlChat(m);
+  }
+  while (caja.children.length > 12) { pintados.delete(Number(caja.firstChild.dataset.n)); caja.firstChild.remove(); }
+}
+
+// ---------------- Avatar ----------------
+let ultimaActividad = Date.now();
+let bocadilloHasta = 0;
+let primeraVez = true;
+function pintarAvatar(d) {
+  const av = $('avatar');
+  av.hidden = !d.config.avatar;
+  if (av.hidden) return;
+  if (Date.now() > bocadilloHasta) $('bocadillo').textContent = d.config.avatarTexto;
+  av.classList.toggle('dormido', Date.now() - ultimaActividad > 90_000);
+}
+function mirar(x, y = 0, ladeo = 0) {
+  $('av-ojos').style.transform = `translate(${x}px, ${y}px)`;
+  $('av-cabeza').style.transform = `rotate(${ladeo}deg)`;
+}
+function reaccion(emoji) {
+  const r = $('reaccion');
+  r.textContent = emoji;
+  r.classList.remove('ve'); void r.offsetWidth; r.classList.add('ve');
+}
+function decir(texto, ms = 4500) {
+  $('bocadillo').textContent = texto;
+  bocadilloHasta = Date.now() + ms;
+}
+function reaccionarAlChat(m) {
+  if (primeraVez || !ultimo?.config.avatar) return;
+  ultimaActividad = Date.now();
+  $('avatar').classList.remove('dormido');
+  mirar(22, 4, 4);   // mira hacia el chat, a la derecha
+  setTimeout(() => mirar(0, 0, 0), 2600);
+  if (!m.canal && Math.random() < .5) decir(`¡Te leo, ${m.nombre}! 👀`);
+}
+// Por su cuenta, de vez en cuando mira a un lado o al otro.
+setInterval(() => { if (!$('avatar').hidden && !$('avatar').classList.contains('dormido')) { const x = [-18, 14, 0][Math.floor(Math.random() * 3)]; mirar(x, 0, x / 6); setTimeout(() => mirar(0, 0, 0), 1800); } }, 7000);
+
+// ---------------- Aviso de botín ----------------
+const botinVisto = new Set();
+const colaAvisos = [];
+let avisando = false;
+function avisosDeBotin(botin) {
+  if (primeraVez) { for (const b of botin) botinVisto.add(b.id); return; }
+  for (const b of [...botin].reverse()) {
+    if (botinVisto.has(b.id)) continue;
+    botinVisto.add(b.id);
+    colaAvisos.push(b);
+  }
+  siguienteAviso();
+}
+function siguienteAviso() {
+  if (avisando || !colaAvisos.length) return;
+  avisando = true;
+  const b = colaAvisos.shift();
+  const el = h('div', { class: `aviso ${RAREZA(b)}` }, h('i', { class: 'gema' }), h('b', {}, b.quien), '→', h('span', {}, `${b.maldito ? '☠️ ' : ''}${b.objeto}`));
+  $('avisos').append(el);
+  if (TIPO === 'charla' && ultimo?.config.avatar) {
+    $('avatar').classList.add('contento');
+    reaccion(b.rareza === 'legendario' ? '🤩' : b.maldito ? '😱' : '✨');
+    decir(b.rareza === 'legendario' ? `¡¡${b.quien}, un LEGENDARIO!!` : `¡Bien, ${b.quien}!`);
+    setTimeout(() => $('avatar').classList.remove('contento'), 3000);
+  }
+  setTimeout(() => { el.remove(); avisando = false; siguienteAviso(); }, 6100);
+}
+
+// ---------------- Datos ----------------
+function demo() {
+  const t = Date.now();
+  return {
+    ahora: new Date().toISOString(), canal: 'Crid4m', directo: { desde: new Date(t - 3600e3).toISOString() },
+    config: { titulo: 'Empezamos en breve', subtitulo: 'Hoy: raid de la Torre de las Sombras', charla: 'Just Chatting', pausa: 'Estira las piernas y bebe agua 💧', final: 'Nos vemos en el próximo directo',
+      hasta: new Date(t + 4 * 60e3 + 32e3).toISOString(), avatar: q.get('avatar') === '1', avatarTexto: 'Un momento, vuelvo a cámara enseguida 🙈' },
+    evento: { emoji: '☠️', nombre: 'Semana maldita', texto: '1 de cada 6 objetos de los cofres sale maldito' },
+    temporada: { nombre: 'septiembre', diasQuedan: 4, podio: [{ nombre: 'Ana_la_Tanque', puntos: 184 }, { nombre: 'raftaei', puntos: 131 }, { nombre: 'Pepe', puntos: 77 }] },
+    botin: [{ id: 3, quien: 'Ana_la_Tanque', objeto: 'Filo del Vacío', rareza: 'legendario' }, { id: 2, quien: 'raftaei', objeto: 'Capa de las Sombras', rareza: 'epico' },
+      { id: 1, quien: 'Pepe', objeto: 'Corona del Liche', rareza: 'epico', maldito: true }, { id: 0, quien: 'crid4n', objeto: 'Arco de tejo élfico', rareza: 'raro' }],
+    loot: { activo: true, proximoEnSeg: 754 }, jefe: null,
+    chat: [
+      { n: 1, nombre: 'raftaei', texto: 'buenas noches!! 👋', emotes: [], sub: true },
+      { n: 2, nombre: 'Ana_la_Tanque', texto: '!pj', emotes: [] },
+      { n: 3, nombre: 'Crid4m_Bot', texto: '🧙 @Ana_la_Tanque · ⚔️ Poder 184 (1º de 6) · 🏆 184 pts de temporada (1º)', emotes: [] },
+      { n: 4, nombre: 'Pepe', texto: 'hoy toca raid o que', emotes: [], mod: true },
+      { n: 5, nombre: 'Crid4m', texto: 'raid en un rato, primero charlamos un poco', emotes: [], canal: true },
+    ],
+    final: { minutos: 187, personas: ['Ana_la_Tanque', 'crid4n', 'Pepe', 'raftaei', 'Sombra_22'], nuevos: ['Sombra_22'],
+      destacados: [{ quien: 'Ana_la_Tanque', objeto: 'Filo del Vacío', rareza: 'legendario' }, { quien: 'raftaei', objeto: 'Capa de las Sombras', rareza: 'epico' }], cofres: 23, jefes: 2, duelos: 9 },
+  };
+}
+
+if (DEMO) {
+  pintar(demo()); primeraVez = false;
+} else {
+  const api = new URL('/api/overlay/escena', location.href);
+  api.searchParams.set('tipo', TIPO);
+  const cada = TIPO === 'charla' ? 1500 : 4000;
+  const preguntar = () => fetch(api, { cache: 'no-store' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => { if (d) { pintar(d); primeraVez = false; } })
+    .catch(() => {})
+    .finally(() => setTimeout(preguntar, cada));
+  preguntar();
+}
+</script>
+</body>
+</html>

@@ -108,6 +108,17 @@ const obsFalso: ConObs = async (trabajo) => {
       case 'CreateSceneItem':
         obs.items[d.sceneName].push({ sourceName: d.sourceName, sceneItemId: ++id, enabled: d.sceneItemEnabled });
         return { sceneItemId: id };
+      case 'CreateScene':
+        if (obs.items[d.sceneName]) throw yaExiste();
+        obs.items[d.sceneName] = [];
+        return {};
+      case 'SetSceneItemIndex': {
+        const lista = obs.items[d.sceneName];
+        const i = lista.findIndex((x) => x.sceneItemId === d.sceneItemId);
+        const [item] = lista.splice(i, 1);
+        lista.splice(d.sceneItemIndex, 0, item!);
+        return {};
+      }
       case 'GetVideoSettings':
         return { baseWidth: 2560, baseHeight: 1440 };
       case 'GetCurrentProgramScene':
@@ -680,5 +691,52 @@ describe('Inicio: revisión previa y resumen del directo', () => {
     assert.equal((await post('/api/loot/evento', { eleccion: 'ninguno' })).body.actual, null);
     assert.equal((await post('/api/loot/evento', { eleccion: 'no-existe' })).status, 400);
     await post('/api/loot/evento', { eleccion: 'auto' });
+  });
+});
+
+describe('Escenas', () => {
+  test('el overlay de escena lee sus datos con CORS, sin chat fuera de Charla', async () => {
+    const r = await pedir('GET', '/api/overlay/escena?tipo=inicio');
+    assert.equal(r.status, 200);
+    assert.equal(r.headers['access-control-allow-origin'], '*');
+    assert.equal(r.body.config.titulo, 'Empezamos en breve');
+    assert.deepEqual(r.body.chat, []);
+    assert.equal(r.body.final, null);
+    assert.equal((await pedir('GET', '/api/overlay/escena?tipo=final')).body.final, null, 'sin directos, el Final sale a cero');
+    const { getDb } = await import('../data/db.js');
+    getDb().prepare('INSERT INTO streams (started_at, ended_at) VALUES (?, NULL)').run(new Date(Date.now() - 60 * 60_000).toISOString());
+    const fin = await pedir('GET', '/api/overlay/escena?tipo=final');
+    assert.equal(fin.body.final.minutos, 60, 'el Final lleva el resumen del directo');
+  });
+
+  test('los textos, la cuenta atrás y el avatar se guardan; lo raro se ignora', async () => {
+    const hasta = new Date(Date.now() + 5 * 60_000).toISOString();
+    const r = await post('/api/escenas', { titulo: 'Hoy raid', hasta, avatar: true, inventado: 1, pausa: 42 });
+    assert.equal(r.body.config.titulo, 'Hoy raid');
+    assert.equal(r.body.config.hasta, hasta);
+    assert.equal(r.body.config.avatar, true);
+    assert.equal(r.body.config.pausa, 'Estira las piernas y bebe agua 💧');
+    assert.equal((await post('/api/escenas', { titulo: '' })).body.config.titulo, 'Empezamos en breve', 'vacío = por defecto');
+    assert.equal((await post('/api/escenas', { hasta: null })).body.config.hasta, null);
+    await post('/api/escenas', { avatar: false });
+  });
+
+  test('Crear en OBS: escena con overlay, cámara debajo en su hueco, y sin cambiar la escena en emisión', async () => {
+    obs.entradas.push({ inputName: 'Cámara', inputKind: 'dshow_input', settings: {} }, { inputName: 'FX Jefe', inputKind: 'browser_source', settings: {} });
+    const r = await post('/api/escenas/obs', { tipo: 'charla' });
+    assert.equal(r.status, 200);
+    const items = obs.items['✦ Charla']!.map((i) => i.sourceName);
+    assert.deepEqual(items, ['Cámara', 'ESC Charla', 'FX Jefe'], 'la cámara abajo, el overlay encima y la barra del jefe arriba');
+    const cam = obs.items['✦ Charla']!.find((i) => i.sourceName === 'Cámara')!;
+    // Lienzo de 2560×1440: el hueco (48, 48, 1280×720) escalado.
+    assert.equal(obs.transformes[cam.sceneItemId].positionX, 64);
+    assert.equal(obs.transformes[cam.sceneItemId].boundsWidth, 1280 * (2560 / 1920));
+    assert.match(obs.entradas.find((e) => e.inputName === 'ESC Charla')!.settings.url, /escena\.html\?tipo=charla$/);
+
+    // Otra vez: no duplica ni mueve nada.
+    const otra = await post('/api/escenas/obs', { tipo: 'charla' });
+    assert.equal(obs.items['✦ Charla']!.length, 3);
+    assert.ok(otra.body.hecho.some((x: string) => /ya existía/.test(x)));
+    assert.equal((await post('/api/escenas/obs', { tipo: 'otra' })).status, 400);
   });
 });

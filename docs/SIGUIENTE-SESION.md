@@ -62,6 +62,20 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 - **Inicio → Resumen del directo**: duración, quién vino (y quién era nuevo), lo más usado, lo que no salió y por qué, cofres, jefes, duelos y botín destacado. Se puede elegir cualquier directo anterior.
 - Panel de Twitch «Comandos» regenerado (`!pj`, `!top`, `!temporada`, `!evento`): hay que volver a subir **comandos.png**.
 
+### Escenas (27 sep 2026, 488 tests)
+
+- **Pestaña Escenas** del panel y un solo overlay, `biblioteca/overlays/escena.html?tipo=inicio|charla|pausa|final`, con el estilo de los paneles de Twitch (oro, morado, brasas, círculo de runas). Lee `GET /api/overlay/escena` (CORS abierto, solo lectura, como la del jefe).
+  - **Empezamos**: título, cuenta atrás (o «en breve»), evento de la semana, podio de la temporada y últimos botines.
+  - **Charla** (Just Chatting): marco dorado con el hueco de la cámara (48, 48, 1280×720, el mismo que `HUECO_CAMARA` en obs-setup.ts), chat en pantalla con emotes y colores, evento, podio y próximo cofre/jefe. `?fondo=0` lo deja sin fondo.
+  - **Pausa**: reloj de arena y cuenta atrás.
+  - **Final**: cifras del directo y créditos con los nombres de quien ha pasado.
+  - Todas menos Final avisan de cada botín nuevo.
+- **Avatar sin cámara**: interruptor en Escenas. Un encapuchado con ojos brillantes tapa el hueco en Charla: parpadea, respira, mira al chat, celebra el botín, se duerme a los 90 s sin chat, y lleva un bocadillo con el texto que pongas. Idea para más adelante: que mueva la boca con el micro (medidor de volumen de obs-websocket).
+- Textos, cuenta atrás y avatar se guardan en `ajustes` (clave `escenas`) y el overlay los recoge en segundos, sin tocar OBS.
+- **Crear en OBS** (con confirmación): escena `✦ Empezamos/Charla/Pausa/Final` con su overlay `ESC …` a pantalla completa. En Charla, además, tu cámara debajo encajada en el hueco y la barra del jefe (`FX Jefe`) encima. Nunca cambia la escena en emisión, no borra nada y, si ya existe, solo añade lo que falta.
+- **Chat en pantalla** (`core/chat-reciente.ts`): solo en memoria (últimos 30), nunca de quien pidió `!olvidame`. Lo que borra un moderador (mensaje borrado, expulsión, silencio, chat vaciado) desaparece también del overlay: el bot escucha ahora ChatMessageDeleted, UserTimedOut, UserBanned y ChatCleared. Emotes solo de Twitch, 7TV, BTTV y FFZ; colores solo `#RRGGBB`.
+- **Sin comprobar con Streamer.bot de verdad**: la forma de los emotes y del color en ChatMessage, y los avisos de moderación. Se leen con tolerancia; si no llegan, el chat sale sin emotes y con colores inventados, y lo borrado no desaparece hasta que lo empujen mensajes nuevos.
+
 ### Precios y límites acordados
 
 | Recompensa | Coste | Espera (s) | Máx. por directo | Máx. por persona |

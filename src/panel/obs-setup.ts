@@ -309,3 +309,108 @@ export async function temblar(
     await mover(t.positionX, t.positionY);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Escenas del directo: Empezamos, Charla, Pausa y Final (panel → Escenas)
+// ---------------------------------------------------------------------------
+
+export type TipoEscena = 'inicio' | 'charla' | 'pausa' | 'final';
+
+export const ESCENAS_OBS: Record<TipoEscena, { escena: string; fuente: string }> = {
+  inicio: { escena: '✦ Empezamos', fuente: 'ESC Empezamos' },
+  charla: { escena: '✦ Charla', fuente: 'ESC Charla' },
+  pausa: { escena: '✦ Pausa', fuente: 'ESC Pausa' },
+  final: { escena: '✦ Final', fuente: 'ESC Final' },
+};
+
+/** El hueco de la cámara en el overlay de Charla, en píxeles de 1920×1080. Lo mismo que CAM en escena.html. */
+export const HUECO_CAMARA = { x: 48, y: 48, ancho: 1280, alto: 720 };
+
+export const urlEscena = (tipo: TipoEscena) =>
+  `http://127.0.0.1:${config.panel.port}/biblioteca/overlays/escena.html?tipo=${tipo}`;
+
+/** Tipos de fuente de OBS que son una cámara (Windows, Mac, Linux). */
+const KINDS_CAMARA = ['dshow_input', 'av_capture_input', 'macos-avcapture', 'v4l2_input'];
+
+/**
+ * Crea (o completa) la escena de un tipo: el overlay a pantalla completa y,
+ * en Charla, tu cámara en el hueco del marco y la barra del jefe encima.
+ *
+ * Nunca cambia la escena en emisión ni borra nada: si la escena ya existe, se
+ * le añade lo que falte y lo que ya estaba no se mueve.
+ */
+export async function crearEscena(pedir: PedirObs, tipo: TipoEscena): Promise<string[]> {
+  const { escena, fuente } = ESCENAS_OBS[tipo];
+  const hecho: string[] = [];
+  try {
+    await pedir('CreateScene', { sceneName: escena });
+    hecho.push(`Escena «${escena}» creada.`);
+  } catch (err) {
+    if (!(err instanceof ErrorObs) || err.codigo !== YA_EXISTE) throw err;
+    hecho.push(`La escena «${escena}» ya existía: se completa sin quitar nada.`);
+  }
+  const items = async () =>
+    (await pedir<{ sceneItems: { sourceName: string; sceneItemId: number }[] }>('GetSceneItemList', { sceneName: escena })).sceneItems;
+  const { inputs } = await pedir<{ inputs: { inputName: string; inputKind: string }[] }>('GetInputList');
+
+  // El overlay, encima de lo que haya.
+  const ajustes = { width: 1920, height: 1080, is_local_file: false, url: urlEscena(tipo), shutdown: false, restart_when_active: false, reroute_audio: false };
+  let overlayId: number;
+  if (!inputs.some((i) => i.inputName === fuente)) {
+    ({ sceneItemId: overlayId } = await pedir<{ sceneItemId: number }>('CreateInput', {
+      sceneName: escena, inputName: fuente, inputKind: 'browser_source', inputSettings: ajustes, sceneItemEnabled: true,
+    }));
+    await pantallaCompleta(pedir, escena, overlayId);
+    hecho.push(`Overlay «${fuente}» creado a pantalla completa.`);
+  } else {
+    await pedir('SetInputSettings', { inputName: fuente, inputSettings: ajustes, overlay: true });
+    const ya = (await items()).find((i) => i.sourceName === fuente);
+    if (ya) {
+      overlayId = ya.sceneItemId;
+      hecho.push(`Overlay «${fuente}» actualizado.`);
+    } else {
+      ({ sceneItemId: overlayId } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: fuente, sceneItemEnabled: true }));
+      await pantallaCompleta(pedir, escena, overlayId);
+      hecho.push(`Overlay «${fuente}» añadido a pantalla completa.`);
+    }
+  }
+
+  if (tipo === 'charla') {
+    // Tu cámara, DEBAJO del overlay y encajada en el hueco del marco.
+    const cam = inputs.find((i) => KINDS_CAMARA.some((k) => i.inputKind.startsWith(k)));
+    if (!cam) {
+      hecho.push('No he encontrado ninguna cámara en OBS: añádela a esta escena, debajo del overlay, en el hueco del marco. O usa el avatar.');
+    } else if ((await items()).some((i) => i.sourceName === cam.inputName)) {
+      hecho.push(`Tu cámara «${cam.inputName}» ya estaba en la escena: no la he movido.`);
+    } else {
+      const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: cam.inputName, sceneItemEnabled: true });
+      await pedir('SetSceneItemIndex', { sceneName: escena, sceneItemId, sceneItemIndex: 0 });
+      await encajarEnHueco(pedir, escena, sceneItemId);
+      hecho.push(`Tu cámara «${cam.inputName}» colocada en el hueco del marco.`);
+    }
+    // La barra del jefe también aquí: sin jefe es transparente.
+    const barra = PREPARABLES.jefe.nombre;
+    if (inputs.some((i) => i.inputName === barra) && !(await items()).some((i) => i.sourceName === barra)) {
+      const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: barra, sceneItemEnabled: true });
+      await pantallaCompleta(pedir, escena, sceneItemId);
+      hecho.push('Barra del jefe añadida encima: si aparece un jefe, se verá también aquí.');
+    }
+  }
+  return hecho;
+}
+
+/** Coloca la cámara en el hueco del marco, llenándolo (lo que sobre se recorta). */
+async function encajarEnHueco(pedir: PedirObs, escena: string, sceneItemId: number): Promise<void> {
+  const v = await pedir<{ baseWidth: number; baseHeight: number }>('GetVideoSettings');
+  const sx = v.baseWidth / 1920;
+  const sy = v.baseHeight / 1080;
+  const { x, y, ancho, alto } = HUECO_CAMARA;
+  await pedir('SetSceneItemTransform', {
+    sceneName: escena,
+    sceneItemId,
+    sceneItemTransform: {
+      positionX: x * sx, positionY: y * sy, alignment: 5, rotation: 0,
+      boundsType: 'OBS_BOUNDS_SCALE_OUTER', boundsAlignment: 0, boundsWidth: ancho * sx, boundsHeight: alto * sy, cropToBounds: true,
+    },
+  });
+}
