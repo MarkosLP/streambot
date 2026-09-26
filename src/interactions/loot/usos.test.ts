@@ -218,7 +218,13 @@ describe('!coleccion y títulos', () => {
     dar('pepe', 'comun', 3, 'Espada oxidada');
     dar('pepe', 'raro', 1);
     await handleEvent(mensaje('pepe', '!coleccion'));
-    assert.match(enviados[0]!, /^@pepe 📖 Colección 2\/51: ⚪ 1\/20 🔵 1\/14 🟣 0\/10 🟠 0\/7 · Completa una rareza/);
+    // Con el tamaño real del catálogo: cambia cada vez que se añaden objetos.
+    const n = (r: Rareza) => OBJETOS[r].length;
+    const de = n('comun') + n('raro') + n('epico') + n('legendario');
+    assert.ok(
+      enviados[0]!.startsWith(`@pepe 📖 Colección 2/${de}: ⚪ 1/${n('comun')} 🔵 1/${n('raro')} 🟣 0/${n('epico')} 🟠 0/${n('legendario')} · Completa una rareza`),
+      enviados[0],
+    );
   });
 
   test('lo forjado o tirado sigue en la colección', async () => {

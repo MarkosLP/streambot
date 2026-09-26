@@ -600,7 +600,7 @@ const RAREZA_LOOT = {
   epico: { clase: 'r-epico', nombre: 'Épico' },
   legendario: { clase: 'r-legendario', nombre: 'Legendario' },
 };
-const ORIGEN = { cofre: 'cofre', oro: 'Cofre del tesoro', panel: 'desde el panel', forja: 'forjado', guerra: 'cofre de guerra', maldicion: 'Maldición' };
+const ORIGEN = { cofre: 'cofre', oro: 'Cofre del tesoro', panel: 'desde el panel', regalo: 'regalo', forja: 'forjado', guerra: 'cofre de guerra', maldicion: 'Maldición' };
 
 function mmss(seg) {
   const m = Math.floor(seg / 60);
@@ -632,6 +632,11 @@ async function cargarLoot() {
     d.aventureros.length ? d.aventureros.join(', ') : `Nadie ha escrito en ${d.minutosActividad} min`);
   ficha('l-ultimo', '', d.ultimoCofre ? hace(d.ultimoCofre) : 'Ninguno', d.ultimoCofre ? hora(d.ultimoCofre) : 'desde que arrancó el bot');
   ficha('l-directo', d.directo ? 'vivo' : '', d.directo ? 'En marcha' : 'Sin directo', d.directo ? 'Los cofres pueden caer' : 'Sin directo no caen cofres');
+  const enChat = d.enElChat || [];
+  $('l-en-chat').textContent = enChat.length
+    ? `En el chat ahora: ${enChat.length} (sin bots ni tú)`
+    : 'Ahora mismo no hay nadie en el chat';
+  $('l-regalo-lista').replaceChildren(...enChat.map((v) => h('option', { value: v.login }, v.nombre)));
   $('l-sin-directo').hidden = d.directo;
   $('l-con-directo').hidden = !d.directo;
 
@@ -691,6 +696,20 @@ $('l-soltar').addEventListener('click', async () => {
   try {
     const r = await api('/api/loot/soltar', {});
     tostada(r.enviado ? `Cofre para ${r.reparto.length}` : 'Cofre repartido, pero el mensaje no salió al chat', !r.enviado);
+    cargarLoot();
+  } catch (err) {
+    tostada(err.message, true);
+  }
+});
+
+$('l-regalo').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const para = $('l-regalo-para').value.trim().replace(/^@/, '');
+  try {
+    const r = await api('/api/loot/regalar', { para, tipo: $('l-regalo-tipo').value });
+    const quien = para ? r.reparto[0].quien : `${r.reparto.length} persona${r.reparto.length === 1 ? '' : 's'}`;
+    tostada(r.enviado ? `🎁 Cofre regalado a ${quien}` : `Cofre regalado a ${quien}, pero el mensaje no salió al chat`, !r.enviado);
+    $('l-regalo-para').value = '';
     cargarLoot();
   } catch (err) {
     tostada(err.message, true);

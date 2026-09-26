@@ -240,7 +240,7 @@
         <header><h2>Acciones</h2></header>
         <div class="loot-acciones">
           <button class="boton primario" id="l-soltar" type="button">🎁 Soltar cofre ahora</button>
-          <span class="nota">Sale en el chat, para quien esté activo.</span>
+          <span class="nota">Para quien haya escrito hace poco. Para todo el chat, usa Regalar cofre.</span>
           <span class="separador"></span>
           <button class="boton" id="l-prueba" type="button">Tirada de prueba</button>
           <button class="boton" id="l-prueba-oro" type="button">🗝️ Prueba de Cofre del tesoro</button>
@@ -248,6 +248,26 @@
         </div>
         <div id="l-revelado"></div>
         <div class="loot-prueba" id="l-resultado-prueba"></div>
+      </article>
+
+      <article class="tarjeta">
+        <header><h2>Regalar cofre</h2><span class="nota" id="l-en-chat">—</span></header>
+        <form class="loot-regalo" id="l-regalo">
+          <label class="campo">
+            <span>Para</span>
+            <input type="text" id="l-regalo-para" list="l-regalo-lista" placeholder="Todo el chat" autocomplete="off" spellcheck="false">
+            <datalist id="l-regalo-lista"></datalist>
+            <small>Vacío: uno para cada persona del chat, haya escrito o no. Sin bots y sin ti.</small>
+          </label>
+          <label class="campo">
+            <span>Cofre</span>
+            <select id="l-regalo-tipo">
+              <option value="cofre">🎁 Cofre normal</option>
+              <option value="oro">🗝️ Cofre del tesoro (mejor suerte)</option>
+            </select>
+          </label>
+          <button class="boton primario" type="submit">🎁 Regalar</button>
+        </form>
       </article>
 
       <div class="dos-col">

@@ -1,5 +1,6 @@
 import { config } from '../config.js';
 import { log, captureRaw } from './logger.js';
+import { esBot } from './bots.js';
 import {
   describe,
   type DomainEvent,
@@ -46,7 +47,7 @@ function canControl(viewer: Viewer): boolean {
 
 /** Otros bots y el propio canal: ni se registran ni participan en nada. */
 function isIgnored(viewer: Viewer): boolean {
-  return config.ignoredLogins.includes(viewer.login) || viewer.login === config.broadcasterLogin;
+  return esBot(viewer.login) || viewer.login === config.broadcasterLogin;
 }
 
 export async function handleEvent(event: DomainEvent): Promise<void> {
@@ -104,6 +105,9 @@ async function handleRedeem(event: ViewerRedeemEvent): Promise<void> {
     await binding.run(event);
     return;
   }
+  // Muchas recompensas son solo de Streamer.bot (un sonido, un filtro) y es
+  // normal. Pero si esperabas que el bot dijera algo, aquí está el porqué.
+  log.info(`Recompensa "${event.rewardTitle}": el bot no la usa para nada (el efecto, si lo tiene, es cosa de Streamer.bot).`);
 }
 
 /**
@@ -119,7 +123,7 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
 
   // Quién anda por el chat, para poder retarle a un duelo. Incluye al dueño
   // del canal; los bots no.
-  if (!config.ignoredLogins.includes(viewer.login)) loot.recordarVisto(viewer);
+  if (!esBot(viewer.login)) loot.recordarVisto(viewer);
 
   // Los comandos de control se atienden antes que nada: tienen que funcionar
   // aunque el resto del sistema esté apagado.
@@ -156,14 +160,14 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   // canal SÍ le dejamos usarlo, porque si no no podrías probarlo tú.
   const pregunta = matchPreguntaCommand(text);
   if (pregunta !== null) {
-    if (config.ignoredLogins.includes(viewer.login)) return;
+    if (esBot(viewer.login)) return;
     if (!isIgnored(viewer)) users.touch(viewer);
     await engine.run(preguntaIa.interaction, { viewer, question: pregunta, trigger: 'command' });
     return;
   }
 
   if (preguntaIncomoda.COMMAND.test(text)) {
-    if (config.ignoredLogins.includes(viewer.login)) return;
+    if (esBot(viewer.login)) return;
     if (!isIgnored(viewer)) users.touch(viewer);
     await preguntaIncomoda.runCommand(viewer, `${viewer.id}-${event.id}`);
     return;
@@ -173,7 +177,7 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   // el dueño del canal, que así puede probarlos y aceptar duelos.
   const comandoLoot = lootComandos.buscar(text);
   if (comandoLoot) {
-    if (config.ignoredLogins.includes(viewer.login)) return;
+    if (esBot(viewer.login)) return;
     if (!isIgnored(viewer)) users.touch(viewer);
     await engine.run(comandoLoot.def, { viewer, trigger: 'command', args: comandoLoot.args });
     return;

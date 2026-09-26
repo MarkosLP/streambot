@@ -501,11 +501,11 @@ strong.ui {
 .campo { display: grid; gap: 4px; font-size: 0.85rem; }
 .campo > span { font-weight: 600; }
 .campo small { color: var(--texto-3); }
-.campo select {
+.campo select, .campo input[type="text"] {
   padding: 9px 12px; border-radius: 9px; border: 1px solid var(--borde-2);
   background: var(--fondo); color: var(--texto); font: inherit;
 }
-.campo select:focus { outline: none; border-color: var(--oro); }
+.campo select:focus, .campo input[type="text"]:focus { outline: none; border-color: var(--oro); }
 .preparables { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 .preparable {
   display: flex; align-items: flex-start; gap: 10px; padding: 12px; cursor: pointer;
@@ -534,6 +534,9 @@ strong.ui {
 .loot-acciones { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .loot-acciones .separador { flex: 1; min-width: 12px; }
 .loot-acciones .nota { font-size: 0.8rem; }
+.loot-regalo { display: grid; gap: 12px; grid-template-columns: minmax(200px, 2fr) minmax(180px, 1fr) auto; align-items: start; }
+.loot-regalo > .boton { margin-top: 21px; }
+@media (max-width: 720px) { .loot-regalo { grid-template-columns: 1fr; } .loot-regalo > .boton { margin-top: 0; justify-self: start; } }
 .loot-obs { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--borde); }
 .l-con-directo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: -6px 0 0; }
 .l-con-directo[hidden] { display: none; }

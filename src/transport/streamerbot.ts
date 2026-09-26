@@ -1,7 +1,7 @@
 import { StreamerbotClient, type StreamerbotEventsSubscription } from '@streamerbot/client';
 import { config } from '../config.js';
 import { log } from '../core/logger.js';
-import { normalize } from '../core/events.js';
+import { normalize, type Viewer } from '../core/events.js';
 import { handleEvent } from '../core/handler.js';
 
 /**
@@ -208,6 +208,26 @@ export async function acciones(): Promise<AccionSB[]> {
   const response = await client.getActions();
   if (response?.status !== 'ok') throw new Error('Streamer.bot no devolvió la lista de acciones');
   return response.actions.map((a) => ({ id: a.id, name: a.name, group: a.group, enabled: a.enabled }));
+}
+
+/**
+ * Quién está en el chat ahora, según Streamer.bot ("Active Viewers"): también
+ * quien mira sin escribir. Los bots y el canal los filtra quien lo usa.
+ */
+export async function espectadores(): Promise<Viewer[]> {
+  if (!client || !connected) throw new Error('no hay conexión con Streamer.bot');
+  const response = await client.getActiveViewers();
+  if (response?.status !== 'ok') throw new Error('Streamer.bot no devolvió los espectadores');
+  return (response.viewers ?? []).map((v) => ({
+    id: String(v.id ?? ''),
+    login: String(v.login ?? '').toLowerCase(),
+    displayName: String(v.display || v.login || ''),
+    isBroadcaster: false,
+    isModerator: false,
+    isVip: false,
+    isSubscriber: v.subscribed === true,
+    rawRole: null,
+  }));
 }
 
 /**

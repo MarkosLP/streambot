@@ -22,6 +22,13 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 
 **Iconos de Twitch** en `biblioteca/imagenes/twitch/`: moneda Oros (28/56/112) y uno por recompensa (28/56/112). Fuente en `docs/iconos/`.
 
+### Añadido el 26 sep por la mañana (381 tests)
+
+- **Regalar cofre** (panel → Loot): cuando quieras, haya hablado alguien o no. Vacío = uno para cada persona del chat (según Streamer.bot, también quien no escribe); o un nombre concreto, aunque pasara por el chat otro día. Cofre normal o del tesoro. Nunca a bots (`src/core/bots.ts` + `IGNORED_LOGINS`) ni al canal.
+- **Grito y Maldición**: sí escribían en el chat, pero si algo lo impedía se callaban sin rastro. Ahora el motivo queda en el Registro, un segundo Grito se anuncia ("se une al grito") y el nombre de la recompensa vale con emojis o mayúsculas. Una recompensa que el bot no usa sale en la consola.
+- **Catálogo**: 51 → 94 objetos, con más armas en cada rareza para el cofre de guerra.
+- Hay que **reiniciar el bot** para tenerlo.
+
 ### Precios y límites acordados
 
 | Recompensa | Coste | Espera (s) | Máx. por directo | Máx. por persona |

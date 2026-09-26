@@ -84,6 +84,7 @@ async function main(): Promise<void> {
   loot.setPantalla((quien, botin, origen) =>
     conObs((pedir) => mostrarBotin(pedir, { quien, objeto: botin.objeto, rareza: botin.rareza, origen, maldito: botin.maldito })),
   );
+  loot.setChatters(() => streamerbot.espectadores());
   loot.arrancar();
 
   log.info('Escuchando. Ctrl+C para salir.');

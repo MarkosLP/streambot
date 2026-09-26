@@ -13,6 +13,7 @@ import * as engine from '../../core/engine.js';
 import * as consent from '../../core/consent.js';
 import * as streams from '../../data/streams.js';
 import * as lootDb from '../../data/loot.js';
+import * as interactionLog from '../../data/interactions.js';
 import * as loot from './index.js';
 import * as comandos from './comandos.js';
 import { MOCHILA_MAX, OBJETOS, esArma, tirar } from './objetos.js';
@@ -109,12 +110,26 @@ describe('⚔️ Grito de guerra', () => {
     assert.deepEqual(loot.aventureros().map((v) => v.login), ['pepe']);
   });
 
-  test('no se acumula: el segundo grito solo suena', async () => {
+  test('no se acumula: el segundo grito se suma al que ya viene, y se dice en el chat', async () => {
     streams.open();
     await handleEvent(canje('pepe', 'Grito de guerra'));
     await handleEvent(canje('ana', 'Grito de guerra'));
-    assert.equal(enviados.length, 1);
+    assert.equal(enviados.length, 2);
+    assert.match(enviados[1]!, /^⚔️ ¡ana se une al grito de pepe! El cofre de guerra ya viene/);
     assert.equal(loot.estado().cofreDeGuerra, 'pepe');
+  });
+
+  test('reconoce la recompensa aunque en Twitch lleve emojis, mayúsculas o signos', async () => {
+    streams.open();
+    await handleEvent(canje('pepe', '⚔️ Grito de GUERRA!'));
+    assert.match(enviados[0]!, /^⚔️ ¡A las armas!/);
+  });
+
+  test('si se descarta, queda en el Registro con el motivo', async () => {
+    await handleEvent(canje('pepe', 'Grito de guerra'));
+    const filas = interactionLog.all().filter((r) => r.interaction === 'loot-grito');
+    assert.equal(filas[0]?.status, 'skipped');
+    assert.match(filas[0]!.detail!, /sin directo/);
   });
 
   test('sin directo, o con el Loot apagado, el bot no dice nada', async () => {

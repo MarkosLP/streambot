@@ -11,6 +11,8 @@ import type { Ctx, Interaction } from '../../core/interaction.js';
 import * as interactionLog from '../../data/interactions.js';
 import * as lootDb from '../../data/loot.js';
 import * as streams from '../../data/streams.js';
+import * as users from '../../data/users.js';
+import { esBot } from '../../core/bots.js';
 import { ESTILO, MOCHILA_MAX, RAREZAS, etiqueta, tirar, type Azar, type Botin } from './objetos.js';
 
 /**
@@ -68,6 +70,44 @@ export function buscarPresente(login: string, now = Date.now()): Viewer | null {
   return v.viewer;
 }
 
+/**
+ * Quién está en el chat AHORA, haya escrito o no. Se lo pregunta a
+ * Streamer.bot (sus "Active Viewers"). Se inyecta desde index.ts, como la
+ * pantalla, para que el Loot no dependa del transporte.
+ */
+export type Chatters = () => Promise<Viewer[]>;
+let chatters: Chatters | null = null;
+
+export function setChatters(fn: Chatters | null): void {
+  chatters = fn;
+}
+
+/** Una persona de verdad: ni bots, ni el propio canal, ni quien pidió el olvido. */
+function esPersona(v: Viewer): boolean {
+  if (!v.id || !v.login) return false;
+  if (esBot(v.login) || v.login.toLowerCase() === config.broadcasterLogin) return false;
+  return !consent.haPedidoOlvido(v.id);
+}
+
+/**
+ * Todo el que está en el chat: lo que diga Streamer.bot, más quien ha escrito
+ * hace poco (por si Streamer.bot no contesta o aún no le ha visto).
+ */
+export async function enElChat(now = Date.now()): Promise<Viewer[]> {
+  const gente = new Map<string, Viewer>();
+  if (chatters) {
+    try {
+      for (const v of await chatters()) gente.set(v.id, v);
+    } catch (err) {
+      log.warn(`Loot: Streamer.bot no dijo quién está en el chat (${err instanceof Error ? err.message : String(err)}).`);
+    }
+  }
+  const limite = now - config.loot.minutosActividad * 60_000;
+  for (const { viewer, at } of vistos.values()) if (at >= limite) gente.set(viewer.id, viewer);
+  for (const v of aventureros(now)) gente.set(v.id, v);
+  return [...gente.values()].filter(esPersona);
+}
+
 /** Quien ha escrito dentro de la ventana de actividad, y no ha pedido el olvido. */
 export function aventureros(now = Date.now()): Viewer[] {
   const limite = now - config.loot.minutosActividad * 60_000;
@@ -87,7 +127,7 @@ export function aventureros(now = Date.now()): Viewer[] {
 // El botín en pantalla
 // ---------------------------------------------------------------------------
 
-export type OrigenPantalla = 'cofre' | 'oro' | 'panel' | 'prueba' | 'forja' | 'presumir' | 'guerra' | 'maldicion' | 'purificar';
+export type OrigenPantalla = 'cofre' | 'oro' | 'panel' | 'regalo' | 'prueba' | 'forja' | 'presumir' | 'guerra' | 'maldicion' | 'purificar';
 export type Pantalla = (quien: string, botin: Botin, origen: OrigenPantalla) => Promise<void>;
 let pantalla: Pantalla | null = null;
 let fila: Promise<void> = Promise.resolve();
@@ -157,9 +197,9 @@ function anunciosDeTitulo(reparto: Reparto[]): string {
  * Sin @: el anuncio no debe notificar a nadie. Si no cabe en un mensaje, se
  * corta y se dice cuántos faltan.
  */
-export function componerCofre(reparto: Reparto[]): string {
+export function componerCofre(reparto: Reparto[], inicioPropio?: string): string {
   const hayLegendario = reparto.some((r) => r.botin.rareza === 'legendario');
-  const inicio = hayLegendario ? '✨ ¡Cofre LEGENDARIO! ' : '🎁 ¡Ha caído un cofre! ';
+  const inicio = inicioPropio ?? (hayLegendario ? '✨ ¡Cofre LEGENDARIO! ' : '🎁 ¡Ha caído un cofre! ');
   const partes = reparto.map((r) => `${conTitulo(r.viewer)} → ${etiqueta(r.botin)}${notaMochila(r.resultado)}`);
   const titulos = anunciosDeTitulo(reparto);
 
@@ -214,6 +254,88 @@ export async function soltarCofre(
 
   for (const r of reparto) enPantalla(r.viewer.displayName, r.botin, origenFinal);
   ultimoCofre = now;
+  return { ok: true, reparto, enviado: outcome.sent };
+}
+
+// ---------------------------------------------------------------------------
+// Regalar un cofre (desde el panel)
+// ---------------------------------------------------------------------------
+
+/** `Crid4m`, como se escribe en el chat. */
+const streamer = () => config.broadcasterLogin.charAt(0).toUpperCase() + config.broadcasterLogin.slice(1);
+
+/**
+ * Busca a alguien por su login: primero en el chat, después entre quien ha
+ * pasado alguna vez. Hace falta su id de Twitch para guardarle el botín, así
+ * que a quien nunca ha pasado por el chat no se le puede regalar nada.
+ */
+async function buscarPersona(login: string, now: number): Promise<Viewer | null> {
+  const l = login.replace(/^@/, '').trim().toLowerCase();
+  const enChat = (await enElChat(now)).find((v) => v.login.toLowerCase() === l);
+  if (enChat) return enChat;
+  const visto = vistos.get(l)?.viewer;
+  if (visto) return esPersona(visto) ? visto : null;
+  const fila = users.findByLogin(l);
+  if (!fila) return null;
+  const v: Viewer = {
+    id: fila.twitch_id,
+    login: fila.login,
+    displayName: fila.display_name,
+    isBroadcaster: false,
+    isModerator: false,
+    isVip: false,
+    isSubscriber: false,
+    rawRole: null,
+  };
+  return esPersona(v) ? v : null;
+}
+
+/**
+ * Un cofre cuando tú quieras, haya hablado alguien o no.
+ *
+ * - Sin `para`: uno para cada persona que esté en el chat (sin bots ni tú).
+ * - Con `para`: solo para esa persona.
+ *
+ * `tipo` elige las probabilidades: cofre normal o Cofre del tesoro. No usa el
+ * cofre de guerra pendiente: ese es de quien gritó, no tuyo.
+ */
+export async function regalarCofre(
+  { para = '', tipo = 'cofre', azar = Math.random, now = Date.now() }: { para?: string; tipo?: 'cofre' | 'oro'; azar?: Azar; now?: number } = {},
+): Promise<ResultadoCofre> {
+  let gente: Viewer[];
+  if (para.trim()) {
+    if (esBot(para)) return { ok: false, motivo: `${para.trim()} es un bot` };
+    if (para.replace(/^@/, '').trim().toLowerCase() === config.broadcasterLogin) {
+      return { ok: false, motivo: 'no puedes regalarte un cofre a ti mismo' };
+    }
+    const v = await buscarPersona(para, now);
+    if (!v) return { ok: false, motivo: `no conozco a ${para.trim()}: tiene que haber escrito en el chat alguna vez` };
+    gente = [v];
+  } else {
+    gente = await enElChat(now);
+    if (!gente.length) return { ok: false, motivo: 'no hay nadie en el chat (sin contar bots ni a ti)' };
+  }
+
+  const reparto: Reparto[] = gente.map((viewer) => {
+    const botin = tirar(tipo, azar);
+    return { viewer, botin, resultado: lootDb.dar(viewer.id, viewer.displayName, botin, 'regalo') };
+  });
+
+  const nombreCofre = tipo === 'oro' ? 'un Cofre del tesoro' : 'un cofre';
+  const uno = reparto.length === 1 && para.trim() ? reparto[0]! : null;
+  const texto = uno
+    ? `🎁 ${streamer()} le regala ${nombreCofre} a @${uno.viewer.displayName} → ${etiqueta(uno.botin)}` +
+      `${uno.botin.rareza === 'legendario' ? ' ✨✨✨' : ''}${notaMochila(uno.resultado)}${anunciosDeTitulo(reparto)}`
+    : componerCofre(reparto, `🎁 ¡${streamer()} regala ${nombreCofre} a todo el chat! `);
+
+  const outcome = await send({ text: texto, reason: NAME, allowedMentions: uno ? [uno.viewer.login] : undefined });
+  interactionLog.record({
+    interaction: NAME,
+    status: outcome.sent ? 'sent' : 'blocked',
+    detail: `regalo ${tipo}: ${reparto.map((r) => `${r.viewer.login}=${r.botin.rareza}`).join(', ')}`,
+  });
+
+  for (const r of reparto) enPantalla(r.viewer.displayName, r.botin, 'regalo');
   return { ok: true, reparto, enviado: outcome.sent };
 }
 
@@ -273,8 +395,13 @@ export const channelPointBinding = {
 //   🧪 Poción de vida   → si llevas un maldito, te ofrece purificarlo
 //                         (!purificar): ya no se pierde, pero pierde el doble.
 
-const mismoTitulo = (a: string, b: string) =>
-  a.normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase() === b.normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase();
+/**
+ * El título de la recompensa, sin tildes, mayúsculas, emojis ni signos: en la
+ * web de Twitch es fácil llamarla "⚔️ Grito de Guerra!" y tiene que valer.
+ */
+const limpiarTitulo = (t: string) =>
+  t.normalize('NFD').replace(/\p{M}/gu, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim().toLowerCase();
+const mismoTitulo = (a: string, b: string) => limpiarTitulo(a) === limpiarTitulo(b);
 
 interface CtxEfecto extends Ctx {
   trigger: 'channel-point';
@@ -283,7 +410,7 @@ interface CtxEfecto extends Ctx {
 
 /** El que canjea un efecto está en el directo: cuenta como activo para los cofres. */
 function presente(viewer: Viewer): void {
-  if (config.ignoredLogins.includes(viewer.login) || viewer.login === config.broadcasterLogin) return;
+  if (esBot(viewer.login) || viewer.login === config.broadcasterLogin) return;
   if (consent.haPedidoOlvido(viewer.id)) return;
   registrarActividad(viewer);
 }
@@ -291,13 +418,24 @@ function presente(viewer: Viewer): void {
 export const grito: Interaction<CtxEfecto> = {
   name: 'loot-grito',
   spontaneous: false,
+  // Los descartes se registran: si el grito suena y el bot calla, en el
+  // Registro del panel está por qué.
   guards: [
-    () => (ajustes.lootActivo() ? { ok: true } : { ok: false, motivo: 'el Loot está apagado' }),
-    () => (streams.current() ? { ok: true } : { ok: false, motivo: 'sin directo no caen cofres' }),
-    // No se acumula: si ya viene uno de guerra, solo suena el grito.
-    () => (cofreDeGuerra === null ? { ok: true } : { ok: false, motivo: 'ya hay un cofre de guerra en camino' }),
+    () => (ajustes.lootActivo() ? { ok: true } : { ok: false, motivo: 'el Loot está apagado', registrar: true }),
+    () =>
+      streams.current()
+        ? { ok: true }
+        : { ok: false, motivo: 'sin directo marcado no caen cofres (panel → Loot → El directo ya ha empezado)', registrar: true },
   ],
   run: (ctx) => {
+    // No se acumula: si ya viene uno de guerra, el grito se suma al que viene.
+    if (cofreDeGuerra !== null) {
+      const falta = proximo ? Math.max(0, Math.round((proximo - Date.now()) / 1000)) : null;
+      return {
+        text: `⚔️ ¡${ctx.viewer.displayName} se une al grito de ${cofreDeGuerra}! El cofre de guerra ya viene` +
+          `${falta !== null ? ` (${falta < 60 ? `${falta} s` : `${Math.ceil(falta / 60)} min`})` : ''}: quédate en el chat.`,
+      };
+    }
     cofreDeGuerra = ctx.viewer.displayName;
     programarEn((60 + ctx.azar() * 60) * 1000);
     return { text: `⚔️ ¡A las armas! El grito de ${ctx.viewer.displayName} atrae un cofre de guerra: cae en 1-2 min para quien esté en el chat.` };
@@ -308,7 +446,7 @@ export const maldicion: Interaction<CtxEfecto> = {
   name: 'loot-maldicion',
   spontaneous: false,
   guards: [
-    () => (ajustes.lootActivo() ? { ok: true } : { ok: false, motivo: 'el Loot está apagado' }),
+    () => (ajustes.lootActivo() ? { ok: true } : { ok: false, motivo: 'el Loot está apagado', registrar: true }),
     (ctx) => (consent.haPedidoOlvido(ctx.viewer.id) ? { ok: false, motivo: 'pidió el olvido' } : { ok: true }),
   ],
   run: (ctx) => {
@@ -486,5 +624,6 @@ export function reset(): void {
   cofreDeGuerra = null;
   purificaciones.clear();
   pantalla = null;
+  chatters = null;
   fila = Promise.resolve();
 }

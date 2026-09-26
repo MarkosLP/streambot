@@ -217,6 +217,8 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   if (ruta === 'GET /api/loot') {
     return json(res, 200, {
       ...loot.estado(),
+      // Para el regalo: todo el que está en el chat, haya escrito o no.
+      enElChat: (await loot.enElChat()).map((v) => ({ login: v.login, nombre: v.displayName })),
       probabilidades: PROBABILIDADES,
       recientes: lootDb.recientes(25),
       mochilas: lootDb.mochilas(10),
@@ -238,6 +240,20 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     if (falta > 0) throw new ErrorHttp(429, `Espera ${Math.ceil(falta / 1000)} s para soltar otro cofre`);
     cooldowns.tryConsume('panel:soltar-cofre', 60_000);
     const r = await loot.soltarCofre({ origen: 'panel' });
+    if (!r.ok) throw new ErrorHttp(409, r.motivo);
+    return json(res, 200, { enviado: r.enviado, reparto: r.reparto.map((x) => ({ quien: x.viewer.displayName, ...x.botin })) });
+  }
+
+  // Un cofre regalado: para todo el chat o para una persona, haya hablado o no.
+  if (ruta === 'POST /api/loot/regalar') {
+    const { para, tipo } = await cuerpo(req);
+    if (para !== undefined && typeof para !== 'string') throw new ErrorHttp(400, 'para tiene que ser un nombre');
+    // Un freno corto: solo contra el doble clic, que regalar es cosa tuya.
+    const falta = cooldowns.remaining('panel:regalar-cofre', 10_000);
+    if (falta > 0) throw new ErrorHttp(429, `Espera ${Math.ceil(falta / 1000)} s para regalar otro`);
+    // Se gasta ANTES del await: si no, dos clics seguidos pasarían los dos.
+    cooldowns.tryConsume('panel:regalar-cofre', 10_000);
+    const r = await loot.regalarCofre({ para: para ?? '', tipo: tipo === 'oro' ? 'oro' : 'cofre' });
     if (!r.ok) throw new ErrorHttp(409, r.motivo);
     return json(res, 200, { enviado: r.enviado, reparto: r.reparto.map((x) => ({ quien: x.viewer.displayName, ...x.botin })) });
   }
