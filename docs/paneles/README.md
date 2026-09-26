@@ -31,6 +31,11 @@ for p in comandos:640 recompensas:520 loot:445 jefes:485; do
   y=$((y+h))
 done
 rm hoja-paneles.png
+# Twitch rechaza las imágenes pesadas: a 256 colores pesan ~200 KB y se ven igual.
+for n in comandos recompensas loot jefes; do
+  f=biblioteca/imagenes/twitch/paneles/$n.png
+  magick $f -dither FloydSteinberg -colors 256 -define png:compression-level=9 -strip PNG8:$f
+done
 ```
 
 Las alturas (`640`, `520`, `445`, `485`) son las `--alto` de cada panel en `paneles.html`, en el mismo orden, y `--window-size` es su suma. Si cambias una, cambia las tres cosas. A veces Edge tarda un segundo en escribir la captura: si `magick` dice que no encuentra `hoja-paneles.png`, vuelve a lanzarlo.
