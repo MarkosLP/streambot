@@ -14,7 +14,8 @@ import { log } from './logger.js';
 export type Platform = 'twitch';
 
 /** De dónde vino el evento. El simulador produce eventos idénticos salvo por este campo. */
-export type EventSource = 'streamerbot' | 'simulator';
+/** 'obs': el vigilante del directo (core/directo.ts) al ver que OBS empieza o deja de emitir. */
+export type EventSource = 'streamerbot' | 'simulator' | 'obs';
 
 export interface Viewer {
   id: string;

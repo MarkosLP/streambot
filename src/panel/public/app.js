@@ -667,6 +667,12 @@ async function cargarLoot() {
   $('l-regalo-lista').replaceChildren(...enChat.map((v) => h('option', { value: v.login }, v.nombre)));
   $('l-sin-directo').hidden = d.directo;
   $('l-con-directo').hidden = !d.directo;
+  const vig = d.vigilante || {};
+  $('l-con-directo-texto').textContent = vig.manual
+    ? 'Marcado en directo a mano, para probar: no se cerrará solo aunque no emitas.'
+    : vig.obs === true
+      ? 'En directo: OBS está emitiendo. Se cerrará solo al terminar.'
+      : 'En directo. El bot lo comprueba en OBS cada minuto y lo cerrará solo si no emites.';
 
   $('l-recientes').replaceChildren(...(d.recientes.length
     ? d.recientes.map((f) => h('li', {},
@@ -801,7 +807,7 @@ for (const [id, tipo] of [['l-prueba', 'cofre'], ['l-prueba-oro', 'oro']]) {
 }
 
 for (const [id, abierto, texto] of [
-  ['l-marcar-directo', true, 'Directo marcado como en marcha'],
+  ['l-marcar-directo', true, 'Marcado en directo para probar: no se cerrará solo'],
   ['l-terminar-directo', false, 'Directo terminado: no caerán cofres hasta el próximo'],
 ]) {
   $(id).addEventListener('click', async () => {

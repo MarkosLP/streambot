@@ -20,6 +20,7 @@ import * as lootDb from '../data/loot.js';
 import * as lootComandos from '../interactions/loot/comandos.js';
 import * as jefe from '../interactions/loot/jefe.js';
 import * as terremoto from '../interactions/terremoto.js';
+import * as directo from '../core/directo.js';
 import * as arena from '../interactions/loot/arena.js';
 import { MOCHILA_MAX, PROBABILIDADES, tirar } from '../interactions/loot/objetos.js';
 import * as cooldowns from '../core/cooldowns.js';
@@ -235,6 +236,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       ...loot.estado(),
       // Para el regalo: todo el que está en el chat, haya escrito o no.
       jefe: jefe.estado(),
+      vigilante: directo.estado(),
       jefes: jefe.JEFES,
       enElChat: (await loot.enElChat()).map((v) => ({ login: v.login, nombre: v.displayName })),
       probabilidades: PROBABILIDADES,
@@ -309,6 +311,8 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   // probar, se cierra a mano. Sin esto se quedaba "en directo" para siempre.
   if (ruta === 'POST /api/loot/directo') {
     const { abierto } = await cuerpo(req);
+    // A mano manda lo tuyo: el vigilante de OBS no lo cierra aunque no emitas.
+    directo.marcarManual(abierto !== false);
     if (abierto === false) streams.close();
     else streams.open();
     return json(res, 200, { ok: true });

@@ -43,7 +43,9 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 - **Ataque especial del jefe** (`especiales.ts`): uno por combate al bajar del 60 %. Congelar, atrapar, desconectar o arrastrar a alguien 15 s; aturdir a todos 8 s (gólem); curarse (esqueleto, liche); envenenar (hidra: la mitad de daño); vomitona (todos fallan el siguiente); el tanque se pega solo. Una línea en el chat y cartel en el overlay, con quién está afectado bajo la barra.
 - **Sonidos más bajos**: los overlays suenan al 35 % (antes 80 %). Se ajustan en el mezclador de OBS (pistas «FX Jefe» y «FX Botin») o con `?volumen=0.2` en la dirección de la fuente.
 - **Terremoto sin plugin**: el bot mueve `Captura de ventana` (`OBS_FUENTE_JUEGO`) 5 s y la deja en su sitio (probado en su OBS el 26 sep: vuelve a 0,0). La Action de Streamer.bot, solo sonido + aviso; ya se puede importar. El plugin Move está instalado y cargado, pero no se usa.
-- Hay que **reiniciar el bot** para tenerlo. 418 tests.
+- **El directo según OBS** (`core/directo.ts`): cada minuto pregunta a OBS si emite y abre o cierra el directo por el mismo camino que los avisos de Twitch. Si OBS deja de contestar 5 veces seguidas (y había contestado antes), lo cierra. «Marcar en directo para probar» del panel lo deja abierto aunque no emitas, hasta que lo cierres o haya una emisión de verdad.
+- El Lag (Freeze Filter) ya funciona y los paneles de Twitch están subidos (26 sep).
+- Hay que **reiniciar el bot** para tenerlo. 424 tests.
 
 ### Precios y límites acordados
 

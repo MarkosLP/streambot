@@ -16,6 +16,9 @@ import { aprobadorPanel } from './panel/revision.js';
 import * as loot from './interactions/loot/index.js';
 import { mostrarBotin, temblar } from './panel/obs-setup.js';
 import * as terremoto from './interactions/terremoto.js';
+import * as directo from './core/directo.js';
+import { normalize } from './core/events.js';
+import { handleEvent } from './core/handler.js';
 import { conObs } from './transport/obs.js';
 import { EFECTOS, mismoNombre } from './panel/efectos.js';
 import type { Server } from 'node:http';
@@ -100,6 +103,15 @@ async function main(): Promise<void> {
   terremoto.setTemblor(() => conObs((pedir) => temblar(pedir, { fuente: config.obs.fuenteJuego })));
   loot.arrancar();
 
+  // ¿Estás en directo? Se lo pregunta a OBS cada minuto: si un aviso de
+  // Twitch no llega, el directo ya no se queda abierto (o cerrado) para siempre.
+  directo.configurar(
+    () => conObs((pedir) => pedir<{ outputActive: boolean; outputReconnecting: boolean }>('GetStreamStatus'))
+      .then((r) => ({ emitiendo: r.outputActive || r.outputReconnecting })),
+    (evento) => handleEvent(normalize(evento === 'online' ? 'Twitch.StreamOnline' : 'Twitch.StreamOffline', {}, 'obs')),
+  );
+  directo.arrancar();
+
   log.info('Escuchando. Ctrl+C para salir.');
 }
 
@@ -107,6 +119,7 @@ async function shutdown(signal: string): Promise<void> {
   log.info(`Recibido ${signal}. Cerrando...`);
   try {
     loot.parar();
+    directo.parar();
     panelServer?.close();
     await disconnect();
     closeApprover();
