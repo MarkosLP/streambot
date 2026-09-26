@@ -624,6 +624,7 @@ async function cargarLoot() {
 
   if (document.activeElement !== $('loot-activo')) $('loot-activo').checked = d.activo;
   $('loot-activo-texto').textContent = d.activo ? 'Loot activo' : 'Loot apagado';
+  if (document.activeElement !== $('loot-canal-juega')) $('loot-canal-juega').checked = d.canalJuega;
 
   const esperando = !d.activo ? 'Loot apagado' : !d.directo ? 'Esperando al directo' : null;
   ficha('l-proximo', esperando ? '' : 'oro', esperando ?? (d.proximoEnSeg !== null ? mmss(d.proximoEnSeg) : '—'),
@@ -721,6 +722,18 @@ $('l-soltar').addEventListener('click', async () => {
     tostada(r.enviado ? `Cofre para ${r.reparto.length}` : 'Cofre repartido, pero el mensaje no salió al chat', !r.enviado);
     cargarLoot();
   } catch (err) {
+    tostada(err.message, true);
+  }
+});
+
+$('loot-canal-juega').addEventListener('change', async (e) => {
+  const valor = e.target.checked;
+  try {
+    await api('/api/loot/ajustes', { canalJuega: valor });
+    tostada(valor ? 'Juegas al Loot como uno más' : 'El Loot es solo para el chat');
+    cargarLoot();
+  } catch (err) {
+    e.target.checked = !valor;
     tostada(err.message, true);
   }
 });

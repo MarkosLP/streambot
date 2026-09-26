@@ -1,6 +1,7 @@
 import { test, describe, beforeEach, before } from 'node:test';
 import assert from 'node:assert/strict';
 
+import { config } from '../../config.js';
 import { configureDatabase, truncateAll, getDb } from '../../data/db.js';
 import { normalize } from '../../core/events.js';
 import { handleEvent } from '../../core/handler.js';
@@ -106,10 +107,19 @@ describe('quién recibe botín', () => {
     assert.deepEqual(loot.aventureros(Date.now() + 16 * 60_000), []);
   });
 
-  test('ni los bots ni el propio canal', async () => {
+  test('los bots nunca; el canal sí, salvo con LOOT_CANAL_JUEGA=false', async () => {
     await handleEvent(mensaje('nightbot'));
-    await handleEvent(mensaje('crid4m'));
-    assert.deepEqual(loot.aventureros(), []);
+    await handleEvent(mensaje(config.broadcasterLogin));
+    assert.deepEqual(loot.aventureros().map((v) => v.login), [config.broadcasterLogin]);
+
+    loot.reset();
+    ajustes.setCanalJuega(false, 'test');
+    try {
+      await handleEvent(mensaje(config.broadcasterLogin));
+      assert.deepEqual(loot.aventureros(), []);
+    } finally {
+      ajustes.setCanalJuega(true, 'test');
+    }
   });
 
   test('ni quien pidió el olvido', async () => {

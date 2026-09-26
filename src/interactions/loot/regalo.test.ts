@@ -71,11 +71,11 @@ beforeEach(() => {
 });
 
 describe('🎁 regalar a todo el chat', () => {
-  test('le toca a quien está en el chat aunque no haya escrito, sin bots ni el canal', async () => {
+  test('le toca a quien está en el chat aunque no haya escrito, canal incluido, sin bots', async () => {
     loot.setChatters(async () => [persona('ana'), persona('luis'), persona('streamelements'), persona(config.broadcasterLogin)]);
     const r = await loot.regalarCofre({ azar: fijo(0) });
     assert.ok(r.ok);
-    assert.deepEqual(r.reparto.map((x) => x.viewer.login).sort(), ['ana', 'luis']);
+    assert.deepEqual(r.reparto.map((x) => x.viewer.login).sort(), ['ana', config.broadcasterLogin, 'luis'].sort());
     assert.ok(enviados[0]!.startsWith(`🎁 ¡${streamer} regala un cofre a todo el chat! `), enviados[0]);
     assert.equal(lootDb.recientes(5)[0]!.origen, 'regalo');
     await new Promise((res) => setTimeout(res, 10));
@@ -136,8 +136,20 @@ describe('🎁 regalar a una persona', () => {
     assert.equal(lootDb.inventario('id-marta').total, 1);
   });
 
-  test('ni a un bot, ni a ti, ni a alguien desconocido', async () => {
-    for (const para of ['StreamElements', config.broadcasterLogin, 'nadie_conocido']) {
+  test('a ti también, si estás en el chat', async () => {
+    loot.setChatters(async () => [persona(config.broadcasterLogin)]);
+    const r = await loot.regalarCofre({ para: config.broadcasterLogin, azar: fijo(0) });
+    assert.ok(r.ok);
+  });
+
+  test('ni a un bot, ni a alguien desconocido, ni al canal con LOOT_CANAL_JUEGA=false', async () => {
+    ajustes.setCanalJuega(false, 'test');
+    try {
+      assert.equal((await loot.regalarCofre({ para: config.broadcasterLogin })).ok, false);
+    } finally {
+      ajustes.setCanalJuega(true, 'test');
+    }
+    for (const para of ['StreamElements', 'nadie_conocido']) {
       const r = await loot.regalarCofre({ para });
       assert.equal(r.ok, false, para);
     }

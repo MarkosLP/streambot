@@ -10,7 +10,7 @@ import * as interactionLog from '../../data/interactions.js';
 import * as lootDb from '../../data/loot.js';
 import { esBot } from '../../core/bots.js';
 import type { CtxComando } from './comandos.js';
-import { aventureros, componerCofre, enPantalla, type Reparto } from './index.js';
+import { aventureros, componerCofre, enPantalla, juega, type Reparto } from './index.js';
 import { tirar, type Azar } from './objetos.js';
 
 /**
@@ -125,7 +125,7 @@ function derrotado(j: Jefe, azar: Azar): string {
   cerrar();
   const orden = ranking(j);
   const conBotin = orden.filter(
-    ({ viewer }) => !esBot(viewer.login) && viewer.login.toLowerCase() !== config.broadcasterLogin && !consent.haPedidoOlvido(viewer.id),
+    ({ viewer }) => juega(viewer.login) && !consent.haPedidoOlvido(viewer.id),
   );
   const reparto: Reparto[] = conBotin.map(({ viewer }, i) => {
     // Quien más daño hizo (entre quienes reciben botín), Cofre del tesoro.

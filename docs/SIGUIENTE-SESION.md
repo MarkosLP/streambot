@@ -32,7 +32,8 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 - **`!dar nombre [rareza|objeto]`**: regalar objetos. Los malditos no se regalan.
 - **`!usar`**: Cuerno de guerra 🟣 (Grito + cofre de guerra), Frasco de agua bendita 🔵 (¡Bebe agua! + purifica), Calavera que susurra 🟣 (Maldición + objeto maldito). Lanzan la Action de Streamer.bot de su recompensa; 2 min entre efectos.
 - Paneles de Twitch regenerados con `!dar`, `!usar` y `!atacar`: hay que volver a subir comandos.png y loot.png.
-- Hay que **reiniciar el bot** para tenerlo. 395 tests.
+- **El canal juega al Loot** como uno más (cofres, jefe, regalos, `!dar`). Interruptor «Yo también juego» en el panel; `LOOT_CANAL_JUEGA` en el `.env`.
+- Hay que **reiniciar el bot** para tenerlo. 397 tests.
 
 ### Precios y límites acordados
 

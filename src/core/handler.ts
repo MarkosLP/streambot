@@ -184,6 +184,12 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
   }
 
   if (isIgnored(viewer)) {
+    // El canal no dispara saludos ni rachas, pero sí juega al Loot como uno
+    // más (salvo LOOT_CANAL_JUEGA=false): hablar le hace entrar en los cofres.
+    if (loot.juega(viewer.login)) {
+      loot.registrarActividad(viewer);
+      loot.recogerDelSuelo(viewer)?.catch((err) => log.error(`Loot: fallo al recoger del suelo: ${String(err)}`));
+    }
     log.debug(`${viewer.login} está en la lista de ignorados.`);
     return;
   }

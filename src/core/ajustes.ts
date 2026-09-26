@@ -18,6 +18,7 @@ import { log } from './logger.js';
 let espontaneas: boolean = config.interaccionesEspontaneas;
 let revision: boolean = config.reviewMode;
 let loot: boolean = config.loot.activo;
+let canal: boolean = config.loot.canalJuega;
 
 export function interaccionesEspontaneas(): boolean {
   return espontaneas;
@@ -38,6 +39,17 @@ export function setLootActivo(valor: boolean, quien: string): void {
   log.warn(`Loot del chat ${valor ? 'ACTIVADO' : 'DESACTIVADO'} — ${quien}.`);
 }
 
+/** ¿El canal juega al Loot como uno más? */
+export function canalJuega(): boolean {
+  return canal;
+}
+
+export function setCanalJuega(valor: boolean, quien: string): void {
+  if (canal === valor) return;
+  canal = valor;
+  log.warn(`El canal ${valor ? 'JUEGA' : 'NO juega'} al Loot — ${quien}.`);
+}
+
 export function setInteraccionesEspontaneas(valor: boolean, quien: string): void {
   if (espontaneas === valor) return;
   espontaneas = valor;
@@ -55,4 +67,5 @@ export function reset(): void {
   espontaneas = config.interaccionesEspontaneas;
   revision = config.reviewMode;
   loot = config.loot.activo;
+  canal = config.loot.canalJuega;
 }

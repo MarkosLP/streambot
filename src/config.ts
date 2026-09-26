@@ -249,6 +249,11 @@ export const config = {
     cofreRewardTitle: str('LOOT_COFRE_REWARD_TITLE', 'Cofre del tesoro'),
     /** !inventario, por persona. */
     inventarioCooldownMs: int('LOOT_INVENTARIO_COOLDOWN_MS', 60_000),
+    /**
+     * El canal juega como uno más: recibe cofres, botín del jefe y regalos
+     * (decidido el 26 sep 2026). En false, el Loot es solo para el chat.
+     */
+    canalJuega: bool('LOOT_CANAL_JUEGA', true),
   },
 
   /** #10 Pregunta Incómoda (docs/02 § 3, interacción 10). */

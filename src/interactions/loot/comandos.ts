@@ -24,6 +24,7 @@ import {
   enPantalla,
   gastarPurificacion,
   inventario,
+  juega,
   lanzarEfecto,
   notaMochila,
   puedePurificar,
@@ -272,7 +273,7 @@ export const dar: Interaction<CtxComando> = {
       return { text: `@${yo.displayName} 🎁 No veo a ${limpio} por el chat. Solo puedes dar algo a quien haya escrito hace poco.`, ...mencion(ctx) };
     }
     if (para.id === yo.id) return { text: `@${yo.displayName} 🎁 Pasarte algo de una mano a la otra no cuenta.`, ...mencion(ctx) };
-    if (para.login.toLowerCase() === config.broadcasterLogin) {
+    if (!juega(para.login)) {
       return { text: `@${yo.displayName} 🎁 ${para.displayName} no necesita botín: ¡quédatelo tú!`, ...mencion(ctx) };
     }
 

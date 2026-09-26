@@ -230,7 +230,12 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   }
 
   if (ruta === 'POST /api/loot/ajustes') {
-    const { activo } = await cuerpo(req);
+    const { activo, canalJuega } = await cuerpo(req);
+    if (canalJuega !== undefined) {
+      if (typeof canalJuega !== 'boolean') throw new ErrorHttp(400, 'canalJuega tiene que ser true o false');
+      ajustes.setCanalJuega(canalJuega, 'desde el panel');
+      return json(res, 200, { ok: true });
+    }
     if (typeof activo !== 'boolean') throw new ErrorHttp(400, 'activo tiene que ser true o false');
     ajustes.setLootActivo(activo, 'desde el panel');
     return json(res, 200, { ok: true });

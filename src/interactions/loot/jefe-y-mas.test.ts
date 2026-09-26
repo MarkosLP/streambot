@@ -85,7 +85,10 @@ describe('⚔️ el cofre de guerra sin nadie en el chat', () => {
   test('se queda en el suelo, se dice, y se lo lleva el primero que escribe', async () => {
     streams.open();
     // Quien grita es el canal: no cuenta para los cofres.
+    // Grita el canal con LOOT_CANAL_JUEGA=false: no entra en el reparto.
+    ajustes.setCanalJuega(false, 'test');
     await handleEvent(canje(config.broadcasterLogin, 'Grito de guerra'));
+    ajustes.setCanalJuega(true, 'test');
     const r = await loot.soltarCofre();
     assert.equal(r.ok, false);
     assert.match(enviados.at(-1)!, /ha caído… y no hay nadie para abrirlo\. El primero que escriba/);
@@ -103,7 +106,9 @@ describe('⚔️ el cofre de guerra sin nadie en el chat', () => {
 
   test('pasados 10 minutos, ya no está', async () => {
     streams.open();
+    ajustes.setCanalJuega(false, 'test');
     await handleEvent(canje(config.broadcasterLogin, 'Grito de guerra'));
+    ajustes.setCanalJuega(true, 'test');
     await loot.soltarCofre();
     const ana = { id: 'id-ana', login: 'ana', displayName: 'ana', isBroadcaster: false, isModerator: false, isVip: false, isSubscriber: false, rawRole: null };
     assert.equal(loot.recogerDelSuelo(ana, Math.random, Date.now() + 11 * 60_000), null);
@@ -152,8 +157,8 @@ describe('🎁 !dar', () => {
     assert.match(enviados.at(-1)!, /No veo a fantasma/);
     cooldowns.reset();
     await handleEvent(mensaje('pepe', `!dar ${config.broadcasterLogin}`));
-    assert.match(enviados.at(-1)!, /no necesita botín/);
-    assert.equal(objetos('pepe').length, 2);
+    assert.match(enviados.at(-1)!, /le da ⚪ Mapa arrugado a @/, 'al canal sí se le puede dar');
+    assert.equal(objetos('pepe').length, 1);
   });
 });
 
@@ -220,7 +225,23 @@ describe('🐉 jefe de raid', () => {
     assert.equal(objetos('luis').length, 1);
   });
 
-  test('el canal pega pero no se lleva botín', async () => {
+  test('el canal pega y se lleva botín; con LOOT_CANAL_JUEGA=false, solo pega', async () => {
+    ajustes.setCanalJuega(false, 'test');
+    try {
+      await jefe.invocar({ azar: () => 0 });
+      let n = 0;
+      while (jefe.estado() && n++ < 100) {
+        cooldowns.reset();
+        await handleEvent(mensaje(config.broadcasterLogin, '!atacar'));
+      }
+      assert.match(enviados.at(-1)!, /Sin nadie más para repartir el botín/);
+      assert.equal(lootDb.recientes(10).length, 0);
+    } finally {
+      ajustes.setCanalJuega(true, 'test');
+    }
+  });
+
+  test('el canal juega: se lleva el Cofre del tesoro si es el MVP', async () => {
     const r = await jefe.invocar({ azar: () => 0 });
     assert.ok(r.ok);
     let vueltas = 0;
@@ -228,8 +249,10 @@ describe('🐉 jefe de raid', () => {
       cooldowns.reset();
       await handleEvent(mensaje(config.broadcasterLogin, '!atacar'));
     }
-    assert.match(enviados.at(-1)!, /Sin nadie más para repartir el botín/);
-    assert.equal(lootDb.recientes(10).length, 0);
+    assert.match(enviados.at(-1)!, /ha caído! MVP /);
+    const botin = lootDb.recientes(10);
+    assert.equal(botin.length, 1);
+    assert.equal(botin[0]!.origen, 'jefe');
   });
 
   test('si se acaba el tiempo, se escapa sin botín', async () => {

@@ -82,10 +82,20 @@ export function setChatters(fn: Chatters | null): void {
   chatters = fn;
 }
 
-/** Una persona de verdad: ni bots, ni el propio canal, ni quien pidió el olvido. */
+/**
+ * Quién juega al Loot: nadie que sea un bot, y el canal solo si
+ * LOOT_CANAL_JUEGA (por defecto sí).
+ */
+export function juega(login: string): boolean {
+  const l = login.replace(/^@/, '').trim().toLowerCase();
+  if (esBot(l)) return false;
+  return l !== config.broadcasterLogin || ajustes.canalJuega();
+}
+
+/** Una persona que juega y no ha pedido el olvido. */
 function esPersona(v: Viewer): boolean {
   if (!v.id || !v.login) return false;
-  if (esBot(v.login) || v.login.toLowerCase() === config.broadcasterLogin) return false;
+  if (!juega(v.login)) return false;
   return !consent.haPedidoOlvido(v.id);
 }
 
@@ -316,7 +326,7 @@ const streamer = () => config.broadcasterLogin.charAt(0).toUpperCase() + config.
 
 /**
  * Busca a alguien por su login: primero en el chat, después entre quien ha
- * pasado alguna vez. Hace falta su id de Twitch para guardarle el botín, así
+ * pasado alguna vez (o, como el canal, tiene mochila). Hace falta su id de Twitch para guardarle el botín, así
  * que a quien nunca ha pasado por el chat no se le puede regalar nada.
  */
 async function buscarPersona(login: string, now: number): Promise<Viewer | null> {
@@ -325,7 +335,10 @@ async function buscarPersona(login: string, now: number): Promise<Viewer | null>
   if (enChat) return enChat;
   const visto = vistos.get(l)?.viewer;
   if (visto) return esPersona(visto) ? visto : null;
-  const fila = users.findByLogin(l);
+  const fila = users.findByLogin(l) ?? (() => {
+    const m = lootDb.porNombre(l);
+    return m ? { twitch_id: m.twitch_id, login: l, display_name: m.display_name } : null;
+  })();
   if (!fila) return null;
   const v: Viewer = {
     id: fila.twitch_id,
@@ -355,9 +368,7 @@ export async function regalarCofre(
   let gente: Viewer[];
   if (para.trim()) {
     if (esBot(para)) return { ok: false, motivo: `${para.trim()} es un bot` };
-    if (para.replace(/^@/, '').trim().toLowerCase() === config.broadcasterLogin) {
-      return { ok: false, motivo: 'no puedes regalarte un cofre a ti mismo' };
-    }
+    if (!juega(para)) return { ok: false, motivo: 'el canal no juega al Loot (LOOT_CANAL_JUEGA=false)' };
     const v = await buscarPersona(para, now);
     if (!v) return { ok: false, motivo: `no conozco a ${para.trim()}: tiene que haber escrito en el chat alguna vez` };
     gente = [v];
@@ -460,7 +471,7 @@ interface CtxEfecto extends Ctx {
 
 /** El que canjea un efecto está en el directo: cuenta como activo para los cofres. */
 function presente(viewer: Viewer): void {
-  if (esBot(viewer.login) || viewer.login === config.broadcasterLogin) return;
+  if (!juega(viewer.login)) return;
   if (consent.haPedidoOlvido(viewer.id)) return;
   registrarActividad(viewer);
 }
@@ -684,6 +695,7 @@ export function parar(): void {
 export function estado(now = Date.now()) {
   return {
     activo: ajustes.lootActivo(),
+    canalJuega: ajustes.canalJuega(),
     directo: streams.current() !== null,
     proximoEnSeg: proximo ? Math.max(0, Math.round((proximo - now) / 1000)) : null,
     ultimoCofre: ultimoCofre ? new Date(ultimoCofre).toISOString() : null,
