@@ -23,6 +23,12 @@
   ?demo=1&jefe=arana, con un jefe concreto (dragon, esqueleto, hidra, golem,
   liche, arana, kraken, minotauro, tanque, lag).
   ?demo=duelo, unos cuantos duelos.
+
+  Ataque especial (especiales.ts): cartel bajo la barra, destello del color
+  del jefe, y debajo quién está afectado (❄️ raftaei 12 s). Los golpes que no
+  llegan salen como «❄️ ¡CONGELADO!»; lo que se cura, en verde.
+
+  ?volumen=0.2 baja o sube el sonido (0 a 1; por defecto 0.35).
 -->
 <html lang="es">
 <head>
@@ -350,6 +356,48 @@
   .emblema .grietas { animation: brillo .9s ease-in-out infinite; }
   .emblema .runas { animation: brillo 1.8s ease-in-out infinite; }
   .emblema .estrellas { transform-origin: 100px 30px; animation: gira 3s linear infinite; }
+
+  /* ---------- Ataque especial ---------- */
+  .cartel-especial {
+    position: absolute; left: 50%; top: 320px; transform: translateX(-50%); z-index: 6;
+    min-width: 560px; padding: 14px 40px 16px; text-align: center; border-radius: 16px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--m1) 92%, transparent), color-mix(in srgb, var(--m2) 95%, transparent));
+    border: 3px solid var(--t2); box-shadow: 0 0 0 3px #000, 0 0 40px rgba(var(--tb), .75), inset 0 0 30px rgba(var(--tb), .25);
+    animation: cartel-entra .5s cubic-bezier(.2, 1.6, .4, 1) both;
+  }
+  .cartel-especial.sale { animation: cartel-sale .4s ease-in forwards; }
+  @keyframes cartel-entra { from { opacity: 0; transform: translateX(-50%) scale(2.2) rotate(-4deg); } }
+  @keyframes cartel-sale { to { opacity: 0; transform: translateX(-50%) translateY(-20px) scale(.9); } }
+  .cartel-especial .icono { font-size: 54px; line-height: 1; display: block; margin-top: -44px; filter: drop-shadow(0 0 14px rgba(var(--tb), 1)); }
+  .cartel-especial .aviso-ataque { display: block; margin-top: 4px; font-size: 16px; font-weight: 700; letter-spacing: .4em; color: var(--t1); opacity: .85; }
+  .cartel-especial .titulo-ataque {
+    display: block; font-family: "Cinzel", Georgia, serif; font-weight: 900; font-size: 50px; line-height: 1.1; text-transform: uppercase;
+    background: linear-gradient(180deg, #fff, var(--t1) 40%, var(--t2)); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 3px 0 #000) drop-shadow(0 0 16px rgba(var(--tb), .8));
+  }
+  .cartel-especial .texto-ataque { display: block; margin-top: 2px; font-size: 26px; font-weight: 700; text-shadow: 0 2px 0 #000; }
+  .destello-jefe {
+    position: absolute; inset: 0; pointer-events: none; z-index: 1;
+    background: radial-gradient(ellipse at 50% 20%, rgba(var(--tb), .55), rgba(var(--tb), .15) 45%, transparent 75%);
+    animation: destello-jefe 1.1s ease-out forwards;
+  }
+  @keyframes destello-jefe { 0% { opacity: 0; } 12% { opacity: 1; } 100% { opacity: 0; } }
+
+  /* Quién está afectado: debajo de la barra, donde va la pista. */
+  .afectados { position: absolute; left: 176px; top: 122px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .afectado {
+    display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 999px;
+    font-size: 19px; font-weight: 700; background: rgba(0, 0, 0, .7); border: 2px solid var(--t2);
+    box-shadow: 0 0 12px rgba(var(--tb), .6); text-shadow: 0 2px 0 #000;
+  }
+  .afectado b { font-variant-numeric: tabular-nums; color: var(--t1); }
+
+  /* Golpes que no llegan, curas y daño propio. */
+  .dano.estado { font-size: 38px; color: #e8eef8; }
+  .dano.estado .icono { font-size: 44px; margin-right: 6px; }
+  .dano.cura { color: #7dffa0; font-size: 56px; text-shadow: 0 3px 0 #04320f, 0 0 20px rgba(80, 255, 140, .9); }
+  .dano.propio { color: #ff6b6b; font-size: 56px; }
+  .dano.veneno { color: #b8ff6a; }
 </style>
 </head>
 <body>
@@ -403,6 +451,15 @@
     </div>
   </div>
   <div class="pista" id="pista">Escribe <b>!atacar</b> en el chat</div>
+  <div class="afectados" id="afectados" hidden></div>
+</div>
+
+<!-- Ataque especial del jefe -->
+<div class="cartel-especial" id="cartel-especial" hidden>
+  <span class="icono" id="ce-icono"></span>
+  <span class="aviso-ataque">ATAQUE ESPECIAL</span>
+  <span class="titulo-ataque" id="ce-titulo"></span>
+  <span class="texto-ataque" id="ce-texto"></span>
 </div>
 
 <div id="danos"></div>
@@ -465,7 +522,15 @@
     <path d="M80 136 L84 150 L88 136 Z M112 136 L116 150 L120 136 Z" fill="#fbf4e4" stroke="#1a0e08" stroke-width="2" stroke-linejoin="round"/>`;
   const mayuscula = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-  const sonar = (archivo) => { const a = new Audio(`../sonidos/${archivo}`); a.volume = 0.8; a.play().catch(() => {}); };
+  // Volumen bajo por defecto (el 26 sep sonaba demasiado alto). Se cambia con
+  // ?volumen=0.2 en la dirección de la fuente, o en el mezclador de OBS
+  // (pista «FX Jefe»), que es lo más cómodo.
+  const VOLUMEN = (() => {
+    const q = new URLSearchParams(location.search);
+    const v = Number(q.get('volumen'));
+    return q.has('volumen') && Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.35;
+  })();
+  const sonar = (archivo, factor = 1) => { const a = new Audio(`../sonidos/${archivo}`); a.volume = Math.min(1, VOLUMEN * factor); a.play().catch(() => {}); };
 
   // ---------- Los jefes: retrato, colores y ambiente ----------
   //
@@ -881,6 +946,7 @@
   let actual = null;      // id del jefe que se está pintando
   let visto = 0;          // último golpe pintado
   let finalVisto = null;  // id del jefe cuyo final ya se enseñó
+  let especialVisto = 0;  // último ataque especial enseñado
   let dueloVisto = null;  // último duelo enseñado (o puesto en la cola)
   const colaDuelos = [];
   let enseñandoDuelo = false;
@@ -897,9 +963,13 @@
       $('reloj').classList.toggle('prisa', j.quedanSeg <= 30);
       $('jefe').classList.toggle('critica', pct <= 25);
       for (const g of j.golpes) if (g.n > visto) { numero(g); visto = g.n; }
+      if (j.especial && j.especial.n > especialVisto) especial(j.especial);
+      else if (!j.especial && !$('cartel-especial').hidden) quitarCartel();
+      pintarAfectados(j.afectados || []);
     } else if (actual !== null && !$('jefe').hidden) {
       // Se ha ido: pinta los últimos golpes (el que lo mató) y se retira.
       desvestir();
+      quitarCartel();
       $('jefe').classList.add('sale');
       setTimeout(() => { $('jefe').hidden = true; $('jefe').classList.remove('sale'); }, 650);
     }
@@ -976,6 +1046,7 @@
     actual = j.id;
     // Los golpes de antes de que se cargara el overlay no se repiten.
     if (j.golpes.length) visto = Math.max(visto, ...j.golpes.map((g) => g.n));
+    if (j.especial && !(j.vida === j.vidaMax && j.golpes.length === 0)) especialVisto = Math.max(especialVisto, j.especial.n - 1);
     const nombre = mayuscula(j.nombre);
     $('nombre').textContent = nombre;
     $('nombre').classList.toggle('largo', nombre.length > 24);
@@ -994,8 +1065,21 @@
 
   function numero(g) {
     const el = document.createElement('div');
-    el.className = `dano${g.critico ? ' critico' : ''}`;
-    el.append(`-${g.dano}`);
+    const tipo = g.tipo || 'golpe';
+    if (tipo === 'bloqueado' || tipo === 'fallo') {
+      el.className = 'dano estado';
+      const i = document.createElement('span'); i.className = 'icono'; i.textContent = g.icono || '';
+      el.append(i, g.texto || '');
+    } else if (tipo === 'cura') {
+      el.className = 'dano cura';
+      el.append(`${g.icono || ''} +${g.dano}`);
+    } else if (tipo === 'propio') {
+      el.className = 'dano propio';
+      el.append(`${g.icono || ''} −${g.dano}`);
+    } else {
+      el.className = `dano${g.critico ? ' critico' : ''}${g.icono === '🐍' ? ' veneno' : ''}`;
+      el.append(`${g.icono === '🐍' ? '🐍 ' : ''}-${g.dano}`);
+    }
     const quien = document.createElement('small');
     quien.textContent = g.quien;
     el.append(quien);
@@ -1004,11 +1088,52 @@
     el.style.top = `${g.critico ? 205 : 220 + Math.random() * 50}px`;
     $('danos').append(el);
     setTimeout(() => el.remove(), 1600);
+    if (tipo !== 'golpe' && tipo !== 'propio') return;
     const emblema = $('emblema');
     emblema.classList.remove('golpe'); void emblema.getBoundingClientRect(); emblema.classList.add('golpe');
+    if (tipo !== 'golpe') return;
     if (g.critico && (TEMAS[document.body.dataset.jefe] || {}).temblor) {
       document.body.classList.remove('temblor'); void document.body.offsetWidth; document.body.classList.add('temblor');
     }
+  }
+
+  let cartelReloj = null;
+
+  function especial(e) {
+    especialVisto = e.n;
+    $('ce-icono').textContent = e.icono;
+    $('ce-titulo').textContent = e.titulo;
+    $('ce-texto').textContent = e.texto;
+    const cartel = $('cartel-especial');
+    cartel.classList.remove('sale');
+    cartel.hidden = true; void cartel.offsetWidth; cartel.hidden = false;
+    const d = document.createElement('div');
+    d.className = 'destello-jefe';
+    document.body.append(d);
+    setTimeout(() => d.remove(), 1200);
+    sonar('maldicion.wav', 0.9);
+    clearTimeout(cartelReloj);
+    cartelReloj = setTimeout(quitarCartel, 5500);
+  }
+
+  function quitarCartel() {
+    const cartel = $('cartel-especial');
+    if (cartel.hidden) return;
+    cartel.classList.add('sale');
+    setTimeout(() => { cartel.hidden = true; cartel.classList.remove('sale'); }, 400);
+  }
+
+  function pintarAfectados(lista) {
+    const caja = $('afectados');
+    caja.hidden = !lista.length;
+    $('pista').hidden = lista.length > 0;
+    caja.replaceChildren(...lista.map((a) => {
+      const el = document.createElement('span');
+      el.className = 'afectado';
+      el.append(`${a.icono} ${a.quien}`);
+      if (a.quedanSeg !== null) { const b = document.createElement('b'); b.textContent = `${a.quedanSeg} s`; el.append(b); }
+      return el;
+    }));
   }
 
   function acaba(f) {
@@ -1075,15 +1200,45 @@
     const tipos = Object.keys(NOMBRES);
     const tipo = NOMBRES[params.get('jefe')] ? params.get('jefe') : tipos[Math.floor(Math.random() * tipos.length)];
     const nombre = NOMBRES[tipo];
-    const estado = () => ({ jefe: vida > 0 ? { id: 1, tipo, nombre, vida, vidaMax, quedanSeg: segundos, golpes: golpes.slice(-20) } : null, final: null });
+    let especialDemo = null, afectado = null;
+    const ESPECIALES_DEMO = {
+      dragon: ['❄️', 'Aliento helado', 'congelado 15 s', '¡CONGELADO!'], esqueleto: ['💀', 'Alzar a los muertos', null, null],
+      hidra: ['🐍', 'Mordisco venenoso', 'la mitad de daño 20 s', null], golem: ['🗿', 'Terremoto', 'aturdido 8 s', '¡ATURDIDO!'],
+      liche: ['☠️', 'Drenar alma', null, null], arana: ['🕸️', 'Telaraña', 'atrapado 15 s', '¡ATRAPADO!'],
+      kraken: ['🐙', 'Tentáculo', 'al fondo 15 s', '¡AL FONDO!'], minotauro: ['🤢', 'Vomitona', null, null],
+      tanque: ['🛡️', 'Provocación fallida', null, null], lag: ['📶', 'Desconexión', 'desconectado 15 s', '¡DESCONECTADO!'],
+    };
+    function lanzarEspecialDemo(quien) {
+      const [icono, titulo, efecto, texto] = ESPECIALES_DEMO[tipo];
+      let linea = efecto ? `${quien}, ${efecto}` : 'Todos fallan el siguiente golpe';
+      if (tipo === 'esqueleto' || tipo === 'liche') { vida = Math.min(vidaMax, vida + 60); linea = '+60 de vida'; golpes.push({ n: ++n, quien: nombre, dano: 60, critico: false, tipo: 'cura', icono }); }
+      if (tipo === 'tanque') { vida = Math.max(1, vida - 48); linea = 'Se pega solo: −48'; golpes.push({ n: ++n, quien: nombre, dano: 48, critico: false, tipo: 'propio', icono }); }
+      if (texto) afectado = { quien, icono, texto, hasta: Date.now() + 6000 };
+      especialDemo = { n: 1, icono, titulo, texto: linea, at: Date.now() };
+    }
+    const estado = () => ({
+      jefe: vida > 0 ? {
+        id: 1, tipo, nombre, vida, vidaMax, quedanSeg: segundos, golpes: golpes.slice(-20),
+        especial: especialDemo && Date.now() - especialDemo.at < 6000 ? especialDemo : null,
+        afectados: afectado && afectado.hasta > Date.now() ? [{ quien: afectado.quien, icono: afectado.icono, quedanSeg: Math.ceil((afectado.hasta - Date.now()) / 1000) }] : [],
+      } : null,
+      final: null,
+    });
     pintar(estado());
     if (params.get('quieto') === '1') return;
     setTimeout(function pega() {
       const quien = nombres[Math.floor(Math.random() * nombres.length)];
       const critico = Math.random() < 0.15;
       const dano = Math.round((8 + Math.random() * 14) * (critico ? 2 : 1));
+      // Congelado (o lo que toque): sus golpes no llegan mientras dure.
+      if (afectado && afectado.quien === quien && afectado.hasta > Date.now()) {
+        golpes.push({ n: ++n, quien, dano: 0, critico: false, tipo: 'bloqueado', icono: afectado.icono, texto: afectado.texto });
+        pintar(estado());
+        return setTimeout(pega, 450 + Math.random() * 500);
+      }
       vida = Math.max(0, vida - dano); segundos = Math.max(0, segundos - 3);
-      golpes.push({ n: ++n, quien, dano, critico });
+      golpes.push({ n: ++n, quien, dano, critico, tipo: 'golpe' });
+      if (!especialDemo && vida > 0 && vida <= vidaMax * 0.6) lanzarEspecialDemo(quien);
       danos[quien] = (danos[quien] || 0) + dano;
       pintar(estado());
       if (vida > 0) return setTimeout(pega, 450 + Math.random() * 500);

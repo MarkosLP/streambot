@@ -12,6 +12,7 @@ import { esBot } from '../../core/bots.js';
 import type { CtxComando } from './comandos.js';
 import { aventureros, componerCofre, enPantalla, juega, type Reparto } from './index.js';
 import { tirar, type Azar } from './objetos.js';
+import { ESPECIALES, UMBRAL } from './especiales.js';
 
 /**
  * Jefe de raid (26 sep 2026).
@@ -60,12 +61,28 @@ export const JEFES = [
 ] as const;
 export type TipoJefe = (typeof JEFES)[number]['tipo'];
 
-/** Un golpe, para el overlay: los números de daño que saltan. */
+/**
+ * Un golpe, para el overlay: los números de daño que saltan. `tipo` dice si
+ * fue un golpe normal, uno que no pudo darse (congelado, atrapado…), un fallo
+ * (la vomitona), o la vida que se cura o se quita el propio jefe.
+ */
 export interface Golpe {
   n: number;
   quien: string;
   dano: number;
   critico: boolean;
+  tipo?: 'golpe' | 'bloqueado' | 'fallo' | 'cura' | 'propio';
+  icono?: string;
+  texto?: string;
+}
+
+/** El ataque especial en marcha, para el cartel del overlay. */
+export interface EspecialEnCurso {
+  n: number;
+  icono: string;
+  titulo: string;
+  texto: string;
+  at: number;
 }
 
 interface Jefe {
@@ -79,11 +96,20 @@ interface Jefe {
   hasta: number;
   danos: Map<string, { viewer: Viewer; dano: number }>;
   avisoMitad: boolean;
+  /** El ataque especial (especiales.ts): uno por combate. */
+  especialUsado: boolean;
+  especial: EspecialEnCurso | null;
+  bloqueos: Map<string, { hasta: number; icono: string; texto: string }>;
+  debiles: Map<string, { hasta: number; factor: number }>;
+  fallan: Set<string>;
 }
 
 let jefe: Jefe | null = null;
 let contador = 0;
 let golpesTotales = 0;
+let especialesTotales = 0;
+/** Cuánto se queda el cartel del especial en el overlay. */
+const CARTEL_ESPECIAL_MS = 6000;
 
 /** Cómo acabó el último jefe, para el rótulo final del overlay. */
 export interface Final {
@@ -112,7 +138,8 @@ export async function invocar(
   const elegido = JEFES.find((x) => x.tipo === tipo) ?? JEFES[Math.floor(azar() * JEFES.length)]!;
   const nombre = elegido.nombre;
   const vidaMax = VIDA_POR_PERSONA * Math.max(1, aventureros(now).length);
-  jefe = { id: ++contador, tipo: elegido.tipo, nombre, golpes: [], vidaMax, vida: vidaMax, hasta: now + DURACION_MS, danos: new Map(), avisoMitad: false };
+  jefe = { id: ++contador, tipo: elegido.tipo, nombre, golpes: [], vidaMax, vida: vidaMax, hasta: now + DURACION_MS, danos: new Map(), avisoMitad: false,
+    especialUsado: false, especial: null, bloqueos: new Map(), debiles: new Map(), fallan: new Set() };
   final = null;
   reloj = setTimeout(() => void terminarPorTiempo(), DURACION_MS);
   reloj.unref?.();
@@ -147,9 +174,26 @@ export const atacar: Interaction<CtxComando> = {
   ],
   run: (ctx): Salida | null => {
     const j = jefe!;
-    const { dano, critico } = golpe(lootDb.poder(ctx.viewer.id), ctx.azar ?? Math.random);
-    j.golpes.push({ n: ++golpesTotales, quien: ctx.viewer.displayName, dano, critico });
-    if (j.golpes.length > 20) j.golpes.shift();
+    const azar = ctx.azar ?? Math.random;
+    const now = Date.now();
+    const yo = ctx.viewer;
+
+    // Congelado, atrapado, desconectado…: el golpe no llega. Se ve en el
+    // overlay, no en el chat: el chat ya lo dijo al lanzar el especial.
+    const bloqueo = j.bloqueos.get(yo.id);
+    if (bloqueo && bloqueo.hasta > now) {
+      apuntarGolpe(j, { quien: yo.displayName, dano: 0, critico: false, tipo: 'bloqueado', icono: bloqueo.icono, texto: bloqueo.texto });
+      return null;
+    }
+    if (j.fallan.delete(yo.id)) {
+      apuntarGolpe(j, { quien: yo.displayName, dano: 0, critico: false, tipo: 'fallo', icono: '🤢', texto: '¡FALLO!' });
+      return null;
+    }
+
+    let { dano, critico } = golpe(lootDb.poder(yo.id), azar);
+    const debil = j.debiles.get(yo.id);
+    if (debil && debil.hasta > now) dano = Math.max(1, Math.round(dano * debil.factor));
+    apuntarGolpe(j, { quien: yo.displayName, dano, critico, tipo: 'golpe', icono: debil && debil.hasta > now ? '🐍' : undefined });
     const antes = j.danos.get(ctx.viewer.id)?.dano ?? 0;
     j.danos.set(ctx.viewer.id, { viewer: ctx.viewer, dano: antes + dano });
     j.vida = Math.max(0, j.vida - dano);
@@ -160,14 +204,54 @@ export const atacar: Interaction<CtxComando> = {
       // se apuntaba «enviado» aunque el tope por hora lo hubiera bloqueado.
       return { text, detail: (o) => (o.sent ? resumen : `${resumen} · el mensaje no salió: ${o.detail}`) };
     }
+    const mensajes: string[] = [];
+    const especial = lanzarEspecial(j, azar, now);
+    if (especial) mensajes.push(especial);
     if (!j.avisoMitad && j.vida <= j.vidaMax / 2) {
       j.avisoMitad = true;
-      const quedan = Math.max(0, Math.round((j.hasta - Date.now()) / 1000));
-      return { text: `💥 ¡${mayuscula(j.nombre)} está a la mitad (${j.vida}/${j.vidaMax})! Quedan ${quedan} s: ¡!atacar!` };
+      const quedan = Math.max(0, Math.round((j.hasta - now) / 1000));
+      mensajes.push(`💥 ¡${mayuscula(j.nombre)} está a la mitad (${j.vida}/${j.vidaMax})! Quedan ${quedan} s: ¡!atacar!`);
     }
-    return null;
+    return mensajes.length ? { text: mensajes.join(' ') } : null;
   },
 };
+
+function apuntarGolpe(j: Jefe, g: Omit<Golpe, 'n'>): void {
+  j.golpes.push({ ...g, n: ++golpesTotales });
+  if (j.golpes.length > 20) j.golpes.shift();
+}
+
+/**
+ * El ataque especial: una vez por combate, al bajar del UMBRAL de vida.
+ * Le toca a alguien de los que han pegado, al azar. Devuelve lo que se dice
+ * en el chat, o null si no toca.
+ */
+function lanzarEspecial(j: Jefe, azar: Azar, now: number): string | null {
+  if (j.especialUsado || j.vida <= 0 || j.vida > j.vidaMax * UMBRAL) return null;
+  j.especialUsado = true;
+  const esp = ESPECIALES[j.tipo];
+  const gente = [...j.danos.values()].map((d) => d.viewer);
+  if (!esp || !gente.length) return null;
+  const objetivo = gente[Math.min(gente.length - 1, Math.floor(azar() * gente.length))]!;
+  const r = esp.aplicar(j, objetivo, mayuscula(j.nombre), now);
+  if (r.vida) {
+    // Nunca lo mata ni lo deja por encima del máximo: el golpe de gracia es del chat.
+    j.vida = Math.min(j.vidaMax, Math.max(1, j.vida + r.vida));
+    apuntarGolpe(j, { quien: mayuscula(j.nombre), dano: Math.abs(r.vida), critico: false, tipo: r.vida > 0 ? 'cura' : 'propio', icono: esp.icono });
+  }
+  j.especial = { n: ++especialesTotales, icono: esp.icono, titulo: r.titulo, texto: r.texto, at: now };
+  return r.chat;
+}
+
+/** Quién está afectado ahora, para el overlay. */
+function afectados(j: Jefe, now: number) {
+  const nombre = (id: string) => j.danos.get(id)?.viewer.displayName ?? '?';
+  const lista: { quien: string; icono: string; quedanSeg: number | null }[] = [];
+  for (const [id, b] of j.bloqueos) if (b.hasta > now) lista.push({ quien: nombre(id), icono: b.icono, quedanSeg: Math.ceil((b.hasta - now) / 1000) });
+  for (const [id, d] of j.debiles) if (d.hasta > now) lista.push({ quien: nombre(id), icono: '🐍', quedanSeg: Math.ceil((d.hasta - now) / 1000) });
+  for (const id of j.fallan) lista.push({ quien: nombre(id), icono: '🤢', quedanSeg: null });
+  return lista;
+}
 
 const mayuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -244,6 +328,8 @@ export function paraOverlay(now = Date.now()) {
         vidaMax: jefe.vidaMax,
         quedanSeg: Math.max(0, Math.round((jefe.hasta - now) / 1000)),
         golpes: jefe.golpes,
+        especial: jefe.especial && now - jefe.especial.at < CARTEL_ESPECIAL_MS ? jefe.especial : null,
+        afectados: afectados(jefe, now),
       }
       : null,
     final: final && now - final.at < FINAL_MS ? final : null,

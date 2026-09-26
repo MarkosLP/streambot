@@ -158,7 +158,10 @@
     b.textContent = user;
     quien.append(b);
     const sonido = new Audio(maldito ? '../sonidos/maldicion.wav' : rareza === 'legendario' ? '../sonidos/legendario.wav' : '../sonidos/cofre.wav');
-    sonido.volume = 0.8;
+    // Bajo por defecto (el 26 sep sonaba demasiado alto). ?volumen=0.2 lo cambia,
+    // y en OBS se ajusta del todo en el mezclador, pista «FX Botin».
+    const vol = Number(q.get('volumen'));
+    sonido.volume = Number.isFinite(vol) && vol >= 0 && vol <= 1 && q.has('volumen') ? vol : 0.35;
     sonido.play().catch(() => {});
   }
 </script>

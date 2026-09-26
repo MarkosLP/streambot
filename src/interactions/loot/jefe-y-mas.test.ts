@@ -16,6 +16,7 @@ import * as interactionLog from '../../data/interactions.js';
 import * as loot from './index.js';
 import * as jefe from './jefe.js';
 import * as arena from './arena.js';
+import { ESPECIALES } from './especiales.js';
 import type { Rareza } from './objetos.js';
 
 /**
@@ -235,6 +236,87 @@ describe('✨ !usar', () => {
   });
 });
 
+describe('💥 ataques especiales del jefe', () => {
+  /** Pega hasta que el jefe lance su especial (baja del 60 %). */
+  async function hastaElEspecial(quien = 'ana') {
+    let n = 0;
+    while (jefe.paraOverlay().jefe && !jefe.paraOverlay().jefe!.especial && n++ < 100) {
+      cooldowns.reset();
+      await handleEvent(mensaje(quien, '!atacar'));
+    }
+    return jefe.paraOverlay().jefe!;
+  }
+
+  test('la araña atrapa: el siguiente !atacar no llega, y el overlay lo enseña', async () => {
+    await jefe.invocar({ tipo: 'arana', azar: () => 0 });
+    const j = await hastaElEspecial();
+    assert.equal(j.especial!.titulo, 'Telaraña');
+    assert.match(enviados.at(-1)!, /atrapa a ana en su telaraña/);
+    assert.deepEqual(j.afectados.map((a) => [a.quien, a.icono]), [['ana', '🕸️']]);
+    const vida = j.vida;
+    cooldowns.reset();
+    await handleEvent(mensaje('ana', '!atacar'));
+    const despues = jefe.paraOverlay().jefe!;
+    assert.equal(despues.vida, vida, 'atrapada, no quita vida');
+    assert.equal(despues.golpes.at(-1)!.tipo, 'bloqueado');
+    assert.equal(despues.golpes.at(-1)!.texto, '¡ATRAPADO!');
+  });
+
+  test('el esqueleto se cura, y nunca por encima del máximo', async () => {
+    await jefe.invocar({ tipo: 'esqueleto', azar: () => 0 });
+    const antes = jefe.paraOverlay().jefe!.vidaMax;
+    const j = await hastaElEspecial();
+    assert.equal(j.golpes.at(-1)!.tipo, 'cura');
+    assert.ok(j.vida <= antes);
+    assert.match(enviados.at(-1)!, /alza a los muertos y recupera \d+ de vida/);
+  });
+
+  test('la vomitona: todos fallan su siguiente golpe, y después vuelven a pegar', async () => {
+    await jefe.invocar({ tipo: 'minotauro', azar: () => 0 });
+    await hastaElEspecial();
+    const vida = jefe.paraOverlay().jefe!.vida;
+    cooldowns.reset();
+    await handleEvent(mensaje('ana', '!atacar'));
+    assert.equal(jefe.paraOverlay().jefe!.golpes.at(-1)!.tipo, 'fallo');
+    assert.equal(jefe.paraOverlay().jefe!.vida, vida);
+    cooldowns.reset();
+    await handleEvent(mensaje('ana', '!atacar'));
+    assert.ok(jefe.paraOverlay().jefe!.vida < vida, 'el siguiente, sí');
+  });
+
+  test('la hidra envenena: pega la mitad', async () => {
+    await jefe.invocar({ tipo: 'hidra', azar: () => 0 });
+    await hastaElEspecial();
+    const vida = jefe.paraOverlay().jefe!.vida;
+    cooldowns.reset();
+    await handleEvent(mensaje('ana', '!atacar'));
+    const j = jefe.paraOverlay().jefe!;
+    const g = j.golpes.at(-1)!;
+    assert.equal(g.icono, '🐍');
+    assert.equal(vida - j.vida, g.dano);
+    // Sin poder, un golpe va de 6 a 15 (30 con crítico): envenenada, la mitad.
+    assert.ok(g.dano >= 3 && g.dano <= 15, String(g.dano));
+    assert.deepEqual(j.afectados.map((a) => a.icono), ['🐍']);
+  });
+
+  test('el tanque se pega solo; y el especial sale una sola vez por combate', async () => {
+    await jefe.invocar({ tipo: 'tanque', azar: () => 0 });
+    const j = await hastaElEspecial();
+    assert.equal(j.golpes.at(-1)!.tipo, 'propio');
+    const especiales = () => enviados.filter((t) => t.includes('se da con su propio escudo')).length;
+    let n = 0;
+    while (jefe.estado() && n++ < 100) {
+      cooldowns.reset();
+      await handleEvent(mensaje('ana', '!atacar'));
+    }
+    assert.equal(especiales(), 1);
+  });
+
+  test('todos los jefes tienen su especial', () => {
+    for (const j of jefe.JEFES) assert.ok(ESPECIALES[j.tipo], j.tipo);
+  });
+});
+
 describe('⚔️ el duelo en el overlay', () => {
   test('cada duelo queda para el overlay: quién, su poder, la probabilidad y quién ganó', async () => {
     meter('pepe', 'Arco de tejo élfico', 'raro');
@@ -268,9 +350,10 @@ describe('🐉 jefe de raid', () => {
       await handleEvent(mensaje(vueltas % 3 ? 'ana' : 'luis', '!atacar'));
     }
     assert.equal(jefe.estado(), null, 'ha caído');
-    assert.equal(enviados.length, 3, 'aparece, mitad y final: nada más');
-    assert.match(enviados[1]!, /está a la mitad/);
-    assert.match(enviados[2]!, /^🏆 ¡El Dragón de Escarcha ha caído! MVP ana/);
+    assert.equal(enviados.length, 4, 'aparece, especial, mitad y final: nada más');
+    assert.match(enviados[1]!, /^❄️ ¡El Dragón de Escarcha lanza su aliento helado! (ana|luis) se queda congelado/);
+    assert.match(enviados[2]!, /está a la mitad/);
+    assert.match(enviados[3]!, /^🏆 ¡El Dragón de Escarcha ha caído! MVP (ana|luis)/);
     const deAna = lootDb.recientes(10).filter((f) => f.twitch_id === 'id-ana');
     assert.equal(deAna.length, 1);
     assert.equal(deAna[0]!.origen, 'jefe');
@@ -280,7 +363,7 @@ describe('🐉 jefe de raid', () => {
   test('el canal pega y se lleva botín; con LOOT_CANAL_JUEGA=false, solo pega', async () => {
     ajustes.setCanalJuega(false, 'test');
     try {
-      await jefe.invocar({ azar: () => 0 });
+      await jefe.invocar({ azar: () => 0, tipo: 'tanque' });
       let n = 0;
       while (jefe.estado() && n++ < 100) {
         cooldowns.reset();
@@ -294,7 +377,7 @@ describe('🐉 jefe de raid', () => {
   });
 
   test('el canal juega: se lleva el Cofre del tesoro si es el MVP', async () => {
-    const r = await jefe.invocar({ azar: () => 0 });
+    const r = await jefe.invocar({ azar: () => 0, tipo: 'tanque' });
     assert.ok(r.ok);
     let vueltas = 0;
     while (jefe.estado() && vueltas++ < 100) {
@@ -309,7 +392,7 @@ describe('🐉 jefe de raid', () => {
 
   test('el overlay ve la vida, cada golpe y, al final, el podio', async () => {
     await handleEvent(mensaje('ana'));
-    await jefe.invocar({ azar: () => 0 });
+    await jefe.invocar({ azar: () => 0, tipo: 'tanque' });
     cooldowns.reset();
     await handleEvent(mensaje('ana', '!atacar'));
     const durante = jefe.paraOverlay();
@@ -339,7 +422,7 @@ describe('🐉 jefe de raid', () => {
   });
 
   test('si el mensaje final no sale, el registro lo dice (antes apuntaba «enviado» igual)', async () => {
-    await jefe.invocar({ azar: () => 0 });
+    await jefe.invocar({ azar: () => 0, tipo: 'tanque' });
     for (let i = 0; i < config.respuestasPerHour; i++) policy.registerSent(Date.now(), true);
     let n = 0;
     while (jefe.estado() && n++ < 200) {
@@ -348,7 +431,7 @@ describe('🐉 jefe de raid', () => {
     }
     const fila = interactionLog.all().filter((r) => r.interaction === 'loot-atacar').at(-1)!;
     assert.equal(fila.status, 'blocked');
-    assert.match(fila.detail!, /^jefe derrotado, el Dragón de Escarcha: ana=\d+ · el mensaje no salió/);
+    assert.match(fila.detail!, /^jefe derrotado, el Tanque que no sabe tanquear: ana=\d+ · el mensaje no salió/);
   });
 
   test('se puede elegir el jefe, y el overlay sabe cuál es para vestirlo', async () => {
