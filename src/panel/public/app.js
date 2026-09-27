@@ -29,7 +29,13 @@ function h(tag, attrs = {}, ...hijos) {
 
 const $ = (id) => document.getElementById(id);
 
+const MAX_IMAGENES = { '/api/escenas/fondo': 1, '/api/escenas/avatar-ia': 7, '/api/escenas/avatar-rehacer': 6 };
 async function api(ruta, cuerpo) {
+  const maximo = MAX_IMAGENES[ruta];
+  if (cuerpo !== undefined && maximo && cuerpo.maxImagenes !== maximo) {
+    if (!confirm(`Esta operación puede generar hasta ${maximo} imágenes de pago, incluidos reintentos. También puede realizar llamadas de texto y visión. El importe depende del modelo y la calidad. ¿Autorizas ese máximo?`)) throw new Error('Generación cancelada');
+    cuerpo = { ...cuerpo, maxImagenes: maximo };
+  }
   const opciones = cuerpo === undefined
     ? {}
     : { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Panel': '1' }, body: JSON.stringify(cuerpo) };
@@ -1780,12 +1786,12 @@ $('e-avatar-parpadeo').addEventListener('click', async (ev) => {
   const nombre = escenas.personajes.find((p) => p.ruta === ruta)?.titulo ?? 'este personaje';
   if (!confirm(`Se rehacen los ojos entornados, cerrados y la sonrisa de «${nombre}» retocando solo su cara, y un modelo que ve comprueba cada una (si alguna sale mal, se repite una vez).
 
-3 imágenes de tu OpenAI (hasta 6 si hay que repetir; unos céntimos, ~1 min). ¿Sigo?`)) return;
+3 imágenes de tu OpenAI (hasta 6 si hay que repetir; más llamadas de visión; precio según modelo y calidad). ¿Sigo?`)) return;
   const b = ev.currentTarget;
   b.disabled = true;
   b.textContent = '⏳';
   try {
-    const r = await api('/api/escenas/avatar-rehacer', { ruta });
+    const r = await api('/api/escenas/avatar-rehacer', { ruta, maxImagenes: 6 });
     const aviso = !r.zonas ? 'Rehecho, pero no se localizó la cara: puede seguir moviéndose al parpadear'
       : r.dudosas?.length ? `Rehecho, pero ${r.dudosas.join(' y ')} no ha salido bien ni a la segunda: vuelve a pulsar 👁` : `Parpadeo arreglado en «${nombre}»`;
     tostada(aviso, !r.zonas || !!r.dudosas?.length);
@@ -1912,7 +1918,7 @@ $('ef-borrar').addEventListener('click', async () => {
 });
 
 function confirmarGenerar(nombre) {
-  return confirm(`Se generarán 8 imágenes con tu OpenAI para «${nombre}»: los 4 fondos (Empezamos, Charla, Pausa y Final) y el personaje (4 imágenes).\n\nTarda unos 3 minutos y cuesta unos céntimos. ¿Sigo?`);
+  return confirm(`Se generarán como máximo 11 imágenes con tu OpenAI para «${nombre}»: los 4 fondos (Empezamos, Charla, Pausa y Final) y el personaje (1 base + 3 variantes × 2 intentos = hasta 7 imágenes).\n\nTambién hay llamadas de texto y visión. El precio depende del modelo y la calidad. ¿Sigo?`);
 }
 
 $('e-estilo-generar').addEventListener('click', () => {
@@ -1936,8 +1942,8 @@ async function generarTodoEstilo() {
       $('e-estilo-progreso').textContent = paso.avatar
         ? `🎨 Personaje (${i + 1} de ${pasos.length}, ~1 min)…`
         : `🎨 Fondo de ${ESCENAS_INFO[paso.tipo].nombre} (${i + 1} de ${pasos.length})…`;
-      if (paso.avatar) await api('/api/escenas/avatar-ia', { descripcion: $('e-avatar-desc').value });
-      else await api('/api/escenas/fondo', { escena: paso.tipo, descripcion: descripcionesFondo[paso.tipo]?.value ?? '' });
+      if (paso.avatar) await api('/api/escenas/avatar-ia', { descripcion: $('e-avatar-desc').value, maxImagenes: 7 });
+      else await api('/api/escenas/fondo', { escena: paso.tipo, descripcion: descripcionesFondo[paso.tipo]?.value ?? '', maxImagenes: 1 });
       await cargarEscenas();
     }
     $('e-estilo-progreso').textContent = '✅ Listo: fondos y personaje nuevos';

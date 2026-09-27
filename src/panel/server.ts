@@ -618,7 +618,8 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   // Un fondo nuevo con IA (GPT Image): tarda ~30 s y cuesta unos céntimos. Uno
   // a la vez; al terminar se pone en esa escena.
   if (ruta === 'POST /api/escenas/fondo') {
-    const { escena, descripcion, titulo } = await cuerpo(req);
+    const { escena, descripcion, titulo, maxImagenes } = await cuerpo(req);
+    if (maxImagenes !== 1) throw new ErrorHttp(400, 'Confirma el máximo de una imagen');
     if (!escenas.TIPOS.includes(escena as escenas.Tipo)) throw new ErrorHttp(400, 'escena no válida');
     if (generandoFondo) throw new ErrorHttp(409, 'Ya se está generando un fondo: espera a que termine');
     generandoFondo = escena as string;
@@ -638,7 +639,8 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
 
   // Rehace los ojos cerrados y la sonrisa de un personaje retocando solo su cara (3 imágenes, 6 si hay que repetir).
   if (ruta === 'POST /api/escenas/avatar-rehacer') {
-    const { ruta: personaje } = await cuerpo(req);
+    const { ruta: personaje, maxImagenes } = await cuerpo(req);
+    if (maxImagenes !== 6) throw new ErrorHttp(400, 'Confirma el máximo de seis imágenes');
     if (!avatarIa.rutaValida(personaje)) throw new ErrorHttp(400, 'personaje no válido');
     if (generandoFondo) throw new ErrorHttp(409, 'Ya se está generando una imagen: espera a que termine');
     generandoFondo = 'avatar';
@@ -653,7 +655,8 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
 
   // Un personaje nuevo para el avatar: cuatro imágenes (~1 min, unos céntimos).
   if (ruta === 'POST /api/escenas/avatar-ia') {
-    const { descripcion, titulo } = await cuerpo(req);
+    const { descripcion, titulo, maxImagenes } = await cuerpo(req);
+    if (maxImagenes !== 7) throw new ErrorHttp(400, 'Confirma el máximo de siete imágenes');
     if (generandoFondo) throw new ErrorHttp(409, 'Ya se está generando una imagen: espera a que termine');
     generandoFondo = 'avatar';
     try {

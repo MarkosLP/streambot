@@ -781,3 +781,11 @@ test('música: GET no controla; el reporte exige credencial privada y turno', as
   assert.equal((await reporte({credencial,id:'falsa',turno:'0',tipo:'terminada'})).status,400);
 });
 
+
+test('imágenes: no inicia gasto sin aceptar el máximo de la operación', async () => {
+  for(const ruta of ['fondo','avatar-ia','avatar-rehacer']) {
+    const r=await fetch(`http://127.0.0.1:${puerto}/api/escenas/${ruta}`, {method:'POST',headers:{'X-Panel':'1','Content-Type':'application/json'},body:'{}'});
+    assert.equal(r.status,400);
+    assert.match(await r.text(),/Confirma el máximo/);
+  }
+});

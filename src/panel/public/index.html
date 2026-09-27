@@ -415,7 +415,7 @@
           <button class="boton primario" type="button" id="e-estilo-generar">🎨 Generar fondos y personaje de este estilo</button>
           <span class="nota" id="e-estilo-progreso"></span>
         </div>
-        <p class="nota">Cambia a la vez las cuatro escenas y el avatar, en directo y sin tocar OBS. Cada estilo guarda sus propios fondos y su personaje: al volver a uno, vuelve todo lo suyo. «Generar» hace 8 imágenes (4 fondos y el personaje, ~3 min, unos céntimos de tu OpenAI).</p>
+        <p class="nota">Cambia a la vez las cuatro escenas y el avatar, en directo y sin tocar OBS. Cada estilo guarda sus propios fondos y su personaje: al volver a uno, vuelve todo lo suyo. «Generar» hace hasta 11 imágenes (4 fondos y hasta 7 del personaje, incluidos reintentos), más llamadas de texto y visión.</p>
 
         <form class="estilo-form" id="e-estilo-form" hidden>
           <div class="estilo-form-campos">
@@ -511,7 +511,7 @@
                 <summary>🎨 Crear otro personaje con IA</summary>
                 <label class="campo"><span>Nombre</span><input type="text" id="e-avatar-titulo" maxlength="40" autocomplete="off" placeholder="Vacío = sale de la descripción"></label>
                 <label class="campo"><span>Cómo es (en castellano)</span><textarea id="e-avatar-desc" rows="3" maxlength="600" spellcheck="false"></textarea></label>
-                <div class="escena-botones"><button class="boton" type="button" id="e-avatar-generar">🎨 Crear personaje</button><span class="nota">4 imágenes · ~1 min · unos céntimos de tu OpenAI</span></div>
+                <div class="escena-botones"><button class="boton" type="button" id="e-avatar-generar">🎨 Crear personaje</button><span class="nota">Hasta 7 imágenes de pago · más texto y visión · requiere confirmación</span></div>
               </details>
               <form class="escenas-avatar" id="e-avatar-form">
                 <label class="campo"><span>Su bocadillo en Charla</span><input type="text" id="e-avatar-dice" maxlength="90" autocomplete="off"></label>
