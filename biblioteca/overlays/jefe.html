@@ -1010,6 +1010,17 @@
   }
 
   let glitchReloj = null;
+  let cicloJefe = 0;
+  let salidaJefe = null, salidaAmbiente = null, avisoReloj = null, salidaCartel = null;
+  // 27 sep 2026: un callback del jefe anterior no puede retirar al nuevo.
+  function cancelarRetirada() {
+    for (const reloj of [salidaJefe, salidaAmbiente, avisoReloj, cartelReloj, salidaCartel]) clearTimeout(reloj);
+    $('jefe').classList.remove('sale');
+    $('ambiente').classList.remove('apagando');
+    $('aviso').hidden = true;
+    $('cartel-especial').hidden = true;
+    $('cartel-especial').classList.remove('sale');
+  }
 
   /** Viste la pantalla con el jefe: colores, retrato, insignia y ambiente. */
   function vestir(tipo) {
@@ -1026,7 +1037,8 @@
     if (t.glitch) {
       glitchReloj = setInterval(() => {
         document.body.classList.add('glitch');
-        setTimeout(() => document.body.classList.remove('glitch'), 260);
+        const ciclo = cicloJefe;
+        setTimeout(() => { if (ciclo === cicloJefe) document.body.classList.remove('glitch'); }, 260);
       }, 2600);
     }
   }
@@ -1037,7 +1049,8 @@
     document.body.classList.remove('glitch');
     const capa = $('ambiente');
     capa.classList.add('apagando');
-    setTimeout(() => { capa.replaceChildren(); capa.classList.remove('apagando'); }, 1200);
+    const ciclo = cicloJefe;
+    salidaAmbiente = setTimeout(() => { if (ciclo !== cicloJefe) return; capa.replaceChildren(); capa.classList.remove('apagando'); }, 1200);
   }
 
   let actual = null;      // id del jefe que se está pintando
@@ -1065,12 +1078,14 @@
       if (j.especial && j.especial.n > especialVisto) especial(j.especial);
       else if (!j.especial && !$('cartel-especial').hidden) quitarCartel();
       pintarAfectados(j.afectados || []);
-    } else if (actual !== null && !$('jefe').hidden) {
+    } else if (actual !== null) {
+      actual = null;
+      const ciclo = ++cicloJefe;
       // Se ha ido: pinta los últimos golpes (el que lo mató) y se retira.
       desvestir();
       quitarCartel();
       $('jefe').classList.add('sale');
-      setTimeout(() => { $('jefe').hidden = true; $('jefe').classList.remove('sale'); }, 650);
+      salidaJefe = setTimeout(() => { if (ciclo !== cicloJefe) return; $('jefe').hidden = true; $('jefe').classList.remove('sale'); }, 650);
     }
     if (d.final && d.final.id !== finalVisto) acaba(d.final);
     for (const duelo of d.duelos || []) {
@@ -1142,6 +1157,8 @@
   }
 
   function aparece(j) {
+    cancelarRetirada();
+    ++cicloJefe;
     actual = j.id;
     // Los golpes de antes de que se cargara el overlay no se repiten.
     if (j.golpes.length) visto = Math.max(visto, ...j.golpes.map((g) => g.n));
@@ -1156,7 +1173,8 @@
     if (j.vida === j.vidaMax && j.golpes.length === 0) {
       $('aviso').hidden = false;
       sonar('terremoto.wav');
-      setTimeout(() => { $('aviso').hidden = true; }, 3400);
+      const ciclo = cicloJefe;
+      avisoReloj = setTimeout(() => { if (ciclo === cicloJefe) $('aviso').hidden = true; }, 3400);
     }
     const barra = $('jefe');
     barra.hidden = true; void barra.offsetWidth; barra.hidden = false;
@@ -1217,6 +1235,7 @@
   let cartelReloj = null;
 
   function especial(e) {
+    clearTimeout(salidaCartel);
     especialVisto = e.n;
     $('ce-icono').textContent = e.icono;
     $('ce-titulo').textContent = e.titulo;
@@ -1235,9 +1254,11 @@
 
   function quitarCartel() {
     const cartel = $('cartel-especial');
-    if (cartel.hidden) return;
+    clearTimeout(cartelReloj);
+    if (cartel.hidden || cartel.classList.contains('sale')) return;
     cartel.classList.add('sale');
-    setTimeout(() => { cartel.hidden = true; cartel.classList.remove('sale'); }, 400);
+    const ciclo = cicloJefe;
+    salidaCartel = setTimeout(() => { if (ciclo !== cicloJefe) return; cartel.hidden = true; cartel.classList.remove('sale'); }, 400);
   }
 
   function pintarAfectados(lista) {
