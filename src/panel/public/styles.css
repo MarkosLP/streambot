@@ -1201,3 +1201,13 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
   .grupo-nav { margin: 8px 0 2px; }
 }
 #v-loot .subtitulo { margin-top: 18px; }
+
+/* Actividad de Inicio legible */
+.log.corto li.act { display: grid; grid-template-columns: auto 1.4em 1fr; gap: 8px; align-items: baseline; font-family: inherit; }
+.log.corto .act-icono { text-align: center; }
+.log.corto .act.chat .msg strong { color: var(--oro); font-weight: 700; }
+.log.corto .act.bot .msg { color: var(--texto); }
+.log.corto .act.evento .msg { color: var(--texto); font-weight: 600; }
+.log.corto .act.warn .msg { color: var(--ambar); }
+.log.corto .act.error .msg { color: var(--rojo); }
+.log.corto { font: 0.86rem/1.5 inherit; font-family: inherit; }

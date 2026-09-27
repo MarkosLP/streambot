@@ -511,6 +511,45 @@ function lineasLog(lista) {
   });
 }
 
+/**
+ * La Actividad de Inicio, en cristiano (27 sep): el registro dice
+ * «<viewer.message> Pepe: hola  (mod, sub)» o «[ENVIADO · loot] …»; aquí sale
+ * «💬 Pepe: hola» y «🤖 …». Lo que el bot escribe vuelve por el chat con tu
+ * nombre: esa copia no se repite. Los cooldowns, fuera. El Registro sigue
+ * teniéndolo todo tal cual.
+ */
+const ICONOS_EVENTO = {
+  'viewer.message': '💬', 'viewer.follow': '❤️', 'viewer.sub': '💜', 'viewer.giftsub': '🎁', 'viewer.giftbomb': '🎁',
+  'viewer.cheer': '💎', 'viewer.redeem': '🪙', 'channel.raid': '⚔️', 'stream.online': '🔴', 'stream.offline': '⏹️', 'chat.moderacion': '🛡️',
+};
+function actividad(lista) {
+  const enviados = new Set();
+  const salida = [];
+  for (const l of lista) {
+    if (/: cooldown, faltan/.test(l.msg)) continue;
+    const env = /^\[ENVIADO · [^\]]*\] ([\s\S]*)$/.exec(l.msg);
+    if (env) {
+      enviados.add(env[1].trim());
+      salida.push({ at: l.at, clase: 'bot', icono: '🤖', partes: [env[1]] });
+      continue;
+    }
+    const ev = /^<([a-z.]+)> ([\s\S]*)$/.exec(l.msg);
+    if (ev) {
+      if (ev[1] === 'viewer.message') {
+        const m = /^([^:]+): ([\s\S]*?)(?:  \(([^)]*)\))?$/.exec(ev[2]);
+        if (!m) continue;
+        if (enviados.has(m[2].trim())) continue; // el eco de lo que acaba de decir el bot
+        salida.push({ at: l.at, clase: 'chat', icono: m[3]?.includes('PRIMER MENSAJE') ? '👋' : '💬', partes: [h('strong', {}, m[1]), `: ${m[2]}`] });
+      } else {
+        salida.push({ at: l.at, clase: 'evento', icono: ICONOS_EVENTO[ev[1]] ?? '•', partes: [ev[2]] });
+      }
+      continue;
+    }
+    salida.push({ at: l.at, clase: l.level, icono: l.level === 'error' ? '⛔' : l.level === 'warn' ? '⚠️' : '·', partes: [l.msg] });
+  }
+  return salida;
+}
+
 function anadirLog(nuevas) {
   if (!nuevas.length) return;
   ultimoLog = nuevas[nuevas.length - 1].n;
@@ -527,9 +566,9 @@ function pintarLog() {
   if (abajo) log.scrollTop = log.scrollHeight;
 
   const corto = $('log-corto');
-  const recientes = lineas.filter((l) => l.level !== 'debug').slice(-18);
+  const recientes = actividad(lineas.filter((l) => l.level !== 'debug')).slice(-18);
   corto.replaceChildren(...(recientes.length
-    ? lineasLog(recientes)
+    ? recientes.map((a) => h('li', { class: `act ${a.clase}` }, h('time', {}, hora(a.at)), h('span', { class: 'act-icono', 'aria-hidden': 'true' }, a.icono), h('span', { class: 'msg' }, ...a.partes)))
     : [h('li', { class: 'log-vacio' }, 'Todavía no ha pasado nada.')]));
   corto.scrollTop = corto.scrollHeight;
 }
@@ -2397,9 +2436,8 @@ const VARIANTES_OVERLAY = {
     { nombre: '📰 Con tema', q: '?tipo=charla&demo=1&tema=1' },
     { nombre: '⏳ Pausa', q: '?tipo=pausa&demo=1' },
     { nombre: '🌙 Final', q: '?tipo=final&demo=1' },
-    { nombre: '🌈 Colorido', q: '?tipo=inicio&demo=1&estilo=alegre' },
-    { nombre: '🌈 Charla', q: '?tipo=charla&demo=1&estilo=alegre' },
-    { nombre: '🍵 Acogedor', q: '?tipo=pausa&demo=1&estilo=acogedor' },
+    { nombre: '💠 Vibrante', q: '?tipo=inicio&demo=1&estilo=alegre' },
+    { nombre: '🕯️ Cálido', q: '?tipo=pausa&demo=1&estilo=acogedor' },
   ],
   'jefe.html': [
     ...[['dragon', '🐉 Dragón'], ['esqueleto', '💀 Esqueleto'], ['hidra', '🐍 Hidra'], ['golem', '🗿 Gólem'], ['liche', '☠️ Liche'],
@@ -2421,8 +2459,22 @@ const CARPETAS = {
   '': { titulo: 'Iconos', ancho: false },
   twitch: { titulo: 'Twitch · moneda y recompensas', ancho: false },
   'twitch/paneles': { titulo: 'Twitch · paneles', ancho: true },
+  fondos: { titulo: 'Fondos de las escenas', ancho: true },
+  jefes: { titulo: 'Jefes', ancho: false },
+  objetos: { titulo: 'Objetos del botín', ancho: false },
 };
-const tituloCarpeta = (c) => CARPETAS[c]?.titulo ?? c;
+// Cada personaje es una carpeta con fecha (avatar/oscuro-2026-09-27T09-02-55):
+// en los filtros van todos juntos, y cada uno se llama por su título.
+const esPersonaje = (c) => c.startsWith('avatar/');
+const filtroDe = (c) => (esPersonaje(c) ? 'avatar' : c);
+function tituloCarpeta(c) {
+  if (c === 'avatar') return 'Personajes';
+  if (esPersonaje(c)) {
+    const t = galeria.imagenes.find((i) => i.carpeta === c && i.titulo)?.titulo;
+    return `Personaje · ${t ? t.split(' · ')[0] : c.slice('avatar/'.length)}`;
+  }
+  return CARPETAS[c]?.titulo ?? c;
+}
 const rutaCarpeta = (c) => `imagenes/${c ? `${c}/` : ''}`;
 
 const galeria = { imagenes: [], carpeta: null, texto: '', fondo: 'cuadros', visibles: [] };
@@ -2463,7 +2515,8 @@ function pintarGaleria() {
     return;
   }
   const carpetas = [...new Set(todas.map((i) => i.carpeta))];
-  if (galeria.carpeta !== null && !carpetas.includes(galeria.carpeta)) galeria.carpeta = null;
+  const filtros = [...new Set(carpetas.map(filtroDe))];
+  if (galeria.carpeta !== null && !filtros.includes(galeria.carpeta)) galeria.carpeta = null;
 
   $('n-imagenes').textContent = `${todas.length} imágenes · PNG, GIF, WebP o JPG`;
   const chip = (carpeta, texto, cuenta) => h('button', {
@@ -2472,12 +2525,12 @@ function pintarGaleria() {
   }, texto, h('span', { class: 'cuenta' }, String(cuenta)));
   $('g-carpetas').replaceChildren(
     chip(null, 'Todas', todas.length),
-    ...carpetas.map((c) => chip(c, tituloCarpeta(c), todas.filter((i) => i.carpeta === c).length)),
+    ...filtros.map((f) => chip(f, tituloCarpeta(f), todas.filter((i) => filtroDe(i.carpeta) === f).length)),
   );
 
   const texto = galeria.texto.trim().toLowerCase();
   const filtradas = todas.filter((i) =>
-    (galeria.carpeta === null || i.carpeta === galeria.carpeta) &&
+    (galeria.carpeta === null || filtroDe(i.carpeta) === galeria.carpeta) &&
     (!texto || `${i.carpeta}/${i.nombre} ${i.titulo ?? ''}`.toLowerCase().includes(texto)));
   // El orden en que el visor pasa de una a otra: el de la pantalla.
   galeria.visibles = [];
