@@ -41,6 +41,13 @@
   .podio b { color: #fff; font-weight: 600; }
   .barra { height: 8px; border-radius: 8px; background: rgba(255, 255, 255, .12); overflow: hidden; margin-top: 4px; }
   .barra i { display: block; height: 100%; width: 0; border-radius: 8px; background: var(--acento); box-shadow: 0 0 12px var(--acento); transition: width 1.2s cubic-bezier(.2, .8, .2, 1); }
+  /* Con emblema pintado (imagenes/emblemas): a la izquierda, y la etiqueta sin emoji. */
+  .vista.con-emblema { grid-template-columns: 76px minmax(0, 1fr); column-gap: 14px; align-items: center; inset: 8px 22px 8px 12px; }
+  .vista.con-emblema > .cuerpo { display: grid; gap: 4px; min-width: 0; }
+  .emblema { width: 84px; height: 84px; margin: -6px; object-fit: contain;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .6)) drop-shadow(0 0 12px color-mix(in srgb, var(--acento) 55%, transparent)); }
+  .vista.ve .emblema { animation: emblema-entra .7s cubic-bezier(.2, 1.5, .4, 1) both; }
+  @keyframes emblema-entra { from { opacity: 0; transform: scale(.5) rotate(-10deg); } }
   .fila { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
   .fila .grande { font-size: 26px; }
   .cifra { font-family: var(--nombre); font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; flex: none; }
@@ -81,24 +88,41 @@ function ponerEstilo(estilo, ap) {
   }
 }
 
+// Emblemas pintados, cargados de antemano. Sin imagen, la vista como siempre.
+// Si una falla (no existe), esa vista sale como siempre.
+const PINTADOS = {};
+for (const tipo of ['top', 'follow', 'sub', 'meta']) {
+  const im = new Image();
+  PINTADOS[tipo] = im.src = `../imagenes/emblemas/${tipo}.png`;
+  im.onerror = () => { delete PINTADOS[tipo]; };
+}
+/** Una vista: con emblema si lo hay (y entonces la etiqueta sin su emoji). */
+function vista(tipo, emoji, etiqueta, ...resto) {
+  if (!PINTADOS[tipo]) return h('div', 'vista', h('div', 'etq', `${emoji} ${etiqueta}`), ...resto);
+  const img = h('img', 'emblema');
+  img.src = PINTADOS[tipo];
+  img.alt = '';
+  return h('div', 'vista con-emblema', img, h('div', 'cuerpo', h('div', 'etq', etiqueta), ...resto));
+}
+
 /** Cada cosa que puede salir; null si aún no tiene datos. */
 const VISTAS = {
   top(d) {
     const p = d.top;
     if (!p.podio.length) return null;
-    return h('div', 'vista', h('div', 'etq', `🏆 Temporada de ${p.nombre}`),
+    return vista('top', '🏆', `Temporada de ${p.nombre}`,
       h('div', 'grande', `${p.podio[0].nombre} · ${p.podio[0].puntos}`),
       p.podio.length > 1 ? h('div', 'podio', ...p.podio.slice(1).map((x, i) => h('span', null, `${i + 2}º `, h('b', null, x.nombre), ` ${x.puntos}`))) : h('div', 'sub', '¡Escribe en el chat y gana cofres!'));
   },
   follow(d) {
     const f = d.ultimoFollow;
     if (!f) return null;
-    return h('div', 'vista', h('div', 'etq', '❤ Último seguidor'), h('div', 'grande', f.quien), h('div', 'sub', haceCuanto(f.at)));
+    return vista('follow', '❤', 'Último seguidor', h('div', 'grande', f.quien), h('div', 'sub', haceCuanto(f.at)));
   },
   sub(d) {
     const s = d.ultimoSub;
     if (!s) return null;
-    return h('div', 'vista', h('div', 'etq', '★ Último sub'), h('div', 'grande', s.quien), h('div', 'sub', `${s.texto} · ${haceCuanto(s.at)}`));
+    return vista('sub', '★', 'Último sub', h('div', 'grande', s.quien), h('div', 'sub', `${s.texto} · ${haceCuanto(s.at)}`));
   },
   meta(d) {
     const m = d.meta;
@@ -106,7 +130,7 @@ const VISTAS = {
     const barra = h('div', 'barra', h('i'));
     const pct = Math.min(100, (m.actual / Math.max(1, m.objetivo)) * 100);
     setTimeout(() => { barra.firstChild.style.width = `${pct}%`; }, 60);
-    return h('div', 'vista', h('div', 'etq', `🎯 ${m.titulo}`),
+    return vista('meta', '🎯', m.titulo,
       h('div', 'fila', h('div', 'grande', m.actual >= m.objetivo ? '¡Conseguida!' : `Faltan ${m.objetivo - m.actual}`), h('div', 'cifra', `${m.actual} / ${m.objetivo}`)),
       barra);
   },
