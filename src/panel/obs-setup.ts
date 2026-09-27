@@ -449,3 +449,46 @@ export async function anadirAvatar(pedir: PedirObs, escena: string): Promise<str
   });
   return `Avatar añadido a «${escena}», abajo a la derecha. Muévelo y cámbialo de tamaño como quieras en OBS.`;
 }
+
+// ---------------------------------------------------------------------------
+// Música (core/musica.ts)
+// ---------------------------------------------------------------------------
+
+export const FUENTE_MUSICA = 'MUS Música';
+export const urlMusica = () => `http://127.0.0.1:${config.panel.port}/biblioteca/overlays/musica.html`;
+
+/**
+ * La fuente de la música en las escenas que elijas. Es UNA sola fuente
+ * compartida: al cambiar de escena la canción sigue, no vuelve a empezar.
+ * Su audio va por OBS (sale en el mezclador como «MUS Música») y también a
+ * tus cascos (monitorizar y enviar), para que oigas lo mismo que el directo.
+ * Solo añade: donde ya está, no se toca.
+ */
+export async function anadirMusica(pedir: PedirObs, escenas: string[]): Promise<string[]> {
+  const ajustes = { width: 1920, height: 1080, is_local_file: false, url: urlMusica(), shutdown: false, restart_when_active: false, reroute_audio: true };
+  const hecho: string[] = [];
+  const { inputs } = await pedir<{ inputs: { inputName: string }[] }>('GetInputList');
+  let existe = inputs.some((i) => i.inputName === FUENTE_MUSICA);
+  if (existe) await pedir('SetInputSettings', { inputName: FUENTE_MUSICA, inputSettings: ajustes, overlay: true });
+  for (const escena of escenas) {
+    const { sceneItems } = await pedir<{ sceneItems: { sourceName: string }[] }>('GetSceneItemList', { sceneName: escena });
+    if (sceneItems.some((i) => i.sourceName === FUENTE_MUSICA)) {
+      hecho.push(`«${escena}»: ya tenía la música.`);
+      continue;
+    }
+    let sceneItemId: number;
+    if (!existe) {
+      ({ sceneItemId } = await pedir<{ sceneItemId: number }>('CreateInput', {
+        sceneName: escena, inputName: FUENTE_MUSICA, inputKind: 'browser_source', inputSettings: ajustes, sceneItemEnabled: true,
+      }));
+      existe = true;
+      await pedir('SetInputAudioMonitorType', { inputName: FUENTE_MUSICA, monitorType: 'OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT' }).catch(() => {});
+      hecho.push(`Fuente «${FUENTE_MUSICA}» creada: su volumen está en el mezclador de OBS.`);
+    } else {
+      ({ sceneItemId } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: FUENTE_MUSICA, sceneItemEnabled: true }));
+    }
+    await pantallaCompleta(pedir, escena, sceneItemId);
+    hecho.push(`«${escena}»: música añadida.`);
+  }
+  return hecho;
+}

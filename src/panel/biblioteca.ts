@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { EFECTOS } from './efectos.js';
+import * as rotulos from './rotulos.js';
 
 /**
  * Biblioteca de contenido: sonidos, overlays e imágenes para los efectos.
@@ -10,11 +11,14 @@ import { EFECTOS } from './efectos.js';
  * Vive en la carpeta `biblioteca/` del proyecto. Lo que metas ahí aparece en
  * el panel, con su ruta lista para pegar en Streamer.bot u OBS.
  *
- * El panel solo sirve archivos de esas tres carpetas, solo con extensiones
+ * El panel solo sirve archivos de esas carpetas, solo con extensiones
  * conocidas y solo por su nombre: nada de `..`. Subcarpetas, solo en
  * imágenes (`imagenes/twitch/paneles/`) y como mucho tres niveles: los
  * sonidos y los overlays se enlazan entre sí con rutas relativas
- * (`../sonidos/x.wav`) que una subcarpeta rompería.
+ * (`../sonidos/x.wav`) que una subcarpeta rompería. La música va en
+ * `musica/<lista>/<canción>` (core/musica.ts), con nombres de canción tal cual
+ * vienen (tildes, comas, &…): ahí solo se prohíben barras, `..` y los
+ * caracteres que Windows no admite.
  */
 
 export const DIR_BIBLIOTECA = fileURLToPath(new URL('../../biblioteca/', import.meta.url));
@@ -23,6 +27,10 @@ const TIPOS = {
   sonidos: { '.wav': 'audio/wav', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg' },
   overlays: { '.html': 'text/html; charset=utf-8' },
   imagenes: { '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' },
+  musica: {
+    '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.oga': 'audio/ogg', '.opus': 'audio/ogg', '.wav': 'audio/wav',
+    '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.flac': 'audio/flac', '.webm': 'audio/webm',
+  },
 } as const satisfies Record<string, Record<string, string>>;
 
 export type Seccion = keyof typeof TIPOS;
@@ -43,9 +51,13 @@ export interface Archivo {
   duracionSeg: number | null;
   /** Efectos del catálogo que lo usan. */
   usadoPor: string[];
+  /** Fondos y personajes generados con IA: su título (rotulos.ts), o null. */
+  titulo: string | null;
 }
 
 const NOMBRE_VALIDO = /^[\w][\w .()-]*$/;
+/** Canciones: como vengan, salvo lo que Windows no admite y lo que podría salirse de la carpeta. */
+export const NOMBRE_CANCION = /^[^\\/:*?"<>|\u0000-\u001f.][^\\/:*?"<>|\u0000-\u001f]*$/;
 
 /** Duración de un WAV: bytes del bloque `data` entre bytes por segundo. */
 async function duracionWav(ruta: string): Promise<number | null> {
@@ -70,6 +82,18 @@ async function duracionWav(ruta: string): Promise<number | null> {
   } finally {
     await fd?.close();
   }
+}
+
+const VARIANTES_AVATAR: Record<string, string> = { 'base.png': '', 'cerrados.png': ' · ojos cerrados', 'contento.png': ' · contento' };
+
+/** El título de un fondo o de una imagen de personaje: el del .json de al lado (rotulos.ts). */
+async function tituloImagen(sub: string[], nombre: string, dir: string): Promise<string | null> {
+  if (sub.length === 1 && sub[0] === 'fondos') return (await rotulos.leer(`imagenes/fondos/${nombre}`, dir))?.titulo ?? null;
+  if (sub.length === 2 && sub[0] === 'avatar' && nombre in VARIANTES_AVATAR) {
+    const t = (await rotulos.leer(`imagenes/avatar/${sub[1]}`, dir))?.titulo ?? (sub[1] === 'errante' ? 'El errante' : null);
+    return t ? t + VARIANTES_AVATAR[nombre] : null;
+  }
+  return null;
 }
 
 function usadoPor(seccion: Seccion, nombre: string): string[] {
@@ -114,6 +138,7 @@ async function recorrer(dir: string, seccion: Seccion, sub: string[], archivos: 
       bytes: info.size,
       duracionSeg: extname(nombre).toLowerCase() === '.wav' ? await duracionWav(ruta) : null,
       usadoPor: sub.length ? [] : usadoPor(seccion, nombre),
+      titulo: seccion === 'imagenes' ? await tituloImagen(sub, nombre, dir) : null,
     });
   }
   // Primero lo de esta carpeta, después cada subcarpeta.
@@ -132,7 +157,7 @@ export function resolver(pathname: string, dir = DIR_BIBLIOTECA): { ruta: string
   // Cada trozo se decodifica y se comprueba POR SEPARADO: un %2F dentro de un
   // nombre no puede colar una barra, ni un %2E%2E un "..".
   const trozos = m[2].split('/');
-  if (trozos.length > 1 && (seccion !== 'imagenes' || trozos.length > PROFUNDIDAD + 1)) return null;
+  if (seccion === 'musica' ? trozos.length !== 2 : trozos.length > 1 && (seccion !== 'imagenes' || trozos.length > PROFUNDIDAD + 1)) return null;
   const partes: string[] = [];
   for (const t of trozos) {
     let parte: string;
@@ -141,7 +166,7 @@ export function resolver(pathname: string, dir = DIR_BIBLIOTECA): { ruta: string
     } catch {
       return null;
     }
-    if (!NOMBRE_VALIDO.test(parte) || parte.includes('..')) return null;
+    if (!(seccion === 'musica' ? NOMBRE_CANCION : NOMBRE_VALIDO).test(parte) || parte.includes('..')) return null;
     partes.push(parte);
   }
   const tipo = (TIPOS[seccion] as Record<string, string>)[extname(partes.at(-1)!).toLowerCase()];

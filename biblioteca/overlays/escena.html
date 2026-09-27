@@ -1,8 +1,16 @@
 <!doctype html>
 <!--
-  Escenas del directo, para OBS. Estilo cinemático oscuro (27 sep 2026):
-  un paisaje en capas con niebla, luna, rayos de luz y ceniza; la interfaz,
-  mínima: líneas finas y tipografía.
+  Escenas del directo, para OBS. Tres estilos, que se eligen en el panel
+  (Escenas → Estilo) y cambian en directo; ?estilo=… lo fuerza:
+    oscuro     cinemático: niebla, ceniza y lumbres, líneas finas y serif
+    alegre     «Vibrante» (Aniimo, RPGs de anime): paneles de cristal con la
+               esquina cortada, letra Sora y luces desenfocadas
+    acogedor   «Cálido» (lo-fi): el mismo cristal en tonos cálidos, letra
+               Fraunces y polvo de luz
+    propios    los que crea Crid4m en el panel (id 'mi…'): forma oscura o
+               redonda, sus cuatro colores, una letra y unas partículas
+  El fondo es la foto generada con IA para ese estilo; sin ella, el paisaje
+  dibujado (oscuro) o solo el color del cielo (los demás).
 
     escena.html?tipo=inicio   Empezamos en breve
     escena.html?tipo=charla   Just Chatting: hueco de cámara, chat y datos.
@@ -18,6 +26,9 @@
   El hueco de la cámara de Charla (48, 48, 1280×720) es HUECO_CAMARA en
   src/panel/obs-setup.ts: si cambias uno, cambia el otro.
 
+  ?ap={"base":…,"letra":…,"particulas":…,"colores":{…}} pinta ese aspecto sin
+  guardarlo (la vista previa del formulario de estilos del panel).
+
   Lo que viene del chat se pinta siempre con textContent, nunca como HTML.
 -->
 <html lang="es">
@@ -25,7 +36,7 @@
 <meta charset="utf-8">
 <title>Escena</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400;1,500&family=Inter:wght@400;500;600&family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&family=Baloo+2:wght@500;600;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&family=Press+Start+2P&family=Bangers&family=Sora:wght@300;400;500;600&family=Fraunces:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap">
 <style>
   :root {
     --pergamino: #efe6d6; --tenue: #9d968c; --ambar: #e8a24a; --ambar-claro: #ffd08a;
@@ -199,6 +210,41 @@
   .msg img { height: 30px; vertical-align: -7px; margin: 0 2px; }
   .msg.canal .txt { font-family: var(--serif); font-style: italic; font-size: 28px; color: var(--ambar-claro); }
 
+  /* ======================= Tema del que hablas (panel → Temas) ======================= */
+  /* En Charla, en el sitio de las tres tarjetas de datos. */
+  .tema { position: absolute; left: 500px; top: 816px; width: 828px; box-sizing: border-box; display: grid; gap: 8px; animation: revela 1.4s cubic-bezier(.2, .7, .2, 1) both; }
+  .sin-intro .tema { animation: none; }
+  .tema .etq { font-size: 13px; font-weight: 600; letter-spacing: .34em; text-transform: uppercase; color: var(--ambar); }
+  .tema .etq span { color: var(--tenue); letter-spacing: .2em; }
+  .tema .tit { font-family: var(--serif); font-size: 32px; font-weight: 500; line-height: 1.18; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    text-shadow: 0 2px 16px rgba(0, 0, 0, .8); }
+  .tema .preg { font-size: 19px; color: var(--ambar-claro); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .tema .preg:empty { display: none; }
+  .tema::before { content: ""; position: absolute; left: -22px; top: 2px; bottom: 2px; width: 2px; background: linear-gradient(180deg, var(--ambar), transparent); }
+  body.redondo .tema { padding: 16px 24px 18px; background: var(--vidrio); border: 1px solid var(--vidrio-borde); border-radius: 3px;
+    -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%); }
+  body.redondo .tema::before { left: -1px; top: -1px; bottom: auto; width: 64px; height: 3px; background: var(--grad); }
+  body.redondo .tema .etq { color: var(--acento); font-size: 12px; }
+  body.redondo .tema .tit { font-weight: 600; font-size: 28px; text-shadow: none; }
+  body.redondo .tema .preg { color: rgba(255, 255, 255, .8); }
+
+  /* ======================= Lo que suena (core/musica.ts) ======================= */
+  .sonando { position: absolute; right: 48px; top: 40px; display: flex; align-items: center; gap: 14px; max-width: 520px; text-align: right;
+    opacity: 0; transform: translateY(-8px); transition: opacity 1s ease, transform 1s ease; }
+  .sonando.ve { opacity: 1; transform: none; }
+  .sonando .barras { display: flex; align-items: flex-end; gap: 3px; height: 18px; flex: none; order: 2; }
+  .sonando .barras i { width: 3px; height: 100%; border-radius: 2px; background: var(--ambar); transform-origin: bottom; animation: barra 1s ease-in-out infinite; }
+  .sonando .barras i:nth-child(2) { animation-delay: -.3s; } .sonando .barras i:nth-child(3) { animation-delay: -.6s; }
+  @keyframes barra { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
+  .sonando .etq { font-size: 12px; font-weight: 600; letter-spacing: .34em; text-transform: uppercase; color: var(--ambar); }
+  .sonando .txt { margin-top: 2px; font-family: var(--serif); font-style: italic; font-size: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, .8); }
+  .sonando > div:first-child { min-width: 0; }
+  body.redondo .sonando { padding: 10px 16px; background: var(--vidrio); border: 1px solid var(--vidrio-borde); border-radius: 12px 3px 3px 12px; border-right: 3px solid var(--acento);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  body.redondo .sonando .txt { font-family: var(--sans); font-style: normal; font-weight: 500; font-size: 19px; text-shadow: none; }
+  .t-charla .sonando { top: 24px; }
+
   /* ======================= Aviso de botín ======================= */
   .aviso { position: absolute; left: 50%; bottom: 250px; transform: translateX(-50%); display: grid; justify-items: center; gap: 10px; text-align: center; pointer-events: none;
     animation: aviso 6.5s ease both; z-index: 5; white-space: nowrap; }
@@ -209,6 +255,163 @@
   .aviso::after { content: ""; width: 560px; height: 1px; background: linear-gradient(90deg, transparent, var(--r), transparent); animation: barre 6.5s ease both; }
   @keyframes aviso { 0% { opacity: 0; filter: blur(10px); transform: translate(-50%, 10px); } 10%, 85% { opacity: 1; filter: blur(0); transform: translate(-50%, 0); } 100% { opacity: 0; filter: blur(8px); } }
   @keyframes barre { 0% { transform: scaleX(0); } 20% { transform: scaleX(1); } }
+
+  /* =====================================================================
+     Forma moderna (body.redondo; el nombre se quedó del primer intento): la de
+     «Vibrante» y «Cálido» y la de los estilos propios que la elijan. Como la
+     interfaz de un RPG de anime actual: paneles de cristal oscuro con una
+     esquina cortada, una línea de color arriba, letras limpias, el marco de
+     la cámara con esquinas de visor y luces desenfocadas. Nada de pegatinas
+     ni letras con relieve: el 27 sep el primer intento pareció infantil.
+     Los colores van en variables: --acento, --acento-2, --acento-3, el
+     cristal (--vidrio) y el cielo sin foto (--cielo-a/b/c).
+     ===================================================================== */
+  body.e-alegre {
+    --serif: "Sora", "Inter", sans-serif; --sans: "Inter", "Segoe UI", sans-serif;
+    --acento: #6ee7ff; --acento-2: #a78bfa; --acento-3: #ff7eb6;
+    --vidrio: rgba(12, 14, 36, .46); --vidrio-borde: rgba(255, 255, 255, .15);
+    --cielo-a: #0a0f2e; --cielo-b: #2a2168; --cielo-c: #d8709a; --velo-color: rgba(6, 8, 26, .55); --sombra-baja: rgba(5, 6, 22, .75);
+  }
+  body.e-acogedor {
+    --serif: "Fraunces", Georgia, serif; --sans: "Inter", "Segoe UI", sans-serif;
+    --acento: #f3b37a; --acento-2: #e08a64; --acento-3: #b7cf9c;
+    --vidrio: rgba(30, 19, 12, .5); --vidrio-borde: rgba(255, 228, 196, .16);
+    --cielo-a: #160f0b; --cielo-b: #46291d; --cielo-c: #cf8455; --velo-color: rgba(22, 13, 8, .55); --sombra-baja: rgba(18, 10, 6, .78);
+  }
+  body.redondo {
+    --ambar: var(--acento); --ambar-claro: color-mix(in srgb, var(--acento) 45%, #fff); --pergamino: #fff; --tenue: rgba(255, 255, 255, .68);
+    --grad: linear-gradient(90deg, var(--acento), var(--acento-2), var(--acento-3));
+  }
+
+  /* El mundo: sin el paisaje dibujado; un cielo de degradado si no hay foto. */
+  body.redondo .cielo { background: radial-gradient(90% 60% at 50% 100%, var(--cielo-c), transparent 70%), linear-gradient(180deg, var(--cielo-a) 0%, var(--cielo-b) 70%, var(--cielo-c) 130%); }
+  body.redondo .luna, body.redondo .halo, body.redondo .rayos, body.redondo #paisaje, body.redondo .niebla { display: none !important; }
+  body.redondo .estrellas { opacity: .35; }
+  body.redondo .grano { opacity: .035; }
+  body.redondo .vineta { background: radial-gradient(120% 95% at 50% 40%, transparent 55%, rgba(0, 0, 0, .55) 100%); }
+  body.redondo .sombra-baja { height: 420px; background: linear-gradient(180deg, transparent, var(--sombra-baja)); }
+  body.redondo .velo { background: radial-gradient(62% 48% at 50% 36%, var(--velo-color), transparent 80%); }
+  body.redondo.t-charla .camara { filter: brightness(.62) saturate(1.05); }
+
+  /* Letras: limpias, blancas, con un brillo del color de acento. */
+  body.redondo .titulo { font-weight: 600; font-size: 108px; line-height: 1.04; letter-spacing: -.01em; text-transform: none;
+    background: none; color: #fff; filter: none; -webkit-text-fill-color: #fff;
+    text-shadow: 0 0 46px color-mix(in srgb, var(--acento) 38%, transparent), 0 4px 26px rgba(0, 0, 0, .5); }
+  body.redondo .titulo::after { content: ""; display: block; width: 168px; height: 3px; margin: 26px auto 0; border-radius: 3px; background: var(--grad);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--acento) 70%, transparent); }
+  body.e-acogedor .titulo { font-weight: 500; letter-spacing: -.015em; font-size: 112px; }
+  body.redondo .sobre { display: inline-flex; align-items: center; gap: 16px; font-weight: 600; font-size: 14px; letter-spacing: .44em; color: var(--acento); }
+  body.redondo .sobre::before, body.redondo .sobre::after { content: ""; width: 42px; height: 1px; background: color-mix(in srgb, var(--acento) 70%, transparent); }
+  body.redondo .lema { font-family: var(--sans); font-style: normal; font-weight: 400; font-size: 30px; color: rgba(255, 255, 255, .86); letter-spacing: .01em;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, .55); }
+  body.e-acogedor .lema { font-family: var(--serif); font-style: italic; font-size: 36px; }
+  body.redondo .hilo { display: none; }
+
+  /* Cuenta atrás: cifras finas y grandes; los dos puntos, del color de acento. */
+  body.redondo .cuenta .num { font-weight: 300; font-size: 156px; letter-spacing: .01em; color: #fff;
+    text-shadow: 0 0 60px color-mix(in srgb, var(--acento) 42%, transparent), 0 4px 30px rgba(0, 0, 0, .5); }
+  body.redondo .cuenta .num b { font-weight: 300; color: var(--acento); }
+  body.redondo .cuenta.fin .num { font-size: 92px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+  body.redondo .espera { font-family: var(--sans); font-style: normal; font-weight: 500; font-size: 24px; letter-spacing: .3em; text-transform: uppercase; color: var(--tenue); }
+
+  /* Paneles de cristal con la esquina de arriba a la derecha cortada y una línea de color. */
+  body.redondo .franja { left: 150px; right: 150px; }
+  body.redondo .datos { gap: 20px; }
+  body.redondo .dato, body.redondo .cifra { position: relative; border: 1px solid var(--vidrio-borde); border-radius: 3px; background: var(--vidrio);
+    -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3);
+    clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%); }
+  body.redondo .dato { padding: 20px 26px 22px; }
+  body.redondo .dato:first-child, body.redondo .cifra:first-child { border-left: 1px solid var(--vidrio-borde); }
+  body.redondo .dato::before, body.redondo .cifra::before { content: ""; position: absolute; left: -1px; top: -1px; width: 64px; height: 3px; background: var(--grad); }
+  body.e-acogedor .dato, body.e-acogedor .cifra { clip-path: none; border-radius: 12px; }
+  body.e-acogedor .dato::before, body.e-acogedor .cifra::before { left: 22px; top: -1px; width: 44px; border-radius: 0 0 3px 3px; }
+  body.redondo .dato .etq { font-size: 12px; font-weight: 600; letter-spacing: .3em; color: var(--acento); }
+  body.redondo .dato .val { font-weight: 600; font-size: 30px; color: #fff; }
+  body.redondo .dato .sub { color: rgba(255, 255, 255, .64); }
+  body.redondo .objeto { color: var(--r); text-shadow: 0 0 18px color-mix(in srgb, var(--r) 45%, transparent); }
+  body.redondo .sobre, body.redondo .dato .etq, body.redondo .dato .sub, body.redondo .cifra span, body.redondo .rollo h4 { text-shadow: none !important; }
+
+  /* Final */
+  body.redondo .cifras { gap: 16px; }
+  body.redondo .cifra { padding: 18px 28px 20px; }
+  body.redondo .cifra b { font-weight: 300; font-size: 54px; color: #fff; }
+  body.redondo .cifra span { font-size: 12px; font-weight: 600; letter-spacing: .28em; color: var(--tenue); }
+  body.redondo .rollo h4 { color: var(--acento); font-weight: 600; letter-spacing: .44em; }
+  body.redondo .rollo p { font-weight: 500; font-size: 38px; color: #fff; letter-spacing: 0; }
+
+  /* Charla: el marco de la cámara con una línea de degradado y esquinas de visor. */
+  body.redondo .cam::before { inset: -2px; border: 2px solid transparent; border-image: var(--grad) 1;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, .55), 0 0 44px color-mix(in srgb, var(--acento) 22%, transparent); }
+  body.redondo .cam i { border-color: #fff; border-width: 3px; }
+  body.redondo .avatar { background: transparent; }
+  body.redondo .rotulo b { font-weight: 600; font-size: 60px; letter-spacing: -.01em; color: #fff; text-shadow: 0 4px 24px rgba(0, 0, 0, .5); }
+  body.redondo .rotulo span { color: var(--acento); }
+  body.redondo.t-charla .franja { left: 500px; right: auto; width: 828px; top: 818px; }
+  body.redondo.t-charla .dato { padding: 14px 18px 16px; }
+  body.redondo.t-charla .dato .val { font-size: 24px; }
+  body.redondo .chat-fondo { background: linear-gradient(90deg, transparent, var(--velo-color) 22%); }
+  body.redondo .chat { gap: 12px; align-items: flex-start; }
+  body.redondo .msg { max-width: 470px; box-sizing: border-box; padding: 11px 16px 13px; background: var(--vidrio); border: 1px solid var(--vidrio-borde);
+    border-left: 3px solid var(--c, var(--acento)); border-radius: 2px 12px 12px 2px; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  body.redondo .msg .txt { color: rgba(255, 255, 255, .94); font-size: 21px; text-shadow: none; }
+  body.redondo .msg.canal { border-left-color: var(--acento); background: linear-gradient(90deg, color-mix(in srgb, var(--acento) 24%, transparent), var(--vidrio) 70%); }
+  body.redondo .msg.canal .txt { font-family: var(--sans); font-style: normal; font-weight: 500; font-size: 22px; color: #fff; }
+
+  /* Aviso de botín: un panel de cristal con el color de la rareza. */
+  body.redondo .aviso { padding: 18px 40px 16px; background: var(--vidrio); border: 1px solid color-mix(in srgb, var(--r) 50%, transparent); border-radius: 4px;
+    -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); box-shadow: 0 0 44px color-mix(in srgb, var(--r) 28%, transparent), 0 20px 50px rgba(0, 0, 0, .45); }
+  body.redondo .aviso .etq { color: var(--r); }
+  body.redondo .aviso .linea { font-weight: 500; font-size: 40px; color: #fff; }
+  body.redondo .aviso::after { width: 420px; }
+
+
+  /* =====================================================================
+     Estilos propios (panel → Escenas → Crear mi estilo): sus cuatro colores
+     llegan como --c1 (principal), --c2 (secundario), --c3 y --c4 (el cielo,
+     de arriba abajo), y de ellos sale todo lo demás.
+     ===================================================================== */
+  body.e-propio.redondo {
+    --acento: var(--c1); --acento-2: var(--c2); --acento-3: color-mix(in srgb, var(--c1) 50%, var(--c2));
+    --vidrio: color-mix(in srgb, var(--c3) 35%, rgba(8, 9, 22, .55)); --vidrio-borde: rgba(255, 255, 255, .16);
+    --cielo-a: var(--c3); --cielo-b: color-mix(in srgb, var(--c3) 50%, var(--c4)); --cielo-c: var(--c4);
+    --velo-color: color-mix(in srgb, var(--c3) 40%, rgba(0, 0, 0, .5)); --sombra-baja: color-mix(in srgb, var(--c3) 55%, rgba(0, 0, 0, .6));
+  }
+  /* Propio con forma oscura: líneas finas y serif, con sus colores en vez del ámbar. */
+  body.e-propio:not(.redondo) {
+    --ambar: var(--c1); --ambar-claro: color-mix(in srgb, var(--c1) 55%, #fff);
+    --cielo-alto: color-mix(in srgb, var(--c3) 55%, #000); --cielo-medio: var(--c3); --horizonte: var(--c4);
+  }
+  body.e-propio:not(.redondo) .luna, body.e-propio:not(.redondo) .halo, body.e-propio:not(.redondo) .rayos, body.e-propio:not(.redondo) #paisaje { display: none; }
+  body.e-propio:not(.redondo) .dato, body.e-propio:not(.redondo) .cifra { border-left-color: color-mix(in srgb, var(--c1) 35%, transparent); }
+  body.e-propio:not(.redondo) .hilo::before, body.e-propio:not(.redondo) .hilo::after { background: linear-gradient(90deg, transparent, var(--c1), transparent); }
+  body.e-propio:not(.redondo) .cam::before { border-color: color-mix(in srgb, var(--c1) 55%, transparent); }
+  body.e-propio:not(.redondo) .titulo { background: linear-gradient(180deg, #fff 0%, #fff 45%, color-mix(in srgb, var(--c1) 45%, #fff) 100%); -webkit-background-clip: text; background-clip: text; }
+
+  /* Letras de los estilos propios. Las anchas o de píxel, más pequeñas para que quepan. */
+  body.letra-moderna { --serif: "Sora", "Inter", sans-serif; --sans: "Inter", "Segoe UI", sans-serif; }
+  body.letra-editorial { --serif: "Fraunces", Georgia, serif; --sans: "Inter", "Segoe UI", sans-serif; }
+  body.letra-elegante { --serif: "Cormorant Garamond", Georgia, serif; --sans: "Inter", "Segoe UI", sans-serif; }
+  body.letra-redonda { --serif: "Fredoka", "Nunito", sans-serif; --sans: "Nunito", "Segoe UI", sans-serif; }
+  body.letra-calida { --serif: "Baloo 2", "Nunito", sans-serif; --sans: "Nunito", "Segoe UI", sans-serif; }
+  body.letra-futurista { --serif: "Orbitron", "Rajdhani", sans-serif; --sans: "Rajdhani", "Segoe UI", sans-serif; }
+  body.letra-pixel { --serif: "Press Start 2P", monospace; --sans: "Nunito", "Segoe UI", sans-serif; }
+  body.letra-comic { --serif: "Bangers", "Nunito", sans-serif; --sans: "Nunito", "Segoe UI", sans-serif; }
+  body.letra-futurista .titulo { font-size: 84px; letter-spacing: .06em; }
+  body.letra-futurista .cuenta .num { font-size: 136px; }
+  body.letra-futurista .dato .val, body.letra-futurista .rotulo b { letter-spacing: .02em; }
+  body.letra-futurista .dato .sub, body.letra-futurista .msg .txt { font-size: 1.08em; }
+  body.letra-pixel .titulo { font-size: 58px; line-height: 1.35; letter-spacing: .02em; }
+  body.letra-pixel .cuenta .num { font-size: 96px; }
+  body.letra-pixel .cuenta.fin .num { font-size: 64px; }
+  body.letra-pixel .dato .val { font-size: 20px; line-height: 1.5; }
+  body.letra-pixel .rotulo b { font-size: 40px; }
+  body.letra-pixel.t-charla .dato .val { font-size: 15px; }
+  body.letra-futurista.t-charla .dato .val { font-size: 22px; }
+  body.letra-pixel .cifra b { font-size: 36px; }
+  body.letra-pixel .rollo p { font-size: 26px; line-height: 1.5; }
+  body.letra-pixel .aviso .linea { font-size: 26px; line-height: 1.5; }
+  body.letra-comic .titulo, body.letra-comic .cuenta .num, body.letra-comic .rotulo b, body.letra-comic .dato .val, body.letra-comic .cifra b, body.letra-comic .rollo p { font-weight: 400; letter-spacing: .05em; }
+  body.letra-comic .titulo { font-size: 128px; }
 </style>
 </head>
 <body>
@@ -266,7 +469,16 @@
   <div class="hilo revela d4"><i></i></div>
   <div class="datos revela d4" id="datos"></div>
 </div>
+<div class="tema" id="tema" hidden>
+  <div class="etq">Hablando de · <span id="tema-fuente"></span></div>
+  <div class="tit" id="tema-titulo"></div>
+  <div class="preg" id="tema-pregunta"></div>
+</div>
 <div id="avisos"></div>
+<div class="sonando" id="sonando" aria-live="off">
+  <div><div class="etq">Sonando</div><div class="txt" id="sonando-txt"></div></div>
+  <div class="barras" aria-hidden="true"><i></i><i></i><i></i></div>
+</div>
 
 <script>
 'use strict';
@@ -383,31 +595,181 @@ const lista = (...xs) => xs.flat(Infinity).filter((x) => x !== null && x !== und
   }
 })();
 
-// ======================= Ceniza y lumbres =======================
-(function ceniza() {
+// ======================= Estilo =======================
+// Lo elige el panel (config.estilo, con su config.apariencia); ?estilo=alegre
+// lo fuerza, para las vistas previas. Los hechos llevan sus colores aquí en
+// el CSS; los propios (id 'mi…') traen los suyos y se pintan con variables.
+const HECHOS = { oscuro: 'ceniza', alegre: 'luces', acogedor: 'polvo' };
+const LETRAS = ['moderna', 'editorial', 'elegante', 'redonda', 'calida', 'futurista', 'pixel', 'comic'];
+// ?ap={…} pinta un aspecto sin guardarlo: la vista previa del formulario del panel.
+const VISTA = (() => {
+  try {
+    const a = JSON.parse(q.get('ap') || 'null');
+    const hex = (v) => /^#[0-9a-f]{6}$/i.test(v || '');
+    if (!a || !a.colores || !['principal', 'secundario', 'cieloArriba', 'cieloAbajo'].every((k) => hex(a.colores[k]))) return null;
+    return { base: a.base === 'oscuro' ? 'oscuro' : 'redondo', letra: String(a.letra), particulas: String(a.particulas), colores: a.colores };
+  } catch { return null; }
+})();
+let estiloPuesto = null;
+function ponerEstilo(e, ap) {
+  const propio = /^mi[a-z0-9]+$/.test(e || '') && ap && ap.colores;
+  if (!propio && !HECHOS[e]) e = 'oscuro';
+  const clave = JSON.stringify([e, propio ? ap : null]);
+  if (clave === estiloPuesto) return;
+  estiloPuesto = clave;
+  const b = document.body;
+  for (const x of Object.keys(HECHOS)) b.classList.toggle(`e-${x}`, x === e);
+  b.classList.toggle('e-propio', !!propio);
+  b.classList.toggle('redondo', propio ? ap.base === 'redondo' : e !== 'oscuro');
+  for (const l of LETRAS) b.classList.toggle(`letra-${l}`, !!propio && ap.letra === l);
+  for (const [v, k] of [['--c1', 'principal'], ['--c2', 'secundario'], ['--c3', 'cieloArriba'], ['--c4', 'cieloAbajo']]) {
+    if (propio) b.style.setProperty(v, ap.colores[k]); else b.style.removeProperty(v);
+  }
+  particulas.reiniciar(propio ? ap.particulas : HECHOS[e], propio ? ap.colores : null);
+}
+
+// ======================= Partículas =======================
+// Ceniza que cae y lumbres que suben; luces desenfocadas; polvo de luz;
+// destellos que parpadean; pétalos que caen despacio; nieve; lluvia; o ninguna. Los colores, los del
+// estilo propio si lo es.
+const particulas = (() => {
   const cv = $('ceniza');
   const cx = cv.getContext('2d');
-  const N = TIPO === 'charla' ? 24 : 55;
+  const pocas = TIPO === 'charla';
   const halo = getComputedStyle(document.body).getPropertyValue('--halo').trim();
-  const nueva = () => ({ x: Math.random() * 2100 - 90, y: 0, v: .25 + Math.random() * .6, r: .5 + Math.random() * 1.6, f: Math.random() * 6.28, lumbre: Math.random() < .35 });
-  const ps = Array.from({ length: N }, () => ({ ...nueva(), y: Math.random() * 1080 }));
-  (function paso() {
-    cx.clearRect(0, 0, 1920, 1080);
-    for (const p of ps) {
+  const COLORES = {
+    destellos: ['#ffffff', '#fff27a', '#ff9ad5', '#8ce8ff', '#b9a2ff'],
+    petalos: ['#f4a3a3', '#f7c59f', '#a8c98f', '#ffe0a3', '#e9b7d0'],
+  };
+  let colores = COLORES;
+  const azar = (xs) => xs[Math.floor(Math.random() * xs.length)];
+  let modo = 'ninguna';
+  let ps = [];
+
+  const nuevas = {
+    ceniza: () => ({ x: Math.random() * 2100 - 90, y: 0, v: .25 + Math.random() * .6, r: .5 + Math.random() * 1.6, f: Math.random() * 6.28, lumbre: Math.random() < .35 }),
+    destellos: () => ({ x: Math.random() * 1920, y: Math.random() * 1080, v: .3 + Math.random() * .7, r: 3 + Math.random() * 6,
+      f: Math.random() * 6.28, vida: Math.random(), c: azar(colores.destellos) }),
+    luces: () => ({ x: Math.random() * 1920, y: 1150, v: .08 + Math.random() * .22, r: 18 + Math.random() * 60, f: Math.random() * 6.28, c: azar(colores.luces) }),
+    polvo: () => ({ x: Math.random() * 1920, y: Math.random() * 1080, v: .05 + Math.random() * .15, r: .6 + Math.random() * 1.6, f: Math.random() * 6.28 }),
+    petalos: () => ({ x: Math.random() * 2100 - 90, y: -20, v: .35 + Math.random() * .5, r: 5 + Math.random() * 7, f: Math.random() * 6.28, giro: Math.random() * 6.28,
+      vg: (Math.random() - .5) * .04, c: azar(colores.petalos) }),
+    nieve: () => ({ x: Math.random() * 2100 - 90, y: -10, v: .4 + Math.random() * .9, r: 1.2 + Math.random() * 3.2, f: Math.random() * 6.28 }),
+    lluvia: () => ({ x: Math.random() * 2300 - 200, y: -40 - Math.random() * 200, v: 14 + Math.random() * 10, l: 14 + Math.random() * 22 }),
+    ninguna: () => ({}),
+  };
+  const cuantas = { ceniza: pocas ? 24 : 55, destellos: pocas ? 14 : 30, luces: pocas ? 12 : 24, polvo: pocas ? 40 : 80, petalos: pocas ? 16 : 34, nieve: pocas ? 50 : 110, lluvia: pocas ? 50 : 120, ninguna: 0 };
+
+  function estrella(x, y, r) {
+    cx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4, d = i % 2 ? r * .28 : r;
+      cx.lineTo(x + Math.cos(a) * d, y + Math.sin(a) * d);
+    }
+    cx.closePath();
+  }
+
+  const pasos = {
+    ceniza(p) {
       // La ceniza cae despacio y el viento la lleva; las lumbres suben.
       p.f += .012;
       p.x += Math.sin(p.f) * .35 - .25;
       p.y += p.lumbre ? -p.v : p.v * .7;
-      if (p.y > 1100 || p.y < -40 || p.x < -40) Object.assign(p, nueva(), { x: Math.random() * 2000, y: p.lumbre ? 1090 : -10 });
+      if (p.y > 1100 || p.y < -40 || p.x < -40) Object.assign(p, nuevas.ceniza(), { x: Math.random() * 2000, y: p.lumbre ? 1090 : -10 });
       const a = p.lumbre ? .55 + Math.sin(p.f * 6) * .3 : .3;
       cx.fillStyle = p.lumbre ? `rgba(${halo},${a})` : `rgba(210,205,200,${a})`;
       cx.shadowColor = `rgba(${halo},.9)`;
       cx.shadowBlur = p.lumbre ? 8 : 0;
       cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, 6.29); cx.fill();
-    }
+    },
+    destellos(p) {
+      // Los destellos aparecen, brillan y se apagan donde estén.
+      p.f += .02;
+      p.vida += .006 + p.v * .004;
+      p.y -= p.v * .25;
+      if (p.vida >= 1) Object.assign(p, nuevas.destellos(), { vida: 0 });
+      const a = Math.sin(p.vida * Math.PI);
+      cx.globalAlpha = a;
+      cx.fillStyle = p.c; cx.shadowColor = p.c; cx.shadowBlur = 14;
+      estrella(p.x, p.y, p.r * (.6 + a * .5)); cx.fill();
+      cx.globalAlpha = 1;
+    },
+    luces(p) {
+      // Luces grandes y desenfocadas que suben muy despacio, como en un plano con mucha profundidad.
+      p.f += .006;
+      p.y -= p.v; p.x += Math.sin(p.f) * .25;
+      if (p.y < -p.r * 2) Object.assign(p, nuevas.luces());
+      const a = .07 + Math.sin(p.f * 3) * .04;
+      const g = cx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+      g.addColorStop(0, p.c + Math.round(a * 255).toString(16).padStart(2, '0'));
+      g.addColorStop(1, p.c + '00');
+      cx.shadowBlur = 0; cx.fillStyle = g;
+      cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, 6.29); cx.fill();
+    },
+    polvo(p) {
+      // Motas de polvo en la luz: flotan sin rumbo y titilan.
+      p.f += .008;
+      p.x += Math.sin(p.f) * .3 + .04; p.y -= p.v; p.y += Math.cos(p.f * 1.3) * .15;
+      if (p.y < -10 || p.x > 1930) Object.assign(p, nuevas.polvo(), { y: 1090 });
+      cx.globalAlpha = .35 + Math.sin(p.f * 5) * .25;
+      cx.fillStyle = colores.polvo; cx.shadowColor = colores.polvo; cx.shadowBlur = 6;
+      cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, 6.29); cx.fill();
+      cx.globalAlpha = 1;
+    },
+    petalos(p) {
+      // Pétalos que caen meciéndose y girando.
+      p.f += .015; p.giro += p.vg;
+      p.y += p.v; p.x += Math.sin(p.f) * .9 + .15;
+      if (p.y > 1100 || p.x > 2000) Object.assign(p, nuevas.petalos());
+      cx.save();
+      cx.translate(p.x, p.y); cx.rotate(p.giro);
+      cx.scale(1, .55 + Math.abs(Math.sin(p.f * 1.3)) * .45);
+      cx.fillStyle = p.c; cx.shadowColor = 'rgba(90,50,25,.25)'; cx.shadowBlur = 4;
+      cx.beginPath(); cx.ellipse(0, 0, p.r, p.r * .55, 0, 0, 6.29); cx.fill();
+      cx.restore();
+    },
+    nieve(p) {
+      // Copos que caen en zigzag; los grandes, más deprisa (más cerca).
+      p.f += .01;
+      p.y += p.v * (.6 + p.r * .15); p.x += Math.sin(p.f) * .7;
+      if (p.y > 1090) Object.assign(p, nuevas.nieve());
+      cx.fillStyle = 'rgba(255,255,255,.85)'; cx.shadowColor = 'rgba(255,255,255,.8)'; cx.shadowBlur = p.r > 3 ? 6 : 0;
+      cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, 6.29); cx.fill();
+    },
+    lluvia(p) {
+      // Gotas finas y rápidas, un poco inclinadas.
+      p.y += p.v; p.x += p.v * .18;
+      if (p.y > 1100) Object.assign(p, nuevas.lluvia());
+      cx.shadowBlur = 0;
+      cx.strokeStyle = 'rgba(210,225,255,.35)'; cx.lineWidth = 1.4;
+      cx.beginPath(); cx.moveTo(p.x, p.y); cx.lineTo(p.x - p.l * .18, p.y - p.l); cx.stroke();
+    },
+    ninguna() {},
+  };
+
+  (function paso() {
+    cx.clearRect(0, 0, 1920, 1080);
+    const pintar = pasos[modo];
+    for (const p of ps) pintar(p);
     requestAnimationFrame(paso);
   })();
+
+  return {
+    reiniciar(m, c) {
+      modo = pasos[m] ? m : 'ceniza';
+      // Los colores: los del estilo propio, o los de acento del CSS del estilo hecho.
+      const css = getComputedStyle(document.body);
+      const acento = (v, si) => { const x = css.getPropertyValue(v).trim(); return /^#[0-9a-f]{6}$/i.test(x) ? x : si; };
+      colores = c
+        ? { destellos: ['#ffffff', c.principal, c.secundario, c.cieloAbajo], petalos: [c.principal, c.secundario, c.cieloAbajo, '#ffffff'],
+          luces: [c.principal, c.secundario, '#ffffff'], polvo: '#fff1dc' }
+        : { ...COLORES, luces: [acento('--acento', '#6ee7ff'), acento('--acento-2', '#a78bfa'), acento('--acento-3', '#ff7eb6'), '#ffffff'], polvo: acento('--acento', '#ffd9a8') };
+      ps = Array.from({ length: cuantas[modo] }, () => ({ ...nuevas[modo](), y: Math.random() * 1080 }));
+      cx.shadowBlur = 0;
+    },
+  };
 })();
+ponerEstilo(VISTA ? 'mivista' : q.get('estilo') || 'oscuro', VISTA);
 
 // ======================= Utilidades =======================
 let desfase = 0;
@@ -480,6 +842,8 @@ function pintar(d) {
   ultimo = d;
   desfase = new Date(d.ahora).getTime() - Date.now();
   const cfg = d.config;
+  if (VISTA) ponerEstilo('mivista', VISTA);
+  else ponerEstilo(q.get('estilo') || cfg.estilo, q.get('estilo') ? null : cfg.apariencia);
   pintarFoto(q.get('foto') || cfg.fondos?.[TIPO] || '');
 
   if (TIPO === 'inicio' || TIPO === 'pausa') {
@@ -503,13 +867,40 @@ function pintar(d) {
     $('c-charla').textContent = cfg.charla;
     pintarChat(d.chat);
     const av = $('avatar');
-    if (cfg.avatar && av.hidden) { av.src = `avatar.html?fondo=1&siempre=1&bocadillo=todo${DEMO ? '&demo=1' : ''}`; av.hidden = false; }
+    if (cfg.avatar && av.hidden) { av.src = `avatar.html?fondo=1&siempre=1&bocadillo=todo${DEMO ? `&demo=1&estilo=${estilo}` : ''}`; av.hidden = false; }
     if (!cfg.avatar && !av.hidden) { av.hidden = true; av.src = 'about:blank'; }
   }
-  $('franja').hidden = TIPO === 'final';
+  pintarTema(d.tema);
+  $('franja').hidden = TIPO === 'final' || (TIPO === 'charla' && !!d.tema);
   if (TIPO !== 'final' && (!antes || JSON.stringify([antes.evento, antes.temporada, antes.jefe]) !== JSON.stringify([d.evento, d.temporada, d.jefe]))) pintarFranja(d);
   if (TIPO !== 'final') avisos(d.botin);
+  pintarMusica(d.musica);
   primera = false;
+}
+
+/** El tema del que hablas, en Charla en vez de los datos. Se vuelve a animar al cambiar. */
+let temaPuesto = '';
+function pintarTema(t) {
+  const el = $('tema');
+  const clave = t ? JSON.stringify(t) : '';
+  if (clave === temaPuesto) return;
+  temaPuesto = clave;
+  el.hidden = !t;
+  if (!t) return;
+  $('tema-fuente').textContent = t.fuente;
+  $('tema-titulo').textContent = t.titulo;
+  $('tema-pregunta').textContent = t.pregunta ? `💬 ${t.pregunta}` : '';
+  if (document.body.classList.contains('sin-intro')) return;
+  el.style.animation = 'none';
+  void el.offsetWidth;
+  el.style.animation = '';
+}
+
+/** Lo que suena, arriba a la derecha; sin música, no se ve. */
+function pintarMusica(m) {
+  const el = $('sonando');
+  el.classList.toggle('ve', !!m);
+  if (m) $('sonando-txt').textContent = m.artista ? `${m.titulo} — ${m.artista}` : m.titulo;
 }
 
 let fotoPuesta = null;
@@ -612,9 +1003,11 @@ function pintarChat(chat) {
     if (pintados.has(m.n)) continue;
     pintados.add(m.n);
     const marca = m.canal ? 'canal' : m.mod ? 'mod' : m.sub ? 'sub' : '';
-    const color = m.canal ? 'var(--ambar)' : /^#[0-9a-f]{6}$/i.test(m.color || '') ? `color-mix(in srgb, ${m.color} 65%, #efe6d6)` : colorDe(m.nombre);
+    // --c, el color tal cual: los estilos redondos lo usan de fondo del nombre.
+    const propio = /^#[0-9a-f]{6}$/i.test(m.color || '') ? m.color : null;
+    const color = m.canal ? 'var(--ambar)' : propio ? `color-mix(in srgb, ${propio} 65%, #efe6d6)` : colorDe(m.nombre);
     const el = h('div', { class: `msg${m.canal ? ' canal' : ''}`, 'data-n': String(m.n) },
-      h('span', { class: 'quien', style: `color:${color}` }, m.nombre, marca ? h('em', {}, marca) : null),
+      h('span', { class: 'quien', style: `color:${color};--c:${propio ?? colorDe(m.nombre)}` }, m.nombre, marca ? h('em', {}, marca) : null),
       h('div', { class: 'txt' }, trozos(m)));
     caja.append(el);
     // Se desvanece al rato: el chat en pantalla es de ahora, no un archivo.
@@ -653,7 +1046,8 @@ function demo() {
     evento: { emoji: '☠', nombre: 'Semana maldita', texto: '1 de cada 6 objetos de los cofres sale maldito' },
     temporada: { nombre: 'septiembre', diasQuedan: 4, podio: [{ nombre: 'Ana_la_Tanque', puntos: 184 }, { nombre: 'raftaei', puntos: 131 }, { nombre: 'Pepe', puntos: 77 }] },
     botin: [{ id: 3, quien: 'Ana_la_Tanque', objeto: 'Filo del Vacío', rareza: 'legendario' }, { id: 2, quien: 'raftaei', objeto: 'Capa de las Sombras', rareza: 'epico' }],
-    loot: { activo: true, proximoEnSeg: 754 }, jefe: null,
+    loot: { activo: true, proximoEnSeg: 754 }, jefe: null, musica: { titulo: 'Level Up', artista: 'StreamBeats' },
+    tema: q.get('tema') === '1' ? { titulo: 'Anuncian un nuevo MMO de mundo abierto con combate por turnos y ciudades que construyen los jugadores', fuente: '3DJuegos', pregunta: '¿Os fiais de un MMO nuevo o esperáis a ver si dura?' } : null,
     chat: [
       { n: 1, nombre: 'raftaei', texto: 'buenas noches!!', emotes: [], sub: true },
       { n: 2, nombre: 'Ana_la_Tanque', texto: '!pj', emotes: [] },

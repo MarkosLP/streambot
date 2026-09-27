@@ -28,6 +28,10 @@ import { normalize } from '../core/events.js';
 import * as titulos from './titulos.js';
 import * as previa from './previa.js';
 import * as escenas from './escenas.js';
+import * as estilos from './estilos.js';
+import * as rotulos from './rotulos.js';
+import * as musica from '../core/musica.js';
+import * as temas from './temas.js';
 import * as fondos from './fondos.js';
 import * as avatarIa from './avatar-ia.js';
 import * as iaImagen from '../services/ia-imagen.js';
@@ -116,9 +120,32 @@ export async function arrancar(sb: PuertoStreamerbot): Promise<Server | null> {
     });
     server.listen(config.panel.port, '127.0.0.1', () => {
       log.info(`Panel de control: http://127.0.0.1:${config.panel.port}`);
+      vigilarEscenaParaMusica(conObs);
       resolve(server);
     });
   });
+}
+
+/**
+ * La música en automático va con la escena de OBS en emisión: se pregunta
+ * cada 3 s, pero solo mientras la fuente de música esté abierta en OBS y el
+ * modo sea automático (si no, no hace falta molestar a OBS).
+ */
+function vigilarEscenaParaMusica(obs: ConObs): void {
+  let mirando = false;
+  setInterval(async () => {
+    if (mirando || !musica.overlayActivo() || musica.leerAjustes().modo !== 'auto') return;
+    mirando = true;
+    try {
+      const r = await obs((pedir) => pedir<{ currentProgramSceneName?: string; sceneName?: string }>('GetCurrentProgramScene'));
+      const escena = r.currentProgramSceneName ?? r.sceneName;
+      if (escena) await musica.alCambiarEscena(escena);
+    } catch {
+      // OBS cerrado: la música sigue con lo que tenía.
+    } finally {
+      mirando = false;
+    }
+  }, 3_000).unref();
 }
 
 // ---------------------------------------------------------------------------
@@ -513,10 +540,15 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       escenas: escenas.TIPOS.map((tipo) => ({ tipo, ...obsSetup.ESCENAS_OBS[tipo], url: obsSetup.urlEscena(tipo) })),
       avatar: { fuente: obsSetup.FUENTE_AVATAR, url: obsSetup.urlAvatar() },
       fondos: await fondos.lista(),
-      descripciones: fondos.DESCRIPCIONES,
+      // Los hechos y los propios; de los propios, también lo del formulario para editarlos.
+      estilos: [...estilos.ESTILOS, ...estilos.propios().map((e) => e.id)].map((id) => {
+        const e = estilos.info(id);
+        const propio = estilos.propios().find((x) => x.id === id) ?? null;
+        return { id, nombre: e.nombre, icono: e.icono, para: e.para, descripciones: e.descripciones, descripcionAvatar: e.avatar.descripcion, propio };
+      }),
+      opcionesEstilo: { bases: estilos.BASES, letras: estilos.LETRAS, particulas: estilos.PARTICULAS, max: estilos.MAX_PROPIOS },
       imagenIa: iaImagen.disponible(),
       personajes: await avatarIa.lista(),
-      descripcionAvatar: avatarIa.DESCRIPCION,
       generando: generandoFondo,
     });
   }
@@ -525,16 +557,46 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     return json(res, 200, { config: escenas.cambiar(await cuerpo(req)) });
   }
 
+  // Un estilo propio, del formulario: sin id lo crea, con id lo cambia. Queda elegido.
+  if (ruta === 'POST /api/escenas/estilo') {
+    const datos = await cuerpo(req);
+    const id = typeof datos.id === 'string' && datos.id ? datos.id : undefined;
+    const r = escenas.guardarEstilo(datos, id);
+    if (!r) throw new ErrorHttp(400, id ? 'Ese estilo ya no existe' : 'Falta el nombre o la temática (o ya hay 20 estilos propios)');
+    log.info(`Panel → estilo ${id ? 'cambiado' : 'creado'}: ${r.id}`);
+    return json(res, 200, r);
+  }
+
+  // Cambiar el título de un fondo o de un personaje generado.
+  if (ruta === 'POST /api/escenas/titulo') {
+    const { ruta: imagen, titulo } = await cuerpo(req);
+    if (!fondos.rutaValida(imagen) && !avatarIa.rutaValida(imagen)) throw new ErrorHttp(400, 'Solo fondos y personajes de la biblioteca');
+    try {
+      return json(res, 200, { titulo: await rotulos.renombrar(imagen as string, String(titulo ?? '')) });
+    } catch (err) {
+      throw new ErrorHttp(400, err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  if (ruta === 'POST /api/escenas/estilo/borrar') {
+    const { id } = await cuerpo(req);
+    if (typeof id !== 'string' || !estilos.ID_PROPIO.test(id)) throw new ErrorHttp(400, 'Solo se pueden borrar los estilos propios');
+    return json(res, 200, { config: escenas.borrarEstilo(id) });
+  }
+
   // Un fondo nuevo con IA (GPT Image): tarda ~30 s y cuesta unos céntimos. Uno
   // a la vez; al terminar se pone en esa escena.
   if (ruta === 'POST /api/escenas/fondo') {
-    const { escena, descripcion } = await cuerpo(req);
+    const { escena, descripcion, titulo } = await cuerpo(req);
     if (!escenas.TIPOS.includes(escena as escenas.Tipo)) throw new ErrorHttp(400, 'escena no válida');
     if (generandoFondo) throw new ErrorHttp(409, 'Ya se está generando un fondo: espera a que termine');
     generandoFondo = escena as string;
     try {
-      const nueva = await fondos.generar(escena as fondos.EscenaFondo, typeof descripcion === 'string' ? descripcion : '');
-      const config = escenas.cambiar({ fondos: { [escena as string]: nueva } });
+      // Si cambias de estilo mientras se genera, se queda en el suyo: es el
+      // último de ese estilo y sale al volver a él.
+      const estilo = escenas.leer().estilo;
+      const nueva = await fondos.generar(escena as fondos.EscenaFondo, typeof descripcion === 'string' ? descripcion : '', estilo, undefined, rotulos.limpiarTitulo(titulo));
+      const config = escenas.leer().estilo === estilo ? escenas.cambiar({ fondos: { [escena as string]: nueva } }) : escenas.leer();
       return json(res, 200, { ruta: nueva, config });
     } catch (err) {
       throw new ErrorHttp(err instanceof iaImagen.ErrorImagen ? 502 : 500, err instanceof Error ? err.message : String(err));
@@ -545,12 +607,13 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
 
   // Un personaje nuevo para el avatar: tres imágenes (~1 min, unos céntimos).
   if (ruta === 'POST /api/escenas/avatar-ia') {
-    const { descripcion } = await cuerpo(req);
+    const { descripcion, titulo } = await cuerpo(req);
     if (generandoFondo) throw new ErrorHttp(409, 'Ya se está generando una imagen: espera a que termine');
     generandoFondo = 'avatar';
     try {
-      const nuevo = await avatarIa.generar(typeof descripcion === 'string' ? descripcion : '');
-      return json(res, 200, { ruta: nuevo, config: escenas.cambiar({ avatarImagen: nuevo }) });
+      const estilo = escenas.leer().estilo;
+      const nuevo = await avatarIa.generar(typeof descripcion === 'string' ? descripcion : '', estilo, undefined, rotulos.limpiarTitulo(titulo));
+      return json(res, 200, { ruta: nuevo, config: escenas.leer().estilo === estilo ? escenas.cambiar({ avatarImagen: nuevo }) : escenas.leer() });
     } catch (err) {
       throw new ErrorHttp(err instanceof iaImagen.ErrorImagen ? 502 : 500, err instanceof Error ? err.message : String(err));
     } finally {
@@ -577,6 +640,106 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     });
     for (const h of hecho) log.info(`Panel → OBS: ${h}`);
     return json(res, 200, { hecho });
+  }
+
+  // ---- Música (core/musica.ts) ----
+  // La fuente de OBS pregunta qué suena. Como las de arriba, corre en su
+  // sandbox: CORS abierto y sin POST posible. Por eso avisa aquí mismo, con
+  // ?terminada=<id> o ?id=&pos=&dur=. Lo único que puede hacer es pasar a la
+  // siguiente canción, y solo si la que dice es la que suena.
+  if (ruta === 'GET /api/overlay/musica') {
+    const id = url.searchParams.get('terminada') ?? url.searchParams.get('id');
+    if (url.searchParams.has('terminada') && id) await musica.terminada(id);
+    else if (id && url.searchParams.has('pos')) musica.informarProgreso(id, Number(url.searchParams.get('pos')), Number(url.searchParams.get('dur')));
+    const e = escenas.leer();
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ ...musica.paraOverlay(), estilo: e.estilo, apariencia: estilos.apariencia(e.estilo) }));
+    return;
+  }
+
+  if (ruta === 'GET /api/musica') {
+    const listas = url.searchParams.get('releer') === '1' ? await musica.escanear() : await musica.canciones();
+    return json(res, 200, {
+      ...musica.estado(),
+      listas: musica.LISTAS.map((id) => ({ id, nombre: musica.NOMBRES[id], canciones: listas[id] })),
+      carpeta: musica.carpeta(),
+      fuente: { nombre: obsSetup.FUENTE_MUSICA, url: obsSetup.urlMusica() },
+      escenasPorDefecto: musica.ESCENAS_POR_DEFECTO,
+    });
+  }
+
+  // Lo que se pide desde los botones del panel.
+  if (ruta === 'POST /api/musica') {
+    const { accion, lista, id, modo, ajustes } = await cuerpo(req);
+    if (accion === 'lista') {
+      if (!musica.esLista(lista)) throw new ErrorHttp(400, 'lista no válida');
+      await musica.ponerLista(lista);
+    } else if (accion === 'pista') {
+      if (typeof id !== 'string' || !(await musica.ponerPista(id))) throw new ErrorHttp(404, 'Esa canción ya no está en la carpeta');
+    } else if (accion === 'siguiente') await musica.siguiente();
+    else if (accion === 'anterior') await musica.anterior();
+    else if (accion === 'pausar') musica.pausar();
+    else if (accion === 'reanudar') await musica.reanudar();
+    else if (accion === 'modo') {
+      if (modo !== 'auto' && modo !== 'manual') throw new ErrorHttp(400, 'modo no válido');
+      await musica.ponerModo(modo);
+    } else if (accion === 'ajustes') musica.cambiarAjustes(ajustes);
+    else throw new ErrorHttp(400, 'acción no válida');
+    return json(res, 200, musica.estado());
+  }
+
+  // Añade la fuente de música a las escenas elegidas (con confirmación en el panel).
+  if (ruta === 'POST /api/musica/obs') {
+    const { escenas: elegidas } = await cuerpo(req);
+    if (!Array.isArray(elegidas) || !elegidas.length || !elegidas.every((e) => typeof e === 'string' && e.length <= 200)) {
+      throw new ErrorHttp(400, 'elige al menos una escena');
+    }
+    const hecho = await obs((pedir) => obsSetup.anadirMusica(pedir, elegidas as string[])).catch((err) => {
+      throw new ErrorHttp(502, err instanceof Error ? err.message : String(err));
+    });
+    for (const h of hecho) log.info(`Panel → OBS: ${h}`);
+    return json(res, 200, { hecho });
+  }
+
+  // ---- Temas para hablar (temas.ts) ----
+  if (ruta === 'GET /api/temas') {
+    const [{ noticias, errores }, ia] = await Promise.all([temas.noticias(url.searchParams.get('forzar') === '1'), iaLocal.estado()]);
+    return json(res, 200, {
+      noticias: noticias.map((n) => ({ ...n, preparado: temas.preparadoDe(n.id) })),
+      errores,
+      categorias: temas.CATEGORIAS,
+      fuentes: temas.FUENTES.map((f) => ({ nombre: f.nombre, categoria: f.categoria })),
+      ...temas.leer(),
+      ia,
+    });
+  }
+
+  if (ruta === 'POST /api/temas') {
+    const { accion, id, paso, hecho, pregunta } = await cuerpo(req);
+    const idValido = typeof id === 'string' && /^[0-9a-f]{12}$/.test(id);
+    if (accion === 'preparar') {
+      const n = idValido ? temas.buscar(id as string) : null;
+      if (!n) throw new ErrorHttp(404, 'Esa noticia ya no está: actualiza la lista');
+      try {
+        return json(res, 200, { preparado: await temas.preparar(n), ...temas.leer() });
+      } catch (err) {
+        throw new ErrorHttp(err instanceof iaLocal.ErrorIaLocal ? 503 : 500, err instanceof Error ? err.message : String(err));
+      }
+    }
+    let r: temas.EstadoTemas | null;
+    if (accion === 'vaciar') r = temas.vaciarGuion();
+    else if (accion === 'pantalla' && id === null) r = temas.ponerEnPantalla(null);
+    else {
+      if (!idValido) throw new ErrorHttp(400, 'falta la noticia');
+      if (accion === 'apartar') r = temas.apartar(id as string);
+      else if (accion === 'quitar') r = temas.quitar(id as string);
+      else if (accion === 'hecho') r = temas.marcarHecho(id as string, hecho === true);
+      else if (accion === 'mover') r = temas.mover(id as string, paso === -1 ? -1 : 1);
+      else if (accion === 'pantalla') r = temas.ponerEnPantalla(id as string, typeof pregunta === 'string' ? pregunta : null);
+      else throw new ErrorHttp(400, 'acción no válida');
+    }
+    if (!r) throw new ErrorHttp(404, 'Esa noticia ya no está, o el guion está lleno (25)');
+    return json(res, 200, r);
   }
 
   if (ruta === 'GET /api/biblioteca') return json(res, 200, await biblioteca.listar());

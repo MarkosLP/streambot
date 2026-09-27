@@ -25,6 +25,7 @@ import * as preguntaIa from '../interactions/pregunta-ia.js';
 import * as preguntaIncomoda from '../interactions/pregunta-incomoda.js';
 import * as loot from '../interactions/loot/index.js';
 import * as lootComandos from '../interactions/loot/comandos.js';
+import * as musicaComando from '../interactions/musica.js';
 import * as mecenas from '../interactions/loot/mecenas.js';
 import * as temporada from '../interactions/loot/temporada.js';
 import * as suscriptores from '../data/suscriptores.js';
@@ -204,6 +205,14 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
     if (esBot(viewer.login)) return;
     if (!isIgnored(viewer)) users.touch(viewer);
     await preguntaIncomoda.runCommand(viewer, `${viewer.id}-${event.id}`);
+    return;
+  }
+
+  // !cancion: qué suena (core/musica.ts). Como los del Loot, también para el canal.
+  if (musicaComando.COMANDO.test(text)) {
+    if (esBot(viewer.login)) return;
+    if (!isIgnored(viewer)) users.touch(viewer);
+    await engine.run(musicaComando.cancion, { viewer, trigger: 'command', args: '' });
     return;
   }
 

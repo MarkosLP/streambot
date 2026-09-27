@@ -25,3 +25,6 @@ desktop.ini
 .DS_Store
 .vscode/
 .idea/
+
+# Música del directo (StreamBeats y demás): pesa mucho y cada uno pone la suya
+biblioteca/musica/

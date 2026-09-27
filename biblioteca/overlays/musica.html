@@ -1,0 +1,181 @@
+<!doctype html>
+<!--
+  Música del directo, para OBS (27 sep 2026). Es la fuente «MUS Música»: la
+  crea el panel (Música → Añadir a OBS) en las escenas que elijas, y es UNA
+  sola fuente compartida, así que al cambiar de escena la canción sigue.
+
+  Suena aquí dentro: su volumen está en el mezclador de OBS («MUS Música») y
+  además en el panel, por lista. Pregunta al bot cada segundo qué toca
+  (GET /api/overlay/musica) y le avisa cuando acaba una canción; al cambiar de
+  canción, de lista o al callar, lo hace con un fundido.
+
+  En las escenas del juego, al empezar cada canción sale unos segundos un
+  aviso pequeño abajo a la izquierda («♪ título — artista»), con los colores
+  del estilo de las escenas. Se quita en el panel. En las escenas del panel
+  (✦ …) no sale: ellas ya enseñan lo que suena.
+
+    ?demo=1   un aviso de prueba, sin sonido
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Música</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+  body { font-family: "Inter", "Segoe UI", sans-serif; color: #fff; -webkit-font-smoothing: antialiased; --acento: #e8a24a; }
+  body.e-alegre { --acento: #6ee7ff; }
+  body.e-acogedor { --acento: #f3b37a; }
+  .aviso { position: absolute; left: 48px; bottom: 48px; display: flex; align-items: center; gap: 16px; max-width: 640px; padding: 14px 22px 14px 18px;
+    background: rgba(10, 11, 22, .72); border: 1px solid rgba(255, 255, 255, .14); border-left: 3px solid var(--acento); border-radius: 3px 12px 12px 3px;
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: 0 16px 40px rgba(0, 0, 0, .45);
+    opacity: 0; transform: translateY(16px); transition: opacity .8s ease, transform .8s cubic-bezier(.2, .8, .2, 1); }
+  .aviso.ve { opacity: 1; transform: none; }
+  .barras { display: flex; align-items: flex-end; gap: 3px; height: 22px; flex: none; }
+  .barras i { width: 4px; height: 100%; border-radius: 2px; background: var(--acento); transform-origin: bottom; animation: barra 1s ease-in-out infinite; }
+  .barras i:nth-child(2) { animation-delay: -.3s; } .barras i:nth-child(3) { animation-delay: -.6s; } .barras i:nth-child(4) { animation-delay: -.15s; }
+  @keyframes barra { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
+  .textos { min-width: 0; }
+  .etq { font-size: 12px; font-weight: 600; letter-spacing: .28em; text-transform: uppercase; color: var(--acento); }
+  .titulo { margin-top: 3px; font-size: 22px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .artista { font-size: 15px; color: rgba(255, 255, 255, .7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>
+</head>
+<body>
+<audio id="a1" preload="auto"></audio>
+<audio id="a2" preload="auto"></audio>
+<div class="aviso" id="aviso">
+  <div class="barras" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <div class="textos"><div class="etq">Sonando</div><div class="titulo" id="av-titulo"></div><div class="artista" id="av-artista"></div></div>
+</div>
+
+<script>
+'use strict';
+const q = new URLSearchParams(location.search);
+const $ = (id) => document.getElementById(id);
+const API = new URL('/api/overlay/musica', location.href);
+const FUNDIDO_MS = 2000;
+
+// Dos reproductores: el que suena y el que entra. Al cambiar de canción se
+// cruzan (uno baja mientras el otro sube).
+const reproductores = [$('a1'), $('a2')];
+let activo = 0;
+let claveActual = '';   // id de la canción + turno: cambia con cada cambio pedido
+let idActual = null;
+let volumenObjetivo = 0.4;
+let sonando = false;
+
+/** Lleva el volumen de un reproductor a `hasta` poco a poco; al llegar a 0, lo para. */
+const rampas = new Map();
+function rampa(a, hasta, ms = FUNDIDO_MS) {
+  cancelAnimationFrame(rampas.get(a));
+  const desde = a.volume;
+  const t0 = performance.now();
+  const paso = (t) => {
+    const k = Math.min(1, (t - t0) / ms);
+    a.volume = Math.max(0, Math.min(1, desde + (hasta - desde) * k));
+    if (k < 1) rampas.set(a, requestAnimationFrame(paso));
+    else if (hasta === 0) a.pause();
+  };
+  rampas.set(a, requestAnimationFrame(paso));
+}
+
+/** Avisa al bot (la canción ha acabado, o por dónde va) y aplica lo que conteste. */
+async function avisar(tipo, extra = {}) {
+  const u = new URL(API);
+  if (tipo === 'terminada') u.searchParams.set('terminada', idActual);
+  else {
+    u.searchParams.set('id', idActual);
+    for (const [k, v] of Object.entries(extra)) u.searchParams.set(k, String(v));
+  }
+  try {
+    const r = await fetch(u, { cache: 'no-store' });
+    if (r.ok) aplicar(await r.json());
+  } catch {}
+}
+
+function empezar(pista, clave) {
+  const viejo = reproductores[activo];
+  activo = 1 - activo;
+  const nuevo = reproductores[activo];
+  claveActual = clave;
+  idActual = pista.id;
+  nuevo.src = pista.url;
+  nuevo.volume = 0;
+  nuevo.currentTime = 0;
+  nuevo.play().catch(() => {});
+  rampa(nuevo, volumenObjetivo);
+  if (!viejo.paused) rampa(viejo, 0);
+}
+
+let avisoVisto = '';
+let avisoPermitido = false;
+function mostrarAviso(pista, clave) {
+  if (!avisoPermitido || !pista || avisoVisto === clave) return;
+  avisoVisto = clave;
+  $('av-titulo').textContent = pista.titulo;
+  $('av-artista').textContent = pista.artista || '';
+  $('aviso').classList.add('ve');
+  clearTimeout(mostrarAviso.t);
+  mostrarAviso.t = setTimeout(() => $('aviso').classList.remove('ve'), 7000);
+}
+
+let estiloPuesto = '';
+function aplicar(d) {
+  if (d.estilo && d.estilo !== estiloPuesto) {
+    estiloPuesto = d.estilo;
+    for (const x of ['alegre', 'acogedor']) document.body.classList.toggle(`e-${x}`, d.estilo === x);
+    const c = d.apariencia && d.apariencia.colores;
+    if (c && /^#[0-9a-f]{6}$/i.test(c.principal)) document.body.style.setProperty('--acento', c.principal);
+    else document.body.style.removeProperty('--acento');
+  }
+  avisoPermitido = !!d.aviso;
+  volumenObjetivo = Math.max(0, Math.min(1, Number(d.volumen) || 0));
+  const a = reproductores[activo];
+  if (!d.sonando || !d.pista) {
+    if (sonando) rampa(a, 0, 1500);
+    sonando = false;
+    return;
+  }
+  const clave = `${d.pista.id}#${d.turno}`;
+  if (clave !== claveActual) {
+    empezar(d.pista, clave);
+    mostrarAviso(d.pista, clave);
+  } else if (!sonando || a.paused) {
+    a.play().catch(() => {});
+    rampa(a, volumenObjetivo, 1200);
+  } else if (Math.abs(a.volume - volumenObjetivo) > .01 && !rampas.has(a)) {
+    rampa(a, volumenObjetivo, 600);
+  }
+  sonando = true;
+}
+
+for (const a of reproductores) {
+  a.addEventListener('ended', () => { if (a === reproductores[activo]) avisar('terminada'); });
+  // Un archivo que no se puede leer: a la siguiente, sin quedarse callado.
+  a.addEventListener('error', () => { if (a === reproductores[activo] && a.src) avisar('terminada'); });
+}
+// Una rampa terminada se olvida: así se pueden aplicar cambios de volumen.
+setInterval(() => { for (const [a, id] of rampas) if (Math.abs(a.volume - volumenObjetivo) < .01 || a.paused) { cancelAnimationFrame(id); rampas.delete(a); } }, 500);
+
+// Por dónde va, para la barra del panel.
+setInterval(() => {
+  const a = reproductores[activo];
+  if (sonando && idActual && Number.isFinite(a.duration)) avisar('progreso', { pos: a.currentTime, dur: a.duration });
+}, 3000);
+
+if (q.get('demo') === '1') {
+  avisoPermitido = true;
+  mostrarAviso({ titulo: 'Level Up', artista: 'StreamBeats' }, 'demo');
+} else {
+  const preguntar = () => fetch(API, { cache: 'no-store' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => { if (d) aplicar(d); })
+    .catch(() => {})
+    .finally(() => setTimeout(preguntar, 1000));
+  preguntar();
+}
+</script>
+</body>
+</html>

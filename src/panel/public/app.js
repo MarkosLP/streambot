@@ -93,6 +93,8 @@ function duracion(desdeIso) {
 
 const cargadores = {
   escenas: cargarEscenas,
+  musica: () => { cargarMusica(); cargarMusicaObs(); },
+  temas: () => cargarTemas(),
   directo: () => cargarResumen(),
   efectos: () => { cargarEfectos(); cargarObs(); },
   biblioteca: cargarBiblioteca,
@@ -1402,6 +1404,10 @@ const escalarOverlay = new ResizeObserver((entradas) => {
   for (const e of entradas) e.target.style.setProperty('--escala', String(e.contentRect.width / 1920));
 });
 
+// Las vistas previas van mudas: el jefe y el botín en demo suenan en bucle, y
+// siguen sonando aunque cambies de pestaña. En OBS suenan como siempre.
+const sinSonido = (url) => `${url}${url.includes('?') ? '&' : '?'}volumen=0`;
+
 async function cargarBiblioteca() {
   let lib;
   try {
@@ -1437,7 +1443,7 @@ async function cargarBiblioteca() {
     ? lib.overlays.map((o) => {
       const vars = VARIANTES_OVERLAY[o.nombre] || [];
       let actual = vars[0]?.q ?? '';
-      const marco = h('iframe', { src: o.url + actual, sandbox: 'allow-scripts', title: o.nombre, tabindex: '-1' });
+      const marco = h('iframe', { src: sinSonido(o.url + actual), sandbox: 'allow-scripts', title: o.nombre, tabindex: '-1' });
       const vista = h('div', { class: 'overlay-vista' }, marco);
       escalarOverlay.observe(vista);
       const chips = vars.length > 1 && h('div', { class: 'variantes chips', role: 'group', 'aria-label': 'Variantes' },
@@ -1445,7 +1451,7 @@ async function cargarBiblioteca() {
           type: 'button', class: 'chip', 'aria-pressed': String(i === 0),
           onclick: (ev) => {
             actual = v.q;
-            marco.src = o.url + actual;
+            marco.src = sinSonido(o.url + actual);
             for (const b of ev.currentTarget.parentNode.children) b.setAttribute('aria-pressed', String(b === ev.currentTarget));
           },
         }, v.nombre)));
@@ -1478,6 +1484,7 @@ const ESCENAS_INFO = {
 
 let escenas = null;
 let escenasPintadas = false;
+const descripcionesFondo = {};
 /** El selector de fondo de cada escena, para rellenarlo cada vez que se carga. */
 const selectoresFondo = {};
 
@@ -1485,20 +1492,51 @@ function fechaFondo(iso) {
   return new Date(iso).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
+const estiloActual = () => escenas.estilos.find((e) => e.id === escenas.config.estilo) ?? escenas.estilos[0];
+const iconoEstilo = (id) => escenas.estilos.find((e) => e.id === id)?.icono ?? '';
+
 function pintarSelectoresFondo() {
+  const estilo = escenas.config.estilo;
   for (const [tipo, sel] of Object.entries(selectoresFondo)) {
     if (document.activeElement === sel) continue;
     const elegido = escenas.config.fondos?.[tipo];
-    // Sin elegir: el último de esta escena (lo mismo que hace el overlay).
-    const actual = elegido === 'dibujado' ? 'dibujado' : elegido ?? escenas.fondos.find((f) => f.escena === tipo)?.ruta ?? 'dibujado';
-    const propios = escenas.fondos.filter((f) => f.escena === tipo);
-    const otros = escenas.fondos.filter((f) => f.escena !== tipo);
-    const opcion = (f) => h('option', { value: f.ruta, selected: f.ruta === actual }, `${ESCENAS_INFO[f.escena]?.icono ?? '🖼️'} ${fechaFondo(f.at)}`);
+    // Sin elegir: el último de esta escena en este estilo (lo mismo que hace el overlay).
+    const propios = escenas.fondos.filter((f) => f.escena === tipo && f.estilo === estilo);
+    const actual = elegido === 'dibujado' ? 'dibujado' : elegido ?? propios[0]?.ruta ?? 'dibujado';
+    const mismoEstilo = escenas.fondos.filter((f) => f.escena !== tipo && f.estilo === estilo);
+    const otros = escenas.fondos.filter((f) => f.estilo !== estilo);
+    const opcion = (f) => h('option', { value: f.ruta, selected: f.ruta === actual },
+      `${f.estilo === estilo ? '' : `${iconoEstilo(f.estilo)} `}${ESCENAS_INFO[f.escena]?.icono ?? '🖼️'} ${f.titulo ?? ESCENAS_INFO[f.escena]?.nombre ?? 'Fondo'} · ${fechaFondo(f.at)}`);
     sel.replaceChildren(
-      h('option', { value: 'dibujado', selected: actual === 'dibujado' }, 'Paisaje dibujado (sin imagen)'),
+      h('option', { value: 'dibujado', selected: actual === 'dibujado' }, estilo === 'oscuro' ? 'Paisaje dibujado (sin imagen)' : 'Solo color (sin imagen)'),
       propios.length ? h('optgroup', { label: 'De esta escena' }, propios.map(opcion)) : null,
-      otros.length ? h('optgroup', { label: 'De otras escenas' }, otros.map(opcion)) : null);
+      mismoEstilo.length ? h('optgroup', { label: 'De otras escenas, mismo estilo' }, mismoEstilo.map(opcion)) : null,
+      otros.length ? h('optgroup', { label: 'De otros estilos' }, otros.map(opcion)) : null);
   }
+}
+
+/** Los botones de estilo, y lo que depende del estilo: las descripciones por defecto. */
+let estiloPintado = null;
+function pintarEstilos() {
+  const actual = estiloActual();
+  $('e-estilos').replaceChildren(...escenas.estilos.map((e) => h('button', {
+    type: 'button', class: `estilo estilo-${e.id}`, role: 'radio', 'aria-checked': String(e.id === actual.id),
+    onclick: () => { if (e.id !== escenas.config.estilo) guardarEscenas({ estilo: e.id }, `${e.icono} ${e.nombre}: sale en unos segundos`); },
+  }, h('span', {
+    class: 'estilo-muestra', 'aria-hidden': 'true',
+    style: e.propio ? `background: linear-gradient(160deg, ${e.propio.colores.cieloArriba}, ${e.propio.colores.principal} 60%, ${e.propio.colores.secundario})` : null,
+  }, e.icono), h('strong', {}, e.nombre), h('span', { class: 'nota estilo-para' }, e.para))));
+  $('e-estilo-nota').textContent = `Ahora: ${actual.icono} ${actual.nombre}`;
+  $('e-estilo-editar').hidden = !actual.propio;
+  $('e-estilo-nuevo').disabled = escenas.estilos.filter((e) => e.propio).length >= (escenas.opcionesEstilo?.max ?? 20);
+  if (!generandoTodo) $('e-estilo-generar').disabled = !escenas.imagenIa;
+  // Al cambiar de estilo, las descripciones pasan a las del nuevo (si no las estás escribiendo).
+  if (estiloPintado === actual.id) return;
+  estiloPintado = actual.id;
+  for (const [tipo, area] of Object.entries(descripcionesFondo)) {
+    if (document.activeElement !== area) area.value = actual.descripciones?.[tipo] ?? '';
+  }
+  if (document.activeElement !== $('e-avatar-desc')) $('e-avatar-desc').value = actual.descripcionAvatar ?? '';
 }
 
 async function cargarEscenas() {
@@ -1516,14 +1554,13 @@ async function cargarEscenas() {
   $('e-avatar').checked = c.avatar;
   $('e-avatar-texto-estado').textContent = c.avatar ? 'Avatar encendido' : 'Avatar apagado';
   pintarCuentaEscenas();
-  if (escenasPintadas) pintarSelectoresFondo();
+  if (escenasPintadas) { pintarSelectoresFondo(); pintarEstilos(); }
   pintarPersonajes();
 
   // Las tarjetas, una vez: rehacerlas recargaría las vistas previas.
   if (escenasPintadas) return;
   escenasPintadas = true;
   $('e-avatar-vista').src = '/biblioteca/overlays/avatar.html?siempre=1&fondo=1&bocadillo=reacciones';
-  $('e-avatar-desc').value = escenas.descripcionAvatar ?? '';
   $('e-avatar-generar').disabled = !escenas.imagenIa;
   cargarEscenasObs();
   $('e-lista').replaceChildren(...escenas.escenas.map((e) => {
@@ -1553,15 +1590,18 @@ async function cargarEscenas() {
     selectoresFondo[e.tipo] = selFondo;
     selFondo.addEventListener('change', () => guardarEscenas({ fondos: { [e.tipo]: selFondo.value || null } }, 'Fondo cambiado: sale en unos segundos'));
     const descripcion = h('textarea', { rows: '2', maxlength: '600', spellcheck: 'false' });
-    descripcion.value = escenas.descripciones?.[e.tipo] ?? '';
+    descripcionesFondo[e.tipo] = descripcion;
+    const titulo = h('input', { type: 'text', maxlength: '40', autocomplete: 'off', placeholder: 'Vacío = sale de la descripción' });
     const generar = h('button', { class: 'boton', type: 'button', disabled: !escenas.imagenIa }, '🎨 Generar fondo con IA');
     generar.addEventListener('click', async () => {
       generar.disabled = true;
       generar.textContent = '🎨 Generando… (unos 30 s)';
       try {
-        await api('/api/escenas/fondo', { escena: e.tipo, descripcion: descripcion.value });
-        tostada(`Fondo nuevo en ${info.nombre}`);
+        const r = await api('/api/escenas/fondo', { escena: e.tipo, descripcion: descripcion.value, titulo: titulo.value });
         await cargarEscenas();
+        const nuevo = escenas.fondos.find((f) => f.ruta === r.ruta);
+        tostada(`Fondo nuevo en ${info.nombre}: «${nuevo?.titulo ?? 'sin título'}»`);
+        titulo.value = '';
       } catch (err) {
         tostada(err.message, true);
       } finally {
@@ -1569,9 +1609,12 @@ async function cargarEscenas() {
         generar.textContent = '🎨 Generar fondo con IA';
       }
     });
+    const renombrar = h('button', { class: 'boton', type: 'button', title: 'Cambiar el título de este fondo', 'aria-label': 'Cambiar el título' }, '✏️');
+    renombrar.addEventListener('click', () => renombrarImagen(selFondo.value, escenas.fondos.find((f) => f.ruta === selFondo.value)?.titulo));
     const bloqueFondo = h('div', { class: 'escena-fondo' },
-      h('label', { class: 'campo' }, h('span', {}, 'Fondo'), selFondo),
+      h('div', { class: 'campo' }, h('span', {}, 'Fondo'), h('div', { class: 'con-boton' }, selFondo, renombrar)),
       h('label', { class: 'campo' }, h('span', {}, 'Qué quieres de fondo (en castellano)'), descripcion),
+      h('label', { class: 'campo' }, h('span', {}, 'Título del fondo nuevo'), titulo),
       h('div', { class: 'escena-botones' }, generar,
         h('span', { class: 'nota' }, escenas.imagenIa ? 'GPT Image de tu OpenAI · ~30 s · unos céntimos' : 'Falta OPENAI_API_KEY en el .env')));
 
@@ -1588,6 +1631,7 @@ async function cargarEscenas() {
       resultado);
   }));
   pintarSelectoresFondo();
+  pintarEstilos();
 }
 
 function pintarCuentaEscenas() {
@@ -1636,11 +1680,36 @@ function pintarPersonajes() {
   const sel = $('e-avatar-personaje');
   if (document.activeElement === sel) return;
   const actual = escenas.config.avatarImagen ?? '';
+  const estilo = escenas.config.estilo;
+  const nombre = (p) => (p.ruta.endsWith('/errante') ? 'El errante (el primero)' : `${p.titulo ?? 'Personaje'} · ${fechaFondo(p.at)}`);
+  const propios = (escenas.personajes ?? []).filter((p) => p.estilo === estilo);
+  const otros = (escenas.personajes ?? []).filter((p) => p.estilo !== estilo);
+  // Sin elegir: el último de este estilo, y si aún no hay, el errante.
   sel.replaceChildren(
-    ...(escenas.personajes ?? []).map((p) => h('option', { value: p.ruta, selected: p.ruta === actual },
-      p.ruta.endsWith('/errante') ? 'El errante (el primero)' : `Creado el ${fechaFondo(p.at)}`)),
-    h('option', { value: '', selected: !actual }, 'Dibujado (sin imagen)'));
+    h('option', { value: '', selected: !actual }, propios.length ? 'El último de este estilo' : 'El errante (este estilo aún no tiene personaje)'),
+    propios.length ? h('optgroup', { label: 'De este estilo' }, propios.map((p) => h('option', { value: p.ruta, selected: p.ruta === actual }, nombre(p)))) : null,
+    otros.length ? h('optgroup', { label: 'De otros estilos' }, otros.map((p) => h('option', { value: p.ruta, selected: p.ruta === actual }, `${iconoEstilo(p.estilo)} ${nombre(p)}`))) : null);
 }
+
+/** Cambia el título de un fondo o de un personaje generado. */
+async function renombrarImagen(ruta, actual) {
+  if (!ruta || ruta === 'dibujado') return tostada('Elige primero un fondo o personaje generado', true);
+  const nuevo = prompt('Nuevo título (máximo 40 letras):', actual ?? '');
+  if (nuevo === null || !nuevo.trim()) return;
+  try {
+    const r = await api('/api/escenas/titulo', { ruta, titulo: nuevo });
+    tostada(`Ahora se llama «${r.titulo}»`);
+    await cargarEscenas();
+  } catch (err) {
+    tostada(err.message, true);
+  }
+}
+$('e-avatar-renombrar').addEventListener('click', () => {
+  const sel = $('e-avatar-personaje');
+  // «El último de este estilo» no es una ruta: el que se ve es el primero de los suyos.
+  const ruta = sel.value || escenas.personajes.find((p) => p.estilo === escenas.config.estilo)?.ruta || 'imagenes/avatar/errante';
+  renombrarImagen(ruta, escenas.personajes.find((p) => p.ruta === ruta)?.titulo);
+});
 
 $('e-avatar-personaje').addEventListener('change', (ev) => guardarEscenas({ avatarImagen: ev.target.value || null }, 'Personaje cambiado'));
 $('e-avatar-generar').addEventListener('click', async (ev) => {
@@ -1648,9 +1717,10 @@ $('e-avatar-generar').addEventListener('click', async (ev) => {
   b.disabled = true;
   b.textContent = '🎨 Creando… (≈1 min)';
   try {
-    await api('/api/escenas/avatar-ia', { descripcion: $('e-avatar-desc').value });
-    tostada('Personaje nuevo: ya es el del avatar');
+    const r = await api('/api/escenas/avatar-ia', { descripcion: $('e-avatar-desc').value, titulo: $('e-avatar-titulo').value });
     await cargarEscenas();
+    tostada(`Personaje nuevo: «${escenas.personajes.find((p) => p.ruta === r.ruta)?.titulo ?? 'sin nombre'}», ya es el del avatar`);
+    $('e-avatar-titulo').value = '';
   } catch (err) {
     tostada(err.message, true);
   } finally {
@@ -1658,6 +1728,436 @@ $('e-avatar-generar').addEventListener('click', async (ev) => {
     b.textContent = '🎨 Crear personaje';
   }
 });
+
+// ---------------------------------------------------------------------------
+// Escenas → Estilo propio: el formulario, su vista previa y «Generar»
+// ---------------------------------------------------------------------------
+
+/** Ejemplos que rellenan el formulario: se pueden cambiar antes de guardar. */
+const IDEAS_ESTILO = [
+  { nombre: 'Aniimo', icono: '🦁', tematica: 'Mundo de fantasía de un RPG de anime moderno con criaturas legendarias, islas flotantes, ruinas antiguas y cielos luminosos al atardecer', base: 'redondo', letra: 'moderna', particulas: 'luces', colores: { principal: '#ffc53d', secundario: '#6ee7ff', cieloArriba: '#0d1a3a', cieloAbajo: '#e07a5f' } },
+  { nombre: 'Neón', icono: '🌆', tematica: 'Ciudad cyberpunk de noche bajo la lluvia, rascacielos, carteles de neón rosa y cian, reflejos en el suelo mojado', base: 'oscuro', letra: 'futurista', particulas: 'lluvia', colores: { principal: '#ff2bd6', secundario: '#19e6ff', cieloArriba: '#0a0620', cieloAbajo: '#3a0a4a' } },
+  { nombre: 'Retro', icono: '👾', tematica: 'Pixel art de videojuego clásico de 16 bits, colinas verdes, castillo a lo lejos, nubes redondas y monedas', base: 'redondo', letra: 'pixel', particulas: 'destellos', colores: { principal: '#ffb000', secundario: '#2a5bd7', cieloArriba: '#6cc4ff', cieloAbajo: '#c8f0ff' } },
+  { nombre: 'Invierno', icono: '❄️', tematica: 'Pueblo nevado de montaña con cabañas de madera iluminadas, pinos cubiertos de nieve y auroras boreales', base: 'redondo', letra: 'editorial', particulas: 'nieve', colores: { principal: '#4fc3f7', secundario: '#5c6bc0', cieloArriba: '#1a2a5a', cieloAbajo: '#9ec9f0' } },
+  { nombre: 'Océano', icono: '🌊', tematica: 'Mundo submarino mágico con arrecifes de coral de colores, medusas brillantes, rayos de luz y ruinas hundidas', base: 'redondo', letra: 'moderna', particulas: 'luces', colores: { principal: '#00e0c6', secundario: '#2b59c3', cieloArriba: '#0b3d91', cieloAbajo: '#3fd0e0' } },
+];
+
+const CAMPOS_COLOR = ['principal', 'secundario', 'cieloArriba', 'cieloAbajo'];
+let editandoEstilo = null; // id del propio que se edita, o null si es nuevo
+
+function datosFormEstilo() {
+  return {
+    nombre: $('ef-nombre').value, icono: $('ef-icono').value, tematica: $('ef-tematica').value,
+    base: $('ef-base').value, letra: $('ef-letra').value, particulas: $('ef-particulas').value,
+    colores: Object.fromEntries(CAMPOS_COLOR.map((k) => [k, $(`ef-${k}`).value])),
+  };
+}
+
+function rellenarFormEstilo(e) {
+  $('ef-nombre').value = e.nombre ?? '';
+  $('ef-icono').value = e.icono ?? '';
+  $('ef-tematica').value = e.tematica ?? '';
+  $('ef-base').value = e.base ?? 'redondo';
+  $('ef-letra').value = e.letra ?? 'moderna';
+  $('ef-particulas').value = e.particulas ?? 'luces';
+  for (const k of CAMPOS_COLOR) if (e.colores?.[k]) $(`ef-${k}`).value = e.colores[k];
+  vistaEstilo();
+}
+
+// La vista previa se rehace al cambiar algo, con un respiro para no recargar a cada tecla.
+let vistaTemporizador = null;
+function vistaEstilo() {
+  clearTimeout(vistaTemporizador);
+  vistaTemporizador = setTimeout(() => {
+    const d = datosFormEstilo();
+    const ap = { base: d.base, letra: d.letra, particulas: d.particulas, colores: d.colores };
+    $('ef-vista-marco').src = `/biblioteca/overlays/escena.html?tipo=inicio&demo=1&intro=0&ap=${encodeURIComponent(JSON.stringify(ap))}`;
+  }, 250);
+}
+
+function abrirFormEstilo(estilo) {
+  editandoEstilo = estilo?.id ?? null;
+  rellenarFormEstilo(estilo ?? IDEAS_ESTILO[0]);
+  if (!estilo) { $('ef-nombre').value = ''; $('ef-icono').value = ''; }
+  $('ef-borrar').hidden = !editandoEstilo;
+  $('e-estilo-form').hidden = false;
+  escalarOverlay.observe($('ef-vista'));
+  $('ef-nombre').focus();
+}
+
+$('e-estilo-ideas').replaceChildren(...IDEAS_ESTILO.map((idea) => h('button', { type: 'button', class: 'chip', onclick: () => rellenarFormEstilo(idea) }, `${idea.icono} ${idea.nombre}`)));
+$('e-estilo-form').addEventListener('input', vistaEstilo);
+$('e-estilo-nuevo').addEventListener('click', () => abrirFormEstilo(null));
+$('e-estilo-editar').addEventListener('click', () => abrirFormEstilo(estiloActual().propio));
+$('ef-cancelar').addEventListener('click', () => { $('e-estilo-form').hidden = true; });
+
+$('e-estilo-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const generar = ev.submitter?.dataset.generar === '1';
+  if (generar && !confirmarGenerar($('ef-nombre').value)) return;
+  try {
+    const r = await api('/api/escenas/estilo', { ...datosFormEstilo(), id: editandoEstilo ?? undefined });
+    $('e-estilo-form').hidden = true;
+    tostada(editandoEstilo ? 'Estilo guardado' : `${$('ef-icono').value || '✨'} Estilo creado: ya está puesto`);
+    await cargarEscenas();
+    if (generar) await generarTodoEstilo();
+  } catch (err) {
+    tostada(err.message, true);
+  }
+});
+
+$('ef-borrar').addEventListener('click', async () => {
+  if (!editandoEstilo || !confirm('¿Borrar este estilo? Sus imágenes se quedan en la Biblioteca.')) return;
+  try {
+    await api('/api/escenas/estilo/borrar', { id: editandoEstilo });
+    $('e-estilo-form').hidden = true;
+    tostada('Estilo borrado');
+    await cargarEscenas();
+  } catch (err) {
+    tostada(err.message, true);
+  }
+});
+
+function confirmarGenerar(nombre) {
+  return confirm(`Se generarán 7 imágenes con tu OpenAI para «${nombre}»: los 4 fondos (Empezamos, Charla, Pausa y Final) y el personaje (3 imágenes).\n\nTarda unos 3 minutos y cuesta unos céntimos. ¿Sigo?`);
+}
+
+$('e-estilo-generar').addEventListener('click', () => {
+  if (confirmarGenerar(estiloActual().nombre)) generarTodoEstilo();
+});
+
+/**
+ * Los 4 fondos y el personaje del estilo elegido, uno detrás de otro, con las
+ * descripciones del estilo (las de cada escena, si las has cambiado abajo).
+ * Si falla uno, para y lo dice: lo ya hecho se queda.
+ */
+let generandoTodo = false;
+async function generarTodoEstilo() {
+  if (generandoTodo) return;
+  generandoTodo = true;
+  const boton = $('e-estilo-generar');
+  boton.disabled = true;
+  const pasos = [...Object.keys(ESCENAS_INFO).map((tipo) => ({ tipo })), { avatar: true }];
+  try {
+    for (const [i, paso] of pasos.entries()) {
+      $('e-estilo-progreso').textContent = paso.avatar
+        ? `🎨 Personaje (${i + 1} de ${pasos.length}, ~1 min)…`
+        : `🎨 Fondo de ${ESCENAS_INFO[paso.tipo].nombre} (${i + 1} de ${pasos.length})…`;
+      if (paso.avatar) await api('/api/escenas/avatar-ia', { descripcion: $('e-avatar-desc').value });
+      else await api('/api/escenas/fondo', { escena: paso.tipo, descripcion: descripcionesFondo[paso.tipo]?.value ?? '' });
+      await cargarEscenas();
+    }
+    $('e-estilo-progreso').textContent = '✅ Listo: fondos y personaje nuevos';
+    tostada('Estilo completo: ya sale en las escenas');
+  } catch (err) {
+    $('e-estilo-progreso').textContent = `Se paró: ${err.message}`;
+    tostada(err.message, true);
+  } finally {
+    generandoTodo = false;
+    boton.disabled = !escenas?.imagenIa;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Música (core/musica.ts): lo que suena, las listas y cómo va con OBS
+// ---------------------------------------------------------------------------
+
+let musicaDatos = null;
+let musicaEscenasObs = [];
+const DESTINOS_MUSICA = [['inicio', 'Empezamos'], ['pausa', 'Pausa'], ['final', 'Final'], ['fondo', 'De fondo'], ['silencio', 'Silencio']];
+
+async function cargarMusica(releer = false) {
+  try {
+    musicaDatos = await api(`/api/musica${releer ? '?releer=1' : ''}`);
+  } catch (err) {
+    tostada(err.message === 'no existe' ? 'Reinicia el bot para ver la Música (Ctrl+C y npm start)' : err.message, true);
+    return;
+  }
+  pintarMusicaAhora();
+  pintarListasMusica();
+  pintarMapaMusica();
+  $('m-carpeta').textContent = musicaDatos.carpeta;
+  if (releer) {
+    const total = musicaDatos.listas.reduce((n, l) => n + l.canciones.length, 0);
+    tostada(`${total} ${total === 1 ? 'canción' : 'canciones'} en las carpetas`);
+  }
+}
+
+async function accionMusica(cuerpo, aviso) {
+  try {
+    const e = await api('/api/musica', cuerpo);
+    musicaDatos = { ...musicaDatos, ...e };
+    if (aviso) tostada(aviso);
+    pintarMusicaAhora();
+    pintarListasMusica();
+    pintarMapaMusica();
+  } catch (err) {
+    tostada(err.message, true);
+  }
+}
+
+const nombreLista = (id) => DESTINOS_MUSICA.find(([k]) => k === id)?.[1] ?? id;
+
+function pintarMusicaAhora() {
+  const m = musicaDatos;
+  if (!m) return;
+  const p = m.pista;
+  $('m-titulo').textContent = p ? p.titulo : 'Nada';
+  $('m-artista').textContent = p ? [p.artista, `lista ${nombreLista(p.lista)}`].filter(Boolean).join(' · ') : 'Elige una lista abajo, o cambia de escena en automático';
+  $('m-play').textContent = m.sonando ? '⏸' : '▶';
+  $('m-barras').classList.toggle('quietas', !m.sonando);
+  $('m-estado').textContent = m.ajustes.modo === 'auto'
+    ? (m.escenaObs ? `Auto · «${m.escenaObs}» → ${nombreLista(m.destino)}` : 'Auto · esperando a OBS')
+    : 'Manual';
+  const vol = m.lista ? m.ajustes.volumen[m.lista] : null;
+  $('m-volumen').disabled = vol === null;
+  if (document.activeElement !== $('m-volumen')) $('m-volumen').value = String(Math.round((vol ?? 0) * 100));
+  $('m-volumen-n').textContent = vol === null ? '' : `${Math.round(vol * 100)} %`;
+  const pr = m.progreso;
+  $('m-progreso').style.width = pr && pr.dur ? `${Math.min(100, (pr.pos / pr.dur) * 100)}%` : '0';
+  $('m-pos').textContent = pr ? mmss(Math.floor(pr.pos)) : '';
+  $('m-dur').textContent = pr ? mmss(Math.floor(pr.dur)) : '';
+  $('m-aviso-obs').textContent = m.overlay
+    ? ''
+    : '⚠️ La fuente «MUS Música» no está abierta en OBS: no suena nada hasta que la añadas (abajo) o abras OBS.';
+  $('m-auto').checked = m.ajustes.modo === 'auto';
+  $('m-modo-texto').textContent = m.ajustes.modo === 'auto' ? 'Automático' : 'Manual';
+  $('m-aviso').checked = m.ajustes.aviso;
+}
+
+function pintarListasMusica() {
+  const m = musicaDatos;
+  $('m-listas').replaceChildren(...m.listas.map((l) => {
+    const suena = m.lista === l.id;
+    const vol = h('input', { type: 'range', min: '0', max: '100', step: '1', value: String(Math.round(m.ajustes.volumen[l.id] * 100)), 'aria-label': `Volumen de ${l.nombre}` });
+    const volN = h('span', { class: 'nota' }, `${Math.round(m.ajustes.volumen[l.id] * 100)} %`);
+    vol.addEventListener('input', () => { volN.textContent = `${vol.value} %`; });
+    vol.addEventListener('change', () => accionMusica({ accion: 'ajustes', ajustes: { volumen: { [l.id]: Number(vol.value) / 100 } } }));
+    const canciones = l.canciones.length
+      ? h('ol', { class: 'musica-canciones' }, l.canciones.map((c) => h('li', { class: m.pista?.id === c.id ? 'actual' : '' },
+        h('button', { type: 'button', class: 'escuchar pequeno', 'aria-label': `Poner ${c.titulo}`, onclick: () => accionMusica({ accion: 'pista', id: c.id }) }),
+        h('span', {}, h('strong', {}, c.titulo), c.artista ? h('span', { class: 'nota' }, ` · ${c.artista}`) : null))))
+      : h('p', { class: 'nota' }, 'Vacía: mete canciones en su carpeta (abajo) y pulsa «Volver a leer las carpetas».');
+    return h('article', { class: `tarjeta musica-lista${suena ? ' sonando' : ''}` },
+      h('header', {}, h('h2', {}, `${{ inicio: '🌅', pausa: '⏳', final: '🌙', fondo: '🎮' }[l.id]} ${l.nombre}`),
+        h('span', { class: 'nota' }, `${l.canciones.length} ${l.canciones.length === 1 ? 'canción' : 'canciones'}`)),
+      h('div', { class: 'escena-botones' },
+        h('button', { class: `boton${suena ? '' : ' primario'}`, type: 'button', disabled: !l.canciones.length, onclick: () => accionMusica({ accion: 'lista', lista: l.id }, `▶ ${l.nombre}`) }, suena ? '↻ Otra de esta lista' : '▶ Poner esta lista'),
+        h('label', { class: 'musica-volumen' }, h('span', {}, '🔉'), vol, volN)),
+      h('details', { class: 'musica-detalle' }, h('summary', {}, 'Canciones'), canciones));
+  }));
+}
+
+/** Qué suena en cada escena de OBS (en automático). */
+function pintarMapaMusica() {
+  const m = musicaDatos;
+  const escenas = [...new Set([...Object.keys(m.escenasPorDefecto), ...musicaEscenasObs])];
+  const fila = (nombre, valor, alCambiar, etiqueta) => {
+    const sel = h('select', { 'aria-label': `Música en ${etiqueta}` }, DESTINOS_MUSICA.map(([k, t]) => h('option', { value: k, selected: k === valor }, t)));
+    sel.addEventListener('change', () => alCambiar(sel.value));
+    return h('div', { class: `musica-fila${m.escenaObs === nombre ? ' actual' : ''}` }, h('span', {}, etiqueta), sel);
+  };
+  $('m-mapa').replaceChildren(
+    ...escenas.map((e) => fila(e, m.ajustes.mapa[e] ?? m.escenasPorDefecto[e] ?? m.ajustes.otras,
+      (v) => accionMusica({ accion: 'ajustes', ajustes: { mapa: { [e]: v } } }), e)),
+    fila(null, m.ajustes.otras, (v) => accionMusica({ accion: 'ajustes', ajustes: { otras: v } }), 'Cualquier otra escena'));
+}
+
+/** Las escenas de OBS, para el mapa y para elegir dónde va la fuente. */
+async function cargarMusicaObs() {
+  const cont = $('m-escenas');
+  try {
+    const o = await api('/api/obs');
+    if (!o.conectado) {
+      musicaEscenasObs = [];
+      $('m-obs-estado').textContent = 'OBS no está conectado';
+      cont.replaceChildren(h('p', { class: 'nota' }, 'Abre OBS para elegir las escenas.'));
+      return;
+    }
+    musicaEscenasObs = o.escenas;
+    $('m-obs-estado').textContent = `${o.escenas.length} escenas`;
+    // Por defecto: las del panel (✦) y la que estás emitiendo (la del juego, normalmente).
+    cont.replaceChildren(...o.escenas.map((e) => h('label', { class: 'interruptor-fila' },
+      h('input', { type: 'checkbox', value: e, checked: e.startsWith('✦') || e === o.escenaActual }), h('span', {}, e === o.escenaActual ? `${e} (en emisión)` : e))));
+    if (musicaDatos) pintarMapaMusica();
+  } catch {
+    $('m-obs-estado').textContent = 'OBS no está conectado';
+  }
+}
+
+$('m-releer').addEventListener('click', () => cargarMusica(true));
+$('m-play').addEventListener('click', () => accionMusica({ accion: musicaDatos?.sonando ? 'pausar' : 'reanudar' }));
+$('m-siguiente').addEventListener('click', () => accionMusica({ accion: 'siguiente' }));
+$('m-anterior').addEventListener('click', () => accionMusica({ accion: 'anterior' }));
+$('m-volumen').addEventListener('input', () => { $('m-volumen-n').textContent = `${$('m-volumen').value} %`; });
+$('m-volumen').addEventListener('change', () => {
+  if (musicaDatos?.lista) accionMusica({ accion: 'ajustes', ajustes: { volumen: { [musicaDatos.lista]: Number($('m-volumen').value) / 100 } } });
+});
+$('m-auto').addEventListener('change', (ev) => accionMusica({ accion: 'modo', modo: ev.target.checked ? 'auto' : 'manual' }, ev.target.checked ? 'Música automática: va con la escena' : 'Música en manual'));
+$('m-aviso').addEventListener('change', (ev) => accionMusica({ accion: 'ajustes', ajustes: { aviso: ev.target.checked } }));
+$('m-abrir').addEventListener('click', () => api('/api/biblioteca/abrir', { seccion: 'musica' }).catch((err) => tostada(err.message, true)));
+$('m-obs').addEventListener('click', async () => {
+  const elegidas = [...document.querySelectorAll('#m-escenas input:checked')].map((i) => i.value);
+  if (!elegidas.length) return tostada('Marca al menos una escena', true);
+  if (!confirm(`Se añadirá la fuente «MUS Música» a:\n\n${elegidas.join('\n')}\n\nNo cambia la escena que estás emitiendo ni borra nada. Si ya hay una lista puesta, empezará a sonar. ¿Sigo?`)) return;
+  try {
+    const r = await api('/api/musica/obs', { escenas: elegidas });
+    $('m-obs-resultado').hidden = false;
+    $('m-obs-resultado').replaceChildren(...r.hecho.map((x) => h('li', {}, x)));
+    tostada('Música añadida en OBS');
+  } catch (err) {
+    tostada(err.message, true);
+  }
+});
+// Mientras la pestaña está abierta: lo que suena y por dónde va.
+setInterval(async () => {
+  if ($('v-musica').hidden || !musicaDatos) return;
+  try {
+    const e = await api('/api/musica');
+    const cambio = e.pista?.id !== musicaDatos.pista?.id || e.lista !== musicaDatos.lista || e.escenaObs !== musicaDatos.escenaObs;
+    musicaDatos = e;
+    pintarMusicaAhora();
+    if (cambio) { pintarListasMusica(); pintarMapaMusica(); }
+  } catch {}
+}, 2000);
+
+// ---------------------------------------------------------------------------
+// Temas para hablar (temas.ts): titulares, guion y lo que sale en pantalla
+// ---------------------------------------------------------------------------
+
+let temasDatos = null;
+const temasFiltro = { categoria: null, texto: '' };
+const preparando = new Set();
+
+function haceCuanto(iso) {
+  if (!iso) return '';
+  const min = Math.round((Date.now() - Date.parse(iso)) / 60_000);
+  if (min < 60) return `hace ${Math.max(1, min)} min`;
+  const h = Math.round(min / 60);
+  return h < 24 ? `hace ${h} h` : `hace ${Math.round(h / 24)} d`;
+}
+
+async function cargarTemas(forzar = false) {
+  $('t-estado').textContent = forzar ? 'Actualizando…' : $('t-estado').textContent || 'Leyendo los titulares…';
+  try {
+    temasDatos = await api(`/api/temas${forzar ? '?forzar=1' : ''}`);
+  } catch (err) {
+    tostada(err.message === 'no existe' ? 'Reinicia el bot para ver los Temas (Ctrl+C y npm start)' : err.message, true);
+    return;
+  }
+  pintarTemas();
+}
+
+function pintarTemas() {
+  const d = temasDatos;
+  if (!d) return;
+  const cuenta = (c) => d.noticias.filter((n) => !c || n.categoria === c).length;
+  $('t-categorias').replaceChildren(
+    ...[[null, 'Todas'], ...Object.entries(d.categorias)].map(([c, nombre]) => h('button', {
+      type: 'button', class: 'chip', 'aria-pressed': String(temasFiltro.categoria === c),
+      onclick: () => { temasFiltro.categoria = c; pintarTemas(); },
+    }, nombre, h('span', { class: 'cuenta' }, String(cuenta(c))))));
+  const fallos = d.errores.length ? ` · sin respuesta: ${d.errores.map((e) => e.fuente).join(', ')}` : '';
+  const ia = d.ia.disponible ? '' : ` · «Preparar» necesita la IA local: ${d.ia.motivo}`;
+  $('t-estado').textContent = `${d.noticias.length} titulares de los últimos 3 días, de ${d.fuentes.length} medios${fallos}${ia}`;
+
+  const texto = temasFiltro.texto.trim().toLowerCase();
+  const enGuion = new Set(d.guion.map((g) => g.noticia.id));
+  const lista = d.noticias.filter((n) => (!temasFiltro.categoria || n.categoria === temasFiltro.categoria)
+    && (!texto || `${n.titulo} ${n.resumen} ${n.fuente}`.toLowerCase().includes(texto))).slice(0, 80);
+  $('t-noticias').replaceChildren(...(lista.length
+    ? lista.map((n) => tarjetaNoticia(n, enGuion.has(n.id)))
+    : [h('p', { class: 'vacio-lista' }, texto ? `Nada coincide con «${temasFiltro.texto}».` : 'No hay titulares ahora mismo. Prueba a actualizar.')]));
+  pintarGuion();
+  pintarPantalla();
+}
+
+/** Lo preparado por la IA: resumen, preguntas (copiar, al chat, en pantalla) y encuesta. */
+function bloquePreparado(n, p) {
+  const alChat = (texto) => h('button', { class: 'boton pequeno', type: 'button', title: 'Lo escribe el bot en el chat', onclick: async () => {
+    try { await api('/api/chat', { texto }); tostada('Enviado al chat'); } catch (err) { tostada(err.message, true); }
+  } }, '💬 Al chat');
+  const encuesta = p.encuesta.pregunta ? `${p.encuesta.pregunta} ${p.encuesta.opciones.map((o, i) => `${i + 1}) ${o}`).join('  ')}` : '';
+  return h('div', { class: 'tema-preparado' },
+    h('p', {}, p.resumen),
+    h('ul', { class: 'tema-preguntas' }, p.preguntas.map((q) => h('li', {}, h('span', {}, q),
+      h('span', { class: 'tema-acciones' }, botonCopiar(q, 'Copiar'), alChat(q),
+        h('button', { class: 'boton pequeno', type: 'button', title: 'Sale en la escena Charla, debajo del titular', onclick: () => accionTema({ accion: 'pantalla', id: n.id, pregunta: q }, '📺 En pantalla con esa pregunta') }, '📺'))))),
+    encuesta ? h('div', { class: 'tema-encuesta' }, h('strong', {}, '📊 Encuesta: '), h('span', {}, encuesta), botonCopiar(encuesta, 'Copiar')) : null);
+}
+
+function tarjetaNoticia(n, apartada) {
+  const p = n.preparado;
+  const preparar = h('button', { class: 'boton', type: 'button', disabled: !temasDatos.ia.disponible || preparando.has(n.id) },
+    preparando.has(n.id) ? '✨ Preparando… (~30 s)' : p ? '✨ Otra vez' : '✨ Preparar');
+  preparar.addEventListener('click', async () => {
+    preparando.add(n.id);
+    pintarTemas();
+    try {
+      const r = await api('/api/temas', { accion: 'preparar', id: n.id });
+      const x = temasDatos.noticias.find((y) => y.id === n.id);
+      if (x) x.preparado = r.preparado;
+      temasDatos.guion = r.guion;
+    } catch (err) {
+      tostada(err.message, true);
+    } finally {
+      preparando.delete(n.id);
+      pintarTemas();
+    }
+  });
+  return h('article', { class: `tarjeta noticia${apartada ? ' apartada' : ''}` },
+    n.imagen ? h('img', { class: 'noticia-img', src: n.imagen, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' }) : null,
+    h('div', { class: 'noticia-cuerpo' },
+      h('div', { class: 'noticia-meta' }, h('span', { class: `chip cat-${n.categoria}` }, temasDatos.categorias[n.categoria]), h('span', { class: 'nota' }, `${n.fuente} · ${haceCuanto(n.fecha)}`)),
+      h('h3', {}, h('a', { href: n.enlace, target: '_blank', rel: 'noopener noreferrer' }, n.titulo)),
+      n.resumen ? h('p', { class: 'nota' }, n.resumen) : null,
+      p ? bloquePreparado(n, p) : null,
+      h('div', { class: 'escena-botones' },
+        preparar,
+        h('button', { class: `boton${apartada ? '' : ' primario'}`, type: 'button', onclick: () => accionTema({ accion: apartada ? 'quitar' : 'apartar', id: n.id }, apartada ? 'Quitado del guion' : '📝 Al guion') },
+          apartada ? '✓ En el guion' : '📝 Al guion'),
+        h('button', { class: 'boton', type: 'button', title: 'Sale en la escena Charla', onclick: () => accionTema({ accion: 'pantalla', id: n.id }, '📺 En pantalla') }, '📺 En pantalla'))));
+}
+
+function pintarGuion() {
+  const g = temasDatos.guion;
+  $('t-guion').replaceChildren(...(g.length
+    ? g.map((x, i) => h('li', { class: x.hecho ? 'hecho' : '' },
+      h('label', { class: 'interruptor-fila' },
+        h('input', { type: 'checkbox', checked: x.hecho, onchange: (ev) => accionTema({ accion: 'hecho', id: x.noticia.id, hecho: ev.target.checked }) }),
+        h('span', {}, h('strong', {}, x.noticia.titulo), h('span', { class: 'nota' }, ` · ${x.noticia.fuente}`))),
+      x.preparado ? h('details', {}, h('summary', {}, 'Resumen y preguntas'), bloquePreparado(x.noticia, x.preparado)) : null,
+      h('div', { class: 'tema-acciones' },
+        h('button', { class: 'boton pequeno', type: 'button', disabled: i === 0, 'aria-label': 'Subir', onclick: () => accionTema({ accion: 'mover', id: x.noticia.id, paso: -1 }) }, '↑'),
+        h('button', { class: 'boton pequeno', type: 'button', disabled: i === g.length - 1, 'aria-label': 'Bajar', onclick: () => accionTema({ accion: 'mover', id: x.noticia.id, paso: 1 }) }, '↓'),
+        h('button', { class: 'boton pequeno', type: 'button', onclick: () => accionTema({ accion: 'pantalla', id: x.noticia.id, pregunta: x.preparado?.preguntas[0] ?? null }, '📺 En pantalla') }, '📺'),
+        h('button', { class: 'boton pequeno peligro', type: 'button', 'aria-label': 'Quitar', onclick: () => accionTema({ accion: 'quitar', id: x.noticia.id }) }, '✕'))))
+    : [h('li', { class: 'nota' }, 'Vacío. Aparta aquí los temas del directo con «📝 Al guion».')]));
+}
+
+function pintarPantalla() {
+  const p = temasDatos.pantalla;
+  $('t-pantalla').replaceChildren(...(p
+    ? [h('p', {}, h('strong', {}, p.titulo), h('span', { class: 'nota' }, ` · ${p.fuente}`)),
+      p.pregunta ? h('p', { class: 'nota' }, `💬 ${p.pregunta}`) : null,
+      h('button', { class: 'boton', type: 'button', onclick: () => accionTema({ accion: 'pantalla', id: null }, 'Quitado de la pantalla') }, 'Quitar de la pantalla')]
+    : [h('p', { class: 'nota' }, 'Nada. Con «📺 En pantalla», el titular sale en la escena Charla en lugar de los datos del Loot.')]));
+}
+
+async function accionTema(cuerpo, aviso) {
+  try {
+    const r = await api('/api/temas', cuerpo);
+    temasDatos = { ...temasDatos, guion: r.guion, pantalla: r.pantalla };
+    if (aviso) tostada(aviso);
+    pintarTemas();
+  } catch (err) {
+    tostada(err.message, true);
+  }
+}
+
+$('t-actualizar').addEventListener('click', () => cargarTemas(true));
+$('t-buscar').addEventListener('input', (ev) => { temasFiltro.texto = ev.target.value; pintarTemas(); });
+$('t-vaciar').addEventListener('click', () => { if (confirm('¿Vaciar el guion del directo?')) accionTema({ accion: 'vaciar' }, 'Guion vacío'); });
 
 /** Las escenas de OBS, para elegir dónde va el avatar. Por defecto, la que está en emisión. */
 async function cargarEscenasObs() {
@@ -1709,8 +2209,12 @@ const VARIANTES_OVERLAY = {
     { nombre: '🌅 Empezamos', q: '?tipo=inicio&demo=1' },
     { nombre: '💬 Charla', q: '?tipo=charla&demo=1' },
     { nombre: '🧙 Sin cámara', q: '?tipo=charla&demo=1&avatar=1' },
+    { nombre: '📰 Con tema', q: '?tipo=charla&demo=1&tema=1' },
     { nombre: '⏳ Pausa', q: '?tipo=pausa&demo=1' },
     { nombre: '🌙 Final', q: '?tipo=final&demo=1' },
+    { nombre: '🌈 Colorido', q: '?tipo=inicio&demo=1&estilo=alegre' },
+    { nombre: '🌈 Charla', q: '?tipo=charla&demo=1&estilo=alegre' },
+    { nombre: '🍵 Acogedor', q: '?tipo=pausa&demo=1&estilo=acogedor' },
   ],
   'jefe.html': [
     ...[['dragon', '🐉 Dragón'], ['esqueleto', '💀 Esqueleto'], ['hidra', '🐍 Hidra'], ['golem', '🗿 Gólem'], ['liche', '☠️ Liche'],
@@ -1789,7 +2293,7 @@ function pintarGaleria() {
   const texto = galeria.texto.trim().toLowerCase();
   const filtradas = todas.filter((i) =>
     (galeria.carpeta === null || i.carpeta === galeria.carpeta) &&
-    (!texto || `${i.carpeta}/${i.nombre}`.toLowerCase().includes(texto)));
+    (!texto || `${i.carpeta}/${i.nombre} ${i.titulo ?? ''}`.toLowerCase().includes(texto)));
   // El orden en que el visor pasa de una a otra: el de la pantalla.
   galeria.visibles = [];
 
@@ -1832,7 +2336,7 @@ function tarjetaImagen(t) {
   return h('article', { class: 'imagen' },
     h('button', { class: `imagen-vista ${fondo}`, type: 'button', 'aria-label': `Ver ${i.nombre} en grande`, onclick: () => abrirVisor(indice) }, img),
     h('div', { class: 'overlay-pie' },
-      h('div', { class: 'sonido-info' }, h('strong', { title: i.nombre }, i.nombre),
+      h('div', { class: 'sonido-info' }, h('strong', { title: i.nombre }, i.titulo ?? i.nombre),
         h('span', { class: 'sonido-meta' }, dims, h('span', { class: 'dato' }, tamano(i.bytes)))),
       botonCopiar(i.ruta)));
 }

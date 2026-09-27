@@ -47,6 +47,14 @@
         <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M7 9l3 2-3 2M12 13h4"/></svg>
         Escenas
       </button>
+      <button role="tab" data-tab="musica">
+        <svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
+        Música
+      </button>
+      <button role="tab" data-tab="temas">
+        <svg viewBox="0 0 24 24"><path d="M4 5h13a3 3 0 0 1 3 3v11H7a3 3 0 0 1-3-3zM8 9h8M8 13h8M8 17h5"/></svg>
+        Temas
+      </button>
       <button role="tab" data-tab="efectos">
         <svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>
         Efectos
@@ -370,6 +378,75 @@
         </div>
       </header>
 
+      <article class="tarjeta">
+        <header><h2>🎨 Estilo</h2><span class="nota" id="e-estilo-nota"></span></header>
+        <div class="estilos" id="e-estilos" role="radiogroup" aria-label="Estilo de las escenas"></div>
+        <div class="estilo-acciones">
+          <button class="boton" type="button" id="e-estilo-nuevo">➕ Crear mi estilo</button>
+          <button class="boton" type="button" id="e-estilo-editar" hidden>✏️ Editar este estilo</button>
+          <button class="boton primario" type="button" id="e-estilo-generar">🎨 Generar fondos y personaje de este estilo</button>
+          <span class="nota" id="e-estilo-progreso"></span>
+        </div>
+        <p class="nota">Cambia a la vez las cuatro escenas y el avatar, en directo y sin tocar OBS. Cada estilo guarda sus propios fondos y su personaje: al volver a uno, vuelve todo lo suyo. «Generar» hace 7 imágenes (4 fondos y el personaje, ~3 min, unos céntimos de tu OpenAI).</p>
+
+        <form class="estilo-form" id="e-estilo-form" hidden>
+          <div class="estilo-form-campos">
+            <div class="estilo-ideas">
+              <span class="nota">Ideas para empezar:</span>
+              <div class="chips" id="e-estilo-ideas"></div>
+            </div>
+            <div class="estilo-fila">
+              <label class="campo"><span>Nombre</span><input type="text" id="ef-nombre" maxlength="30" required autocomplete="off" placeholder="Aniimo"></label>
+              <label class="campo campo-emoji"><span>Emoji</span><input type="text" id="ef-icono" maxlength="4" autocomplete="off" placeholder="✨"></label>
+            </div>
+            <label class="campo"><span>Temática (en castellano: cómo es el mundo y el estilo de dibujo)</span>
+              <textarea id="ef-tematica" rows="3" maxlength="400" required spellcheck="false" placeholder="Un mundo de criaturas adorables con islas flotantes, praderas y colores pastel, estilo anime brillante"></textarea></label>
+            <div class="estilo-fila">
+              <label class="campo"><span>Forma</span><select id="ef-base">
+                <option value="redondo">Moderna (paneles de cristal)</option>
+                <option value="oscuro">Elegante y oscura (líneas finas)</option>
+              </select></label>
+              <label class="campo"><span>Letra</span><select id="ef-letra">
+                <option value="moderna">Moderna</option>
+                <option value="editorial">Editorial (serif suave)</option>
+                <option value="elegante">Elegante (serif clásica)</option>
+                <option value="futurista">Futurista</option>
+                <option value="redonda">Redonda</option>
+                <option value="calida">Cálida</option>
+                <option value="pixel">Píxel retro</option>
+                <option value="comic">Cómic</option>
+              </select></label>
+              <label class="campo"><span>Partículas</span><select id="ef-particulas">
+                <option value="luces">Luces desenfocadas</option>
+                <option value="polvo">Polvo de luz</option>
+                <option value="destellos">Destellos</option>
+                <option value="petalos">Pétalos</option>
+                <option value="nieve">Nieve</option>
+                <option value="lluvia">Lluvia</option>
+                <option value="ceniza">Ceniza y lumbres</option>
+                <option value="ninguna">Ninguna</option>
+              </select></label>
+            </div>
+            <div class="estilo-colores">
+              <label class="campo"><span>Principal</span><input type="color" id="ef-principal" value="#ff5fa8"></label>
+              <label class="campo"><span>Secundario</span><input type="color" id="ef-secundario" value="#6b4bff"></label>
+              <label class="campo"><span>Cielo arriba</span><input type="color" id="ef-cieloArriba" value="#5fc8ff"></label>
+              <label class="campo"><span>Cielo abajo</span><input type="color" id="ef-cieloAbajo" value="#ffd9f0"></label>
+            </div>
+            <div class="escena-botones">
+              <button class="boton primario" type="submit" data-generar="1">🎨 Guardar y generar con IA</button>
+              <button class="boton" type="submit">Guardar sin generar</button>
+              <button class="boton" type="button" id="ef-cancelar">Cancelar</button>
+              <button class="boton peligro" type="button" id="ef-borrar" hidden>🗑️ Borrar</button>
+            </div>
+          </div>
+          <div class="estilo-form-vista">
+            <div class="overlay-vista" id="ef-vista"><iframe id="ef-vista-marco" sandbox="allow-scripts" title="Vista previa del estilo" tabindex="-1"></iframe></div>
+            <p class="nota">Así queda con el color de fondo. Con «Generar», la IA pinta los fondos y el personaje de esta temática.</p>
+          </div>
+        </form>
+      </article>
+
       <div class="dos-col escenas-mandos">
         <article class="tarjeta">
           <header><h2>⏳ Cuenta atrás</h2><span class="nota" id="e-cuenta-estado">Sin cuenta atrás</span></header>
@@ -400,9 +477,11 @@
             <div class="avatar-mandos">
               <p class="nota">Para cuando apagues la cámara. Enciéndelo aquí y aparece <b>en la escena Charla</b> (en el hueco de la cámara) y <b>donde hayas añadido el avatar</b> (la escena del juego, por ejemplo). Apagado, es transparente.</p>
               <p class="nota">Respira, parpadea, mira al chat cuando alguien escribe, se alegra con el botín (y se sorprende con un legendario) y se duerme si el chat calla 90 s.</p>
-              <label class="campo"><span>Personaje</span><select id="e-avatar-personaje"></select></label>
+              <div class="campo"><span>Personaje</span>
+                <div class="con-boton"><select id="e-avatar-personaje" aria-label="Personaje"></select><button class="boton" type="button" id="e-avatar-renombrar" title="Cambiar el nombre de este personaje" aria-label="Cambiar el nombre">✏️</button></div></div>
               <details class="avatar-crear">
                 <summary>🎨 Crear otro personaje con IA</summary>
+                <label class="campo"><span>Nombre</span><input type="text" id="e-avatar-titulo" maxlength="40" autocomplete="off" placeholder="Vacío = sale de la descripción"></label>
                 <label class="campo"><span>Cómo es (en castellano)</span><textarea id="e-avatar-desc" rows="3" maxlength="600" spellcheck="false"></textarea></label>
                 <div class="escena-botones"><button class="boton" type="button" id="e-avatar-generar">🎨 Crear personaje</button><span class="nota">3 imágenes · ~1 min · unos céntimos de tu OpenAI</span></div>
               </details>
@@ -433,6 +512,115 @@
       </article>
 
       <div class="lista-escenas" id="e-lista"></div>
+    </section>
+
+    <!-- MÚSICA -->
+    <section class="vista" id="v-musica" hidden>
+      <header class="cabecera-vista">
+        <div>
+          <p class="antetitulo">Empezamos · Pausa · Final · De fondo</p>
+          <h1>Música</h1>
+          <p class="nota">Música libre de derechos para el directo, con una lista para cada momento. En automático cambia sola con la escena de OBS.</p>
+        </div>
+        <button class="boton" id="m-releer" type="button">Volver a leer las carpetas</button>
+      </header>
+
+      <div class="dos-col musica-arriba">
+        <article class="tarjeta musica-ahora">
+          <header><h2>🎵 Sonando</h2><span class="nota" id="m-estado"></span></header>
+          <div class="musica-pista">
+            <div class="musica-barras" id="m-barras" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            <div class="musica-textos">
+              <strong id="m-titulo">Nada</strong>
+              <span id="m-artista" class="nota"></span>
+            </div>
+          </div>
+          <div class="musica-progreso"><div id="m-progreso"></div></div>
+          <div class="musica-tiempos nota"><span id="m-pos"></span><span id="m-dur"></span></div>
+          <div class="musica-mandos">
+            <button class="boton" type="button" id="m-anterior" aria-label="Anterior" title="Anterior">⏮</button>
+            <button class="boton primario musica-play" type="button" id="m-play" aria-label="Reproducir o pausar">▶</button>
+            <button class="boton" type="button" id="m-siguiente" aria-label="Siguiente" title="Siguiente">⏭</button>
+            <label class="musica-volumen"><span>🔉</span><input type="range" id="m-volumen" min="0" max="100" step="1" aria-label="Volumen de esta lista"><span id="m-volumen-n" class="nota"></span></label>
+          </div>
+          <p class="nota" id="m-aviso-obs"></p>
+        </article>
+
+        <article class="tarjeta">
+          <header>
+            <h2>🎬 Según la escena</h2>
+            <label class="interruptor-loot" title="La lista la decide la escena de OBS en emisión">
+              <span id="m-modo-texto">Automático</span>
+              <input type="checkbox" class="toggle" id="m-auto">
+            </label>
+          </header>
+          <p class="nota">En automático, al cambiar de escena en OBS cambia la lista (con un fundido) o se calla. En manual manda lo que pulses aquí.</p>
+          <div class="musica-mapa" id="m-mapa"></div>
+          <label class="interruptor-fila"><input type="checkbox" id="m-aviso"> <span>En las escenas del juego, un aviso pequeño con el título al empezar cada canción</span></label>
+        </article>
+      </div>
+
+      <div class="lista-musica" id="m-listas"></div>
+
+      <div class="dos-col">
+        <article class="tarjeta">
+          <header><h2>📥 Meter música</h2></header>
+          <ol class="pasos-musica">
+            <li>Entra en <a href="https://www.streambeats.com/" target="_blank" rel="noopener">streambeats.com</a> (de Harris Heller: gratis y sin avisos de copyright en Twitch ni YouTube) y pulsa <b>Download for Free</b>. Te lleva a <b>Bandcamp</b>: elige un álbum y descárgalo en <b>MP3</b> (si te pide precio, pon <b>0</b>).</li>
+            <li>Descomprime el zip y mete las canciones en la carpeta de cada momento: tranquilas y con ritmo para <b>Empezamos</b>, suaves para <b>Pausa</b>, algo emotivo para <b>Final</b> y lo-fi sin voz para <b>De fondo</b>.</li>
+            <li>Pulsa <b>Volver a leer las carpetas</b>. Título y artista salen del propio mp3.</li>
+          </ol>
+          <div class="escena-botones">
+            <button class="boton" type="button" id="m-abrir">📂 Abrir la carpeta de música</button>
+            <code id="m-carpeta"></code>
+          </div>
+          <p class="nota">Nada de música de YouTube o Spotify: en Twitch trae avisos DMCA y te pueden silenciar los vídeos.</p>
+        </article>
+
+        <article class="tarjeta">
+          <header><h2>🔊 En OBS</h2><span class="nota" id="m-obs-estado"></span></header>
+          <p class="nota">Una sola fuente, <code>MUS Música</code>, compartida por las escenas que marques: al cambiar de escena la canción sigue. Su volumen general está en el mezclador de OBS; y la oyes también por tus cascos.</p>
+          <div class="musica-escenas" id="m-escenas"></div>
+          <div class="escena-botones">
+            <button class="boton primario" type="button" id="m-obs">🎬 Añadir la música a estas escenas</button>
+          </div>
+          <ul class="escena-resultado" id="m-obs-resultado" hidden></ul>
+        </article>
+      </div>
+    </section>
+
+    <!-- TEMAS PARA HABLAR -->
+    <section class="vista" id="v-temas" hidden>
+      <header class="cabecera-vista">
+        <div>
+          <p class="antetitulo">Juegos · Actualidad · Ciencia y tecnología</p>
+          <h1>Temas para hablar</h1>
+          <p class="nota">Titulares de hoy de medios en castellano, para los directos de charla. Aparta los que te interesen en el guion; «Preparar» te da un resumen, preguntas para el chat y una encuesta (IA local, gratis).</p>
+        </div>
+        <button class="boton" id="t-actualizar" type="button">Actualizar</button>
+      </header>
+
+      <div class="temas-cuerpo">
+        <div class="temas-lista">
+          <div class="temas-filtros">
+            <div class="chips" id="t-categorias" role="group" aria-label="Categoría"></div>
+            <input type="search" id="t-buscar" placeholder="Buscar en los titulares…" autocomplete="off">
+          </div>
+          <p class="nota" id="t-estado"></p>
+          <div id="t-noticias" class="temas-noticias"></div>
+        </div>
+
+        <aside class="temas-lado">
+          <article class="tarjeta temas-pantalla">
+            <header><h2>📺 En pantalla</h2></header>
+            <div id="t-pantalla"></div>
+          </article>
+          <article class="tarjeta">
+            <header><h2>📝 Guion del directo</h2><button class="enlace" type="button" id="t-vaciar">Vaciar</button></header>
+            <ol id="t-guion" class="temas-guion"></ol>
+          </article>
+        </aside>
+      </div>
     </section>
 
     <!-- AJUSTES -->

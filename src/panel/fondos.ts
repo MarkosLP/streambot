@@ -4,58 +4,59 @@ import { join } from 'node:path';
 import { DIR_BIBLIOTECA } from './biblioteca.js';
 import * as imagen from '../services/ia-imagen.js';
 import { log } from '../core/logger.js';
+import { INFO, POR_DEFECTO, deNombre, info, type Estilo } from './estilos.js';
+import * as rotulos from './rotulos.js';
 
 /**
  * Fondos de las escenas generados con IA (27 sep 2026).
  *
  * Cada escena tiene una descripción ya preparada (se puede cambiar en
  * castellano en el panel) y una composición que deja sitio a lo que va
- * encima: el título en Empezamos, la cámara en Charla. El estilo es el mismo
- * para todas, para que parezcan del mismo mundo.
+ * encima: el título en Empezamos, la cámara en Charla. El estilo (estilos.ts)
+ * es el mismo para las cuatro, para que parezcan del mismo mundo.
  *
  * Se guardan en biblioteca/imagenes/fondos/ y se ven en la Biblioteca.
  */
 
 export type EscenaFondo = 'inicio' | 'charla' | 'pausa' | 'final';
 
-export const DESCRIPCIONES: Record<EscenaFondo, string> = {
-  inicio: 'Un castillo gótico sobre un acantilado al anochecer, valles con niebla, una luna baja y ventanas encendidas',
-  charla: 'El interior de una taberna medieval acogedora de noche, con chimenea, velas, mapas y armas en las paredes',
-  pausa: 'Una hoguera de campamento en un bosque de noche, la tienda de un aventurero, estrellas y luciérnagas',
-  final: 'Amanecer sobre un valle con ruinas antiguas y un camino que se pierde entre la niebla',
-};
+/** Las descripciones de siempre, del estilo oscuro. Cada estilo tiene las suyas en estilos.ts. */
+export const DESCRIPCIONES: Record<EscenaFondo, string> = INFO.oscuro.descripciones;
 
-const ESTILO =
-  'Cinematic dark fantasy matte painting used as a livestream overlay background. Painterly AAA game key art, ' +
-  'rich atmosphere, volumetric light, depth and haze, deep shadows, cohesive muted palette with warm ember-orange accents. ' +
-  'No text, no letters, no logos, no watermark, no UI, no people in the foreground.';
-
+/** Solo dónde va cada cosa: el ambiente lo pone el estilo. */
 const COMPOSICION: Record<EscenaFondo, string> = {
   inicio: 'Wide establishing shot. Keep the upper-center sky calm and darker for a large title; keep the bottom band darker for small text.',
-  charla: 'Most of the left two thirds will be covered by a webcam frame, so put the most interesting details on the right side and along the bottom; overall darker and low contrast so white text stays readable.',
-  pausa: 'Quiet, restful mood with cooler night tones. Keep the center calm and darker for a large title.',
-  final: 'Hopeful, warm soft light. Keep the upper half calm for a large title and the center darker for scrolling credits.',
+  charla: 'Most of the left two thirds will be covered by a webcam frame, so put the most interesting details on the right side and along the bottom.',
+  pausa: 'Keep the center calm and darker for a large title.',
+  final: 'Keep the upper half calm for a large title and the center darker for scrolling credits.',
 };
 
-export function prompt(escena: EscenaFondo, descripcion: string): string {
-  const que = descripcion.trim().slice(0, 600) || DESCRIPCIONES[escena];
-  return `${ESTILO}\nScene (described in Spanish): ${que}\n${COMPOSICION[escena]}`;
+export function prompt(escena: EscenaFondo, descripcion: string, estilo: Estilo = POR_DEFECTO): string {
+  const e = info(estilo);
+  const que = descripcion.trim().slice(0, 600) || e.descripciones[escena];
+  return `${e.fondo}\nScene (described in Spanish): ${que}\n${COMPOSICION[escena]} ${e.tono[escena]}`;
 }
 
 const carpeta = (dir: string) => join(dir, 'imagenes', 'fondos');
 
-/** Genera un fondo y lo guarda. Devuelve su ruta en la biblioteca ('imagenes/fondos/…'). */
-export async function generar(escena: EscenaFondo, descripcion: string, dir = DIR_BIBLIOTECA): Promise<string> {
-  const png = await imagen.generar({ prompt: prompt(escena, descripcion), tamano: '1920x1088' });
+/**
+ * Genera un fondo y lo guarda con su título (el que pongas, o uno sacado de la
+ * descripción). Devuelve su ruta en la biblioteca ('imagenes/fondos/…').
+ */
+export async function generar(escena: EscenaFondo, descripcion: string, estilo: Estilo = POR_DEFECTO, dir = DIR_BIBLIOTECA, titulo = ''): Promise<string> {
+  const que = descripcion.trim().slice(0, 600) || info(estilo).descripciones[escena];
+  const png = await imagen.generar({ prompt: prompt(escena, descripcion, estilo), tamano: '1920x1088' });
   await mkdir(carpeta(dir), { recursive: true });
-  const nombre = `${escena}-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.png`;
+  const nombre = `${estilo}-${escena}-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.png`;
   await writeFile(join(carpeta(dir), nombre), png);
+  const ruta = `imagenes/fondos/${nombre}`;
+  await rotulos.escribir(ruta, { titulo: rotulos.limpiarTitulo(titulo) || rotulos.tituloDe(que), descripcion: que }, dir);
   log.info(`Fondo generado con IA: ${nombre}`);
-  return `imagenes/fondos/${nombre}`;
+  return ruta;
 }
 
 /** Los fondos que hay, los más nuevos primero. */
-export async function lista(dir = DIR_BIBLIOTECA): Promise<Array<{ ruta: string; escena: string; at: string }>> {
+export async function lista(dir = DIR_BIBLIOTECA): Promise<Array<{ ruta: string; escena: string; estilo: Estilo; titulo: string | null; at: string }>> {
   let nombres: string[];
   try {
     nombres = (await readdir(carpeta(dir))).filter((n) => /\.(png|jpe?g|webp)$/i.test(n));
@@ -64,20 +65,35 @@ export async function lista(dir = DIR_BIBLIOTECA): Promise<Array<{ ruta: string;
   }
   const filas = await Promise.all(nombres.map(async (n) => ({
     ruta: `imagenes/fondos/${n}`,
-    escena: n.split('-')[0] ?? '',
+    ...partes(n),
+    titulo: (await rotulos.leer(`imagenes/fondos/${n}`, dir))?.titulo ?? null,
     at: (await stat(join(carpeta(dir), n))).mtime.toISOString(),
   })));
   return filas.sort((a, b) => b.at.localeCompare(a.at));
 }
 
 /**
- * El fondo más nuevo generado para una escena, o null. Es el que se usa si no
- * has elegido otro: generar uno nuevo ya lo pone. Los nombres llevan la fecha
- * y ordenan solos.
+ * De qué estilo y escena es un archivo: 'alegre-inicio-2026….png'. Los de
+ * antes de los estilos ('inicio-2026….png') son del oscuro.
  */
-export function ultimoDe(escena: EscenaFondo, dir = DIR_BIBLIOTECA): string | null {
+export function partes(nombre: string): { estilo: Estilo; escena: string } {
+  const estilo = deNombre(nombre);
+  const resto = nombre.startsWith(`${estilo}-`) ? nombre.slice(estilo.length + 1) : nombre;
+  return { estilo, escena: resto.split('-')[0] ?? '' };
+}
+
+/**
+ * El fondo más nuevo generado para una escena en un estilo, o null. Es el que
+ * se usa si no has elegido otro: generar uno nuevo ya lo pone. Los nombres
+ * llevan la fecha y ordenan solos.
+ */
+export function ultimoDe(escena: EscenaFondo, estilo: Estilo = POR_DEFECTO, dir = DIR_BIBLIOTECA): string | null {
   try {
-    const n = readdirSync(carpeta(dir)).filter((x) => x.startsWith(`${escena}-`) && /\.(png|jpe?g|webp)$/i.test(x)).sort().at(-1);
+    const n = readdirSync(carpeta(dir))
+      .filter((x) => /\.(png|jpe?g|webp)$/i.test(x))
+      .filter((x) => { const p = partes(x); return p.estilo === estilo && p.escena === escena; })
+      .sort()
+      .at(-1);
     return n ? `imagenes/fondos/${n}` : null;
   } catch {
     return null;
