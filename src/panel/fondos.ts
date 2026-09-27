@@ -1,4 +1,4 @@
-import { mkdir, readdir, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { DIR_BIBLIOTECA } from './biblioteca.js';
@@ -31,10 +31,23 @@ const COMPOSICION: Record<EscenaFondo, string> = {
   final: 'Keep the upper half calm for a large title and the center darker for scrolling credits.',
 };
 
-export function prompt(escena: EscenaFondo, descripcion: string, estilo: Estilo = POR_DEFECTO): string {
+/**
+ * Lo que pides va PRIMERO y manda: antes iba detrás del estilo, y el «anochecer,
+ * sombras profundas, nadie en primer plano» del oscuro se comía un «de día con
+ * gente» (27 sep). El ambiente de la escena solo vale si no dices otro.
+ * `detalle` es lo que pides ya pasado a inglés (ia-imagen.detallar).
+ */
+export function prompt(escena: EscenaFondo, descripcion: string, estilo: Estilo = POR_DEFECTO, detalle: string | null = null): string {
   const e = info(estilo);
-  const que = descripcion.trim().slice(0, 600) || e.descripciones[escena];
-  return `${e.fondo}\nScene (described in Spanish): ${que}\n${COMPOSICION[escena]} ${e.tono[escena]}`;
+  const propia = descripcion.trim().slice(0, 600);
+  const que = propia || e.descripciones[escena];
+  return [
+    detalle ? `SCENE (follow it exactly): ${detalle}\n(Original request in Spanish: ${que})` : `SCENE (described in Spanish, follow it exactly): ${que}`,
+    'The scene above has priority: if it sets the time of day, weather, colors, mood or people, use those even if the art style below suggests otherwise.',
+    `Art style: ${e.fondo}`,
+    `Layout: ${COMPOSICION[escena]} Any people are small, in the midground or background.`,
+    propia ? `Mood only if the scene does not set one: ${e.tono[escena]}` : `Mood: ${e.tono[escena]}`,
+  ].join('\n');
 }
 
 const carpeta = (dir: string) => join(dir, 'imagenes', 'fondos');
@@ -45,7 +58,8 @@ const carpeta = (dir: string) => join(dir, 'imagenes', 'fondos');
  */
 export async function generar(escena: EscenaFondo, descripcion: string, estilo: Estilo = POR_DEFECTO, dir = DIR_BIBLIOTECA, titulo = ''): Promise<string> {
   const que = descripcion.trim().slice(0, 600) || info(estilo).descripciones[escena];
-  const png = await imagen.generar({ prompt: prompt(escena, descripcion, estilo), tamano: '1920x1088' });
+  const detalle = await imagen.detallar(descripcion.trim().slice(0, 600), 'fondo');
+  const png = await imagen.generar({ prompt: prompt(escena, descripcion, estilo, detalle), tamano: '1920x1088' });
   await mkdir(carpeta(dir), { recursive: true });
   const nombre = `${estilo}-${escena}-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.png`;
   await writeFile(join(carpeta(dir), nombre), png);
@@ -106,3 +120,11 @@ export const DIBUJADO = 'dibujado';
 /** Solo rutas de esta carpeta: el overlay la pinta como imagen. */
 export const rutaValida = (r: unknown): r is string =>
   typeof r === 'string' && /^imagenes\/fondos\/[\w.-]+\.(png|jpe?g|webp)$/i.test(r) && !r.includes('..');
+
+/** Borra un fondo generado y su título. Quien lo tuviera puesto pasa al último que quede. */
+export async function borrar(ruta: string, dir = DIR_BIBLIOTECA): Promise<void> {
+  if (!rutaValida(ruta)) throw new Error('fondo no válido');
+  await rm(join(dir, ruta));
+  await rm(join(dir, `${ruta}.json`), { force: true });
+  log.info(`Fondo borrado: ${ruta}`);
+}

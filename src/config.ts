@@ -132,6 +132,8 @@ export const config = {
     /** Para el avatar, con fondo transparente (gpt-image-2 no lo admite). */
     modeloTransparente: str('IMAGEN_MODELO_TRANSPARENTE', 'gpt-image-1.5'),
     calidad: str('IMAGEN_CALIDAD', 'medium'),
+    /** El que mira un retrato y dice dónde están los ojos (avatar-ia.ts). */
+    modeloVision: str('IMAGEN_MODELO_VISION', 'gpt-5-mini'),
   },
 
   logLevel: levelRaw as LogLevel,

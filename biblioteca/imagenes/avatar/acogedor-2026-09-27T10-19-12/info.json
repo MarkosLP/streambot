@@ -1,0 +1,16 @@
+{
+  "titulo": "Streamer de la lámpara",
+  "descripcion": "Un streamer de unos 28 años al estilo de una película de anime: pelo castaño despeinado, barba corta cuidada, sudadera oscura con capucha, auriculares grandes al cuello y una taza de café en la mano, sonrisa tranquila y mirada amable, con la luz cálida de una lámpara de mesa.",
+  "ojos": {
+    "x": 0.48828125,
+    "y": 0.3125,
+    "w": 0.294921875,
+    "h": 0.177734375
+  },
+  "cara": {
+    "x": 0.48828125,
+    "y": 0.3316796875,
+    "w": 0.354921875,
+    "h": 0.238359375
+  }
+}

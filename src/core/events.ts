@@ -153,6 +153,12 @@ export interface ViewerCheerEvent extends BaseEvent {
   bits: number;
 }
 
+/** Alguien sigue el canal (Twitch.Follow). Solo para las alertas y el panel de overlays. */
+export interface ViewerFollowEvent extends BaseEvent {
+  type: 'viewer.follow';
+  viewer: Viewer;
+}
+
 export interface ChannelRaidEvent extends BaseEvent {
   type: 'channel.raid';
   /** El canal que te trae la raid. */
@@ -170,6 +176,7 @@ export type DomainEvent =
   | ViewerGiftBombEvent
   | ViewerCheerEvent
   | ChannelRaidEvent
+  | ViewerFollowEvent
   | RawEvent;
 
 // ---------------------------------------------------------------------------
@@ -435,6 +442,9 @@ export function normalize(
       return { ...base, type: 'channel.raid', desde: { ...desde, isSubscriber: false }, espectadores: num(payload?.viewers, num(payload?.viewerCount)) };
     }
 
+    case 'Twitch.Follow':
+      return { ...base, type: 'viewer.follow', viewer: { ...persona(payload), isSubscriber: false } };
+
     case 'Twitch.StreamOnline':
       return { ...base, type: 'stream.online' };
 
@@ -474,6 +484,8 @@ export function describe(event: DomainEvent): string {
       return `${event.viewer.displayName} manda ${event.bits} bits`;
     case 'channel.raid':
       return `raid de ${event.desde.displayName} con ${event.espectadores} personas`;
+    case 'viewer.follow':
+      return `${event.viewer.displayName} sigue el canal`;
     case 'stream.online':
       return 'el directo ha empezado';
     case 'stream.offline':

@@ -124,7 +124,7 @@ describe('normalize', () => {
   });
 
   test('un evento desconocido se guarda en crudo', () => {
-    const event = normalize('Twitch.Follow', { user_login: 'pepe' }, 'streamerbot');
+    const event = normalize('Twitch.Announcement', { user_login: 'pepe' }, 'streamerbot');
     assert.equal(event.type, 'raw');
   });
 });

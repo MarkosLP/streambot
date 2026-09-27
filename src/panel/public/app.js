@@ -114,6 +114,7 @@ function irA(tab) {
   // "#/efectos" y no "#efectos": hay elementos con esos ids y el navegador saltaría a ellos.
   if (location.hash !== `#/${tab}`) history.replaceState(null, '', `#/${tab}`);
   cargadores[tab]?.();
+  pintarMini();
 }
 
 document.querySelector('.pestanas').addEventListener('click', (e) => {
@@ -1554,6 +1555,7 @@ async function cargarEscenas() {
   $('e-avatar').checked = c.avatar;
   $('e-avatar-texto-estado').textContent = c.avatar ? 'Avatar encendido' : 'Avatar apagado';
   pintarCuentaEscenas();
+  cargarOverlays();
   if (escenasPintadas) { pintarSelectoresFondo(); pintarEstilos(); }
   pintarPersonajes();
 
@@ -1611,8 +1613,10 @@ async function cargarEscenas() {
     });
     const renombrar = h('button', { class: 'boton', type: 'button', title: 'Cambiar el título de este fondo', 'aria-label': 'Cambiar el título' }, '✏️');
     renombrar.addEventListener('click', () => renombrarImagen(selFondo.value, escenas.fondos.find((f) => f.ruta === selFondo.value)?.titulo));
+    const borrar = h('button', { class: 'boton peligro', type: 'button', title: 'Borrar este fondo para siempre', 'aria-label': 'Borrar este fondo' }, '🗑');
+    borrar.addEventListener('click', () => borrarImagen(selFondo.value, escenas.fondos.find((f) => f.ruta === selFondo.value)?.titulo));
     const bloqueFondo = h('div', { class: 'escena-fondo' },
-      h('div', { class: 'campo' }, h('span', {}, 'Fondo'), h('div', { class: 'con-boton' }, selFondo, renombrar)),
+      h('div', { class: 'campo' }, h('span', {}, 'Fondo'), h('div', { class: 'con-boton' }, selFondo, renombrar, borrar)),
       h('label', { class: 'campo' }, h('span', {}, 'Qué quieres de fondo (en castellano)'), descripcion),
       h('label', { class: 'campo' }, h('span', {}, 'Título del fondo nuevo'), titulo),
       h('div', { class: 'escena-botones' }, generar,
@@ -1704,6 +1708,47 @@ async function renombrarImagen(ruta, actual) {
     tostada(err.message, true);
   }
 }
+/** Borra de verdad un fondo o un personaje generado (pregunta antes). */
+async function borrarImagen(ruta, titulo) {
+  if (!ruta || ruta === 'dibujado') return tostada('Elige primero un fondo o personaje generado', true);
+  if (ruta === 'imagenes/avatar/errante') return tostada('El errante no se borra: es el que sale cuando un estilo no tiene personaje', true);
+  if (!confirm(`¿Borrar «${titulo ?? 'esta imagen'}» para siempre?
+
+Se elimina el archivo; si estaba puesto, sale el último que quede.`)) return;
+  try {
+    await api('/api/escenas/imagen/borrar', { ruta });
+    tostada(`«${titulo ?? 'Imagen'}» borrada`);
+    await cargarEscenas();
+  } catch (err) {
+    tostada(err.message, true);
+  }
+}
+$('e-avatar-borrar').addEventListener('click', () => {
+  const sel = $('e-avatar-personaje');
+  const ruta = sel.value || escenas.personajes.find((p) => p.estilo === escenas.config.estilo)?.ruta || 'imagenes/avatar/errante';
+  borrarImagen(ruta, escenas.personajes.find((p) => p.ruta === ruta)?.titulo);
+});
+$('e-avatar-parpadeo').addEventListener('click', async (ev) => {
+  const sel = $('e-avatar-personaje');
+  const ruta = sel.value || escenas.personajes.find((p) => p.estilo === escenas.config.estilo)?.ruta || 'imagenes/avatar/errante';
+  const nombre = escenas.personajes.find((p) => p.ruta === ruta)?.titulo ?? 'este personaje';
+  if (!confirm(`Se rehacen los ojos cerrados y la sonrisa de «${nombre}» retocando solo su cara: así, al parpadear, no se mueve el resto del cuerpo.
+
+2 imágenes de tu OpenAI (unos céntimos, ~30 s). ¿Sigo?`)) return;
+  const b = ev.currentTarget;
+  b.disabled = true;
+  b.textContent = '⏳';
+  try {
+    const r = await api('/api/escenas/avatar-rehacer', { ruta });
+    tostada(r.zonas ? `Parpadeo arreglado en «${nombre}»` : `Rehecho, pero no se localizó la cara: puede seguir moviéndose al parpadear`, !r.zonas);
+    $('e-avatar-vista').src = $('e-avatar-vista').src;
+  } catch (err) {
+    tostada(err.message, true);
+  } finally {
+    b.disabled = false;
+    b.textContent = '👁';
+  }
+});
 $('e-avatar-renombrar').addEventListener('click', () => {
   const sel = $('e-avatar-personaje');
   // «El último de este estilo» no es una ruta: el que se ve es el primero de los suyos.
@@ -1877,6 +1922,9 @@ async function cargarMusica(releer = false) {
   pintarListasMusica();
   pintarMapaMusica();
   $('m-carpeta').textContent = musicaDatos.carpeta;
+  const n = musicaDatos.sueltas ?? 0;
+  $('m-sueltas').hidden = !n;
+  $('m-sueltas').textContent = n ? `⚠️ Hay ${n} ${n === 1 ? 'canción suelta' : 'canciones sueltas'} en la carpeta de música: no suenan hasta que las metas en inicio, pausa, final o fondo.` : '';
   if (releer) {
     const total = musicaDatos.listas.reduce((n, l) => n + l.canciones.length, 0);
     tostada(`${total} ${total === 1 ? 'canción' : 'canciones'} en las carpetas`);
@@ -1888,6 +1936,7 @@ async function accionMusica(cuerpo, aviso) {
     const e = await api('/api/musica', cuerpo);
     musicaDatos = { ...musicaDatos, ...e };
     if (aviso) tostada(aviso);
+    pintarMini(e);
     pintarMusicaAhora();
     pintarListasMusica();
     pintarMapaMusica();
@@ -2009,6 +2058,44 @@ $('m-obs').addEventListener('click', async () => {
     tostada(err.message, true);
   }
 });
+// ---- Mini reproductor de la barra lateral: pausar o cambiar desde cualquier
+// sección. Sale en cuanto hay una canción puesta (has empezado la música) y
+// no en la propia pestaña Música, que ya tiene el suyo.
+var miniEstado = null; // var: irA() lo usa al cargar, antes de llegar aquí
+function pintarMini(e = miniEstado) {
+  miniEstado = e;
+  const enMusica = !$('v-musica').hidden;
+  $('mm').hidden = !e?.pista || enMusica;
+  if (!e?.pista) return;
+  $('mm-titulo').textContent = e.pista.titulo;
+  $('mm-artista').textContent = [e.pista.artista, nombreLista(e.pista.lista)].filter(Boolean).join(' · ');
+  $('mm-play').textContent = e.sonando ? '⏸' : '▶';
+  $('mm-play').setAttribute('aria-label', e.sonando ? 'Pausar' : 'Reproducir');
+  $('mm-barras').classList.toggle('quietas', !e.sonando);
+  const pr = e.progreso;
+  $('mm-progreso').style.width = pr && pr.dur ? `${Math.min(100, (pr.pos / pr.dur) * 100)}%` : '0';
+  $('mm').title = e.overlay ? '' : 'La fuente «MUS Música» no está abierta en OBS: no suena nada';
+  $('mm').classList.toggle('sin-obs', !e.overlay);
+}
+async function accionMini(accion) {
+  try {
+    const e = await api('/api/musica', { accion });
+    if (musicaDatos) musicaDatos = { ...musicaDatos, ...e };
+    pintarMini(e);
+  } catch (err) {
+    tostada(err.message, true);
+  }
+}
+$('mm-play').addEventListener('click', () => accionMini(miniEstado?.sonando ? 'pausar' : 'reanudar'));
+$('mm-siguiente').addEventListener('click', () => accionMini('siguiente'));
+$('mm-anterior').addEventListener('click', () => accionMini('anterior'));
+$('mm-ir').addEventListener('click', () => irA('musica'));
+setInterval(async () => {
+  if (!$('v-musica').hidden) return; // allí ya pregunta la pestaña
+  try { pintarMini(await api('/api/musica/estado')); } catch {}
+}, 2000);
+api('/api/musica/estado').then(pintarMini, () => {});
+
 // Mientras la pestaña está abierta: lo que suena y por dónde va.
 setInterval(async () => {
   if ($('v-musica').hidden || !musicaDatos) return;
@@ -2016,6 +2103,7 @@ setInterval(async () => {
     const e = await api('/api/musica');
     const cambio = e.pista?.id !== musicaDatos.pista?.id || e.lista !== musicaDatos.lista || e.escenaObs !== musicaDatos.escenaObs;
     musicaDatos = e;
+    pintarMini(e);
     pintarMusicaAhora();
     if (cambio) { pintarListasMusica(); pintarMapaMusica(); }
   } catch {}
@@ -2159,6 +2247,93 @@ $('t-actualizar').addEventListener('click', () => cargarTemas(true));
 $('t-buscar').addEventListener('input', (ev) => { temasFiltro.texto = ev.target.value; pintarTemas(); });
 $('t-vaciar').addEventListener('click', () => { if (confirm('¿Vaciar el guion del directo?')) accionTema({ accion: 'vaciar' }, 'Guion vacío'); });
 
+// ---------------------------------------------------------------------------
+// Escenas → Alertas y panel rotativo (core/alertas.ts)
+// ---------------------------------------------------------------------------
+
+let ovl = null;
+const TIPOS_ALERTA = [['follow', '❤ Follows'], ['sub', '★ Subs'], ['regalo', '🎁 Subs regalados'], ['bits', '◆ Bits'], ['raid', '⚔ Raids']];
+const PARTES_PANEL = [['top', '🏆 Top de la temporada'], ['follow', '❤ Último follow'], ['sub', '★ Último sub'], ['meta', '🎯 Meta']];
+
+async function cargarOverlays() {
+  try {
+    ovl = await api('/api/overlays');
+  } catch {
+    return; // Bot sin reiniciar: la tarjeta se queda sin datos.
+  }
+  pintarOverlays();
+}
+
+async function guardarOverlays(cuerpo, aviso) {
+  try {
+    ovl = { ...ovl, ...(await api('/api/overlays', cuerpo)) };
+    if (aviso) tostada(aviso);
+    pintarOverlays();
+  } catch (err) {
+    tostada(err.message, true);
+  }
+}
+
+function pintarOverlays() {
+  const a = ovl.ajustes;
+  $('o-tipos').replaceChildren(...TIPOS_ALERTA.map(([t, nombre]) => h('div', { class: 'ovl-tipo' },
+    h('label', { class: 'interruptor-fila' }, h('input', { type: 'checkbox', checked: a.alertas[t], onchange: (ev) => guardarOverlays({ accion: 'ajustes', ajustes: { alertas: { [t]: ev.target.checked } } }) }), h('span', {}, nombre)),
+    h('button', { class: 'boton pequeno', type: 'button', onclick: () => guardarOverlays({ accion: 'probar', tipo: t }, `Alerta de prueba: ${nombre}`) }, 'Probar'))));
+  if (document.activeElement !== $('o-volumen')) $('o-volumen').value = String(Math.round(a.volumen * 100));
+  $('o-volumen-n').textContent = `${Math.round(a.volumen * 100)} %`;
+  $('o-rotativo').replaceChildren(...PARTES_PANEL.map(([k, nombre]) => h('label', { class: 'interruptor-fila' },
+    h('input', { type: 'checkbox', checked: a.rotativo.includes(k), onchange: (ev) => {
+      const r = PARTES_PANEL.map(([x]) => x).filter((x) => (x === k ? ev.target.checked : a.rotativo.includes(x)));
+      guardarOverlays({ accion: 'ajustes', ajustes: { rotativo: r } });
+    } }), h('span', {}, nombre))));
+  if (document.activeElement !== $('o-segundos')) $('o-segundos').value = String(a.segundos);
+  for (const [id, k] of [['o-meta-tipo', 'tipo'], ['o-meta-titulo', 'titulo'], ['o-meta-objetivo', 'objetivo'], ['o-meta-base', 'base']]) {
+    if (document.activeElement !== $(id)) $(id).value = String(a.meta[k]);
+  }
+  const m = ovl.meta;
+  $('o-meta-estado').textContent = m ? `Ahora: ${m.actual} / ${m.objetivo} (${ovl.mes[m.tipo === 'follows' ? 'follows' : 'subs']} contados por el bot este mes + ${a.meta.base} que ya llevabas)` : 'Sin meta: el panel no la enseña.';
+  const partes = [];
+  if (ovl.ultimoFollow) partes.push(`Último follow: ${ovl.ultimoFollow.quien}`);
+  if (ovl.ultimoSub) partes.push(`Último sub: ${ovl.ultimoSub.quien}`);
+  $('o-ultimos').textContent = partes.length ? partes.join(' · ') : 'Aún no ha llegado ningún follow ni sub desde que el bot los escucha.';
+}
+
+escalarOverlay.observe($('o-vista-alertas'));
+$('o-volumen').addEventListener('input', () => { $('o-volumen-n').textContent = `${$('o-volumen').value} %`; });
+$('o-volumen').addEventListener('change', () => guardarOverlays({ accion: 'ajustes', ajustes: { volumen: Number($('o-volumen').value) / 100 } }));
+$('o-segundos').addEventListener('change', () => guardarOverlays({ accion: 'ajustes', ajustes: { segundos: Number($('o-segundos').value) } }));
+$('o-meta').addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  guardarOverlays({ accion: 'ajustes', ajustes: { meta: {
+    tipo: $('o-meta-tipo').value, titulo: $('o-meta-titulo').value, objetivo: Number($('o-meta-objetivo').value), base: Number($('o-meta-base').value),
+  } } }, 'Meta guardada');
+});
+$('o-optimizar').addEventListener('click', async () => {
+  if (!confirm('Se pondrán nuestras fuentes de OBS a 30 fps, y las de las escenas del panel (✦) se apagarán mientras no se vean.\n\nOBS recarga cada fuente que cambia (un parpadeo): mejor fuera del directo. ¿Sigo?')) return;
+  try {
+    const r = await api('/api/obs/optimizar', {});
+    $('o-obs-resultado').textContent = r.hecho.join(' ');
+    tostada('Fuentes optimizadas');
+  } catch (err) {
+    tostada(err.message, true);
+  }
+});
+$('o-obs').addEventListener('click', async (ev) => {
+  const b = ev.target.closest('[data-cual]');
+  if (!b) return;
+  const escena = $('o-escena').value;
+  if (!escena) return tostada('Abre OBS para elegir la escena', true);
+  const que = b.dataset.cual === 'alertas' ? 'las alertas (a pantalla completa, encima de todo)' : 'el panel rotativo (arriba a la izquierda)';
+  if (!confirm(`Se añadirá ${que} a «${escena}».\n\nNo cambia la escena que estás emitiendo ni borra nada. ¿Sigo?`)) return;
+  try {
+    const r = await api('/api/overlays', { accion: 'obs', cual: b.dataset.cual, escena });
+    $('o-obs-resultado').textContent = r.hecho;
+    tostada('Añadido en OBS');
+  } catch (err) {
+    tostada(err.message, true);
+  }
+});
+
 /** Las escenas de OBS, para elegir dónde va el avatar. Por defecto, la que está en emisión. */
 async function cargarEscenasObs() {
   const sel = $('e-avatar-escena');
@@ -2166,6 +2341,7 @@ async function cargarEscenasObs() {
     const o = await api('/api/obs');
     if (!o.conectado) { sel.replaceChildren(h('option', { value: '' }, 'OBS no está conectado')); return; }
     sel.replaceChildren(...o.escenas.map((e) => h('option', { value: e, selected: e === o.escenaActual }, e === o.escenaActual ? `${e} (en emisión)` : e)));
+    $('o-escena').replaceChildren(...o.escenas.map((e) => h('option', { value: e, selected: e === o.escenaActual }, e === o.escenaActual ? `${e} (en emisión)` : e)));
   } catch {
     sel.replaceChildren(h('option', { value: '' }, 'OBS no está conectado'));
   }
@@ -2201,6 +2377,8 @@ $('e-textos').addEventListener('submit', (ev) => {
  * sale vacía (sin jefe es transparente) y el banner, siempre Legendario.
  */
 const VARIANTES_OVERLAY = {
+  'alertas.html': [{ nombre: 'Oscuro', q: '?demo=1' }, { nombre: 'Vibrante', q: '?demo=1&estilo=alegre' }, { nombre: 'Cálido', q: '?demo=1&estilo=acogedor' }],
+  'panel.html': [{ nombre: 'Oscuro', q: '?demo=1' }, { nombre: 'Vibrante', q: '?demo=1&estilo=alegre' }],
   'avatar.html': [
     { nombre: 'Con fondo', q: '?demo=1&fondo=1&bocadillo=todo' },
     { nombre: 'Transparente', q: '?demo=1' },

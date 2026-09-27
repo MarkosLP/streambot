@@ -81,7 +81,7 @@
   @keyframes deriva { from { transform: translateX(calc(var(--d) * -1)); } to { transform: translateX(var(--d)); } }
   .ventana { animation: vela 3s ease-in-out infinite alternate; }
   @keyframes vela { 0% { opacity: .95; } 40% { opacity: .55; } 100% { opacity: 1; } }
-  .niebla { position: absolute; left: -10%; width: 240%; height: var(--alto, 260px); top: var(--y); opacity: var(--o, .5); filter: blur(30px);
+  .niebla { position: absolute; left: -10%; width: 240%; height: var(--alto, 260px); top: var(--y); opacity: var(--o, .5);
     background:
       radial-gradient(40% 50% at 12% 50%, rgba(var(--niebla), .55), transparent 70%),
       radial-gradient(30% 45% at 38% 55%, rgba(var(--niebla), .40), transparent 70%),
@@ -90,10 +90,9 @@
     animation: niebla var(--t, 80s) linear infinite; }
   @keyframes niebla { from { transform: translateX(0); } to { transform: translateX(-41.6%); } }
   #ceniza { position: absolute; inset: 0; }
-  .grano { position: absolute; inset: -50%; opacity: .07; mix-blend-mode: overlay; pointer-events: none;
+  .grano { position: absolute; inset: 0; opacity: .045; pointer-events: none;
     background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
-    animation: grano .9s steps(6) infinite; }
-  @keyframes grano { 0% { transform: translate(0, 0); } 20% { transform: translate(-3%, 2%); } 40% { transform: translate(2%, -3%); } 60% { transform: translate(-2%, -1%); } 80% { transform: translate(3%, 3%); } }
+  }
   .vineta { position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 42%, transparent 45%, rgba(0, 0, 0, .78) 100%); }
   .sombra-baja { position: absolute; left: 0; right: 0; bottom: 0; height: 460px; background: linear-gradient(180deg, transparent, rgba(4, 4, 7, .85)); }
 
@@ -221,8 +220,7 @@
   .tema .preg { font-size: 19px; color: var(--ambar-claro); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .tema .preg:empty { display: none; }
   .tema::before { content: ""; position: absolute; left: -22px; top: 2px; bottom: 2px; width: 2px; background: linear-gradient(180deg, var(--ambar), transparent); }
-  body.redondo .tema { padding: 16px 24px 18px; background: var(--vidrio); border: 1px solid var(--vidrio-borde); border-radius: 3px;
-    -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%); }
+  body.redondo .tema { padding: 16px 24px 18px; background: var(--vidrio); border: 1px solid var(--vidrio-borde); border-radius: 3px; clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%); }
   body.redondo .tema::before { left: -1px; top: -1px; bottom: auto; width: 64px; height: 3px; background: var(--grad); }
   body.redondo .tema .etq { color: var(--acento); font-size: 12px; }
   body.redondo .tema .tit { font-weight: 600; font-size: 28px; text-shadow: none; }
@@ -240,8 +238,7 @@
   .sonando .txt { margin-top: 2px; font-family: var(--serif); font-style: italic; font-size: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     text-shadow: 0 2px 12px rgba(0, 0, 0, .8); }
   .sonando > div:first-child { min-width: 0; }
-  body.redondo .sonando { padding: 10px 16px; background: var(--vidrio); border: 1px solid var(--vidrio-borde); border-radius: 12px 3px 3px 12px; border-right: 3px solid var(--acento);
-    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+  body.redondo .sonando { padding: 10px 16px; background: var(--vidrio); border: 1px solid var(--vidrio-borde); border-radius: 12px 3px 3px 12px; border-right: 3px solid var(--acento); }
   body.redondo .sonando .txt { font-family: var(--sans); font-style: normal; font-weight: 500; font-size: 19px; text-shadow: none; }
   .t-charla .sonando { top: 24px; }
 
@@ -269,13 +266,13 @@
   body.e-alegre {
     --serif: "Sora", "Inter", sans-serif; --sans: "Inter", "Segoe UI", sans-serif;
     --acento: #6ee7ff; --acento-2: #a78bfa; --acento-3: #ff7eb6;
-    --vidrio: rgba(12, 14, 36, .46); --vidrio-borde: rgba(255, 255, 255, .15);
+    --vidrio: rgba(12, 14, 36, .72); --vidrio-borde: rgba(255, 255, 255, .15);
     --cielo-a: #0a0f2e; --cielo-b: #2a2168; --cielo-c: #d8709a; --velo-color: rgba(6, 8, 26, .55); --sombra-baja: rgba(5, 6, 22, .75);
   }
   body.e-acogedor {
     --serif: "Fraunces", Georgia, serif; --sans: "Inter", "Segoe UI", sans-serif;
     --acento: #f3b37a; --acento-2: #e08a64; --acento-3: #b7cf9c;
-    --vidrio: rgba(30, 19, 12, .5); --vidrio-borde: rgba(255, 228, 196, .16);
+    --vidrio: rgba(30, 19, 12, .74); --vidrio-borde: rgba(255, 228, 196, .16);
     --cielo-a: #160f0b; --cielo-b: #46291d; --cielo-c: #cf8455; --velo-color: rgba(22, 13, 8, .55); --sombra-baja: rgba(18, 10, 6, .78);
   }
   body.redondo {
@@ -318,7 +315,6 @@
   body.redondo .franja { left: 150px; right: 150px; }
   body.redondo .datos { gap: 20px; }
   body.redondo .dato, body.redondo .cifra { position: relative; border: 1px solid var(--vidrio-borde); border-radius: 3px; background: var(--vidrio);
-    -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3);
     clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%); }
   body.redondo .dato { padding: 20px 26px 22px; }
   body.redondo .dato:first-child, body.redondo .cifra:first-child { border-left: 1px solid var(--vidrio-borde); }
@@ -352,14 +348,13 @@
   body.redondo .chat-fondo { background: linear-gradient(90deg, transparent, var(--velo-color) 22%); }
   body.redondo .chat { gap: 12px; align-items: flex-start; }
   body.redondo .msg { max-width: 470px; box-sizing: border-box; padding: 11px 16px 13px; background: var(--vidrio); border: 1px solid var(--vidrio-borde);
-    border-left: 3px solid var(--c, var(--acento)); border-radius: 2px 12px 12px 2px; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+    border-left: 3px solid var(--c, var(--acento)); border-radius: 2px 12px 12px 2px; }
   body.redondo .msg .txt { color: rgba(255, 255, 255, .94); font-size: 21px; text-shadow: none; }
   body.redondo .msg.canal { border-left-color: var(--acento); background: linear-gradient(90deg, color-mix(in srgb, var(--acento) 24%, transparent), var(--vidrio) 70%); }
   body.redondo .msg.canal .txt { font-family: var(--sans); font-style: normal; font-weight: 500; font-size: 22px; color: #fff; }
 
   /* Aviso de botín: un panel de cristal con el color de la rareza. */
-  body.redondo .aviso { padding: 18px 40px 16px; background: var(--vidrio); border: 1px solid color-mix(in srgb, var(--r) 50%, transparent); border-radius: 4px;
-    -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); box-shadow: 0 0 44px color-mix(in srgb, var(--r) 28%, transparent), 0 20px 50px rgba(0, 0, 0, .45); }
+  body.redondo .aviso { padding: 18px 40px 16px; background: var(--vidrio); border: 1px solid color-mix(in srgb, var(--r) 50%, transparent); border-radius: 4px; box-shadow: 0 0 44px color-mix(in srgb, var(--r) 28%, transparent), 0 20px 50px rgba(0, 0, 0, .45); }
   body.redondo .aviso .etq { color: var(--r); }
   body.redondo .aviso .linea { font-weight: 500; font-size: 40px; color: #fff; }
   body.redondo .aviso::after { width: 420px; }
@@ -372,7 +367,7 @@
      ===================================================================== */
   body.e-propio.redondo {
     --acento: var(--c1); --acento-2: var(--c2); --acento-3: color-mix(in srgb, var(--c1) 50%, var(--c2));
-    --vidrio: color-mix(in srgb, var(--c3) 35%, rgba(8, 9, 22, .55)); --vidrio-borde: rgba(255, 255, 255, .16);
+    --vidrio: color-mix(in srgb, var(--c3) 30%, rgba(8, 9, 22, .78)); --vidrio-borde: rgba(255, 255, 255, .16);
     --cielo-a: var(--c3); --cielo-b: color-mix(in srgb, var(--c3) 50%, var(--c4)); --cielo-c: var(--c4);
     --velo-color: color-mix(in srgb, var(--c3) 40%, rgba(0, 0, 0, .5)); --sombra-baja: color-mix(in srgb, var(--c3) 55%, rgba(0, 0, 0, .6));
   }
@@ -634,7 +629,10 @@ function ponerEstilo(e, ap) {
 // estilo propio si lo es.
 const particulas = (() => {
   const cv = $('ceniza');
-  const cx = cv.getContext('2d');
+  const lienzo = cv.getContext('2d');
+  // Un lienzo que no pinta nada: para mover las partículas sin dibujarlas.
+  const mudo = new Proxy(function () {}, { get: (_o, k) => (k === Symbol.toPrimitive ? undefined : () => mudo), set: () => true, apply: () => mudo });
+  let cx = lienzo;
   const pocas = TIPO === 'charla';
   const halo = getComputedStyle(document.body).getPropertyValue('--halo').trim();
   const COLORES = {
@@ -747,11 +745,22 @@ const particulas = (() => {
     ninguna() {},
   };
 
+  // Se dibuja a 30 fotogramas por segundo (de sobra para un fondo, y la mitad
+  // de trabajo para OBS); en el fotograma que no se dibuja, las partículas se
+  // mueven igual, para que vayan a la misma velocidad.
+  let dibujar = false;
   (function paso() {
-    cx.clearRect(0, 0, 1920, 1080);
-    const pintar = pasos[modo];
-    for (const p of ps) pintar(p);
     requestAnimationFrame(paso);
+    const pintar = pasos[modo];
+    dibujar = !dibujar;
+    if (!dibujar) {
+      cx = mudo;
+      for (const p of ps) pintar(p);
+      cx = lienzo;
+      return;
+    }
+    lienzo.clearRect(0, 0, 1920, 1080);
+    for (const p of ps) pintar(p);
   })();
 
   return {
@@ -765,7 +774,8 @@ const particulas = (() => {
           luces: [c.principal, c.secundario, '#ffffff'], polvo: '#fff1dc' }
         : { ...COLORES, luces: [acento('--acento', '#6ee7ff'), acento('--acento-2', '#a78bfa'), acento('--acento-3', '#ff7eb6'), '#ffffff'], polvo: acento('--acento', '#ffd9a8') };
       ps = Array.from({ length: cuantas[modo] }, () => ({ ...nuevas[modo](), y: Math.random() * 1080 }));
-      cx.shadowBlur = 0;
+      lienzo.shadowBlur = 0;
+      lienzo.clearRect(0, 0, 1920, 1080);
     },
   };
 })();

@@ -5,6 +5,7 @@ import * as lootDb from '../data/loot.js';
 import * as chatReciente from '../core/chat-reciente.js';
 import * as musica from '../core/musica.js';
 import * as temas from './temas.js';
+import * as rotulos from './rotulos.js';
 import { log } from '../core/logger.js';
 import * as loot from '../interactions/loot/index.js';
 import * as jefe from '../interactions/loot/jefe.js';
@@ -211,6 +212,18 @@ export function borrarEstilo(id: string): ConfigEscenas {
   return guardar(conVista({ ...antes, propios, temas, estilo: antes.estilo === id ? ESTILO_POR_DEFECTO : antes.estilo }));
 }
 
+/** Tras borrar una imagen: donde estuviera puesta (en cualquier estilo), vuelve a «el último». */
+export function olvidarImagen(ruta: string): ConfigEscenas {
+  const antes = leer();
+  const temas: Record<string, Tema> = {};
+  for (const [id, t] of Object.entries(antes.temas)) {
+    if (!t) continue;
+    const fondos = Object.fromEntries(Object.entries(t.fondos).filter(([, r]) => r !== ruta));
+    temas[id] = { fondos, avatarImagen: t.avatarImagen === ruta ? null : t.avatarImagen };
+  }
+  return guardar(conVista({ ...antes, temas }));
+}
+
 /** Tras «Volver a lo del .env», que borra su fila. */
 export function olvidar(): void {
   actual = null;
@@ -238,10 +251,13 @@ export function paraOverlay(tipo: string) {
     return [t, f === DIBUJADO ? null : f ?? ultimoDe(t, cfg.estilo)];
   }));
   const { temas: _t, propios: _p, ...resto } = cfg;
+  const avatarImagen = cfg.avatarImagen ?? ultimoAvatar(cfg.estilo) ?? ERRANTE;
+  // Dónde están sus ojos y su cara (si se hizo con máscara): avatar.html mezcla exactamente eso.
+  const zonas = rotulos.leerSync(avatarImagen);
   return {
     ahora: new Date().toISOString(),
     canal: nombreCanal(),
-    config: { ...resto, fondos, avatarImagen: cfg.avatarImagen ?? ultimoAvatar(cfg.estilo) ?? ERRANTE, apariencia: estilos.apariencia(cfg.estilo) },
+    config: { ...resto, fondos, avatarImagen, avatarZonas: zonas?.ojos ? { ojos: zonas.ojos, cara: zonas.cara ?? null } : null, apariencia: estilos.apariencia(cfg.estilo) },
     directo: directo ? { desde: directo.started_at } : null,
     evento: e ? { emoji: e.emoji, nombre: e.nombre, texto: e.texto } : null,
     temporada: {

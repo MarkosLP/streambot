@@ -1,0 +1,16 @@
+{
+  "titulo": "Espadachín de cristal",
+  "descripcion": "Un espadachín de unos 25 años de un RPG de anime moderno: pelo negro despeinado con mechones azul eléctrico, mirada segura y media sonrisa, abrigo largo negro con detalles dorados y cian, una hombrera de metal ligera, bufanda gris oscura y un colgante de cristal que brilla en el pecho. Aire adulto y con carisma.",
+  "ojos": {
+    "x": 0.4990234375,
+    "y": 0.2880859375,
+    "w": 0.31171875000000004,
+    "h": 0.18281250000000002
+  },
+  "cara": {
+    "x": 0.4990234375,
+    "y": 0.30580078125,
+    "w": 0.37171875000000004,
+    "h": 0.2354296875
+  }
+}

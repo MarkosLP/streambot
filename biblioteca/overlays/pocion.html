@@ -8,6 +8,9 @@
 
   Dura 5 segundos, lo mismo que el Delay de la Action.
   Opcional: pocion.html?user=Nombre pone "Cortesía de Nombre" debajo.
+
+  El frasco es el pintado de imagenes/objetos/pocion.png (27 sep); si no
+  está, el dibujo de siempre.
 -->
 <html lang="es">
 <head>
@@ -40,6 +43,10 @@
   .frasco svg { position: relative; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 12px 24px rgba(0,0,0,.5)); }
   .ola { animation: ola 1.6s linear infinite; }
   @keyframes ola { to { transform: translateX(-120px); } }
+
+  .frasco img { position: relative; width: 300px; height: 300px; margin: 0 -35px; object-fit: contain; display: block; filter: drop-shadow(0 12px 24px rgba(0,0,0,.55)) drop-shadow(0 0 26px rgba(255, 60, 90, .55)); }
+  .frasco.pintado svg, .frasco.pintado .burbuja { display: none; }
+  .frasco:not(.pintado) img { display: none; }
 
   .burbuja {
     position: absolute; bottom: 60px; width: 14px; height: 14px; border-radius: 50%;
@@ -84,7 +91,8 @@
 </head>
 <body>
   <div class="escena">
-    <div class="frasco">
+    <div class="frasco" id="frasco">
+      <img id="frasco-img" alt="">
       <svg viewBox="0 0 230 300" aria-hidden="true">
         <defs>
           <clipPath id="interior"><path d="M90 70 V100 C40 118 20 160 20 200 A95 95 0 0 0 210 200 C210 160 190 118 140 100 V70 Z"/></clipPath>
@@ -138,6 +146,10 @@
   </div>
 
 <script>
+  const frasco = document.getElementById('frasco-img');
+  frasco.onload = () => document.getElementById('frasco').classList.add('pintado');
+  frasco.src = '../imagenes/objetos/pocion.png';
+
   // ?user=Nombre → "Cortesía de Nombre". Siempre como texto, nunca como HTML.
   const user = new URLSearchParams(location.search).get('user');
   if (user) {

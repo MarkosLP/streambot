@@ -9,6 +9,10 @@
 
   rareza: comun, raro, epico o legendario. Cambia colores, rayos, sonido y
   duración (5 s lo normal, 6,5 s Épico, 8 s Legendario).
+
+  Encima de la placa sale el objeto pintado (27 sep): una imagen por TIPO de
+  objeto (imagenes/objetos/<tipo>.png, 17), elegida por el nombre (TIPOS, más
+  abajo), y el brillo de su rareza. Si no hay imagen, la placa sola, como antes.
   maldito=1: aspecto de objeto maldito, sea de la rareza que sea (6,5 s).
 
   El sonido suena solo si viene ?user= (un cofre de verdad o una prueba
@@ -41,6 +45,7 @@
     transform: translate(-50%, -50%);
     animation: entra 0.7s cubic-bezier(.2, 1.4, .4, 1) both, sale 0.6s ease-in calc(var(--dur) - 0.7s) forwards;
   }
+  body.con-imagen .escena { top: 50%; }
   @keyframes entra { from { opacity: 0; transform: translate(-50%, -50%) scale(0.4); } }
   @keyframes sale { to { opacity: 0; transform: translate(-50%, -60%) scale(1.04); } }
   .comun .escena, .raro .escena { transform: translate(-50%, -50%) scale(.82); animation-name: entra-p, sale-p; }
@@ -80,6 +85,30 @@
   .placa::before { left: 20px; }
   .placa::after { right: 20px; }
 
+  /* El objeto pintado: sale de la placa, con el brillo de su rareza, y flota. */
+  .pieza {
+    position: absolute; left: 50%; top: -210px; width: 300px; height: 300px; margin-left: -150px; z-index: 2;
+    animation: pieza-sale .8s cubic-bezier(.2, 1.5, .4, 1) .2s both, pieza-flota 2.6s ease-in-out 1s infinite;
+  }
+  .pieza img {
+    width: 100%; height: 100%; object-fit: contain; display: block;
+    filter: drop-shadow(0 8px 10px rgba(0,0,0,.7)) drop-shadow(0 0 22px rgba(var(--brillo), .75));
+  }
+  .epico .pieza img, .legendario .pieza img { animation: pieza-brillo 1.4s ease-in-out infinite; }
+  @keyframes pieza-sale { from { opacity: 0; transform: translateY(150px) scale(.3) rotate(-10deg); } }
+  @keyframes pieza-flota { 50% { transform: translateY(-10px) rotate(1.5deg); } }
+  @keyframes pieza-brillo {
+    50% { filter: drop-shadow(0 8px 10px rgba(0,0,0,.7)) drop-shadow(0 0 40px rgba(var(--brillo), 1)) brightness(1.12); }
+  }
+  /* Detrás del objeto, un resplandor que se abre al salir. */
+  .pieza::before {
+    content: ""; position: absolute; inset: -40px; border-radius: 50%; z-index: -1;
+    background: radial-gradient(circle, rgba(var(--brillo), .55), rgba(var(--brillo), 0) 65%);
+    animation: pulso 1.2s ease-in-out infinite;
+  }
+  body.maldito .pieza img { filter: drop-shadow(0 8px 10px rgba(0,0,0,.7)) drop-shadow(0 0 26px rgba(134, 255, 92, .85)) sepia(.35) hue-rotate(50deg) saturate(1.3); animation: tiembla .18s steps(2) infinite; }
+  body.con-imagen .placa { padding-top: 96px; }
+
   .cofre { font-size: 30px; font-weight: 600; letter-spacing: .08em; color: rgba(255, 255, 255, .75); }
   .rango {
     margin-top: 4px; font-size: 34px; font-weight: 700; letter-spacing: .5em; color: var(--c2);
@@ -116,6 +145,7 @@
     <div class="rayos"></div>
     <div class="halo"></div>
     <div class="placa">
+      <div class="pieza" id="pieza" hidden><img id="pieza-img" alt=""></div>
       <div class="cofre" id="cofre">🎁 Cofre abierto</div>
       <div class="rango" id="rango">★ LEGENDARIO ★</div>
       <div class="objeto" id="objeto">Espada del Amanecer Eterno</div>
@@ -141,6 +171,35 @@
     regalo: '🎁 Regalo del streamer', jefe: '🐉 Botín del jefe', fidelidad: '🔥 Cofre de fidelidad', suscriptor: '💜 Cofre de suscriptor', raid: '⚔️ Incursión', bits: '💎 Cofre de bits',
   };
 
+  // Qué imagen lleva cada objeto, por su nombre (palabra entera, como esArma en
+  // objetos.ts: «Colgante de hojalata» no es una hoja). El primero que encaje;
+  // lo que no encaje en nada, un cofre con tesoro.
+  const TIPOS = [
+    ['montura', /montura|pollo|mascota|grifo|poni/],
+    ['corona', /corona/],
+    ['pocion', /poci[oó]n|frasco|agua|embotellado|c[aá]liz/],
+    ['libro', /tomo|grimorio|pergamino|mapa|carta/],
+    ['joya', /anillo|amuleto|colgante/],
+    ['casco', /casco|yelmo/],
+    ['escudo', /escudo/],
+    ['daga', /daga/],
+    ['hacha', /hacha/],
+    ['espada', /espada|hoja|filo/],
+    ['arco', /arco|flecha/],
+    ['lanza', /lanza/],
+    ['martillo', /martillo/],
+    ['baston', /b[aá]culo|bast[oó]n|orbe/],
+    ['armadura', /armadura|brazales|guantes|botas|cintur[oó]n|calcet[ií]n/],
+    ['capa', /capa|capucha|t[uú]nica|alas?|estandarte/],
+  ];
+  function tipoDe(nombre) {
+    const n = nombre.toLowerCase();
+    for (const [tipo, re] of TIPOS) {
+      if (new RegExp(`(?<!\\p{L})(${re.source})(?!\\p{L})`, 'u').test(n)) return tipo;
+    }
+    return 'tesoro';
+  }
+
   const q = new URLSearchParams(location.search);
   const rareza = RANGOS[q.get('rareza')] ? q.get('rareza') : 'legendario';
   const user = (q.get('user') || '').slice(0, 25);
@@ -151,6 +210,10 @@
   document.getElementById('rango').textContent = maldito ? `☠ MALDITO · ${RANGOS[rareza].replace(/[★✦◆]/g, '').trim()} ☠` : RANGOS[rareza];
   document.getElementById('cofre').textContent = COFRES[q.get('origen')] || COFRES.cofre;
   if (item) document.getElementById('objeto').textContent = item;
+  // El objeto pintado: si carga, sale; si no, la placa como siempre.
+  const img = document.getElementById('pieza-img');
+  img.onload = () => { document.getElementById('pieza').hidden = false; document.body.classList.add('con-imagen'); };
+  img.src = `../imagenes/objetos/${tipoDe(document.getElementById('objeto').textContent)}.png`;
   if (user) {
     const quien = document.getElementById('quien');
     quien.textContent = q.get('origen') === 'presumir' ? 'de ' : 'para ';

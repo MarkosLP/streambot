@@ -26,6 +26,7 @@ import * as preguntaIncomoda from '../interactions/pregunta-incomoda.js';
 import * as loot from '../interactions/loot/index.js';
 import * as lootComandos from '../interactions/loot/comandos.js';
 import * as musicaComando from '../interactions/musica.js';
+import * as alertas from './alertas.js';
 import * as mecenas from '../interactions/loot/mecenas.js';
 import * as temporada from '../interactions/loot/temporada.js';
 import * as suscriptores from '../data/suscriptores.js';
@@ -84,7 +85,15 @@ export async function handleEvent(event: DomainEvent): Promise<void> {
   // Suscripciones, regalos, bits y raids (mecenas.ts). Se guarda también el
   // payload crudo: su forma sale de los tipos de la librería y hay que
   // comprobarla con el primero que llegue de verdad.
+  // Follows: solo la alerta y el «último follow» del panel rotativo (alertas.ts).
+  if (event.type === 'viewer.follow') {
+    alertas.alEvento(event);
+    return;
+  }
+
   if (event.type === 'viewer.sub' || event.type === 'viewer.giftsub' || event.type === 'viewer.giftbomb' || event.type === 'viewer.cheer' || event.type === 'channel.raid') {
+    // La alerta en pantalla va antes que el Loot: si el Loot fallara, el aviso sale igual.
+    alertas.alEvento(event);
     if (event.type === 'viewer.sub') await mecenas.alSuscribirse(event);
     else if (event.type === 'viewer.giftsub') mecenas.alRegalar(event);
     else if (event.type === 'viewer.giftbomb') mecenas.alBomba(event);

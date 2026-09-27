@@ -102,7 +102,7 @@ export interface InfoEstilo {
   avatar: { estilo: string; descripcion: string; cerrados: string; contento: string };
 }
 
-const SIN_TEXTO = 'No text, no letters, no logos, no watermark, no UI, no people in the foreground.';
+const SIN_TEXTO = 'No text, no letters, no logos, no watermark, no UI.';
 
 export const INFO: Record<Predefinido, InfoEstilo> = {
   oscuro: {

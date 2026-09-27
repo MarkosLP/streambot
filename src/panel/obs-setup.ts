@@ -136,6 +136,7 @@ async function prepararUno(
     const comunes = {
       width: 1920,
       height: 1080,
+      ...FPS,
       // "Apagar la fuente cuando no esté visible": la animación empieza de cero cada vez.
       shutdown: true,
       restart_when_active: true,
@@ -316,6 +317,12 @@ export async function temblar(
 
 export type TipoEscena = 'inicio' | 'charla' | 'pausa' | 'final';
 
+/**
+ * Nuestras fuentes de navegador van a 30 fotogramas por segundo: para un
+ * overlay sobra, y OBS dibuja la mitad (por defecto van a los de OBS, 60).
+ */
+export const FPS = { fps_custom: true, fps: 30 } as const;
+
 export const ESCENAS_OBS: Record<TipoEscena, { escena: string; fuente: string }> = {
   inicio: { escena: '✦ Empezamos', fuente: 'ESC Empezamos' },
   charla: { escena: '✦ Charla', fuente: 'ESC Charla' },
@@ -354,7 +361,8 @@ export async function crearEscena(pedir: PedirObs, tipo: TipoEscena): Promise<st
   const { inputs } = await pedir<{ inputs: { inputName: string; inputKind: string }[] }>('GetInputList');
 
   // El overlay, encima de lo que haya.
-  const ajustes = { width: 1920, height: 1080, is_local_file: false, url: urlEscena(tipo), shutdown: false, restart_when_active: false, reroute_audio: false };
+  // Apagada mientras su escena no está en pantalla: así no gasta mientras juegas. Al volver, carga en un momento.
+  const ajustes = { width: 1920, height: 1080, ...FPS, is_local_file: false, url: urlEscena(tipo), shutdown: true, restart_when_active: false, reroute_audio: false };
   let overlayId: number;
   if (!inputs.some((i) => i.inputName === fuente)) {
     ({ sceneItemId: overlayId } = await pedir<{ sceneItemId: number }>('CreateInput', {
@@ -426,7 +434,7 @@ export const urlAvatar = () => `http://127.0.0.1:${config.panel.port}/biblioteca
  * Si ya estaba en esa escena, no se mueve.
  */
 export async function anadirAvatar(pedir: PedirObs, escena: string): Promise<string> {
-  const ajustes = { width: 800, height: 800, is_local_file: false, url: urlAvatar(), shutdown: false, restart_when_active: false, reroute_audio: false };
+  const ajustes = { width: 800, height: 800, ...FPS, is_local_file: false, url: urlAvatar(), shutdown: false, restart_when_active: false, reroute_audio: false };
   const { inputs } = await pedir<{ inputs: { inputName: string }[] }>('GetInputList');
   let sceneItemId: number;
   if (!inputs.some((i) => i.inputName === FUENTE_AVATAR)) {
@@ -465,7 +473,7 @@ export const urlMusica = () => `http://127.0.0.1:${config.panel.port}/biblioteca
  * Solo añade: donde ya está, no se toca.
  */
 export async function anadirMusica(pedir: PedirObs, escenas: string[]): Promise<string[]> {
-  const ajustes = { width: 1920, height: 1080, is_local_file: false, url: urlMusica(), shutdown: false, restart_when_active: false, reroute_audio: true };
+  const ajustes = { width: 1920, height: 1080, ...FPS, is_local_file: false, url: urlMusica(), shutdown: false, restart_when_active: false, reroute_audio: true };
   const hecho: string[] = [];
   const { inputs } = await pedir<{ inputs: { inputName: string }[] }>('GetInputList');
   let existe = inputs.some((i) => i.inputName === FUENTE_MUSICA);
@@ -490,5 +498,83 @@ export async function anadirMusica(pedir: PedirObs, escenas: string[]): Promise<
     await pantallaCompleta(pedir, escena, sceneItemId);
     hecho.push(`«${escena}»: música añadida.`);
   }
+  return hecho;
+}
+
+// ---------------------------------------------------------------------------
+// Alertas y panel rotativo (core/alertas.ts)
+// ---------------------------------------------------------------------------
+
+export const OVERLAYS_DIRECTO = {
+  alertas: { fuente: 'OVL Alertas', archivo: 'alertas.html', ancho: 1920, alto: 1080 },
+  // Del tamaño justo de la caja: se coloca donde quieras arrastrándola en OBS.
+  panel: { fuente: 'OVL Panel', archivo: 'panel.html', ancho: 480, alto: 140 },
+} as const;
+export type OverlayDirecto = keyof typeof OVERLAYS_DIRECTO;
+export const urlOverlay = (cual: OverlayDirecto) => `http://127.0.0.1:${config.panel.port}/biblioteca/overlays/${OVERLAYS_DIRECTO[cual].archivo}`;
+
+/**
+ * Añade las alertas (a pantalla completa, encima de todo) o el panel rotativo
+ * (arriba a la izquierda, a su tamaño) a una escena. Una sola fuente de cada:
+ * si ya existe en otra escena, se reutiliza. Donde ya está, no se toca.
+ */
+export async function anadirOverlay(pedir: PedirObs, cual: OverlayDirecto, escena: string): Promise<string> {
+  const o = OVERLAYS_DIRECTO[cual];
+  const ajustes = { width: o.ancho, height: o.alto, ...FPS, is_local_file: false, url: urlOverlay(cual), shutdown: false, restart_when_active: false, reroute_audio: cual === 'alertas' };
+  const { inputs } = await pedir<{ inputs: { inputName: string }[] }>('GetInputList');
+  const { sceneItems } = await pedir<{ sceneItems: { sourceName: string }[] }>('GetSceneItemList', { sceneName: escena });
+  if (sceneItems.some((i) => i.sourceName === o.fuente)) return `«${o.fuente}» ya estaba en «${escena}»: no la he movido.`;
+  let sceneItemId: number;
+  if (!inputs.some((i) => i.inputName === o.fuente)) {
+    ({ sceneItemId } = await pedir<{ sceneItemId: number }>('CreateInput', {
+      sceneName: escena, inputName: o.fuente, inputKind: 'browser_source', inputSettings: ajustes, sceneItemEnabled: true,
+    }));
+    if (cual === 'alertas') await pedir('SetInputAudioMonitorType', { inputName: o.fuente, monitorType: 'OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT' }).catch(() => {});
+  } else {
+    await pedir('SetInputSettings', { inputName: o.fuente, inputSettings: ajustes, overlay: true });
+    ({ sceneItemId } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: o.fuente, sceneItemEnabled: true }));
+  }
+  if (cual === 'alertas') {
+    await pantallaCompleta(pedir, escena, sceneItemId);
+    return `Alertas añadidas a «${escena}», encima de todo. Su sonido está en el mezclador («${o.fuente}»).`;
+  }
+  const v = await pedir<{ baseWidth: number; baseHeight: number }>('GetVideoSettings');
+  const sx = v.baseWidth / 1920;
+  const sy = v.baseHeight / 1080;
+  await pedir('SetSceneItemTransform', {
+    sceneName: escena, sceneItemId,
+    sceneItemTransform: { positionX: 24 * sx, positionY: 24 * sy, alignment: 5, rotation: 0, scaleX: sx, scaleY: sy },
+  });
+  return `Panel rotativo añadido a «${escena}», arriba a la izquierda. Arrástralo en OBS a donde mejor quede.`;
+}
+
+// ---------------------------------------------------------------------------
+// Optimizar lo que ya está en OBS (27 sep 2026: tirones con varias fuentes)
+// ---------------------------------------------------------------------------
+
+/** Las fuentes de navegador que crea este panel: por su nombre. */
+const NUESTRAS = /^(ESC|FX|MUS|OVL) /;
+
+/**
+ * A las fuentes que ya existen les pone lo que llevan las nuevas: 30 fps, y
+ * las de las escenas del panel (✦) apagadas mientras no se ven. No toca
+ * nada más (ni tamaños ni posiciones). OBS recarga cada fuente que cambia:
+ * mejor fuera del directo.
+ */
+export async function optimizar(pedir: PedirObs): Promise<string[]> {
+  const { inputs } = await pedir<{ inputs: { inputName: string; inputKind: string }[] }>('GetInputList', { inputKind: 'browser_source' });
+  const escenas = new Set(Object.values(ESCENAS_OBS).map((e) => e.fuente));
+  const hecho: string[] = [];
+  for (const i of inputs) {
+    if (!NUESTRAS.test(i.inputName)) continue;
+    const { inputSettings } = await pedir<{ inputSettings: Record<string, unknown> }>('GetInputSettings', { inputName: i.inputName });
+    const cambios: Record<string, unknown> = {};
+    if (inputSettings.fps_custom !== true || inputSettings.fps !== FPS.fps) Object.assign(cambios, FPS);
+    if (escenas.has(i.inputName) && inputSettings.shutdown !== true) cambios.shutdown = true;
+    if (!Object.keys(cambios).length) continue;
+    await pedir('SetInputSettings', { inputName: i.inputName, inputSettings: cambios, overlay: true });
+    hecho.push(`«${i.inputName}»: ${[cambios.fps ? '30 fps' : null, cambios.shutdown ? 'apagada mientras no se ve' : null].filter(Boolean).join(' y ')}.`);
+  }
+  if (!hecho.length) hecho.push('Todas nuestras fuentes ya estaban optimizadas.');
   return hecho;
 }

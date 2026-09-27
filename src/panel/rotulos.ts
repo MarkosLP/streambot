@@ -2,6 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DIR_BIBLIOTECA } from './biblioteca.js';
+import type { Zona } from '../services/png.js';
 
 /**
  * Títulos de las imágenes generadas con IA (27 sep 2026): con varios fondos y
@@ -16,6 +17,9 @@ import { DIR_BIBLIOTECA } from './biblioteca.js';
 export interface Rotulo {
   titulo: string;
   descripcion?: string;
+  /** Personajes: la zona que se retocó para cerrar los ojos y para sonreír (de 0 a 1). */
+  ojos?: Zona;
+  cara?: Zona;
 }
 
 export const LARGO_TITULO = 40;
@@ -50,7 +54,15 @@ export async function escribir(ruta: string, r: Rotulo, dir = DIR_BIBLIOTECA): P
 function desde(texto: string): Rotulo | null {
   try {
     const v = JSON.parse(texto);
-    return typeof v?.titulo === 'string' && v.titulo ? { titulo: limpiarTitulo(v.titulo), descripcion: typeof v.descripcion === 'string' ? v.descripcion : undefined } : null;
+    if (typeof v?.titulo !== 'string' || !v.titulo) return null;
+    const zona = (z: any): Zona | undefined =>
+      z && ['x', 'y', 'w', 'h'].every((k) => typeof z[k] === 'number' && z[k] >= 0 && z[k] <= 1) ? { x: z.x, y: z.y, w: z.w, h: z.h } : undefined;
+    const r: Rotulo = { titulo: limpiarTitulo(v.titulo) };
+    if (typeof v.descripcion === 'string') r.descripcion = v.descripcion;
+    const ojos = zona(v.ojos), cara = zona(v.cara);
+    if (ojos) r.ojos = ojos;
+    if (cara) r.cara = cara;
+    return r;
   } catch {
     return null;
   }

@@ -145,6 +145,18 @@ export async function escanear(dir = dirActual): Promise<Record<Lista, Pista[]>>
   return nuevo;
 }
 
+/**
+ * Canciones sueltas en musica/, fuera de las cuatro carpetas: no suenan. El 27
+ * sep las 30 de StreamBeats acabaron ahí y el panel decía que no había nada.
+ */
+export async function sueltas(dir = dirActual): Promise<number> {
+  try {
+    return (await readdir(carpeta(dir))).filter((a) => EXTENSIONES.has(extname(a).toLowerCase())).length;
+  } catch {
+    return 0;
+  }
+}
+
 /** Las canciones, leídas hace menos de un minuto (si no, se vuelven a leer). */
 export async function canciones(): Promise<Record<Lista, Pista[]>> {
   if (Date.now() - leidoEn > 60_000) await escanear();

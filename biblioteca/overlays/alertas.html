@@ -1,0 +1,141 @@
+<!doctype html>
+<!--
+  Alertas del directo, para OBS (27 sep 2026). Fuente «OVL Alertas», a
+  pantalla completa: un aviso arriba en el centro al seguir, suscribirse,
+  regalar subs, mandar bits o traer una raid. De uno en uno, en cola.
+
+  Los datos vienen de core/alertas.ts (GET /api/overlay/alertas, CORS abierto
+  como las demás: el overlay corre en su sandbox). Colores y letra, los del
+  estilo de las escenas. Lo que viene de Twitch se pinta con textContent.
+  Qué alertas salen y el volumen se cambian en el panel (Escenas → Overlays).
+
+    ?demo=1        una alerta de cada tipo, seguidas
+    ?volumen=0     sin sonido (manda sobre el del panel)
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Alertas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@500;600&family=Fraunces:wght@500;600&family=Cormorant+Garamond:wght@500;600&family=Orbitron:wght@600&family=Bangers&family=Press+Start+2P&display=swap">
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+  body { font-family: "Inter", "Segoe UI", sans-serif; color: #fff; -webkit-font-smoothing: antialiased;
+    --acento: #e8a24a; --vidrio: rgba(8, 8, 12, .82); --nombre: "Cormorant Garamond", Georgia, serif; }
+  body.e-alegre { --acento: #6ee7ff; --vidrio: rgba(12, 14, 36, .8); --nombre: "Sora", sans-serif; }
+  body.e-acogedor { --acento: #f3b37a; --vidrio: rgba(30, 19, 12, .82); --nombre: "Fraunces", Georgia, serif; }
+
+  .alerta { position: absolute; left: 50%; top: 56px; min-width: 520px; max-width: 900px; box-sizing: border-box; padding: 18px 40px 20px 34px;
+    display: grid; grid-template-columns: auto 1fr; column-gap: 22px; align-items: center;
+    background: var(--vidrio); border: 1px solid rgba(255, 255, 255, .14); border-radius: 4px; overflow: hidden;
+    box-shadow: 0 0 50px color-mix(in srgb, var(--color) 30%, transparent), 0 24px 60px rgba(0, 0, 0, .5);
+    transform: translate(-50%, -140%); opacity: 0; }
+  .alerta.entra { animation: entra .9s cubic-bezier(.2, .9, .25, 1.05) forwards; }
+  .alerta.sale { animation: sale .7s ease-in forwards; }
+  @keyframes entra { from { transform: translate(-50%, -140%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+  @keyframes sale { from { transform: translate(-50%, 0); opacity: 1; } to { transform: translate(-50%, -30%); opacity: 0; } }
+  /* La línea de color de arriba y un destello que la recorre al entrar. */
+  .alerta::before { content: ""; position: absolute; left: 0; top: 0; width: 100%; height: 3px; background: linear-gradient(90deg, var(--color), color-mix(in srgb, var(--color) 30%, transparent)); }
+  .alerta::after { content: ""; position: absolute; top: 0; bottom: 0; width: 40%; left: -50%;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .12), transparent); animation: brillo 1.6s .5s ease-out forwards; }
+  @keyframes brillo { to { left: 120%; } }
+  .icono { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 50%; font-size: 30px;
+    background: color-mix(in srgb, var(--color) 18%, transparent); border: 1px solid color-mix(in srgb, var(--color) 55%, transparent);
+    box-shadow: 0 0 24px color-mix(in srgb, var(--color) 35%, transparent); }
+  .etq { font-size: 13px; font-weight: 600; letter-spacing: .34em; text-transform: uppercase; color: var(--color); }
+  .quien { margin-top: 2px; font-family: var(--nombre); font-weight: 600; font-size: 40px; line-height: 1.08; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .linea { margin-top: 4px; font-size: 19px; color: rgba(255, 255, 255, .78); }
+  .t-follow { --color: var(--acento); } .t-sub { --color: #b58cff; } .t-regalo { --color: #ff7eb6; } .t-bits { --color: #7ce0ff; } .t-raid { --color: #ffb347; }
+</style>
+</head>
+<body>
+<div id="caja"></div>
+<script>
+'use strict';
+const q = new URLSearchParams(location.search);
+const $ = (id) => document.getElementById(id);
+const API = new URL('/api/overlay/alertas', location.href);
+const INFO = {
+  follow: { icono: '❤', etq: 'Nuevo seguidor', seg: 5.5, sonido: 'cofre.wav' },
+  sub: { icono: '★', etq: 'Suscripción', seg: 7, sonido: 'legendario.wav' },
+  regalo: { icono: '🎁', etq: 'Subs regalados', seg: 7, sonido: 'legendario.wav' },
+  bits: { icono: '◆', etq: 'Bits', seg: 6, sonido: 'cofre.wav' },
+  raid: { icono: '⚔', etq: 'Raid', seg: 8, sonido: 'legendario.wav' },
+};
+const LETRAS = { moderna: '"Sora"', editorial: '"Fraunces"', elegante: '"Cormorant Garamond"', futurista: '"Orbitron"', pixel: '"Press Start 2P"', comic: '"Bangers"' };
+
+let volumen = 0.3;
+const cola = [];
+let mostrando = false;
+
+function ponerEstilo(estilo, ap) {
+  for (const x of ['alegre', 'acogedor']) document.body.classList.toggle(`e-${x}`, estilo === x);
+  const c = ap && ap.colores;
+  if (c && /^#[0-9a-f]{6}$/i.test(c.principal)) {
+    document.body.style.setProperty('--acento', c.principal);
+    document.body.style.setProperty('--nombre', LETRAS[ap.letra] ? `${LETRAS[ap.letra]}, sans-serif` : '"Sora", sans-serif');
+  } else {
+    document.body.style.removeProperty('--acento');
+    document.body.style.removeProperty('--nombre');
+  }
+}
+
+function sonar(archivo) {
+  const v = q.has('volumen') ? Number(q.get('volumen')) : volumen;
+  if (!(v > 0)) return;
+  const a = new Audio(`../sonidos/${archivo}`);
+  a.volume = Math.min(1, v);
+  a.play().catch(() => {});
+}
+
+function siguiente() {
+  if (mostrando || !cola.length) return;
+  mostrando = true;
+  const a = cola.shift();
+  const i = INFO[a.tipo] ?? INFO.follow;
+  const el = document.createElement('div');
+  el.className = `alerta t-${a.tipo}`;
+  const icono = document.createElement('div'); icono.className = 'icono'; icono.textContent = i.icono;
+  const txt = document.createElement('div');
+  const etq = document.createElement('div'); etq.className = 'etq'; etq.textContent = i.etq;
+  const quien = document.createElement('div'); quien.className = 'quien'; quien.textContent = a.quien;
+  const linea = document.createElement('div'); linea.className = 'linea'; linea.textContent = a.texto;
+  txt.append(etq, quien, linea);
+  el.append(icono, txt);
+  $('caja').append(el);
+  void el.offsetWidth; // sin esperar al siguiente fotograma: con la página congelada se acumularían
+  el.classList.add('entra');
+  sonar(i.sonido);
+  setTimeout(() => { el.classList.remove('entra'); el.classList.add('sale'); }, i.seg * 1000);
+  setTimeout(() => { el.remove(); mostrando = false; siguiente(); }, i.seg * 1000 + 900);
+}
+
+let vistas = null;
+function aplicar(d) {
+  ponerEstilo(d.estilo, d.apariencia);
+  volumen = Number(d.volumen) || 0;
+  // Al abrir, lo que ya había no se repite: solo lo nuevo.
+  if (vistas === null) { vistas = Math.max(0, ...d.alertas.map((a) => a.n)); return; }
+  for (const a of d.alertas) if (a.n > vistas) { vistas = a.n; cola.push(a); }
+  siguiente();
+}
+
+if (q.get('demo') === '1') {
+  vistas = 0;
+  const demo = [['follow', 'raftaei', 'ahora te sigue'], ['sub', 'Ana_la_Tanque', 'se resuscribe · 6 meses'], ['raid', 'OtroCanal', 'llega de raid con 23 personas']];
+  // En bucle: es la vista previa del panel.
+  let vuelta = 0;
+  const tanda = () => aplicar({ estilo: q.get('estilo') || 'oscuro', volumen: 0, alertas: demo.map(([tipo, quien, texto], i) => ({ n: vuelta * 10 + i + 1, tipo, quien, texto })) });
+  tanda();
+  setInterval(() => { if (!mostrando && !cola.length) { vuelta++; tanda(); } }, 4000);
+} else {
+  const preguntar = () => fetch(API, { cache: 'no-store' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => { if (d) aplicar(d); })
+    .catch(() => {})
+    .finally(() => setTimeout(preguntar, 1500));
+  preguntar();
+}
+</script>
+</body>
+</html>

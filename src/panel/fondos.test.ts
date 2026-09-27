@@ -18,14 +18,15 @@ import { configureDatabase, getDb, truncateAll } from '../data/db.js';
  */
 
 let dir: string;
-let pedidas: Array<{ tipo: string; prompt: string; transparente?: boolean; conBase: boolean }> = [];
+let pedidas: Array<{ tipo: string; prompt: string; transparente?: boolean; conBase: boolean; conMascara?: boolean }> = [];
 
 before(async () => {
   configureDatabase(':memory:');
   dir = await mkdtemp(join(tmpdir(), 'crid4m-fondos-'));
   imagen.setMotor({
     generar: async (p) => { pedidas.push({ tipo: 'generar', prompt: p.prompt, transparente: p.transparente, conBase: false }); return Buffer.from('PNG-generada'); },
-    editar: async (p) => { pedidas.push({ tipo: 'editar', prompt: p.prompt, transparente: p.transparente, conBase: p.base.length > 0 }); return Buffer.from('PNG-editada'); },
+    editar: async (p) => { pedidas.push({ tipo: 'editar', prompt: p.prompt, transparente: p.transparente, conBase: p.base.length > 0, conMascara: !!p.mascara }); return Buffer.from('PNG-editada'); },
+    localizarCara: async () => ({ ojos: [{ x: .41, y: .3 }, { x: .55, y: .3 }], boca: { x: .48, y: .38 }, anchoOjo: .06 }),
   });
 });
 after(async () => {
@@ -45,6 +46,15 @@ describe('fondos con IA', () => {
     assert.match(p, /una biblioteca de mago/);
     assert.match(p, /webcam frame/, 'en Charla deja sitio a la cámara');
     assert.match(fondos.prompt('inicio', ''), /castillo gótico/, 'vacío = la descripción de siempre');
+  });
+
+  test('lo que pides va delante del estilo y manda sobre su ambiente', () => {
+    // 27 sep: «Giran de día con gente» salió de noche y vacío por el estilo oscuro.
+    const p = fondos.prompt('inicio', 'Giran de Lineage 2 de día con gente', 'oscuro', 'Giran city at midday, crowded plaza');
+    assert.ok(p.indexOf('Giran city at midday') < p.indexOf('dark fantasy'), 'lo tuyo primero');
+    assert.match(p, /has priority/);
+    assert.match(p, /Mood only if the scene does not set one/);
+    assert.doesNotMatch(p, /no people/);
   });
 
   test('genera, guarda en imagenes/fondos y aparece en la lista', async () => {
@@ -103,6 +113,10 @@ describe('personaje del avatar con IA', () => {
     assert.equal(pedidas.length, 3);
     assert.ok(pedidas.every((p) => p.transparente), 'todo con fondo transparente');
     assert.equal(pedidas.filter((p) => p.tipo === 'editar' && p.conBase).length, 2, 'las variantes parten de la base');
+    assert.equal(pedidas.filter((p) => p.conMascara).length, 2, 'y solo retocan la cara (con máscara)');
+    const r = await rotulos.leer(ruta, dir);
+    assert.ok(r?.ojos && r.cara, 'las zonas se guardan para el overlay');
+    assert.ok(r.ojos.y > .2 && r.ojos.y < .4 && r.ojos.w < .5);
     assert.match(pedidas[0]!.prompt, /errante encapuchado/, 'vacío = el personaje de siempre');
     assert.equal((await avatarIa.lista(dir))[0]!.ruta, ruta);
   });
@@ -270,5 +284,16 @@ describe('títulos de fondos y personajes', () => {
     assert.equal(imgs.find((i) => i.carpeta === av.slice('imagenes/'.length) && i.nombre === 'cerrados.png')?.titulo, 'Leoncito · ojos cerrados');
     assert.ok(!imgs.some((i) => i.nombre.endsWith('.json')));
   });
-});
 
+  test('borrar un fondo o un personaje quita el archivo y su título; el errante no se borra', async () => {
+    const f = await fondos.generar('final', 'un faro', 'oscuro', dir);
+    const av = await avatarIa.generar('un mago', 'oscuro', dir);
+    await fondos.borrar(f, dir);
+    await avatarIa.borrar(av, dir);
+    assert.ok(!(await fondos.lista(dir)).some((x) => x.ruta === f));
+    assert.ok(!(await readdir(join(dir, 'imagenes', 'fondos'))).includes(`${f.split('/').pop()}.json`));
+    assert.ok(!(await readdir(join(dir, 'imagenes', 'avatar'))).includes(av.split('/').pop()!));
+    await assert.rejects(avatarIa.borrar(avatarIa.ERRANTE, dir), /errante/);
+    await assert.rejects(fondos.borrar('imagenes/fondos/../../.env', dir));
+  });
+});

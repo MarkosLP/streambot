@@ -58,8 +58,13 @@
   @keyframes respira { 50% { transform: scale(1.008, 1.018); } }
   .retrato img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
   .retrato .variante { opacity: 0; transition: opacity .1s linear; }
-  #r-cerrados { -webkit-mask-image: var(--mascara-cerrados); mask-image: var(--mascara-cerrados); }
-  #r-contento { -webkit-mask-image: var(--mascara-contento); mask-image: var(--mascara-contento); transition-duration: .2s; }
+  #r-cerrados { -webkit-mask-image: var(--mascara-cerrados); mask-image: var(--mascara-cerrados); transform: translate(var(--c-dx, 0), var(--c-dy, 0)); }
+  #r-contento { -webkit-mask-image: var(--mascara-contento); mask-image: var(--mascara-contento); transform: translate(var(--f-dx, 0), var(--f-dy, 0)); transition-duration: .2s; }
+  /* La IA a veces redibuja la cabeza girada: entonces no se mezcla media cara de cada imagen, se cambia entera con un fundido. */
+  .retrato .variante.entera { -webkit-mask-image: none; mask-image: none; transform: none; transition-duration: .12s; }
+  #escena.parpadeo .retrato:has(#r-cerrados.entera) #r-base, #escena.dormido .retrato:has(#r-cerrados.entera) #r-base,
+  #escena.feliz .retrato:has(#r-contento.entera) #r-base, #escena.sorpresa .retrato:has(#r-contento.entera) #r-base { opacity: 0; transition: opacity .12s linear; }
+  #r-base { transition: opacity .12s linear; }
   #escena.parpadeo #r-cerrados, #escena.dormido #r-cerrados { opacity: 1; }
   #escena.feliz #r-contento, #escena.sorpresa #r-contento { opacity: 1; }
   #escena.dormido .mueve { animation-duration: 8s; }
@@ -84,8 +89,7 @@
     background: rgba(12, 10, 17, .84); border-left: 1px solid rgba(232, 162, 74, .55); border-bottom: 1px solid rgba(232, 162, 74, .55); }
   /* Estilos modernos: un panel de cristal oscuro con una línea del color de acento. */
   body.redondo .bocadillo { font-family: "Inter", "Segoe UI", sans-serif; font-style: normal; font-weight: 500; font-size: 3.2vmin; color: #fff;
-    background: var(--b-fondo); border: 1px solid rgba(255, 255, 255, .16); border-left: .5vmin solid var(--b-borde); border-radius: .4vmin 1.4vmin 1.4vmin .4vmin;
-    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 1.5vmin 4vmin rgba(0, 0, 0, .45); }
+    background: var(--b-fondo); border: 1px solid rgba(255, 255, 255, .16); border-left: .5vmin solid var(--b-borde); border-radius: .4vmin 1.4vmin 1.4vmin .4vmin; box-shadow: 0 1.5vmin 4vmin rgba(0, 0, 0, .45); }
   body.redondo .bocadillo::after { display: none; }
   body.e-alegre { --b-fondo: rgba(12, 14, 36, .78); --b-borde: #6ee7ff; }
   body.e-acogedor { --b-fondo: rgba(30, 19, 12, .8); --b-borde: #f3b37a; }
@@ -152,7 +156,12 @@ ponerEstilo(q.get('estilo') || 'oscuro');
 // Oscuro: lumbres que suben. Alegre: destellos. Acogedor: pétalos que caen.
 (function particulas() {
   const cv = $('particulas');
-  const cx = cv.getContext('2d');
+  const lienzo = cv.getContext('2d');
+  // Un lienzo que no pinta nada: para mover las partículas sin dibujarlas.
+  const mudo = new Proxy(function () {}, { get: (_o, k) => (k === Symbol.toPrimitive ? undefined : () => mudo), set: () => true, apply: () => mudo });
+  let cx = lienzo;
+  let dibujar = false;
+  let limpio = false;
   const COLORES = { destellos: ['#fff', '#6ee7ff', '#a78bfa', '#ff7eb6'], petalos: ['#f4a3a3', '#f7c59f', '#a8c98f', '#ffe0a3'], nieve: ['#fff'] };
   const ps = Array.from({ length: 16 }, () => nueva({}, true));
   function nueva(p, primera = false) {
@@ -167,7 +176,17 @@ ponerEstilo(q.get('estilo') || 'oscuro');
     cx.closePath();
   }
   (function paso() {
-    cx.clearRect(0, 0, 1000, 1000);
+    requestAnimationFrame(paso);
+    // Apagado (transparente): no se dibuja nada. Encendido: a 30 por segundo.
+    if (escena.classList.contains('fuera')) {
+      if (!limpio) { lienzo.clearRect(0, 0, 1000, 1000); limpio = true; }
+      return;
+    }
+    limpio = false;
+    // En el fotograma que no se dibuja se mueven igual: misma velocidad, la mitad de dibujo.
+    dibujar = !dibujar;
+    cx = dibujar ? lienzo : mudo;
+    if (dibujar) lienzo.clearRect(0, 0, 1000, 1000);
     for (const p of ps) {
       p.f += .03;
       if (particulas === 'lluvia' || particulas === 'ninguna') continue;
@@ -192,7 +211,7 @@ ponerEstilo(q.get('estilo') || 'oscuro');
       }
     }
     cx.globalAlpha = 1;
-    requestAnimationFrame(paso);
+    cx = lienzo;
   })();
 })();
 
@@ -269,24 +288,58 @@ function pixeles(img) {
 const percentil = (xs, p) => xs[Math.min(xs.length - 1, Math.floor(xs.length * p))];
 
 /**
- * Qué zona cambia entre la base y una variante (los ojos al parpadear; ojos
- * y boca al alegrarse): los píxeles que más cambian, sin los sueltos de los
- * bordes. Sirve para cualquier personaje, brillen o no sus ojos.
+ * Cuánto se ha movido el personaje de una imagen a otra: la IA, al redibujar
+ * los ojos cerrados o la sonrisa, a veces baja o desplaza un poco la cabeza.
+ * Se prueba cada desplazamiento pequeño y se queda el que menos diferencia deja.
  */
-function zonaQueCambia(a, b) {
-  if (!a || !b) return null;
-  const pts = [];
-  for (let y = Math.floor(N * .08); y < N * .85; y++) for (let x = Math.floor(N * .15); x < N * .85; x++) {
-    const i = (y * N + x) * 4;
-    if (a[i + 3] < 120 || b[i + 3] < 120) continue;
-    const d = Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
-    if (d > 110) pts.push([x, y]);
+function alinear(a, b) {
+  let mejor = { dx: 0, dy: 0, error: Infinity };
+  for (let dy = -12; dy <= 12; dy += 2) for (let dx = -12; dx <= 12; dx += 2) {
+    let suma = 0, n = 0;
+    for (let y = 16; y < N - 16; y += 3) for (let x = 16; x < N - 16; x += 3) {
+      const i = (y * N + x) * 4, j = ((y + dy) * N + (x + dx)) * 4;
+      if (a[i + 3] < 120 || b[j + 3] < 120) continue;
+      suma += Math.abs(a[i] - b[j]) + Math.abs(a[i + 1] - b[j + 1]) + Math.abs(a[i + 2] - b[j + 2]);
+      n++;
+    }
+    const error = n ? suma / n : Infinity;
+    if (error < mejor.error) mejor = { dx, dy, error };
   }
-  if (pts.length < 6) return null;
-  const xs = pts.map((p) => p[0]).sort((m, n) => m - n);
-  const ys = pts.map((p) => p[1]).sort((m, n) => m - n);
-  const x0 = percentil(xs, .08), x1 = percentil(xs, .92), y0 = percentil(ys, .08), y1 = percentil(ys, .92);
-  return { x: (x0 + x1) / 2 / N, y: (y0 + y1) / 2 / N, w: Math.max((x1 - x0) / N, .12), h: Math.max((y1 - y0) / N, .05) };
+  return mejor;
+}
+
+/**
+ * Dónde cambia de verdad una variante (los ojos al parpadear; ojos y boca al
+ * alegrarse): ya alineada, la ventana de `ancho`×`alto` con más píxeles
+ * distintos en la zona de la cara. Si lo distinto está repartido por todo el
+ * personaje (la cabeza cambió de ángulo), devuelve null: no hay trozo que
+ * encaje y la variante tendrá que ir entera.
+ */
+function zonaQueCambia(a, b, ancho = .34, alto = .14) {
+  if (!a || !b) return null;
+  const { dx, dy } = alinear(a, b);
+  const d = new Uint8Array(N * N);
+  let total = 0;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const xb = x + dx, yb = y + dy;
+    if (xb < 0 || yb < 0 || xb >= N || yb >= N) continue;
+    const i = (y * N + x) * 4, j = (yb * N + xb) * 4;
+    if (a[i + 3] < 120 || b[j + 3] < 120) continue;
+    if (Math.abs(a[i] - b[j]) + Math.abs(a[i + 1] - b[j + 1]) + Math.abs(a[i + 2] - b[j + 2]) > 110) { d[y * N + x] = 1; total++; }
+  }
+  if (total < 6) return null;
+  // Suma por ventanas con una tabla acumulada: rápido aunque se prueben todas.
+  const W = N + 1, S = new Uint32Array(W * W);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) S[(y + 1) * W + x + 1] = d[y * N + x] + S[y * W + x + 1] + S[(y + 1) * W + x] - S[y * W + x];
+  const w = Math.round(ancho * N), h = Math.round(alto * N);
+  let mejor = { c: -1, x: 0, y: 0 };
+  for (let y = Math.round(N * .08); y + h <= Math.round(N * .8); y++) for (let x = Math.round(N * .1); x + w <= Math.round(N * .9); x++) {
+    const c = S[(y + h) * W + x + w] - S[y * W + x + w] - S[(y + h) * W + x] + S[y * W + x];
+    if (c > mejor.c) mejor = { c, x, y };
+  }
+  // Si en la ventana está menos de un tercio de lo que cambia, no es «los ojos»: es la cabeza entera.
+  if (mejor.c < 6 || mejor.c / total < .33) return null;
+  return { x: (mejor.x + w / 2) / N, y: (mejor.y + h / 2) / N, w: ancho, h: alto, dx: dx / N, dy: dy / N };
 }
 
 /** Si no se puede comparar: los píxeles ámbar muy brillantes de arriba (los ojos del errante). */
@@ -307,24 +360,43 @@ const elipse = (o, margen = .06) =>
   `radial-gradient(ellipse ${(o.w * .5 + margen) * 100}% ${(o.h * .5 + margen) * 100}% at ${o.x * 100}% ${o.y * 100}%, #000 60%, transparent 100%)`;
 
 let retratoPuesto = null;
+let zonasGuardadas = null;
 function cargar(img, src) {
   return new Promise((ok) => { img.onload = () => ok(true); img.onerror = () => ok(false); img.crossOrigin = 'anonymous'; img.src = src; });
 }
-async function ponerRetrato(ruta) {
+async function ponerRetrato(ruta, zonas = null) {
   if (!/^imagenes\/avatar\/[\w.-]+$/.test(ruta || '')) ruta = 'imagenes/avatar/errante';
-  if (ruta === retratoPuesto) return;
+  if (ruta === retratoPuesto && JSON.stringify(zonas) === JSON.stringify(zonasGuardadas)) return;
   retratoPuesto = ruta;
+  zonasGuardadas = zonas;
   const [base, cerrados, contento] = [$('r-base'), $('r-cerrados'), $('r-contento')];
   await Promise.all([cargar(base, `../${ruta}/base.png`), cargar(cerrados, `../${ruta}/cerrados.png`), cargar(contento, `../${ruta}/contento.png`)]);
   if (retratoPuesto !== ruta) return;
   const [pb, pc, pf] = [pixeles(base), pixeles(cerrados), pixeles(contento)];
-  const ojos = zonaQueCambia(pb, pc) ?? ojosBrillantes(pb) ?? { x: .5, y: .3, w: .22, h: .06 };
-  const cara = zonaQueCambia(pb, pf) ?? ojos;
   const r = $('retrato');
-  r.style.setProperty('--mascara-cerrados', elipse(ojos));
-  r.style.setProperty('--mascara-contento', elipse(cara, .08));
-  r.style.setProperty('--ox', `${ojos.x * 100}%`); r.style.setProperty('--oy', `${ojos.y * 100}%`);
-  r.style.setProperty('--ow', `${(ojos.w + .12) * 100}%`); r.style.setProperty('--oh', `${(ojos.h + .1) * 100}%`);
+  /**
+   * Cada variante: si su cambio está en un trozo (los ojos; ojos y boca), se
+   * mueve lo que se movió la cabeza y solo se ve ese trozo. Si no, entera.
+   * La máscara va en las coordenadas de la propia variante (se mueve con ella).
+   */
+  const colocar = (img, z, pre) => {
+    img.classList.toggle('entera', !z);
+    if (!z) return;
+    r.style.setProperty(`--${pre}-dx`, `${-z.dx * 100}%`);
+    r.style.setProperty(`--${pre}-dy`, `${-z.dy * 100}%`);
+    r.style.setProperty(pre === 'c' ? '--mascara-cerrados' : '--mascara-contento', elipse({ ...z, x: z.x + z.dx, y: z.y + z.dy }, .03));
+  };
+  // Hecho con máscara (avatar-ia.ts): solo cambió esa zona, y se sabe cuál. Si
+  // no, se busca comparando, y si no encaja, la variante va entera.
+  const valida = (z) => z && ['x', 'y', 'w', 'h'].every((k) => typeof z[k] === 'number' && z[k] >= 0 && z[k] <= 1);
+  const ojos = valida(zonas?.ojos) ? { ...zonas.ojos, dx: 0, dy: 0 } : zonaQueCambia(pb, pc);
+  colocar(cerrados, ojos, 'c');
+  // Alegrarse, sin zona guardada, cambia más que los ojos (boca, hombros, brillos): entera, con un fundido.
+  colocar(contento, valida(zonas?.cara) ? { ...zonas.cara, dx: 0, dy: 0 } : null, 'f');
+  // El brillo de los ojos (solo en el estilo oscuro): donde estén, o donde brillan en el errante.
+  const brillo = ojos ?? ojosBrillantes(pb) ?? { x: .5, y: .3, w: .22, h: .06 };
+  r.style.setProperty('--ox', `${brillo.x * 100}%`); r.style.setProperty('--oy', `${brillo.y * 100}%`);
+  r.style.setProperty('--ow', `${(brillo.w + .06) * 100}%`); r.style.setProperty('--oh', `${(brillo.h + .06) * 100}%`);
   r.hidden = false;
 }
 
@@ -336,7 +408,7 @@ async function ponerRetrato(ruta) {
       setTimeout(() => escena.classList.remove('parpadeo'), 140);
     }
     parpadear();
-  }, 3500 + Math.random() * 3500);
+  }, 4500 + Math.random() * 4500);
 })();
 
 // ---------------- Datos ----------------
@@ -346,7 +418,7 @@ let primera = true;
 function pintar(d) {
   const visible = SIEMPRE || d.config.avatar;
   ponerEstilo(q.get('estilo') || d.config.estilo, q.get('estilo') ? null : d.config.apariencia);
-  ponerRetrato(q.get('imagen') ?? d.config.avatarImagen ?? '');
+  ponerRetrato(q.get('imagen') ?? d.config.avatarImagen ?? '', q.get('imagen') ? null : d.config.avatarZonas ?? null);
   escena.classList.toggle('fuera', !visible);
   fijo = d.config.avatarTexto || '';
   if (Date.now() >= decirHasta) volverAlFijo();

@@ -86,6 +86,19 @@
     </nav>
 
     <div class="lateral-pie">
+      <!-- Mini reproductor: en todas las secciones, en cuanto hay una canción puesta (app.js pintarMini). -->
+      <div class="mini-musica" id="mm" hidden>
+        <button class="mm-info" id="mm-ir" type="button" title="Ir a Música">
+          <span class="musica-barras mm-barras" id="mm-barras" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="mm-texto"><strong id="mm-titulo"></strong><span class="nota" id="mm-artista"></span></span>
+        </button>
+        <div class="mm-progreso" aria-hidden="true"><i id="mm-progreso"></i></div>
+        <div class="mm-mandos">
+          <button class="boton" type="button" id="mm-anterior" aria-label="Canción anterior" title="Anterior">⏮</button>
+          <button class="boton primario" type="button" id="mm-play" aria-label="Reproducir o pausar">⏸</button>
+          <button class="boton" type="button" id="mm-siguiente" aria-label="Canción siguiente" title="Siguiente">⏭</button>
+        </div>
+      </div>
       <div class="estados">
         <span class="estado" id="p-sb">Streamer.bot</span>
         <span class="estado" id="p-directo">Directo</span>
@@ -478,7 +491,7 @@
               <p class="nota">Para cuando apagues la cámara. Enciéndelo aquí y aparece <b>en la escena Charla</b> (en el hueco de la cámara) y <b>donde hayas añadido el avatar</b> (la escena del juego, por ejemplo). Apagado, es transparente.</p>
               <p class="nota">Respira, parpadea, mira al chat cuando alguien escribe, se alegra con el botín (y se sorprende con un legendario) y se duerme si el chat calla 90 s.</p>
               <div class="campo"><span>Personaje</span>
-                <div class="con-boton"><select id="e-avatar-personaje" aria-label="Personaje"></select><button class="boton" type="button" id="e-avatar-renombrar" title="Cambiar el nombre de este personaje" aria-label="Cambiar el nombre">✏️</button></div></div>
+                <div class="con-boton"><select id="e-avatar-personaje" aria-label="Personaje"></select><button class="boton" type="button" id="e-avatar-renombrar" title="Cambiar el nombre de este personaje" aria-label="Cambiar el nombre">✏️</button><button class="boton" type="button" id="e-avatar-parpadeo" title="Rehace sus ojos cerrados y su sonrisa retocando solo la cara (2 imágenes, céntimos)" aria-label="Arreglar el parpadeo">👁</button><button class="boton peligro" type="button" id="e-avatar-borrar" title="Borrar este personaje para siempre" aria-label="Borrar este personaje">🗑</button></div></div>
               <details class="avatar-crear">
                 <summary>🎨 Crear otro personaje con IA</summary>
                 <label class="campo"><span>Nombre</span><input type="text" id="e-avatar-titulo" maxlength="40" autocomplete="off" placeholder="Vacío = sale de la descripción"></label>
@@ -509,6 +522,48 @@
           <label class="campo"><span>Final · despedida</span><input type="text" data-clave="final" maxlength="90" autocomplete="off"></label>
           <button class="boton primario" type="submit">Guardar textos</button>
         </form>
+      </article>
+
+      <article class="tarjeta ovl">
+        <header><h2>🔔 Alertas y panel rotativo</h2><span class="nota">Dos overlays, para no llenar la pantalla</span></header>
+        <div class="ovl-cols">
+          <section class="ovl-bloque">
+            <h3>Alertas</h3>
+            <p class="nota">Un aviso arriba en el centro al seguir, suscribirse, regalar subs, mandar bits o traer una raid. De uno en uno. «Probar» lo enseña en OBS de verdad (no cuenta para nada).</p>
+            <div class="overlay-vista ovl-vista" id="o-vista-alertas"><iframe src="/biblioteca/overlays/alertas.html?demo=1&amp;volumen=0" sandbox="allow-scripts" title="Alertas" tabindex="-1"></iframe></div>
+            <div class="ovl-tipos" id="o-tipos"></div>
+            <label class="musica-volumen ovl-volumen"><span>🔉 Sonido</span><input type="range" id="o-volumen" min="0" max="100" step="1" aria-label="Volumen de las alertas"><span class="nota" id="o-volumen-n"></span></label>
+          </section>
+          <section class="ovl-bloque">
+            <h3>Panel rotativo</h3>
+            <p class="nota">Una caja pequeña para las escenas del juego que va cambiando entre lo que marques. Lo que aún no tiene datos se salta.</p>
+            <div class="ovl-panel-vista"><iframe src="/biblioteca/overlays/panel.html?demo=1" sandbox="allow-scripts" title="Panel rotativo" tabindex="-1"></iframe></div>
+            <div class="ovl-rotativo" id="o-rotativo"></div>
+            <label class="campo ovl-segundos"><span>Segundos por cosa</span><input type="number" id="o-segundos" min="5" max="60" step="1"></label>
+            <form class="ovl-meta" id="o-meta">
+              <strong>🎯 Meta del mes</strong>
+              <label class="campo"><span>Qué cuenta</span><select id="o-meta-tipo"><option value="subs">Subs (nuevos, resubs y regalados)</option><option value="follows">Follows</option><option value="ninguna">Sin meta</option></select></label>
+              <label class="campo"><span>Título</span><input type="text" id="o-meta-titulo" maxlength="40" autocomplete="off"></label>
+              <label class="campo"><span>Objetivo</span><input type="number" id="o-meta-objetivo" min="1" step="1"></label>
+              <label class="campo" title="Lo que ya llevabas este mes antes de que el bot empezara a contar"><span>Ya llevaba</span><input type="number" id="o-meta-base" min="0" step="1"></label>
+              <button class="boton" type="submit">Guardar meta</button>
+              <p class="nota" id="o-meta-estado"></p>
+            </form>
+          </section>
+        </div>
+        <div class="ovl-pie">
+          <p class="nota" id="o-ultimos"></p>
+          <div class="escena-botones">
+            <button class="boton" type="button" id="o-optimizar">⚡ Optimizar las fuentes en OBS</button>
+            <span class="nota">30 fps en todas y las de ✦ Empezamos/Charla/Pausa/Final apagadas mientras no se ven. Mejor fuera del directo: OBS las recarga.</span>
+          </div>
+          <form class="escenas-avatar" id="o-obs">
+            <label class="campo"><span>Añadir a una escena de OBS</span><select id="o-escena"><option value="">Cargando escenas…</option></select></label>
+            <button class="boton primario" type="button" data-cual="alertas">🔔 Añadir alertas</button>
+            <button class="boton" type="button" data-cual="panel">📋 Añadir panel</button>
+          </form>
+          <p class="nota" id="o-obs-resultado"></p>
+        </div>
       </article>
 
       <div class="lista-escenas" id="e-lista"></div>
@@ -574,6 +629,7 @@
             <button class="boton" type="button" id="m-abrir">📂 Abrir la carpeta de música</button>
             <code id="m-carpeta"></code>
           </div>
+          <p class="nota aviso-sueltas" id="m-sueltas" hidden></p>
           <p class="nota">Nada de música de YouTube o Spotify: en Twitch trae avisos DMCA y te pueden silenciar los vídeos.</p>
         </article>
 

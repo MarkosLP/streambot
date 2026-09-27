@@ -32,6 +32,7 @@ import * as estilos from './estilos.js';
 import * as rotulos from './rotulos.js';
 import * as musica from '../core/musica.js';
 import * as temas from './temas.js';
+import * as alertas from '../core/alertas.js';
 import * as fondos from './fondos.js';
 import * as avatarIa from './avatar-ia.js';
 import * as iaImagen from '../services/ia-imagen.js';
@@ -578,6 +579,20 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     }
   }
 
+  // Borrar un fondo o un personaje generado (el archivo de verdad). Donde
+  // estuviera puesto, sale el último que quede.
+  if (ruta === 'POST /api/escenas/imagen/borrar') {
+    const { ruta: imagen } = await cuerpo(req);
+    const esFondo = fondos.rutaValida(imagen);
+    if (!esFondo && !avatarIa.rutaValida(imagen)) throw new ErrorHttp(400, 'Solo fondos y personajes de la biblioteca');
+    try {
+      await (esFondo ? fondos.borrar(imagen as string) : avatarIa.borrar(imagen as string));
+    } catch (err: any) {
+      throw new ErrorHttp(err?.code === 'ENOENT' ? 404 : 400, err?.code === 'ENOENT' ? 'Ya no existe' : err instanceof Error ? err.message : String(err));
+    }
+    return json(res, 200, { config: escenas.olvidarImagen(imagen as string) });
+  }
+
   if (ruta === 'POST /api/escenas/estilo/borrar') {
     const { id } = await cuerpo(req);
     if (typeof id !== 'string' || !estilos.ID_PROPIO.test(id)) throw new ErrorHttp(400, 'Solo se pueden borrar los estilos propios');
@@ -598,6 +613,21 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       const nueva = await fondos.generar(escena as fondos.EscenaFondo, typeof descripcion === 'string' ? descripcion : '', estilo, undefined, rotulos.limpiarTitulo(titulo));
       const config = escenas.leer().estilo === estilo ? escenas.cambiar({ fondos: { [escena as string]: nueva } }) : escenas.leer();
       return json(res, 200, { ruta: nueva, config });
+    } catch (err) {
+      throw new ErrorHttp(err instanceof iaImagen.ErrorImagen ? 502 : 500, err instanceof Error ? err.message : String(err));
+    } finally {
+      generandoFondo = null;
+    }
+  }
+
+  // Rehace los ojos cerrados y la sonrisa de un personaje retocando solo su cara (2 imágenes).
+  if (ruta === 'POST /api/escenas/avatar-rehacer') {
+    const { ruta: personaje } = await cuerpo(req);
+    if (!avatarIa.rutaValida(personaje)) throw new ErrorHttp(400, 'personaje no válido');
+    if (generandoFondo) throw new ErrorHttp(409, 'Ya se está generando una imagen: espera a que termine');
+    generandoFondo = 'avatar';
+    try {
+      return json(res, 200, await avatarIa.rehacerVariantes(personaje as string));
     } catch (err) {
       throw new ErrorHttp(err instanceof iaImagen.ErrorImagen ? 502 : 500, err instanceof Error ? err.message : String(err));
     } finally {
@@ -657,12 +687,16 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     return;
   }
 
+  // Solo lo que suena (el mini reproductor del panel lo pide cada 2 s).
+  if (ruta === 'GET /api/musica/estado') return json(res, 200, musica.estado());
+
   if (ruta === 'GET /api/musica') {
     const listas = url.searchParams.get('releer') === '1' ? await musica.escanear() : await musica.canciones();
     return json(res, 200, {
       ...musica.estado(),
       listas: musica.LISTAS.map((id) => ({ id, nombre: musica.NOMBRES[id], canciones: listas[id] })),
       carpeta: musica.carpeta(),
+      sueltas: await musica.sueltas(),
       fuente: { nombre: obsSetup.FUENTE_MUSICA, url: obsSetup.urlMusica() },
       escenasPorDefecto: musica.ESCENAS_POR_DEFECTO,
     });
@@ -699,6 +733,52 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     });
     for (const h of hecho) log.info(`Panel → OBS: ${h}`);
     return json(res, 200, { hecho });
+  }
+
+  // ---- Alertas y panel rotativo (core/alertas.ts) ----
+  // Como las demás de overlay: CORS abierto (corren en su sandbox) y solo lectura.
+  if (ruta === 'GET /api/overlay/alertas' || ruta === 'GET /api/overlay/panel') {
+    const e = escenas.leer();
+    const comun = { estilo: e.estilo, apariencia: estilos.apariencia(e.estilo) };
+    const datos = ruta === 'GET /api/overlay/alertas'
+      ? { ...alertas.paraAlertas(), ...comun }
+      : {
+        ...alertas.paraRotativo(), ...comun,
+        top: { nombre: temporadas.nombre(temporadas.deFecha()), podio: temporada.rankingActual(3).map((p) => ({ nombre: p.display_name, puntos: p.puntos })) },
+      };
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify(datos));
+    return;
+  }
+
+  if (ruta === 'GET /api/overlays') {
+    return json(res, 200, {
+      ...alertas.estado(),
+      fuentes: Object.fromEntries(Object.entries(obsSetup.OVERLAYS_DIRECTO).map(([k, o]) => [k, { nombre: o.fuente, url: obsSetup.urlOverlay(k as obsSetup.OverlayDirecto) }])),
+    });
+  }
+
+  if (ruta === 'POST /api/overlays') {
+    const { accion, tipo, ajustes: cambios, cual, escena } = await cuerpo(req);
+    if (accion === 'probar') {
+      if (!alertas.TIPOS.includes(tipo as alertas.TipoAlerta)) throw new ErrorHttp(400, 'tipo de alerta no válido');
+      alertas.probar(tipo as alertas.TipoAlerta);
+      return json(res, 200, alertas.estado());
+    }
+    if (accion === 'ajustes') {
+      alertas.cambiarAjustes(cambios);
+      return json(res, 200, alertas.estado());
+    }
+    if (accion === 'obs') {
+      if (cual !== 'alertas' && cual !== 'panel') throw new ErrorHttp(400, 'overlay no válido');
+      if (typeof escena !== 'string' || !escena.trim()) throw new ErrorHttp(400, 'elige la escena');
+      const hecho = await obs((pedir) => obsSetup.anadirOverlay(pedir, cual, escena)).catch((err) => {
+        throw new ErrorHttp(502, err instanceof Error ? err.message : String(err));
+      });
+      log.info(`Panel → OBS: ${hecho}`);
+      return json(res, 200, { hecho });
+    }
+    throw new ErrorHttp(400, 'acción no válida');
   }
 
   // ---- Temas para hablar (temas.ts) ----
@@ -752,6 +832,15 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       // Sin OBS no es un error del panel: se enseña el motivo y ya.
       return json(res, 200, { conectado: false, motivo: err instanceof Error ? err.message : String(err) });
     }
+  }
+
+  // 30 fps en nuestras fuentes y las de las escenas del panel apagadas mientras no se ven.
+  if (ruta === 'POST /api/obs/optimizar') {
+    const hecho = await obs((pedir) => obsSetup.optimizar(pedir)).catch((err) => {
+      throw new ErrorHttp(502, err instanceof Error ? err.message : String(err));
+    });
+    for (const h of hecho) log.info(`Panel → OBS: ${h}`);
+    return json(res, 200, { hecho });
   }
 
   if (ruta === 'POST /api/obs/preparar') {
