@@ -56,3 +56,17 @@ test('chat: conserva los nueve nodos, respeta su edad y retira los moderados', (
   e.ctx.pintarChat([]); assert.equal(e.$('mensajes').children.length, 0);
   e.ctx.pintarChat(chat); assert.ok(e.$('mensajes').children.every((n:any)=>n.classList.contains('viejo')));
 });
+
+test('avatar: un 404 conserva el retrato y permite reintentar la misma ruta', async () => {
+  const e=entorno(); let falla=true, cambios=0;
+  for(const id of ['r-base','r-medio','r-cerrados','r-contento']) { const n=e.$(id);n.id=id;n.replaceWith=()=>cambios++; }
+  e.ctx.Image=class { onload?:()=>void; onerror?:()=>void; classList=e.nodo().classList; set src(_: string) { queueMicrotask(()=>falla?this.onerror?.():this.onload?.()); } };
+  e.ctx.pixeles=()=>null; e.ctx.zonaQueCambia=()=>null; e.ctx.ojosBrillantes=()=>null;
+  e.ctx.elipse=()=>'';
+  const fuente=readFileSync(new URL('../../biblioteca/overlays/avatar.html',import.meta.url),'utf8');
+  runInNewContext(fuente.slice(fuente.indexOf('let retratoPuesto'),fuente.indexOf('// Parpadea solo')),e.ctx);
+  await e.ctx.ponerRetrato('imagenes/avatar/prueba'); assert.equal(cambios,0);
+  falla=false; await e.ctx.ponerRetrato('imagenes/avatar/prueba'); assert.equal(cambios,4);
+  await e.ctx.ponerRetrato('imagenes/avatar/prueba'); assert.equal(cambios,4);
+  await e.ctx.ponerRetrato('imagenes/avatar/prueba',null,'nueva'); assert.equal(cambios,8);
+});

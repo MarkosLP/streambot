@@ -289,8 +289,7 @@ function pixeles(img) {
   const cv = document.createElement('canvas');
   cv.width = N; cv.height = N;
   const cx = cv.getContext('2d', { willReadFrequently: true });
-  cx.drawImage(img, 0, 0, N, N);
-  try { return cx.getImageData(0, 0, N, N).data; } catch { return null; }
+  try { cx.drawImage(img, 0, 0, N, N); return cx.getImageData(0, 0, N, N).data; } catch { return null; }
 }
 const percentil = (xs, p) => xs[Math.min(xs.length - 1, Math.floor(xs.length * p))];
 
@@ -367,20 +366,33 @@ const elipse = (o, margen = .06) =>
   `radial-gradient(ellipse ${(o.w * .5 + margen) * 100}% ${(o.h * .5 + margen) * 100}% at ${o.x * 100}% ${o.y * 100}%, #000 60%, transparent 100%)`;
 
 let retratoPuesto = null;
+let retratoCargando = null;
+let cargaRetrato = 0;
 let tieneMedio = false;
 let zonasGuardadas = null;
 function cargar(img, src) {
   return new Promise((ok) => { img.onload = () => ok(true); img.onerror = () => ok(false); img.crossOrigin = 'anonymous'; img.src = src; });
 }
-async function ponerRetrato(ruta, zonas = null) {
+async function ponerRetrato(ruta, zonas = null, version = '') {
   if (!/^imagenes\/avatar\/[\w.-]+$/.test(ruta || '')) ruta = 'imagenes/avatar/errante';
-  if (ruta === retratoPuesto && JSON.stringify(zonas) === JSON.stringify(zonasGuardadas)) return;
-  retratoPuesto = ruta;
-  zonasGuardadas = zonas;
-  const [base, medio, cerrados, contento] = [$('r-base'), $('r-medio'), $('r-cerrados'), $('r-contento')];
-  const [, conMedio] = await Promise.all([cargar(base, `../${ruta}/base.png`), cargar(medio, `../${ruta}/medio.png`), cargar(cerrados, `../${ruta}/cerrados.png`), cargar(contento, `../${ruta}/contento.png`)]);
-  tieneMedio = conMedio;
-  if (retratoPuesto !== ruta) return;
+  const clave = JSON.stringify([ruta, zonas, version]);
+  if (clave === retratoPuesto || clave === retratoCargando) return;
+  const carga = ++cargaRetrato;
+  retratoCargando = clave;
+  // 27 sep 2026: publicar un conjunto completo; nunca dejar media cara cargada.
+  const anteriores = ['r-base', 'r-medio', 'r-cerrados', 'r-contento'].map($);
+  const nuevas = anteriores.map((anterior) => { const img = new Image(); img.id = anterior.id; img.className = anterior.className; return img; });
+  const [base, medio, cerrados, contento] = nuevas;
+  const url = (v) => `../${ruta}/${v}.png?v=${encodeURIComponent(version)}`;
+  try {
+    const cargas = await Promise.all(['base', 'medio', 'cerrados', 'contento'].map((v, i) => cargar(nuevas[i], url(v))));
+    if (carga !== cargaRetrato) return;
+    if (!cargas[0]) throw new Error('No se pudo cargar la base del personaje');
+    for (let i = 1; i < nuevas.length; i++) if (!cargas[i]) {
+      if (!await cargar(nuevas[i], url('base'))) throw new Error('No se pudo cargar la reserva del personaje');
+    }
+    if (carga !== cargaRetrato) return;
+    tieneMedio = cargas[1];
   const [pb, pc, pf] = [pixeles(base), pixeles(cerrados), pixeles(contento)];
   const r = $('retrato');
   /**
@@ -407,7 +419,12 @@ async function ponerRetrato(ruta, zonas = null) {
   const brillo = ojos ?? ojosBrillantes(pb) ?? { x: .5, y: .3, w: .22, h: .06 };
   r.style.setProperty('--ox', `${brillo.x * 100}%`); r.style.setProperty('--oy', `${brillo.y * 100}%`);
   r.style.setProperty('--ow', `${(brillo.w + .06) * 100}%`); r.style.setProperty('--oh', `${(brillo.h + .06) * 100}%`);
+  nuevas.forEach((img, i) => anteriores[i].replaceWith(img));
+  retratoPuesto = clave;
+  zonasGuardadas = zonas;
   r.hidden = false;
+  } catch (error) { console.warn('Avatar: se conserva el retrato anterior', error); }
+  finally { if (carga === cargaRetrato) retratoCargando = null; }
 }
 
 // Parpadea solo, cada pocos segundos.
@@ -437,7 +454,7 @@ let primera = true;
 function pintar(d) {
   const visible = SIEMPRE || d.config.avatar;
   ponerEstilo(q.get('estilo') || d.config.estilo, q.get('estilo') ? null : d.config.apariencia);
-  ponerRetrato(q.get('imagen') ?? d.config.avatarImagen ?? '', q.get('imagen') ? null : d.config.avatarZonas ?? null);
+  ponerRetrato(q.get('imagen') ?? d.config.avatarImagen ?? '', q.get('imagen') ? null : d.config.avatarZonas ?? null, d.config.avatarVersion ?? '');
   escena.classList.toggle('fuera', !visible);
   fijo = d.config.avatarTexto || '';
   if (Date.now() >= decirHasta) volverAlFijo();

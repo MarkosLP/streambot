@@ -355,3 +355,11 @@ test('avatar: copias de la base son reservas, no reparaciones ni nuevos gastos',
   assert.deepEqual(resultado.dudosas.sort(),['cerrados','medio']);
   assert.equal(pedidas.length,0);
 });
+
+test('avatar: versión distinta al reparar archivos en la misma carpeta', async () => {
+  const ruta=await avatarIa.generar('Versionado', 'oscuro', dir);
+  const antes=avatarIa.version(ruta,dir);
+  await writeFile(join(dir,ruta,'medio.png'),Buffer.from('otra versión'));
+  assert.notEqual(avatarIa.version(ruta,dir),antes);
+  assert.equal(avatarIa.version('../fuera',dir),'');
+});

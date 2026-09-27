@@ -1,3 +1,4 @@
+import { version as versionAvatar } from './avatar-ia.js';
 import { config } from '../config.js';
 import { getDb, nowIso } from '../data/db.js';
 import * as streams from '../data/streams.js';
@@ -257,7 +258,7 @@ export function paraOverlay(tipo: string) {
   return {
     ahora: new Date().toISOString(),
     canal: nombreCanal(),
-    config: { ...resto, fondos, avatarImagen, avatarZonas: zonas?.ojos ? { ojos: zonas.ojos, cara: zonas.cara ?? null } : null, apariencia: estilos.apariencia(cfg.estilo) },
+    config: { ...resto, fondos, avatarImagen, avatarVersion: versionAvatar(avatarImagen), avatarZonas: zonas?.ojos ? { ojos: zonas.ojos, cara: zonas.cara ?? null } : null, apariencia: estilos.apariencia(cfg.estilo) },
     directo: directo ? { desde: directo.started_at } : null,
     evento: e ? { emoji: e.emoji, nombre: e.nombre, texto: e.texto } : null,
     temporada: {

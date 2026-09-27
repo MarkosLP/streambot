@@ -1,5 +1,5 @@
 import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { DIR_BIBLIOTECA } from './biblioteca.js';
 import * as imagen from '../services/ia-imagen.js';
@@ -270,4 +270,12 @@ export async function borrar(ruta: string, dir = DIR_BIBLIOTECA): Promise<void> 
   if (ruta === ERRANTE) throw new Error('El errante no se borra: es el que sale cuando un estilo no tiene personaje');
   await rm(join(dir, ruta), { recursive: true });
   log.info(`Personaje borrado: ${ruta}`);
+}
+
+/** Cambia también al rehacer variantes dentro de la misma carpeta. */
+export function version(ruta: string, dir = DIR_BIBLIOTECA): string {
+  if (!rutaValida(ruta)) return '';
+  return ['base.png', 'medio.png', 'cerrados.png', 'contento.png', 'info.json'].map((n) => {
+    try { const s = statSync(join(dir, ruta, n)); return `${s.mtimeMs}-${s.size}`; } catch { return '0'; }
+  }).join('_');
 }
