@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
@@ -98,8 +97,6 @@ class ErrorHttp extends Error {
   }
 }
 
-const credencialesMusica = new WeakMap<Server, string>();
-
 export function crearServidor(sb: PuertoStreamerbot, obs: ConObs = conObs): Server {
   const server = createServer((req, res) => {
     atender(server, sb, obs, req, res).catch((err) => {
@@ -108,7 +105,6 @@ export function crearServidor(sb: PuertoStreamerbot, obs: ConObs = conObs): Serv
       json(res, status, { error: err instanceof Error ? err.message : String(err) });
     });
   });
-  credencialesMusica.set(server, randomBytes(32).toString('hex'));
   return server;
 }
 
@@ -194,7 +190,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   // El reproductor aislado solo puede reportar con su credencial privada (27 sep 2026).
   if (metodo === 'POST' && url.pathname === '/api/reproductor/musica') {
     const d = await cuerpo(req);
-    if (d.credencial !== credencialesMusica.get(server)) throw new ErrorHttp(403, 'reproductor no autorizado');
+    if (d.credencial !== musica.credencialReproductor()) throw new ErrorHttp(403, 'reproductor no autorizado');
     if (typeof d.id !== 'string' || !Number.isInteger(d.turno)) throw new ErrorHttp(400, 'reporte inválido');
     if (d.tipo === 'terminada') await musica.terminada(d.id, d.turno as number);
     else if (d.tipo === 'progreso') musica.informarProgreso(d.id, Number(d.pos), Number(d.dur), d.turno as number);
@@ -225,7 +221,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     const archivo = biblioteca.resolver(url.pathname);
     let contenido = archivo && (await readFile(archivo.ruta).catch(() => null));
     if (!archivo || !contenido) throw new ErrorHttp(404, 'no existe');
-    if (url.pathname === '/biblioteca/overlays/musica.html') contenido = Buffer.from(contenido.toString('utf8').replace('__MUSICA_CREDENCIAL__', credencialesMusica.get(server)!));
+    if (url.pathname === '/biblioteca/overlays/musica.html') contenido = Buffer.from(contenido.toString('utf8').replace('__MUSICA_CREDENCIAL__', musica.credencialReproductor()));
     res.writeHead(200, {
       'Content-Type': archivo.tipo,
       'Content-Length': contenido.length,

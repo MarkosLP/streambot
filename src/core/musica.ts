@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { open, readdir, stat, mkdir } from 'node:fs/promises';
 import { join, extname, basename } from 'node:path';
 import { getDb, nowIso } from '../data/db.js';
@@ -400,6 +401,36 @@ export function paraOverlay() {
 }
 
 /** ¿Está la fuente de OBS pidiendo? (si no, no hace falta preguntar a OBS por la escena). */
+/**
+ * La credencial con la que el reproductor (musica.html) avisa al bot. Se
+ * guarda: si cambiara en cada arranque, la fuente de OBS (que no se apaga ni
+ * se recarga sola) seguiría con la vieja, el bot rechazaría sus avisos y la
+ * música se pararía al acabar la primera canción tras reiniciar el bot.
+ */
+let credencial: string | null = null;
+/** Solo para tests: como si el bot arrancara de nuevo (la guardada sigue en la base de datos). */
+export function olvidarCredencial(): void {
+  credencial = null;
+}
+export function credencialReproductor(): string {
+  if (credencial) return credencial;
+  const CLAVE_CREDENCIAL = 'musica-credencial';
+  try {
+    const f = getDb().prepare('SELECT valor FROM ajustes WHERE clave = ?').get(CLAVE_CREDENCIAL) as { valor: string } | undefined;
+    const guardada = f ? JSON.parse(f.valor) : null;
+    if (typeof guardada === 'string' && /^[a-f0-9]{64}$/.test(guardada)) return (credencial = guardada);
+  } catch { /* sin base de datos: una nueva, solo para esta sesión */ }
+  credencial = randomBytes(32).toString('hex');
+  try {
+    getDb()
+      .prepare('INSERT INTO ajustes (clave, valor, at) VALUES (?, ?, ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor, at = excluded.at')
+      .run(CLAVE_CREDENCIAL, JSON.stringify(credencial), nowIso());
+  } catch (err) {
+    log.debug(`Credencial de la música sin guardar: ${String(err)}`);
+  }
+  return credencial;
+}
+
 /**
  * El reproductor ha preguntado: está abierto en OBS. Codex (27 sep) quitó esto
  * de paraOverlay() al separar consulta y control, y entonces solo contaba

@@ -790,6 +790,15 @@ test('música: la consulta del reproductor cuenta como abierto aunque no suene n
   assert.equal(musica.estado().overlay, true);
 });
 
+test('música: la credencial del reproductor sobrevive a reiniciar el bot', async () => {
+  // La fuente de OBS no se recarga sola: con una credencial nueva en cada arranque,
+  // sus avisos se rechazarían y la música se pararía tras la primera canción.
+  musica.olvidarCredencial();
+  const antes = musica.credencialReproductor();
+  musica.olvidarCredencial();
+  assert.equal(musica.credencialReproductor(), antes, 'la misma, leída de la base de datos');
+});
+
 
 test('imágenes: no inicia gasto sin aceptar el máximo de la operación', async () => {
   for(const ruta of ['fondo','avatar-ia','avatar-rehacer']) {
