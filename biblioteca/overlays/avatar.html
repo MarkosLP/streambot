@@ -58,6 +58,12 @@
   @keyframes respira { 50% { transform: scale(1.008, 1.018); } }
   .retrato img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
   .retrato .variante { opacity: 0; transition: opacity .1s linear; }
+  /* El parpadeo en tres pasos (medio → cerrados → medio), cada uno ~45 ms:
+     con fundidos largos se verían los dos párpados a la vez. */
+  #r-medio { -webkit-mask-image: var(--mascara-cerrados); mask-image: var(--mascara-cerrados); transform: translate(var(--c-dx, 0), var(--c-dy, 0)); }
+  #r-medio, #r-cerrados { transition-duration: .035s; }
+  #escena.dormido #r-cerrados { transition-duration: .35s; }
+  #escena.parpadeo-medio #r-medio { opacity: 1; }
   #r-cerrados { -webkit-mask-image: var(--mascara-cerrados); mask-image: var(--mascara-cerrados); transform: translate(var(--c-dx, 0), var(--c-dy, 0)); }
   #r-contento { -webkit-mask-image: var(--mascara-contento); mask-image: var(--mascara-contento); transform: translate(var(--f-dx, 0), var(--f-dy, 0)); transition-duration: .2s; }
   /* La IA a veces redibuja la cabeza girada: entonces no se mezcla media cara de cada imagen, se cambia entera con un fundido. */
@@ -107,6 +113,7 @@
   <div class="retrato" id="retrato" hidden>
     <div class="salto"><div class="gira" id="gira"><div class="mueve">
       <img id="r-base" alt="">
+      <img id="r-medio" class="variante" alt="">
       <img id="r-cerrados" class="variante" alt="">
       <img id="r-contento" class="variante" alt="">
       <div class="brillo-ojos"></div>
@@ -360,6 +367,7 @@ const elipse = (o, margen = .06) =>
   `radial-gradient(ellipse ${(o.w * .5 + margen) * 100}% ${(o.h * .5 + margen) * 100}% at ${o.x * 100}% ${o.y * 100}%, #000 60%, transparent 100%)`;
 
 let retratoPuesto = null;
+let tieneMedio = false;
 let zonasGuardadas = null;
 function cargar(img, src) {
   return new Promise((ok) => { img.onload = () => ok(true); img.onerror = () => ok(false); img.crossOrigin = 'anonymous'; img.src = src; });
@@ -369,8 +377,9 @@ async function ponerRetrato(ruta, zonas = null) {
   if (ruta === retratoPuesto && JSON.stringify(zonas) === JSON.stringify(zonasGuardadas)) return;
   retratoPuesto = ruta;
   zonasGuardadas = zonas;
-  const [base, cerrados, contento] = [$('r-base'), $('r-cerrados'), $('r-contento')];
-  await Promise.all([cargar(base, `../${ruta}/base.png`), cargar(cerrados, `../${ruta}/cerrados.png`), cargar(contento, `../${ruta}/contento.png`)]);
+  const [base, medio, cerrados, contento] = [$('r-base'), $('r-medio'), $('r-cerrados'), $('r-contento')];
+  const [, conMedio] = await Promise.all([cargar(base, `../${ruta}/base.png`), cargar(medio, `../${ruta}/medio.png`), cargar(cerrados, `../${ruta}/cerrados.png`), cargar(contento, `../${ruta}/contento.png`)]);
+  tieneMedio = conMedio;
   if (retratoPuesto !== ruta) return;
   const [pb, pc, pf] = [pixeles(base), pixeles(cerrados), pixeles(contento)];
   const r = $('retrato');
@@ -391,6 +400,7 @@ async function ponerRetrato(ruta, zonas = null) {
   const valida = (z) => z && ['x', 'y', 'w', 'h'].every((k) => typeof z[k] === 'number' && z[k] >= 0 && z[k] <= 1);
   const ojos = valida(zonas?.ojos) ? { ...zonas.ojos, dx: 0, dy: 0 } : zonaQueCambia(pb, pc);
   colocar(cerrados, ojos, 'c');
+  medio.classList.toggle('entera', !ojos); // misma zona y mismo sitio que los cerrados
   // Alegrarse, sin zona guardada, cambia más que los ojos (boca, hombros, brillos): entera, con un fundido.
   colocar(contento, valida(zonas?.cara) ? { ...zonas.cara, dx: 0, dy: 0 } : null, 'f');
   // El brillo de los ojos (solo en el estilo oscuro): donde estén, o donde brillan en el errante.
@@ -404,8 +414,17 @@ async function ponerRetrato(ruta, zonas = null) {
 (function parpadear() {
   setTimeout(() => {
     if (!escena.classList.contains('feliz') && !escena.classList.contains('sorpresa')) {
-      escena.classList.add('parpadeo');
-      setTimeout(() => escena.classList.remove('parpadeo'), 140);
+      if (tieneMedio) {
+        // abierto → medio → cerrado → medio → abierto
+        const paso = (ms, fn) => setTimeout(fn, ms);
+        escena.classList.add('parpadeo-medio');
+        paso(45, () => { escena.classList.add('parpadeo'); escena.classList.remove('parpadeo-medio'); });
+        paso(135, () => { escena.classList.add('parpadeo-medio'); escena.classList.remove('parpadeo'); });
+        paso(185, () => escena.classList.remove('parpadeo-medio'));
+      } else {
+        escena.classList.add('parpadeo');
+        setTimeout(() => escena.classList.remove('parpadeo'), 140);
+      }
     }
     parpadear();
   }, 4500 + Math.random() * 4500);

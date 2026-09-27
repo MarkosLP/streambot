@@ -415,7 +415,7 @@
           <button class="boton primario" type="button" id="e-estilo-generar">🎨 Generar fondos y personaje de este estilo</button>
           <span class="nota" id="e-estilo-progreso"></span>
         </div>
-        <p class="nota">Cambia a la vez las cuatro escenas y el avatar, en directo y sin tocar OBS. Cada estilo guarda sus propios fondos y su personaje: al volver a uno, vuelve todo lo suyo. «Generar» hace 7 imágenes (4 fondos y el personaje, ~3 min, unos céntimos de tu OpenAI).</p>
+        <p class="nota">Cambia a la vez las cuatro escenas y el avatar, en directo y sin tocar OBS. Cada estilo guarda sus propios fondos y su personaje: al volver a uno, vuelve todo lo suyo. «Generar» hace 8 imágenes (4 fondos y el personaje, ~3 min, unos céntimos de tu OpenAI).</p>
 
         <form class="estilo-form" id="e-estilo-form" hidden>
           <div class="estilo-form-campos">
@@ -506,12 +506,12 @@
               <p class="nota">Para cuando apagues la cámara. Enciéndelo aquí y aparece <b>en la escena Charla</b> (en el hueco de la cámara) y <b>donde hayas añadido el avatar</b> (la escena del juego, por ejemplo). Apagado, es transparente.</p>
               <p class="nota">Respira, parpadea, mira al chat cuando alguien escribe, se alegra con el botín (y se sorprende con un legendario) y se duerme si el chat calla 90 s.</p>
               <div class="campo"><span>Personaje</span>
-                <div class="con-boton"><select id="e-avatar-personaje" aria-label="Personaje"></select><button class="boton" type="button" id="e-avatar-renombrar" title="Cambiar el nombre de este personaje" aria-label="Cambiar el nombre">✏️</button><button class="boton" type="button" id="e-avatar-parpadeo" title="Rehace sus ojos cerrados y su sonrisa retocando solo la cara (2 imágenes, céntimos)" aria-label="Arreglar el parpadeo">👁</button><button class="boton peligro" type="button" id="e-avatar-borrar" title="Borrar este personaje para siempre" aria-label="Borrar este personaje">🗑</button></div></div>
+                <div class="con-boton"><select id="e-avatar-personaje" aria-label="Personaje"></select><button class="boton" type="button" id="e-avatar-renombrar" title="Cambiar el nombre de este personaje" aria-label="Cambiar el nombre">✏️</button><button class="boton" type="button" id="e-avatar-parpadeo" title="Rehace sus ojos entornados, cerrados y su sonrisa retocando solo la cara (3 imágenes, céntimos)" aria-label="Arreglar el parpadeo">👁</button><button class="boton peligro" type="button" id="e-avatar-borrar" title="Borrar este personaje para siempre" aria-label="Borrar este personaje">🗑</button></div></div>
               <details class="avatar-crear">
                 <summary>🎨 Crear otro personaje con IA</summary>
                 <label class="campo"><span>Nombre</span><input type="text" id="e-avatar-titulo" maxlength="40" autocomplete="off" placeholder="Vacío = sale de la descripción"></label>
                 <label class="campo"><span>Cómo es (en castellano)</span><textarea id="e-avatar-desc" rows="3" maxlength="600" spellcheck="false"></textarea></label>
-                <div class="escena-botones"><button class="boton" type="button" id="e-avatar-generar">🎨 Crear personaje</button><span class="nota">3 imágenes · ~1 min · unos céntimos de tu OpenAI</span></div>
+                <div class="escena-botones"><button class="boton" type="button" id="e-avatar-generar">🎨 Crear personaje</button><span class="nota">4 imágenes · ~1 min · unos céntimos de tu OpenAI</span></div>
               </details>
               <form class="escenas-avatar" id="e-avatar-form">
                 <label class="campo"><span>Su bocadillo en Charla</span><input type="text" id="e-avatar-dice" maxlength="90" autocomplete="off"></label>

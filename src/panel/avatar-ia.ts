@@ -6,21 +6,22 @@ import * as imagen from '../services/ia-imagen.js';
 import { log } from '../core/logger.js';
 import { INFO, POR_DEFECTO, deNombre, info, type Estilo } from './estilos.js';
 import * as rotulos from './rotulos.js';
-import { mascara, type Zona } from '../services/png.js';
+import { comparar, mascara, type Zona } from '../services/png.js';
 import type { Cara } from '../services/ia-imagen.js';
 
 /**
  * El personaje del avatar, generado con IA (27 sep 2026).
  *
- * Tres imágenes del MISMO personaje, con fondo transparente: la base, con los
- * ojos cerrados (para parpadear y dormir) y contento (para el botín). Las dos
- * últimas salen editando la base CON MÁSCARA: un modelo que ve dice dónde
+ * Cuatro imágenes del MISMO personaje, con fondo transparente: la base, con
+ * los ojos entornados y cerrados (el parpadeo en tres pasos; cerrados también
+ * para dormir) y contento (para el botín). Las tres últimas salen editando la base CON MÁSCARA: un modelo que ve dice dónde
  * están ojos y boca, y la IA solo puede retocar esa zona. Sin máscara (27 sep)
  * redibujaba el personaje entero —la cabeza girada, la taza en otro sitio— y
  * al parpadear «cambiaba hasta el cuerpo». Las zonas se guardan en info.json
  * y avatar.html mezcla exactamente esas.
  *
- * Se guardan en biblioteca/imagenes/avatar/<estilo>-<fecha>/{base,cerrados,contento}.png
+ * Se guardan en biblioteca/imagenes/avatar/<estilo>-<fecha>/{base,medio,cerrados,contento}.png
+ * (medio.png no está en los de antes del 27 sep por la tarde: parpadean en un paso)
  * (el errante, el primero, no lleva estilo: es del oscuro).
  */
 
@@ -38,7 +39,7 @@ const carpeta = (dir: string) => join(dir, 'imagenes', 'avatar');
  * Con margen de sobra en vertical: el modelo acierta en horizontal pero puede
  * irse unos 40 px de 1024 arriba o abajo.
  */
-export function zonasDe(c: Cara): { ojos: Zona; cara: Zona } {
+export function zonasDe(c: Cara): { ojos: Zona; cara: Zona; sueltos: Zona[] } {
   const xs = c.ojos.map((o) => o.x);
   const ys = c.ojos.map((o) => o.y);
   const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
@@ -47,25 +48,94 @@ export function zonasDe(c: Cara): { ojos: Zona; cara: Zona } {
   const ojos = { x: cx, y: cy, w, h: Math.max(.17, c.anchoOjo * 2.6) };
   const abajo = c.boca ? c.boca.y + .07 : cy + .16;
   const arriba = cy - .1;
-  return { ojos, cara: { x: cx, y: (arriba + abajo) / 2, w: Math.min(.7, w + .06), h: Math.max(.2, abajo - arriba) } };
+  // Un óvalo por ojo, con margen vertical por lo que falla el modelo: al
+  // entornar y cerrar, la IA no tiene dónde tocar la frente ni la nariz.
+  const sueltos = c.ojos.map((o) => ({ x: o.x, y: o.y, w: Math.max(.07, c.anchoOjo * 2.2), h: c.anchoOjo * 1.5 + .08 }));
+  return { ojos, cara: { x: cx, y: (arriba + abajo) / 2, w: Math.min(.7, w + .06), h: Math.max(.2, abajo - arriba) }, sueltos };
 }
 
 /**
- * Los ojos cerrados y la sonrisa de un personaje, retocando solo su cara si se
- * sabe dónde está. Devuelve las dos imágenes y las zonas (o null si no se supo).
+ * Lo que se pide para cada variante, igual para cualquier personaje. Hasta el
+ * 27 sep cada estilo tenía las suyas, y las del oscuro eran las del errante
+ * («ojos que brillan en una cara en sombra»): al Chico de pelo negro y a
+ * Magmarex les tapó la cara de negro. Solo el errante usa las de su estilo.
  */
-async function variantes(base: Buffer, a: { cerrados: string; contento: string }) {
+export const CAMBIOS = {
+  medio: 'The eyes are HALF closed, as in the middle of a natural blink: the upper eyelids come halfway down over the eyes, drawn in the same style. Same eye shape and position.',
+  cerrados: 'The eyes are fully closed, as in a natural blink: closed eyelids drawn in the same style, in the same place as the eyes. Same eye shape and position.',
+  contento: 'The character looks happy: a warm smile and slightly squinted happy eyes, drawn in the same style.',
+} as const;
+const MISMA_CARA = 'Everything else in the face stays exactly the same: same skin, fur or scales, same colors and brightness, same features. Do not darken, shadow, cover, hide or replace the face.';
+
+type Variante = keyof typeof CAMBIOS;
+
+/**
+ * Qué parte de la zona puede cambiar como mucho. Medido el 27 sep: cerrar los
+ * ojos bien hecho cambia un 32-35 % de la franja de los ojos; cuando la IA
+ * redibujó la cara (los leones, Magmarex), un 46-58 %.
+ */
+export const LIMITE_CAMBIO = .42;
+
+type Zonas = ReturnType<typeof zonasDe>;
+
+/** La variante fundida sobre la base y cuánto cambió; null si no se puede medir (sin zonas o PNG raro). */
+function medir(base: Buffer, png: Buffer, v: Variante, zonas: Zonas | null): { png: Buffer; fraccion: number } | null {
+  if (!zonas) return null;
+  try {
+    return comparar(base, png, [v === 'contento' ? zonas.cara : zonas.ojos]);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Una variante nueva: la IA la pinta retocando solo su zona; se funde sobre la
+ * base (solo lo que cambió de verdad, con el tono corregido); si cambió
+ * demasiado o el modelo que ve dice que no vale, se repite una vez. Se queda
+ * la mejor. `errante`: las instrucciones de su estilo, escritas para él.
+ */
+async function pintarVariante(base: Buffer, v: Variante, zonas: Zonas | null, errante: { cerrados: string; contento: string } | null) {
+  const pedido = errante && v !== 'medio' ? errante[v] : `${CAMBIOS[v]} ${MISMA_CARA}`;
+  const zonasMascara = !zonas ? [] : v === 'contento' ? [zonas.cara] : zonas.sueltos;
+  let mejor: { png: Buffer; fraccion: number; ok: boolean } | null = null;
+  let motivo = '';
+  for (let intento = 1; intento <= 2; intento++) {
+    const png = await imagen.editar({
+      base,
+      prompt: `Keep this exact same character, pose, framing, colors, lighting and transparent background. Change only this: ${pedido}` +
+        (motivo ? ` IMPORTANT: the previous attempt was wrong (${motivo}). Keep the face exactly as in the original.` : ''),
+      tamano: '1024x1024',
+      transparente: true,
+      mascara: zonasMascara.length ? mascara(1024, 1024, zonasMascara) : undefined,
+    });
+    const m = medir(base, png, v, zonas);
+    let ok = true;
+    if (m && m.fraccion > LIMITE_CAMBIO) {
+      ok = false;
+      motivo = `the face was redrawn (${Math.round(m.fraccion * 100)} % of the area changed)`;
+    } else {
+      const vista = await imagen.comprobarVariante(base, m?.png ?? png, CAMBIOS[v]);
+      if (vista && !vista.ok) { ok = false; motivo = vista.motivo; }
+    }
+    const este = { png: m?.png ?? png, fraccion: m?.fraccion ?? 0, ok };
+    if (!mejor || (ok && !mejor.ok) || (ok === mejor.ok && este.fraccion < mejor.fraccion)) mejor = este;
+    if (ok) break;
+    log.warn(`Avatar: la variante «${v}» no vale (${motivo})${intento === 1 ? '; se repite una vez' : ''}.`);
+  }
+  // Mejor que no parpadee a que se deforme (27 sep): sin una buena, la base.
+  return mejor!.ok ? mejor! : { png: base, fraccion: 0, ok: false };
+}
+
+/**
+ * Las tres variantes de un personaje nuevo. Si la sonrisa sale mal dos veces,
+ * se usan los ojos cerrados: con el saltito de alegría también se lee.
+ */
+async function variantes(base: Buffer, errante: { cerrados: string; contento: string } | null = null) {
   const cara = await imagen.localizarCara(base);
   const zonas = cara ? zonasDe(cara) : null;
-  const edicion = (cambio: string, zona: Zona | undefined) => imagen.editar({
-    base,
-    prompt: `Keep this exact same character, pose, framing, colors, lighting and transparent background. Change only this: ${cambio}`,
-    tamano: '1024x1024',
-    transparente: true,
-    mascara: zona ? mascara(1024, 1024, [zona]) : undefined,
-  });
-  const [cerrados, contento] = await Promise.all([edicion(a.cerrados, zonas?.ojos), edicion(a.contento, zonas?.cara)]);
-  return { cerrados, contento, zonas };
+  const [medio, cerrados, contento] = await Promise.all((['medio', 'cerrados', 'contento'] as const).map((v) => pintarVariante(base, v, zonas, errante)));
+  const dudosas = [medio!.ok ? null : 'medio', cerrados!.ok ? null : 'cerrados'].filter((x): x is string => x !== null);
+  return { medio: medio!.png, cerrados: cerrados!.png, contento: contento!.ok ? contento!.png : cerrados!.png, zonas: zonas ? { ojos: zonas.ojos, cara: zonas.cara } : null, dudosas };
 }
 
 /**
@@ -79,36 +149,62 @@ export async function generar(descripcion: string, estilo: Estilo = POR_DEFECTO,
   const detalle = await imagen.detallar(descripcion.trim().slice(0, 600), 'personaje');
   const personaje = detalle ? `CHARACTER (follow it exactly): ${detalle}\n(Original request in Spanish: ${que})` : `CHARACTER (described in Spanish, follow it exactly): ${que}`;
   const base = await imagen.generar({ prompt: `${personaje}\n${ENCUADRE}\nArt style: ${a.estilo}`, tamano: '1024x1024', transparente: true });
-  const { cerrados, contento, zonas } = await variantes(base, a);
+  const { medio, cerrados, contento, zonas, dudosas } = await variantes(base);
   const nombre = `${estilo}-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
   const destino = join(carpeta(dir), nombre);
   await mkdir(destino, { recursive: true });
   await writeFile(join(destino, 'base.png'), base);
-  await writeFile(join(destino, 'cerrados.png'), cerrados!);
-  await writeFile(join(destino, 'contento.png'), contento!);
+  await writeFile(join(destino, 'medio.png'), medio);
+  await writeFile(join(destino, 'cerrados.png'), cerrados);
+  await writeFile(join(destino, 'contento.png'), contento);
   const ruta = `imagenes/avatar/${nombre}`;
+  if (dudosas.length) log.warn(`Avatar ${nombre}: ${dudosas.join(' y ')} siguen sin convencer; rehazlas con 👁.`);
   await rotulos.escribir(ruta, { titulo: rotulos.limpiarTitulo(titulo) || rotulos.tituloDe(que), descripcion: que, ...(zonas ?? {}) }, dir);
   log.info(`Avatar generado con IA: ${nombre}${zonas ? '' : ' (sin localizar la cara: variantes sin máscara)'}`);
   return ruta;
 }
 
 /**
- * Rehace los ojos cerrados y la sonrisa de un personaje que ya existe (2
- * imágenes), retocando solo su cara. Para los hechos antes de las máscaras.
- * La base no se toca.
+ * Repasa las variantes de un personaje que ya existe (el botón 👁). Lo que se
+ * puede salvar se arregla gratis: se funde sobre la base con el tono
+ * corregido. Solo se vuelve a pintar lo que la IA redibujó (o lo que falta,
+ * como medio.png en los de antes). La base no se toca.
  */
-export async function rehacerVariantes(ruta: string, dir = DIR_BIBLIOTECA): Promise<{ zonas: boolean }> {
+export async function rehacerVariantes(ruta: string, dir = DIR_BIBLIOTECA): Promise<{ zonas: boolean; dudosas: string[]; arregladas: string[]; rehechas: string[] }> {
   if (!rutaValida(ruta)) throw new Error('personaje no válido');
   const destino = join(dir, ruta);
   const base = await readFile(join(destino, 'base.png'));
-  const estilo = deNombre(ruta.split('/').at(-1) ?? '');
-  const { cerrados, contento, zonas } = await variantes(base, info(estilo).avatar);
-  await writeFile(join(destino, 'cerrados.png'), cerrados);
-  await writeFile(join(destino, 'contento.png'), contento);
   const antes = await rotulos.leer(ruta, dir);
-  await rotulos.escribir(ruta, { titulo: antes?.titulo ?? (ruta === ERRANTE ? 'El errante' : 'Personaje'), descripcion: antes?.descripcion, ...(zonas ?? {}) }, dir);
-  log.info(`Avatar: ojos y sonrisa rehechos en ${ruta}${zonas ? ' (solo la cara)' : ' (sin localizar la cara)'}`);
-  return { zonas: zonas !== null };
+  // Sin zonas guardadas (los de antes de las máscaras), se localiza la cara.
+  let zonas: Zonas | null = null;
+  const cara = await imagen.localizarCara(base);
+  if (cara) zonas = zonasDe(cara);
+  if (zonas && antes?.ojos && antes.cara) zonas = { ...zonas, ojos: antes.ojos, cara: antes.cara };
+  const errante = ruta === ERRANTE ? info('oscuro').avatar : null;
+  const arregladas: string[] = [], rehechas: string[] = [], dudosas: string[] = [];
+  const hechas: Partial<Record<Variante, { png: Buffer; ok: boolean }>> = {};
+  for (const v of ['medio', 'cerrados', 'contento'] as const) {
+    const actual = await readFile(join(destino, `${v}.png`)).catch(() => null);
+    const m = actual ? medir(base, actual, v, zonas) : null;
+    if (actual && m && m.fraccion <= LIMITE_CAMBIO) {
+      hechas[v] = { png: m.png, ok: true };
+      arregladas.push(v);
+      continue;
+    }
+    const nueva = await pintarVariante(base, v, zonas, errante);
+    hechas[v] = nueva;
+    rehechas.push(v);
+    if (!nueva.ok && v !== 'contento') dudosas.push(v);
+  }
+  // La sonrisa que no sale bien ni a la segunda: los ojos cerrados.
+  if (!hechas.contento!.ok) hechas.contento = hechas.cerrados!;
+  for (const v of ['medio', 'cerrados', 'contento'] as const) await writeFile(join(destino, `${v}.png`), hechas[v]!.png);
+  await rotulos.escribir(ruta, {
+    titulo: antes?.titulo ?? (ruta === ERRANTE ? 'El errante' : 'Personaje'), descripcion: antes?.descripcion,
+    ...(zonas ? { ojos: zonas.ojos, cara: zonas.cara } : {}),
+  }, dir);
+  log.info(`Avatar ${ruta}: ${arregladas.length ? `arregladas sin gastar: ${arregladas.join(', ')}` : ''}${arregladas.length && rehechas.length ? ' · ' : ''}${rehechas.length ? `pintadas de nuevo: ${rehechas.join(', ')}` : ''}`);
+  return { zonas: zonas !== null, dudosas, arregladas, rehechas };
 }
 
 /** Los personajes que hay, los más nuevos primero. */

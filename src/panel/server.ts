@@ -620,7 +620,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     }
   }
 
-  // Rehace los ojos cerrados y la sonrisa de un personaje retocando solo su cara (2 imágenes).
+  // Rehace los ojos cerrados y la sonrisa de un personaje retocando solo su cara (3 imágenes, 6 si hay que repetir).
   if (ruta === 'POST /api/escenas/avatar-rehacer') {
     const { ruta: personaje } = await cuerpo(req);
     if (!avatarIa.rutaValida(personaje)) throw new ErrorHttp(400, 'personaje no válido');
@@ -635,7 +635,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     }
   }
 
-  // Un personaje nuevo para el avatar: tres imágenes (~1 min, unos céntimos).
+  // Un personaje nuevo para el avatar: cuatro imágenes (~1 min, unos céntimos).
   if (ruta === 'POST /api/escenas/avatar-ia') {
     const { descripcion, titulo } = await cuerpo(req);
     if (generandoFondo) throw new ErrorHttp(409, 'Ya se está generando una imagen: espera a que termine');

@@ -19,6 +19,8 @@ import { configureDatabase, getDb, truncateAll } from '../data/db.js';
 
 let dir: string;
 let pedidas: Array<{ tipo: string; prompt: string; transparente?: boolean; conBase: boolean; conMascara?: boolean }> = [];
+/** Lo que contesta el «modelo que ve» al comprobar una variante (null: no mira). */
+let veredicto: { ok: boolean; motivo: string } | null = null;
 
 before(async () => {
   configureDatabase(':memory:');
@@ -27,6 +29,7 @@ before(async () => {
     generar: async (p) => { pedidas.push({ tipo: 'generar', prompt: p.prompt, transparente: p.transparente, conBase: false }); return Buffer.from('PNG-generada'); },
     editar: async (p) => { pedidas.push({ tipo: 'editar', prompt: p.prompt, transparente: p.transparente, conBase: p.base.length > 0, conMascara: !!p.mascara }); return Buffer.from('PNG-editada'); },
     localizarCara: async () => ({ ojos: [{ x: .41, y: .3 }, { x: .55, y: .3 }], boca: { x: .48, y: .38 }, anchoOjo: .06 }),
+    comprobarVariante: async () => veredicto,
   });
 });
 after(async () => {
@@ -35,6 +38,7 @@ after(async () => {
 });
 beforeEach(() => {
   pedidas = [];
+  veredicto = null;
   truncateAll();
   escenas.reset();
 });
@@ -106,19 +110,43 @@ describe('fondos con IA', () => {
 });
 
 describe('personaje del avatar con IA', () => {
-  test('tres imágenes del mismo personaje: la base y dos variantes editándola, con fondo transparente', async () => {
+  test('cuatro imágenes del mismo personaje: la base y tres variantes editándola, con fondo transparente', async () => {
     const ruta = await avatarIa.generar('', 'oscuro', dir);
     assert.match(ruta, /^imagenes\/avatar\/[\w-]+$/);
-    assert.deepEqual((await readdir(join(dir, ruta))).sort(), ['base.png', 'cerrados.png', 'contento.png', 'info.json'], 'y su nombre al lado');
-    assert.equal(pedidas.length, 3);
+    assert.deepEqual((await readdir(join(dir, ruta))).sort(), ['base.png', 'cerrados.png', 'contento.png', 'info.json', 'medio.png'], 'y su nombre al lado');
+    assert.equal(pedidas.length, 4);
     assert.ok(pedidas.every((p) => p.transparente), 'todo con fondo transparente');
-    assert.equal(pedidas.filter((p) => p.tipo === 'editar' && p.conBase).length, 2, 'las variantes parten de la base');
-    assert.equal(pedidas.filter((p) => p.conMascara).length, 2, 'y solo retocan la cara (con máscara)');
+    assert.equal(pedidas.filter((p) => p.tipo === 'editar' && p.conBase).length, 3, 'las variantes parten de la base');
+    assert.equal(pedidas.filter((p) => p.conMascara).length, 3, 'y solo retocan la cara (con máscara)');
     const r = await rotulos.leer(ruta, dir);
     assert.ok(r?.ojos && r.cara, 'las zonas se guardan para el overlay');
     assert.ok(r.ojos.y > .2 && r.ojos.y < .4 && r.ojos.w < .5);
     assert.match(pedidas[0]!.prompt, /errante encapuchado/, 'vacío = el personaje de siempre');
     assert.equal((await avatarIa.lista(dir))[0]!.ruta, ruta);
+  });
+
+  test('las variantes no llevan lo del errante: nada de tapar ni oscurecer la cara', async () => {
+    // 27 sep: con las del estilo oscuro, al Chico de pelo negro le tapó la cara de negro.
+    await avatarIa.generar('un chico de pelo negro', 'oscuro', dir);
+    const ediciones = pedidas.filter((p) => p.tipo === 'editar');
+    assert.ok(ediciones.every((p) => /Do not darken, shadow, cover/.test(p.prompt)));
+    assert.ok(ediciones.every((p) => !/dim lines|crescents/.test(p.prompt)));
+    assert.ok(ediciones.some((p) => /HALF closed/.test(p.prompt)), 'y el paso intermedio del parpadeo');
+  });
+
+  test('si el modelo que ve dice que una variante está mal, se repite una vez y se avisa', async () => {
+    const ruta = await avatarIa.generar('un mago', 'oscuro', dir);
+    pedidas = [];
+    veredicto = { ok: false, motivo: 'la cara está tapada' };
+    const r = await avatarIa.rehacerVariantes(ruta, dir);
+    assert.equal(pedidas.filter((p) => p.tipo === 'editar').length, 6, 'tres variantes, cada una dos veces');
+    assert.ok(pedidas.filter((_, i) => i % 2 === 1).every((p) => /la cara está tapada/.test(p.prompt)), 'cada segunda dice qué falló');
+    assert.deepEqual(r.dudosas.sort(), ['cerrados', 'medio'], 'la sonrisa que no sale se sustituye por los ojos cerrados');
+    assert.deepEqual(await readFile(join(dir, ruta, 'contento.png')), await readFile(join(dir, ruta, 'cerrados.png')));
+    veredicto = { ok: true, motivo: '' };
+    pedidas = [];
+    assert.deepEqual((await avatarIa.rehacerVariantes(ruta, dir)).dudosas, []);
+    assert.equal(pedidas.length, 3, 'si están bien, sin repetir');
   });
 
   test('el personaje elegido se guarda, y solo si es una carpeta de avatar', () => {

@@ -84,7 +84,7 @@ async function duracionWav(ruta: string): Promise<number | null> {
   }
 }
 
-const VARIANTES_AVATAR: Record<string, string> = { 'base.png': '', 'cerrados.png': ' · ojos cerrados', 'contento.png': ' · contento' };
+const VARIANTES_AVATAR: Record<string, string> = { 'base.png': '', 'medio.png': ' · ojos entornados', 'cerrados.png': ' · ojos cerrados', 'contento.png': ' · contento' };
 
 /** El título de un fondo o de una imagen de personaje: el del .json de al lado (rotulos.ts). */
 async function tituloImagen(sub: string[], nombre: string, dir: string): Promise<string | null> {

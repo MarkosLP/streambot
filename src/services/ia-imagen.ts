@@ -40,6 +40,8 @@ export type Motor = {
   localizarCara: (png: Buffer) => Promise<Cara | null>;
   /** Tu descripción en castellano → una en inglés, precisa y visual (null si falla). */
   detallar?: (texto: string, que: 'fondo' | 'personaje') => Promise<string | null>;
+  /** ¿La variante es el mismo personaje, con la cara visible y el cambio pedido? (null si no se pudo mirar) */
+  comprobarVariante?: (base: Buffer, variante: Buffer, pedido: string) => Promise<{ ok: boolean; motivo: string } | null>;
 };
 
 const TIEMPO_MAX_MS = 240_000;
@@ -136,6 +138,39 @@ const openai: Motor = {
    * un fondo de «Giran de día con personajes» salió de noche, vacío y genérico:
    * el modelo de imagen no conoce bien esos sitios y el estilo pesaba más.
    */
+  /**
+   * Mira la variante al lado de la original. El 27 sep, con las instrucciones
+   * del errante, al Chico de pelo negro y a Magmarex les tapó la cara de negro
+   * con una sonrisa brillante, y a Magmarex le cambió la cara al cerrar los ojos.
+   */
+  comprobarVariante: async (base, variante, pedido) => {
+    try {
+      const img = (b: Buffer) => ({ type: 'image_url', image_url: { url: `data:image/png;base64,${b.toString('base64')}`, detail: 'low' } });
+      const r = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${config.imagen.apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: config.imagen.modeloVision,
+          response_format: { type: 'json_object' },
+          messages: [{ role: 'user', content: [
+            { type: 'text', text: 'Image 1 is a character portrait. Image 2 is an edit of it that was asked to show: "' + pedido + '". ' +
+              'Answer JSON {"mismo": bool, "cara_visible": bool, "cambio_hecho": bool, "motivo": "short reason in Spanish"}. ' +
+              '"mismo": same character with the same face design, colors and style (only the eyes/mouth may differ). ' +
+              '"cara_visible": the face is still drawn normally, not blacked out, shadowed over, hidden or replaced by a symbol. ' +
+              '"cambio_hecho": the requested change is clearly visible.' },
+            img(base), img(variante),
+          ] }],
+        }),
+        signal: AbortSignal.timeout(60_000),
+      });
+      const d: any = await r.json();
+      const j = JSON.parse(d?.choices?.[0]?.message?.content ?? 'null');
+      if (!j || typeof j.mismo !== 'boolean') return null;
+      return { ok: j.mismo && j.cara_visible !== false && j.cambio_hecho !== false, motivo: String(j.motivo ?? '').slice(0, 200) };
+    } catch {
+      return null;
+    }
+  },
   detallar: async (texto, que) => {
     try {
       const r = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -173,4 +208,6 @@ export const disponible = () => Boolean(config.imagen.apiKey);
 export const generar = (p: PeticionImagen) => motor.generar(p);
 export const editar = (p: PeticionEdicion) => motor.editar(p);
 export const localizarCara = (png: Buffer) => motor.localizarCara(png);
+export const comprobarVariante = async (base: Buffer, variante: Buffer, pedido: string) =>
+  (motor.comprobarVariante ? motor.comprobarVariante(base, variante, pedido) : null);
 export const detallar = async (texto: string, que: 'fondo' | 'personaje') => (texto.trim() && motor.detallar ? motor.detallar(texto, que) : null);

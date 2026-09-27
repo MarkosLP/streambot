@@ -1778,15 +1778,17 @@ $('e-avatar-parpadeo').addEventListener('click', async (ev) => {
   const sel = $('e-avatar-personaje');
   const ruta = sel.value || escenas.personajes.find((p) => p.estilo === escenas.config.estilo)?.ruta || 'imagenes/avatar/errante';
   const nombre = escenas.personajes.find((p) => p.ruta === ruta)?.titulo ?? 'este personaje';
-  if (!confirm(`Se rehacen los ojos cerrados y la sonrisa de «${nombre}» retocando solo su cara: así, al parpadear, no se mueve el resto del cuerpo.
+  if (!confirm(`Se rehacen los ojos entornados, cerrados y la sonrisa de «${nombre}» retocando solo su cara, y un modelo que ve comprueba cada una (si alguna sale mal, se repite una vez).
 
-2 imágenes de tu OpenAI (unos céntimos, ~30 s). ¿Sigo?`)) return;
+3 imágenes de tu OpenAI (hasta 6 si hay que repetir; unos céntimos, ~1 min). ¿Sigo?`)) return;
   const b = ev.currentTarget;
   b.disabled = true;
   b.textContent = '⏳';
   try {
     const r = await api('/api/escenas/avatar-rehacer', { ruta });
-    tostada(r.zonas ? `Parpadeo arreglado en «${nombre}»` : `Rehecho, pero no se localizó la cara: puede seguir moviéndose al parpadear`, !r.zonas);
+    const aviso = !r.zonas ? 'Rehecho, pero no se localizó la cara: puede seguir moviéndose al parpadear'
+      : r.dudosas?.length ? `Rehecho, pero ${r.dudosas.join(' y ')} no ha salido bien ni a la segunda: vuelve a pulsar 👁` : `Parpadeo arreglado en «${nombre}»`;
+    tostada(aviso, !r.zonas || !!r.dudosas?.length);
     $('e-avatar-vista').src = $('e-avatar-vista').src;
   } catch (err) {
     tostada(err.message, true);
@@ -1910,7 +1912,7 @@ $('ef-borrar').addEventListener('click', async () => {
 });
 
 function confirmarGenerar(nombre) {
-  return confirm(`Se generarán 7 imágenes con tu OpenAI para «${nombre}»: los 4 fondos (Empezamos, Charla, Pausa y Final) y el personaje (3 imágenes).\n\nTarda unos 3 minutos y cuesta unos céntimos. ¿Sigo?`);
+  return confirm(`Se generarán 8 imágenes con tu OpenAI para «${nombre}»: los 4 fondos (Empezamos, Charla, Pausa y Final) y el personaje (4 imágenes).\n\nTarda unos 3 minutos y cuesta unos céntimos. ¿Sigo?`);
 }
 
 $('e-estilo-generar').addEventListener('click', () => {
