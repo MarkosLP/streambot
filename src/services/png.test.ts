@@ -40,3 +40,19 @@ test('comparar: fuera de lo que cambió de verdad, la base; y cuánto cambió', 
     assert.ok(out[(32 * n + 32) * 4]! < 40, 'el párpado sí');
     assert.ok(r.fraccion > 0 && r.fraccion < .2, `cambió poco (${r.fraccion})`);
   });
+
+test('fundido: conserva exactamente todo el exterior incluso al dilatar cambios de alfa', () => {
+  const ancho=64; const base=new Uint8Array(ancho*ancho*4).fill(160);
+  for(let i=3;i<base.length;i+=4)base[i]=255;
+  const variante=new Uint8Array(base);
+  for(let y=20;y<45;y++)for(let x=20;x<45;x++)variante[(y*ancho+x)*4+3]=0;
+  const z={x:.5,y:.5,w:.3,h:.3};
+  const salida=png.decodificar(png.fundir(png.codificar(ancho,ancho,base),png.codificar(ancho,ancho,variante),[z])).rgba;
+  let cambios=0;
+  for(let y=0;y<ancho;y++)for(let x=0;x<ancho;x++) {
+    const i=(y*ancho+x)*4;
+    if(((x/ancho-z.x)/(z.w/2))**2+((y/ancho-z.y)/(z.h/2))**2>=1)assert.deepEqual(salida.slice(i,i+4),base.slice(i,i+4));
+    else if(salida[i+3]!==base[i+3])cambios++;
+  }
+  assert.ok(cambios>0);
+});

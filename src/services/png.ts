@@ -198,8 +198,19 @@ export function comparar(base: Buffer, variante: Buffer, zonas: Zona[], { umbral
   const peso = desenfocar(grande, ancho, alto, suavizar);
   const out = new Uint8Array(b.rgba.length);
   for (let i = 0; i < peso.length; i++) {
-    const w = peso[i]!;
-    for (let c = 0; c < 4; c++) out[i * 4 + c] = Math.round(b.rgba[i * 4 + c]! * (1 - w) + v.rgba[i * 4 + c]! * w);
+    const x = i % ancho, y = Math.floor(i / ancho);
+    // 27 sep 2026: la dilatación no autoriza tocar el exterior de la máscara.
+    const borde = Math.max(0, ...zonas.map((z) => {
+      const radio = Math.sqrt(((x / ancho - z.x) / (z.w / 2)) ** 2 + ((y / alto - z.y) / (z.h / 2)) ** 2);
+      return Math.min(1, Math.max(0, (1 - radio) * Math.min(z.w * ancho, z.h * alto) / 2 / Math.max(1, suavizar)));
+    }));
+    const w = peso[i]! * borde;
+    const j = i * 4;
+    if (!w) { out.set(b.rgba.subarray(j, j + 4), j); continue; }
+    const ab = b.rgba[j + 3]! / 255, av = v.rgba[j + 3]! / 255;
+    const alfa = ab * (1 - w) + av * w;
+    for (let c = 0; c < 3; c++) out[j + c] = alfa ? Math.round((b.rgba[j + c]! * ab * (1 - w) + v.rgba[j + c]! * av * w) / alfa) : 0;
+    out[j + 3] = Math.round(alfa * 255);
   }
   return { png: codificar(ancho, alto, out), fraccion };
 }
