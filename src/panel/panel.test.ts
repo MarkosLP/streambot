@@ -4,6 +4,7 @@ import { request } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import { configureDatabase, truncateAll } from '../data/db.js';
+import * as musica from '../core/musica.js';
 import * as killswitch from '../core/killswitch.js';
 import * as ajustes from '../core/ajustes.js';
 import * as review from '../core/review.js';
@@ -779,6 +780,14 @@ test('música: GET no controla; el reporte exige credencial privada y turno', as
   assert.ok(credencial);
   assert.equal((await reporte({credencial,id:'falsa',turno:0,tipo:'terminada'})).status,200);
   assert.equal((await reporte({credencial,id:'falsa',turno:'0',tipo:'terminada'})).status,400);
+});
+
+test('música: la consulta del reproductor cuenta como abierto aunque no suene nada', async () => {
+  // Sin esto, en automático el vigilante de escenas no arrancaba la primera lista.
+  musica.reset();
+  assert.equal(musica.estado().overlay, false);
+  assert.equal((await fetch(`http://127.0.0.1:${puerto}/api/overlay/musica`)).status, 200);
+  assert.equal(musica.estado().overlay, true);
 });
 
 

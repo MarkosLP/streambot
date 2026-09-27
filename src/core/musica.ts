@@ -400,6 +400,16 @@ export function paraOverlay() {
 }
 
 /** ¿Está la fuente de OBS pidiendo? (si no, no hace falta preguntar a OBS por la escena). */
+/**
+ * El reproductor ha preguntado: está abierto en OBS. Codex (27 sep) quitó esto
+ * de paraOverlay() al separar consulta y control, y entonces solo contaba
+ * mientras sonaba algo: en automático, sin música aún, el vigilante de escenas
+ * no arrancaba nunca la lista de Empezamos. Preguntar no cambia nada más.
+ */
+export function overlayVisto(): void {
+  ultimaVozOverlay = Date.now();
+}
+
 export const overlayActivo = () => Date.now() - ultimaVozOverlay < 15_000;
 
 /** Para el panel y para !cancion. */

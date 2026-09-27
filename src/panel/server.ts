@@ -697,6 +697,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   // ?terminada=<id> o ?id=&pos=&dur=. Lo único que puede hacer es pasar a la
   // siguiente canción, y solo si la que dice es la que suena.
   if (ruta === 'GET /api/overlay/musica') {
+    musica.overlayVisto();
     const e = escenas.leer();
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify({ ...musica.paraOverlay(), estilo: e.estilo, apariencia: estilos.apariencia(e.estilo) }));
