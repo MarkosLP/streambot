@@ -191,6 +191,11 @@ export async function rehacerVariantes(ruta: string, dir = DIR_BIBLIOTECA): Prom
   for (const v of ['medio', 'cerrados', 'contento'] as const) {
     const actual = await readFile(join(destino, `${v}.png`)).catch(() => null);
     const m = actual ? medir(base, actual, v, zonas) : null;
+    if (actual && (actual.equals(base) || m?.fraccion === 0)) {
+      hechas[v] = { png: base, ok: false };
+      if (v !== 'contento') dudosas.push(v);
+      continue;
+    }
     if (actual && m && m.fraccion <= LIMITE_CAMBIO) {
       hechas[v] = { png: m.png, ok: true };
       arregladas.push(v);

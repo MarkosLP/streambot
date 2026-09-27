@@ -153,7 +153,7 @@ describe('personaje del avatar con IA', () => {
     assert.deepEqual(await readFile(join(dir, ruta, 'contento.png')), await readFile(join(dir, ruta, 'cerrados.png')));
     veredicto = { ok: true, motivo: '' };
     pedidas = [];
-    assert.deepEqual((await avatarIa.rehacerVariantes(ruta, dir)).dudosas, []);
+    assert.deepEqual((await avatarIa.rehacerVariantes(ruta, dir)).dudosas.sort(), ['cerrados', 'medio'], 'las reservas no se anuncian como reparadas');
     assert.ok(pedidas.length <= 3, 'sin repetir ediciones válidas');
   });
 
@@ -341,4 +341,17 @@ test('avatar: sin veredicto verificable conserva la base', async () => {
   const base = await readFile(join(dir, ruta, 'base.png'));
   for (const v of ['medio', 'cerrados', 'contento']) assert.deepEqual(await readFile(join(dir, ruta, `${v}.png`)), base);
   assert.equal(pedidas.filter(p=>p.tipo==='editar').length,3,'no repite gasto ante un fallo de validación');
+});
+
+
+test('avatar: copias de la base son reservas, no reparaciones ni nuevos gastos', async () => {
+  const ruta = await avatarIa.generar('Reservas', 'oscuro', dir);
+  const base=await readFile(join(dir,ruta,'base.png'));
+  for(const v of ['medio','cerrados','contento'])await writeFile(join(dir,ruta,`${v}.png`),base);
+  pedidas=[];
+  const resultado=await avatarIa.rehacerVariantes(ruta,dir);
+  assert.deepEqual(resultado.arregladas,[]);
+  assert.deepEqual(resultado.rehechas,[]);
+  assert.deepEqual(resultado.dudosas.sort(),['cerrados','medio']);
+  assert.equal(pedidas.length,0);
 });
