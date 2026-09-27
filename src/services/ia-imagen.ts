@@ -165,8 +165,8 @@ const openai: Motor = {
       });
       const d: any = await r.json();
       const j = JSON.parse(d?.choices?.[0]?.message?.content ?? 'null');
-      if (!j || typeof j.mismo !== 'boolean') return null;
-      return { ok: j.mismo && j.cara_visible !== false && j.cambio_hecho !== false, motivo: String(j.motivo ?? '').slice(0, 200) };
+      if (!j || !['mismo', 'cara_visible', 'cambio_hecho'].every((k) => typeof j[k] === 'boolean')) return null;
+      return { ok: j.mismo && j.cara_visible && j.cambio_hecho, motivo: String(j.motivo ?? '').slice(0, 200) };
     } catch {
       return null;
     }

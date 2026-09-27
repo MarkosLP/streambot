@@ -95,6 +95,8 @@ function medir(base: Buffer, png: Buffer, v: Variante, zonas: Zonas | null): { p
  * la mejor. `errante`: las instrucciones de su estilo, escritas para él.
  */
 async function pintarVariante(base: Buffer, v: Variante, zonas: Zonas | null, errante: { cerrados: string; contento: string } | null) {
+  // 27 sep 2026: sin zona comprobable no se edita ni se activa una cara desconocida.
+  if (!zonas) return { png: base, fraccion: 0, ok: false };
   const pedido = errante && v !== 'medio' ? errante[v] : `${CAMBIOS[v]} ${MISMA_CARA}`;
   const zonasMascara = !zonas ? [] : v === 'contento' ? [zonas.cara] : zonas.sueltos;
   let mejor: { png: Buffer; fraccion: number; ok: boolean } | null = null;
@@ -109,13 +111,16 @@ async function pintarVariante(base: Buffer, v: Variante, zonas: Zonas | null, er
       mascara: zonasMascara.length ? mascara(1024, 1024, zonasMascara) : undefined,
     });
     const m = medir(base, png, v, zonas);
-    let ok = true;
+    let ok = false;
+    if (!m) return { png: base, fraccion: 0, ok: false };
     if (m && m.fraccion > LIMITE_CAMBIO) {
       ok = false;
       motivo = `the face was redrawn (${Math.round(m.fraccion * 100)} % of the area changed)`;
     } else {
       const vista = await imagen.comprobarVariante(base, m?.png ?? png, CAMBIOS[v]);
-      if (vista && !vista.ok) { ok = false; motivo = vista.motivo; }
+      if (!vista) return { png: base, fraccion: 0, ok: false };
+      ok = vista.ok === true;
+      if (!ok) motivo = vista.motivo;
     }
     const este = { png: m?.png ?? png, fraccion: m?.fraccion ?? 0, ok };
     if (!mejor || (ok && !mejor.ok) || (ok === mejor.ok && este.fraccion < mejor.fraccion)) mejor = este;

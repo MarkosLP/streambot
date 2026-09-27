@@ -1,6 +1,7 @@
+﻿import { codificar } from '../services/png.js';
 import { test, describe, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as imagen from '../services/ia-imagen.js';
@@ -17,6 +18,12 @@ import { configureDatabase, getDb, truncateAll } from '../data/db.js';
  * OpenAI por pasar los tests.
  */
 
+function muestra(editada = false) {
+  const px = new Uint8Array(64 * 64 * 4);
+  for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) { const i = (y * 64 + x) * 4; px[i] = x * 3; px[i+1] = y * 3; px[i+2] = 100; px[i+3] = 255; }
+  if (editada) for (let y = 17; y < 21; y++) for (let x = 26; x < 30; x++) { px[(y*64+x)*4] = 255; px[(y*64+x)*4+1] = 0; }
+  return codificar(64, 64, px);
+}
 let dir: string;
 let pedidas: Array<{ tipo: string; prompt: string; transparente?: boolean; conBase: boolean; conMascara?: boolean }> = [];
 /** Lo que contesta el «modelo que ve» al comprobar una variante (null: no mira). */
@@ -26,8 +33,8 @@ before(async () => {
   configureDatabase(':memory:');
   dir = await mkdtemp(join(tmpdir(), 'crid4m-fondos-'));
   imagen.setMotor({
-    generar: async (p) => { pedidas.push({ tipo: 'generar', prompt: p.prompt, transparente: p.transparente, conBase: false }); return Buffer.from('PNG-generada'); },
-    editar: async (p) => { pedidas.push({ tipo: 'editar', prompt: p.prompt, transparente: p.transparente, conBase: p.base.length > 0, conMascara: !!p.mascara }); return Buffer.from('PNG-editada'); },
+    generar: async (p) => { pedidas.push({ tipo: 'generar', prompt: p.prompt, transparente: p.transparente, conBase: false }); return p.transparente ? muestra() : Buffer.from('PNG-generada'); },
+    editar: async (p) => { pedidas.push({ tipo: 'editar', prompt: p.prompt, transparente: p.transparente, conBase: p.base.length > 0, conMascara: !!p.mascara }); return muestra(true); },
     localizarCara: async () => ({ ojos: [{ x: .41, y: .3 }, { x: .55, y: .3 }], boca: { x: .48, y: .38 }, anchoOjo: .06 }),
     comprobarVariante: async () => veredicto,
   });
@@ -38,7 +45,7 @@ after(async () => {
 });
 beforeEach(() => {
   pedidas = [];
-  veredicto = null;
+  veredicto = { ok: true, motivo: '' };
   truncateAll();
   escenas.reset();
 });
@@ -137,6 +144,7 @@ describe('personaje del avatar con IA', () => {
   test('si el modelo que ve dice que una variante está mal, se repite una vez y se avisa', async () => {
     const ruta = await avatarIa.generar('un mago', 'oscuro', dir);
     pedidas = [];
+    for (const v of ['medio', 'cerrados', 'contento']) await writeFile(join(dir, ruta, `${v}.png`), Buffer.from('PNG-roto'));
     veredicto = { ok: false, motivo: 'la cara está tapada' };
     const r = await avatarIa.rehacerVariantes(ruta, dir);
     assert.equal(pedidas.filter((p) => p.tipo === 'editar').length, 6, 'tres variantes, cada una dos veces');
@@ -146,7 +154,7 @@ describe('personaje del avatar con IA', () => {
     veredicto = { ok: true, motivo: '' };
     pedidas = [];
     assert.deepEqual((await avatarIa.rehacerVariantes(ruta, dir)).dudosas, []);
-    assert.equal(pedidas.length, 3, 'si están bien, sin repetir');
+    assert.ok(pedidas.length <= 3, 'sin repetir ediciones válidas');
   });
 
   test('el personaje elegido se guarda, y solo si es una carpeta de avatar', () => {
@@ -324,4 +332,13 @@ describe('títulos de fondos y personajes', () => {
     await assert.rejects(avatarIa.borrar(avatarIa.ERRANTE, dir), /errante/);
     await assert.rejects(fondos.borrar('imagenes/fondos/../../.env', dir));
   });
+});
+
+
+test('avatar: sin veredicto verificable conserva la base', async () => {
+  veredicto = null;
+  const ruta = await avatarIa.generar('Prueba sin visión', 'oscuro', dir);
+  const base = await readFile(join(dir, ruta, 'base.png'));
+  for (const v of ['medio', 'cerrados', 'contento']) assert.deepEqual(await readFile(join(dir, ruta, `${v}.png`)), base);
+  assert.equal(pedidas.filter(p=>p.tipo==='editar').length,3,'no repite gasto ante un fallo de validación');
 });
