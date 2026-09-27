@@ -1000,6 +1000,7 @@ function pintarFinal(d) {
 
 // ======================= Chat =======================
 const pintados = new Set();
+const relojesChat = new Map();
 function trozos(m) {
   const emotes = new Map((m.emotes || []).map((e) => [e.nombre, e.url]));
   if (!emotes.size) return [m.texto];
@@ -1007,8 +1008,10 @@ function trozos(m) {
 }
 function pintarChat(chat) {
   const caja = $('mensajes');
+  // 27 sep 2026: reconciliar solo la ventana visible evita repetir entradas.
+  chat = chat.slice(-9);
   const quedan = new Set(chat.map((m) => m.n));
-  for (const el of [...caja.children]) if (!quedan.has(Number(el.dataset.n))) { el.remove(); pintados.delete(Number(el.dataset.n)); }
+  for (const el of [...caja.children]) if (!quedan.has(Number(el.dataset.n))) { const n = Number(el.dataset.n); clearTimeout(relojesChat.get(n)); relojesChat.delete(n); el.remove(); pintados.delete(n); }
   for (const m of chat) {
     if (pintados.has(m.n)) continue;
     pintados.add(m.n);
@@ -1021,9 +1024,11 @@ function pintarChat(chat) {
       h('div', { class: 'txt' }, trozos(m)));
     caja.append(el);
     // Se desvanece al rato: el chat en pantalla es de ahora, no un archivo.
-    setTimeout(() => el.classList.add('viejo'), 75_000);
+    const falta = Math.max(0, 75_000 - (Date.now() - (Number.isFinite(m.at) ? m.at : Date.now())));
+    if (!falta) el.classList.add('viejo');
+    else relojesChat.set(m.n, setTimeout(() => { el.classList.add('viejo'); relojesChat.delete(m.n); }, falta));
   }
-  while (caja.children.length > 9) { pintados.delete(Number(caja.firstChild.dataset.n)); caja.firstChild.remove(); }
+
 }
 
 // ======================= Aviso de botín =======================

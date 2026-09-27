@@ -41,3 +41,18 @@ test('jefe: una retirada pendiente no oculta ni vacía el ambiente del siguiente
   e.ctx.quitarCartel(); e.ctx.especial({ n: 2, icono: '', titulo: 'Nuevo', texto: '' }); e.avanzar(500);
   assert.equal(e.$('cartel-especial').hidden, false);
 });
+
+test('chat: conserva los nueve nodos, respeta su edad y retira los moderados', () => {
+  const e = entorno();
+  e.ctx.h = (_: string, attrs: any, ...hijos: any[]) => { const n = e.nodo(); for(const [k,v] of Object.entries(attrs)) n.setAttribute(k,v); n.append(...hijos.flat().filter(Boolean)); return n; };
+  e.ctx.colorDe = () => '#ffffff';
+  const fuente = readFileSync(new URL('../../biblioteca/overlays/escena.html', import.meta.url), 'utf8');
+  runInNewContext(fuente.slice(fuente.indexOf('const pintados ='), fuente.indexOf('// ======================= Aviso de botín')), e.ctx);
+  const chat = Array.from({length:30}, (_,n)=>({n, nombre:'Ana',texto:'Mensaje',at:0}));
+  e.ctx.pintarChat(chat); const antes = [...e.$('mensajes').children];
+  e.avanzar(70_000); e.ctx.pintarChat(chat);
+  assert.deepEqual(e.$('mensajes').children, antes);
+  e.avanzar(5_000); assert.ok(antes.every(n=>n.classList.contains('viejo')));
+  e.ctx.pintarChat([]); assert.equal(e.$('mensajes').children.length, 0);
+  e.ctx.pintarChat(chat); assert.ok(e.$('mensajes').children.every((n:any)=>n.classList.contains('viejo')));
+});
