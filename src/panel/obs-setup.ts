@@ -223,6 +223,23 @@ async function buscar(pedir: PedirObs, fuente: string): Promise<{ escena: string
 }
 
 /**
+ * La fuente en la escena que se está emitiendo; si no está ahí, en la primera
+ * que la tenga. El 27 sep «FX Botin» estaba en las cinco escenas y se
+ * encendía en «✦ Pausa» (la primera) mientras se emitía «Principal»: los
+ * cofres salían en el chat y no en pantalla.
+ */
+async function enEmision(pedir: PedirObs, fuente: string): Promise<{ escena: string; id: number } | null> {
+  try {
+    const { currentProgramSceneName: escena } = await pedir<{ currentProgramSceneName: string }>('GetCurrentProgramScene');
+    const { sceneItemId } = await pedir<{ sceneItemId: number }>('GetSceneItemId', { sceneName: escena, sourceName: fuente });
+    if (typeof sceneItemId === 'number') return { escena, id: sceneItemId };
+  } catch {
+    // No está en la que se emite (o OBS no lo sabe): la primera que la tenga.
+  }
+  return buscar(pedir, fuente);
+}
+
+/**
  * La fuente se llamó «FX Legendario» mientras el banner era solo para los
  * Legendarios. Si queda una con ese nombre, se renombra: así nadie tiene que
  * volver a crearla ni recolocarla.
@@ -251,7 +268,7 @@ export async function mostrarBotin(
 ): Promise<void> {
   await renombrarAntigua(pedir);
   const nombre = PREPARABLES.botin.nombre;
-  const dondeEsta = await buscar(pedir, nombre);
+  const dondeEsta = await enEmision(pedir, nombre);
   if (!dondeEsta) throw new ErrorObs(`No existe la fuente «${nombre}». Créala con «Preparar en OBS».`);
 
   const params = new URLSearchParams({ user: quien, item: objeto, rareza, origen, ...(maldito && { maldito: '1' }) }).toString().replace(/\+/g, '%20');
@@ -282,14 +299,7 @@ export async function temblar(
   { fuente, ms = 5000, amplitud = 16, paso = 40 }: { fuente: string; ms?: number; amplitud?: number; paso?: number },
   { esperar = (t: number) => new Promise<void>((r) => setTimeout(r, t)), azar = Math.random } = {},
 ): Promise<void> {
-  const { currentProgramSceneName: enEmision } = await pedir<{ currentProgramSceneName: string }>('GetCurrentProgramScene');
-  let donde: { escena: string; id: number } | null = null;
-  try {
-    const { sceneItemId } = await pedir<{ sceneItemId: number }>('GetSceneItemId', { sceneName: enEmision, sourceName: fuente });
-    donde = { escena: enEmision, id: sceneItemId };
-  } catch {
-    donde = await buscar(pedir, fuente);
-  }
+  const donde = await enEmision(pedir, fuente);
   if (!donde) throw new ErrorObs(`No encuentro la fuente «${fuente}» en ninguna escena. Cámbiala con OBS_FUENTE_JUEGO en el .env.`);
 
   const { sceneItemTransform: t } = await pedir<{ sceneItemTransform: { positionX: number; positionY: number } }>(

@@ -593,6 +593,17 @@ describe('banner del Loot', () => {
     assert.deepEqual(obs.transformes, {}, 'no se le toca el sitio');
   });
 
+  test('con la fuente en varias escenas, sale en la que se emite', async () => {
+    // 27 sep: estaba en las cinco escenas y se encendía en «✦ Pausa» (la primera).
+    await post('/api/obs/preparar', { escena: 'Escena juego', efectos: ['botin'] });
+    // GetSceneList del OBS falso las da al revés: la última añadida sale la primera.
+    obs.items = { ...obs.items, '✦ Pausa': [{ sourceName: 'FX Botin', sceneItemId: 90, enabled: false }] };
+    const visto: boolean[] = [];
+    await mostrar({ quien: 'pepe', objeto: 'x', rareza: 'comun', origen: 'cofre' }, visto);
+    assert.deepEqual(visto, [true], 'visible en la escena en emisión');
+    assert.equal(obs.items['✦ Pausa']![0]!.enabled, false, 'la de Pausa no se toca');
+  });
+
   test('sin la fuente creada, lo dice en vez de fallar a medias', async () => {
     await assert.rejects(mostrar({ quien: 'pepe', objeto: 'x', rareza: 'comun', origen: 'cofre' }), /Preparar en OBS/);
   });
