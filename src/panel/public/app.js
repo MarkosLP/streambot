@@ -1168,7 +1168,7 @@ setInterval(() => { if (!$('v-loot').hidden) cargarLoot(); }, 5000);
 // Importar en Streamer.bot
 // ---------------------------------------------------------------------------
 
-const IMPORTABLES = ['grito', 'pocion', 'maldicion', 'lag'];
+const IMPORTABLES = ['grito', 'pocion', 'maldicion', 'terremoto', 'lag']; // los mismos que importar.ts
 let datosEfectos = null;
 let obsConectado = null;
 let obsSinFreeze = false;

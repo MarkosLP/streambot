@@ -93,3 +93,12 @@ describe('importar en Streamer.bot', () => {
     assert.deepEqual(accion.subActions.map((s: any) => s.type), [1, 10], 'sonido y mensaje, nada de OBS');
   });
 });
+
+test('el panel ofrece importar los mismos efectos que sabe generar el servidor', async () => {
+  // 27 sep: el Terremoto estaba en importar.ts pero no en la lista del panel.
+  const { readFileSync } = await import('node:fs');
+  const app = readFileSync(new URL('./public/app.js', import.meta.url), 'utf8');
+  const lista = /const IMPORTABLES = \[([^\]]*)\]/.exec(app)?.[1]?.match(/'(\w+)'/g)?.map((s) => s.slice(1, -1));
+  const { IMPORTABLES } = await import('./importar.js');
+  assert.deepEqual(lista, [...IMPORTABLES]);
+});
