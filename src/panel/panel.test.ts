@@ -1,4 +1,4 @@
-import { test, describe, before, beforeEach, after } from 'node:test';
+﻿import { test, describe, before, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { request } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -766,3 +766,18 @@ describe('Avatar sin cámara', () => {
     assert.equal((await post('/api/escenas/obs', { tipo: 'avatar' })).status, 400);
   });
 });
+
+test('música: GET no controla; el reporte exige credencial privada y turno', async () => {
+  const raiz = `http://127.0.0.1:${puerto}`;
+  const consulta = await fetch(`${raiz}/api/overlay/musica?terminada=falsa`);
+  assert.equal(consulta.status, 200);
+  assert.equal('credencial' in (await consulta.json() as Record<string, unknown>), false);
+  const reporte = (d: object) => fetch(`${raiz}/api/reproductor/musica`, { method:'POST',headers:{'Content-Type':'text/plain',Origin:'null'},body:JSON.stringify(d) });
+  assert.equal((await reporte({id:'falsa',turno:0,tipo:'terminada'})).status,403);
+  const html = await (await fetch(`${raiz}/biblioteca/overlays/musica.html`)).text();
+  const credencial = html.match(/credencial: '([a-f0-9]{64})'/)?.[1];
+  assert.ok(credencial);
+  assert.equal((await reporte({credencial,id:'falsa',turno:0,tipo:'terminada'})).status,200);
+  assert.equal((await reporte({credencial,id:'falsa',turno:'0',tipo:'terminada'})).status,400);
+});
+

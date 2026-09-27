@@ -62,6 +62,7 @@ const reproductores = [$('a1'), $('a2')];
 let activo = 0;
 let claveActual = '';   // id de la canción + turno: cambia con cada cambio pedido
 let idActual = null;
+let turnoActual = 0;
 let volumenObjetivo = 0.4;
 let sonando = false;
 
@@ -82,16 +83,14 @@ function rampa(a, hasta, ms = FUNDIDO_MS) {
 
 /** Avisa al bot (la canción ha acabado, o por dónde va) y aplica lo que conteste. */
 async function avisar(tipo, extra = {}) {
-  const u = new URL(API);
-  if (tipo === 'terminada') u.searchParams.set('terminada', idActual);
-  else {
-    u.searchParams.set('id', idActual);
-    for (const [k, v] of Object.entries(extra)) u.searchParams.set(k, String(v));
-  }
+  const id = idActual, turno = turnoActual;
   try {
-    const r = await fetch(u, { cache: 'no-store' });
-    if (r.ok) aplicar(await r.json());
-  } catch {}
+    const r = await fetch(new URL('/api/reproductor/musica', location.href), {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ credencial: '__MUSICA_CREDENCIAL__', tipo, id, turno, ...extra }),
+    });
+    if (r.ok && id === idActual && turno === turnoActual) aplicar(await r.json());
+  } catch (error) { console.warn('No se pudo reportar la música', error); }
 }
 
 function empezar(pista, clave) {
@@ -139,6 +138,7 @@ function aplicar(d) {
   }
   const clave = `${d.pista.id}#${d.turno}`;
   if (clave !== claveActual) {
+    turnoActual = d.turno;
     empezar(d.pista, clave);
     mostrarAviso(d.pista, clave);
   } else if (!sonando || a.paused) {

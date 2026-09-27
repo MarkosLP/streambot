@@ -172,3 +172,13 @@ describe('según la escena de OBS', () => {
     assert.equal(musica.paraOverlay().aviso, false);
   });
 });
+
+test('música: finales duplicados y atrasados no saltan otra canción', async () => {
+  await musica.ponerLista('inicio');
+  const antes = musica.paraOverlay();
+  await Promise.all([musica.terminada(antes.pista!.id, antes.turno),musica.terminada(antes.pista!.id, antes.turno)]);
+  const despues = musica.paraOverlay();
+  await musica.terminada(despues.pista!.id, antes.turno);
+  assert.equal(musica.paraOverlay().turno, despues.turno);
+  assert.equal(despues.turno, antes.turno + 2, 'una reserva y un único cambio');
+});

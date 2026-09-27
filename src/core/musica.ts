@@ -347,13 +347,17 @@ export async function reanudar(): Promise<void> {
 }
 
 /** El overlay dice que una canción ha acabado (o no se pudo leer): la siguiente. Solo cuenta si es la que sonaba. */
-export async function terminada(id: string): Promise<void> {
-  if (!pista || pista.id !== id || !lista) return;
-  poner(await siguienteDe(lista));
+export async function terminada(id: string, esperado = turno): Promise<void> {
+  if (!sonando || !pista || pista.id !== id || !lista || esperado !== turno) return;
+  const reserva = ++turno;
+  const nueva = await siguienteDe(lista);
+  if (turno !== reserva) return;
+  poner(nueva);
   sonando = pista !== null;
 }
 
-export function informarProgreso(id: string, pos: number, dur: number): void {
+export function informarProgreso(id: string, pos: number, dur: number, esperado = turno): void {
+  if (esperado !== turno || pista?.id !== id || !Number.isFinite(pos) || !Number.isFinite(dur) || pos < 0 || dur <= 0 || pos > dur) return;
   ultimaVozOverlay = Date.now();
   if (pista?.id === id && Number.isFinite(pos) && Number.isFinite(dur)) progreso = { id, pos, dur, at: Date.now() };
 }
@@ -389,7 +393,6 @@ export async function ponerModo(modo: 'auto' | 'manual'): Promise<Ajustes> {
 
 /** Lo que el overlay necesita para sonar (y para el aviso de canción, que en las escenas del panel ya enseñan ellas). */
 export function paraOverlay() {
-  ultimaVozOverlay = Date.now();
   const a = leerAjustes();
   const v = lista ? a.volumen[lista] : 0.4;
   const enEscenaDelPanel = escenaObs !== null && escenaObs in ESCENAS_POR_DEFECTO;

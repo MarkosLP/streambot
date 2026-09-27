@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
@@ -97,6 +98,8 @@ class ErrorHttp extends Error {
   }
 }
 
+const credencialesMusica = new WeakMap<Server, string>();
+
 export function crearServidor(sb: PuertoStreamerbot, obs: ConObs = conObs): Server {
   const server = createServer((req, res) => {
     atender(server, sb, obs, req, res).catch((err) => {
@@ -105,6 +108,7 @@ export function crearServidor(sb: PuertoStreamerbot, obs: ConObs = conObs): Serv
       json(res, status, { error: err instanceof Error ? err.message : String(err) });
     });
   });
+  credencialesMusica.set(server, randomBytes(32).toString('hex'));
   return server;
 }
 
@@ -187,6 +191,17 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
   const metodo = req.method ?? 'GET';
 
+  // El reproductor aislado solo puede reportar con su credencial privada (27 sep 2026).
+  if (metodo === 'POST' && url.pathname === '/api/reproductor/musica') {
+    const d = await cuerpo(req);
+    if (d.credencial !== credencialesMusica.get(server)) throw new ErrorHttp(403, 'reproductor no autorizado');
+    if (typeof d.id !== 'string' || !Number.isInteger(d.turno)) throw new ErrorHttp(400, 'reporte inválido');
+    if (d.tipo === 'terminada') await musica.terminada(d.id, d.turno as number);
+    else if (d.tipo === 'progreso') musica.informarProgreso(d.id, Number(d.pos), Number(d.dur), d.turno as number);
+    else throw new ErrorHttp(400, 'reporte inválido');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return json(res, 200, musica.paraOverlay());
+  }
   if (metodo === 'POST') {
     if (req.headers['x-panel'] !== '1') throw new ErrorHttp(403, 'falta la cabecera X-Panel');
     const origen = req.headers.origin;
@@ -208,8 +223,9 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
 
   if (metodo === 'GET' && url.pathname.startsWith('/biblioteca/')) {
     const archivo = biblioteca.resolver(url.pathname);
-    const contenido = archivo && (await readFile(archivo.ruta).catch(() => null));
+    let contenido = archivo && (await readFile(archivo.ruta).catch(() => null));
     if (!archivo || !contenido) throw new ErrorHttp(404, 'no existe');
+    if (url.pathname === '/biblioteca/overlays/musica.html') contenido = Buffer.from(contenido.toString('utf8').replace('__MUSICA_CREDENCIAL__', credencialesMusica.get(server)!));
     res.writeHead(200, {
       'Content-Type': archivo.tipo,
       'Content-Length': contenido.length,
@@ -678,9 +694,6 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   // ?terminada=<id> o ?id=&pos=&dur=. Lo único que puede hacer es pasar a la
   // siguiente canción, y solo si la que dice es la que suena.
   if (ruta === 'GET /api/overlay/musica') {
-    const id = url.searchParams.get('terminada') ?? url.searchParams.get('id');
-    if (url.searchParams.has('terminada') && id) await musica.terminada(id);
-    else if (id && url.searchParams.has('pos')) musica.informarProgreso(id, Number(url.searchParams.get('pos')), Number(url.searchParams.get('dur')));
     const e = escenas.leer();
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify({ ...musica.paraOverlay(), estilo: e.estilo, apariencia: estilos.apariencia(e.estilo) }));
