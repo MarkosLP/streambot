@@ -93,6 +93,7 @@ function duracion(desdeIso) {
 
 const cargadores = {
   escenas: cargarEscenas,
+  overlays: () => { cargarOverlays(); cargarEscenasObs(); },
   musica: () => { cargarMusica(); cargarMusicaObs(); },
   temas: () => cargarTemas(),
   directo: () => cargarResumen(),
@@ -115,6 +116,12 @@ function irA(tab) {
   if (location.hash !== `#/${tab}`) history.replaceState(null, '', `#/${tab}`);
   cargadores[tab]?.();
   pintarMini();
+}
+
+// Los apartados plegables (Pruebas, Referencia…) recuerdan si los dejaste abiertos.
+for (const d of document.querySelectorAll('details[data-recordar]')) {
+  try { d.open = localStorage.getItem(`plegado-${d.id}`) === '1'; } catch { /* sin almacenamiento */ }
+  d.addEventListener('toggle', () => { try { localStorage.setItem(`plegado-${d.id}`, d.open ? '1' : '0'); } catch { /* da igual */ } });
 }
 
 document.querySelector('.pestanas').addEventListener('click', (e) => {

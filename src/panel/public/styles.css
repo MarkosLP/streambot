@@ -1174,3 +1174,30 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
   .mm-progreso { grid-column: 1 / -1; grid-row: 2; }
   .mm-mandos { grid-template-columns: repeat(3, 38px); }
 }
+
+/* Barra lateral por grupos (27 sep) */
+.grupo-nav { display: block; margin: 12px 0 4px; padding: 0 12px; font-size: .68rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--texto-3); }
+.grupo-nav:first-child { margin-top: 0; }
+@media (max-width: 820px) { .grupo-nav { display: none; } }
+
+/* Apartados plegables (Loot: pruebas y referencia) */
+.plegable > summary { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; cursor: pointer; list-style: none; font-weight: 700; font-size: 1.02rem; }
+.plegable > summary::-webkit-details-marker { display: none; }
+.plegable > summary > span:first-child::before { content: "▸"; display: inline-block; width: 1.1em; color: var(--texto-3); transition: transform .15s; }
+.plegable[open] > summary > span:first-child::before { transform: rotate(90deg); }
+.plegable[open] > summary { margin-bottom: 14px; }
+.plegable-bloque { border-top: 1px solid var(--borde); padding-top: 14px; margin-top: 14px; }
+.plegable-bloque > header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.plegable-bloque > header h2 { font-size: .98rem; }
+.plegable-rejilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 0 24px; }
+.plegable-rejilla > .plegable-bloque:first-child { grid-column: 1 / -1; }
+/* Con los grupos no cabe en pantallas bajas: la barra baja sola, y más compacta. */
+@media (min-width: 821px) {
+  .lateral { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; gap: 16px; }
+  .pestanas button { padding: 8px 12px; }
+}
+@media (min-width: 821px) and (max-height: 820px) {
+  .pestanas button { padding: 6px 12px; }
+  .grupo-nav { margin: 8px 0 2px; }
+}
+#v-loot .subtitulo { margin-top: 18px; }

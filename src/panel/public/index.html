@@ -35,6 +35,7 @@
     </div>
 
     <nav class="pestanas" role="tablist" aria-label="Secciones">
+      <span class="grupo-nav" aria-hidden="true">En directo</span>
       <button role="tab" data-tab="directo" aria-selected="true">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8 8 0 0 0 0 11.4M17.7 6.3a8 8 0 0 1 0 11.4"/></svg>
         Inicio
@@ -42,10 +43,6 @@
       <button role="tab" data-tab="loot">
         <svg viewBox="0 0 24 24"><path d="M3 10a5 5 0 0 1 5-5h8a5 5 0 0 1 5 5v9H3zM3 12h18M10 12v3h4v-3"/></svg>
         Loot
-      </button>
-      <button role="tab" data-tab="escenas">
-        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M7 9l3 2-3 2M12 13h4"/></svg>
-        Escenas
       </button>
       <button role="tab" data-tab="musica">
         <svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
@@ -55,25 +52,37 @@
         <svg viewBox="0 0 24 24"><path d="M4 5h13a3 3 0 0 1 3 3v11H7a3 3 0 0 1-3-3zM8 9h8M8 13h8M8 17h5"/></svg>
         Temas
       </button>
+      <span class="grupo-nav" aria-hidden="true">Pantalla</span>
+      <button role="tab" data-tab="escenas">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M7 9l3 2-3 2M12 13h4"/></svg>
+        Escenas
+      </button>
+      <button role="tab" data-tab="overlays">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 8h6M7 12h4"/><rect x="13" y="11" width="5" height="4" rx="1"/></svg>
+        Overlays
+      </button>
       <button role="tab" data-tab="efectos">
         <svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>
         Efectos
       </button>
+      <span class="grupo-nav" aria-hidden="true">Preparar</span>
       <button role="tab" data-tab="titulos">
         <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7M17 14l1.5 3 3.5.5-2.5 2.4.6 3.4-3.1-1.6-3.1 1.6.6-3.4L12 17.5l3.5-.5z"/></svg>
         Títulos
       </button>
+      <span class="grupo-nav" aria-hidden="true">Canal</span>
       <button role="tab" data-tab="espectadores">
         <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/></svg>
         Espectadores
       </button>
-      <button role="tab" data-tab="biblioteca">
-        <svg viewBox="0 0 24 24"><path d="M4 4h4v16H4zM10 4h4v16h-4zM15.5 5.2l3.9-1 3.6 14.6-3.9 1z"/></svg>
-        Biblioteca
-      </button>
       <button role="tab" data-tab="interacciones">
         <svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
         IA y bot
+      </button>
+      <span class="grupo-nav" aria-hidden="true">Sistema</span>
+      <button role="tab" data-tab="biblioteca">
+        <svg viewBox="0 0 24 24"><path d="M4 4h4v16H4zM10 4h4v16h-4zM15.5 5.2l3.9-1 3.6 14.6-3.9 1z"/></svg>
+        Biblioteca
       </button>
       <button role="tab" data-tab="ajustes">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
@@ -287,21 +296,13 @@
       </p>
 
       <article class="tarjeta">
-        <header><h2>Acciones</h2></header>
+        <header><h2>🎁 Cofres</h2><span class="nota" id="l-en-chat">—</span></header>
         <div class="loot-acciones">
           <button class="boton primario" id="l-soltar" type="button">🎁 Soltar cofre ahora</button>
           <span class="nota">Para quien haya escrito hace poco. Para todo el chat, usa Regalar cofre.</span>
-          <span class="separador"></span>
-          <button class="boton" id="l-prueba" type="button">Tirada de prueba</button>
-          <button class="boton" id="l-prueba-oro" type="button">🗝️ Prueba de Cofre del tesoro</button>
-          <span class="nota">Salen en tu OBS, pero ni se guardan ni se escriben en el chat.</span>
         </div>
         <div id="l-revelado"></div>
-        <div class="loot-prueba" id="l-resultado-prueba"></div>
-      </article>
-
-      <article class="tarjeta">
-        <header><h2>Regalar cofre</h2><span class="nota" id="l-en-chat">—</span></header>
+        <h3 class="subtitulo">Regalar cofre</h3>
         <form class="loot-regalo" id="l-regalo">
           <label class="campo">
             <span>Para</span>
@@ -320,19 +321,6 @@
         </form>
       </article>
 
-      <article class="tarjeta">
-        <header><h2>💜 Probar suscriptores</h2><span class="nota">Con gente de prueba</span></header>
-        <p class="aviso">Los mensajes <strong>salen al chat de verdad</strong>: pruébalo sin estar en directo. Los regalos esperan 5 s para juntar la tanda.</p>
-        <div class="rapidas" id="p-mecenas">
-          <button class="boton" type="button" data-prueba="sub">💜 Suscripción</button>
-          <button class="boton" type="button" data-prueba="resub12">💜 Resub 12 meses</button>
-          <button class="boton" type="button" data-prueba="regalo">🎁 Regala una</button>
-          <button class="boton" type="button" data-prueba="bomba">💣 Bomba de 6</button>
-          <button class="boton" type="button" data-prueba="raid">⚔️ Raid de 8</button>
-          <button class="boton" type="button" data-prueba="bits">💎 500 bits</button>
-        </div>
-        <button class="boton pequeno" type="button" id="p-mecenas-borrar">Borrar lo de las pruebas</button>
-      </article>
 
       <article class="tarjeta">
         <header><h2>Jefe de raid</h2><span class="nota">El chat le pega con !atacar durante 3 min</span></header>
@@ -360,25 +348,52 @@
           <header><h2>Últimos botines</h2></header>
           <ol class="botines" id="l-recientes"></ol>
         </article>
-        <div class="columna">
-          <article class="tarjeta">
+        <article class="tarjeta">
+          <header><h2>Mochilas</h2><span class="nota">Por poder</span></header>
+          <ol class="mochilas" id="l-mochilas"></ol>
+        </article>
+      </div>
+
+      <details class="plegable tarjeta" id="l-plegable-pruebas" data-recordar>
+        <summary><span>🧪 Pruebas</span><span class="nota">Tiradas y subs de mentira, para ver cómo queda</span></summary>
+        <div class="loot-acciones">
+          <button class="boton" id="l-prueba" type="button">Tirada de prueba</button>
+          <button class="boton" id="l-prueba-oro" type="button">🗝️ Prueba de Cofre del tesoro</button>
+          <span class="nota">Salen en tu OBS, pero ni se guardan ni se escriben en el chat.</span>
+        </div>
+        <div class="loot-prueba" id="l-resultado-prueba"></div>
+      <section class="plegable-bloque">
+        <header><h2>💜 Probar suscriptores</h2><span class="nota">Con gente de prueba</span></header>
+        <p class="aviso">Los mensajes <strong>salen al chat de verdad</strong>: pruébalo sin estar en directo. Los regalos esperan 5 s para juntar la tanda.</p>
+        <div class="rapidas" id="p-mecenas">
+          <button class="boton" type="button" data-prueba="sub">💜 Suscripción</button>
+          <button class="boton" type="button" data-prueba="resub12">💜 Resub 12 meses</button>
+          <button class="boton" type="button" data-prueba="regalo">🎁 Regala una</button>
+          <button class="boton" type="button" data-prueba="bomba">💣 Bomba de 6</button>
+          <button class="boton" type="button" data-prueba="raid">⚔️ Raid de 8</button>
+          <button class="boton" type="button" data-prueba="bits">💎 500 bits</button>
+        </div>
+        <button class="boton pequeno" type="button" id="p-mecenas-borrar">Borrar lo de las pruebas</button>
+      </section>
+      </details>
+
+      <details class="plegable tarjeta" id="l-plegable-referencia" data-recordar>
+        <summary><span>📖 Comandos, probabilidades y cómo montarlo</span><span class="nota">Para consultar</span></summary>
+        <div class="plegable-rejilla">
+          <section class="plegable-bloque">
             <header><h2>Comandos del chat</h2><span class="nota">Pulsa para copiar</span></header>
             <ul class="comandos-loot" id="l-comandos"></ul>
-          </article>
-          <article class="tarjeta">
-            <header><h2>Mochilas</h2><span class="nota">Por poder</span></header>
-            <ol class="mochilas" id="l-mochilas"></ol>
-          </article>
-          <article class="tarjeta">
+          </section>
+          <section class="plegable-bloque">
             <header><h2>Probabilidades</h2></header>
             <table class="tabla probs" id="l-probs"></table>
-          </article>
-          <article class="tarjeta">
+          </section>
+          <section class="plegable-bloque">
             <header><h2>Montarlo</h2></header>
             <ol class="pasos" id="l-montar"></ol>
-          </article>
+          </section>
         </div>
-      </div>
+      </details>
     </section>
 
     <!-- ESCENAS -->
@@ -524,6 +539,20 @@
         </form>
       </article>
 
+
+      <div class="lista-escenas" id="e-lista"></div>
+    </section>
+
+    <!-- OVERLAYS -->
+    <section class="vista" id="v-overlays" hidden>
+      <header class="cabecera-vista">
+        <div>
+          <p class="antetitulo">Alertas, panel rotativo y OBS</p>
+          <h1>Overlays</h1>
+          <p class="nota">Lo que sale encima del juego además de las escenas: avisos de follows, subs y raids, y una caja pequeña que va rotando. El jefe, los cofres y la poción se montan en Efectos.</p>
+        </div>
+      </header>
+
       <article class="tarjeta ovl">
         <header><h2>🔔 Alertas y panel rotativo</h2><span class="nota">Dos overlays, para no llenar la pantalla</span></header>
         <div class="ovl-cols">
@@ -565,8 +594,6 @@
           <p class="nota" id="o-obs-resultado"></p>
         </div>
       </article>
-
-      <div class="lista-escenas" id="e-lista"></div>
     </section>
 
     <!-- MÚSICA -->
@@ -829,8 +856,8 @@
     <section class="vista" id="v-interacciones" hidden>
       <header class="cabecera-vista">
         <div>
-          <p class="antetitulo">Comandos y eventos del bot</p>
-          <h1>Interacciones</h1>
+          <p class="antetitulo">Lo que el bot dice solo o con IA</p>
+          <h1>IA y bot</h1>
         </div>
         <button class="boton" id="r-interacciones" type="button">Actualizar</button>
       </header>
