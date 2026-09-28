@@ -151,9 +151,12 @@ export async function generar(descripcion: string, estilo: Estilo = POR_DEFECTO,
   const a = info(estilo).avatar;
   const que = descripcion.trim().slice(0, 600) || a.descripcion;
   // Lo que pides, primero y concretado (como en fondos.ts): si no, el estilo pesa más.
-  const detalle = await imagen.detallar(descripcion.trim().slice(0, 600), 'personaje');
-  const personaje = detalle ? `CHARACTER (follow it exactly): ${detalle}\n(Original request in Spanish: ${que})` : `CHARACTER (described in Spanish, follow it exactly): ${que}`;
-  const base = await imagen.generar({ prompt: `${personaje}\n${ENCUADRE}\nArt style: ${a.estilo}`, tamano: '1024x1024', transparente: true });
+  // Una petición propia no se reescribe ni recibe la temática del estilo del panel.
+  const personaje = `PRIMARY CHARACTER REQUEST (verbatim): ${que}`;
+  const direccion = descripcion.trim()
+    ? 'Follow the requested game or franchise visual identity, age, species, proportions, clothing and colors. The original request has priority. Do not replace a named game with generic fantasy, invent canonical details, or turn an adult into a child or chibi. If no style is specified, choose a coherent finish without adding a different theme.'
+    : `Art style: ${a.estilo}`;
+  const base = await imagen.generar({ prompt: `${personaje}\n${direccion}\n${ENCUADRE}`, tamano: '1024x1024', transparente: true });
   const { medio, cerrados, contento, zonas, dudosas } = await variantes(base);
   const nombre = `${estilo}-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
   const destino = join(carpeta(dir), nombre);

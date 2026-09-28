@@ -2,6 +2,10 @@
 
 Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.**
 
+## Peticiones a IA: juegos y avatares (28 sep, Codex)
+
+Corregida una interferencia restante: con descripción propia, fondos y avatares ya no añaden la temática del estilo del panel. Avatar tampoco reescribe la petición con `detallar`. Petición literal primero; edad, juego, especie y proporciones explícitos tienen prioridad. Los estilos predefinidos siguen aplicándose a descripciones vacías. Se mantiene el encuadre técnico del avatar. 604 tests aprobados, incluido avatar adulto Aniimo y fondo Aden de Lineage 2 con motor simulado. Sin generar imágenes ni gasto; fidelidad visual a juegos no verificada y no garantizable sin referencias. Reiniciar el bot para aplicar código nuevo, cuando Marcos lo decida.
+
 ## Efectos y Biblioteca (28 sep, Codex)
 
 - Efectos: pruebas sin directo separadas del canje real. Sonido en el navegador; efectos visuales en la escena elegida, con OBS detenido y restauración del estado anterior incluso ante errores. Sin chat ni Loot. Los cofres siguen en Loot. Preparación plegada, requisitos visibles y Actions desactivadas bloqueadas.

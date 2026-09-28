@@ -53,10 +53,20 @@ beforeEach(() => {
   escenas.reset();
 });
 
+test('avatar Aniimo adulto llega literal sin reescritura ni temática del panel', async () => {
+  const descripcion = 'Avatar humano adulto de 35 años estilo Aniimo, épico, pelo negro';
+  await avatarIa.generar(descripcion, 'oscuro', dir);
+  assert.equal(reescrituras, 0);
+  const base = pedidas.find(p => p.tipo === 'generar')!;
+  assert.ok(base.prompt.startsWith(`PRIMARY CHARACTER REQUEST (verbatim): ${descripcion}\n`));
+  assert.doesNotMatch(base.prompt, /dark fantasy|hooded|mysterious wanderer/i);
+  assert.match(base.prompt, /age, species, proportions/);
+});
+
 describe('fondos con IA', () => {
   test('el prompt lleva el estilo común, lo que pides y la composición de la escena', () => {
     const p = fondos.prompt('charla', 'una biblioteca de mago');
-    assert.match(p, /dark fantasy matte painting/);
+    assert.doesNotMatch(p, /dark fantasy matte painting/);
     assert.match(p, /una biblioteca de mago/);
     assert.match(p, /webcam frame/, 'en Charla deja sitio a la cámara');
     assert.match(fondos.prompt('inicio', ''), /castillo gótico/, 'vacío = la descripción de siempre');
@@ -68,7 +78,7 @@ describe('fondos con IA', () => {
     assert.ok(p.startsWith('PRIMARY SCENE REQUEST (verbatim, in Spanish): Giran de Lineage 2 de día con gente'), 'petición literal primero');
     assert.doesNotMatch(p, /Giran city at midday/, 'la reescritura no sustituye la petición');
     assert.match(p, /has priority/);
-    assert.match(p, /Mood only if the scene does not set one/);
+    assert.doesNotMatch(p, /Mood:/);
     assert.doesNotMatch(p, /no people/);
   });
 
@@ -95,7 +105,7 @@ describe('fondos con IA', () => {
   test('cada estilo pide su propio arte a la IA', () => {
     assert.match(fondos.prompt('inicio', '', 'alegre'), /anime RPG key art/);
     assert.match(fondos.prompt('inicio', '', 'alegre'), /Islas flotantes/, 'vacío = la descripción del estilo');
-    assert.match(fondos.prompt('pausa', 'un río', 'acogedor'), /painterly illustration/);
+    assert.match(fondos.prompt('pausa', '', 'acogedor'), /painterly illustration/);
     assert.match(fondos.prompt('inicio', '', 'alegre'), /Not childish/, 'nada infantil: el 27 sep los primeros lo parecían');
     assert.doesNotMatch(fondos.prompt('inicio', '', 'alegre'), /dark fantasy/);
   });

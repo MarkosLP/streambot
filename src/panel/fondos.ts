@@ -32,10 +32,9 @@ const COMPOSICION: Record<EscenaFondo, string> = {
 };
 
 /**
- * Lo que pides va PRIMERO y manda: antes iba detrás del estilo, y el «anochecer,
- * sombras profundas, nadie en primer plano» del oscuro se comía un «de día con
- * gente» (27 sep). El ambiente de la escena solo vale si no dices otro.
- * `detalle` es lo que pides ya pasado a inglés (ia-imagen.detallar).
+ * Petición propia literal, sin temática ni ambiente impuestos por el panel.
+ * Los estilos predefinidos solo se añaden cuando no hay descripción propia.
+ * `detalle` se conserva por compatibilidad y solo complementa el caso vacío.
  */
 export function prompt(escena: EscenaFondo, descripcion: string, estilo: Estilo = POR_DEFECTO, detalle: string | null = null): string {
   const e = info(estilo);
@@ -46,9 +45,9 @@ export function prompt(escena: EscenaFondo, descripcion: string, estilo: Estilo 
     'Preserve the exact named game or franchise AND the specific location, building or character. Depict that subject recognizably within its original world, not a generic substitute or a location from another game. Do not invent landmark details you do not know.',
     'The original request above has priority over ALL instructions below, including art style and layout. Preserve its architecture, landmarks, silhouette and materials as well as any specified time of day, weather, colors, mood and people.',
     ...(!propia && detalle ? [`Optional supporting description, subordinate to the original: ${detalle}`] : []),
-    `Art style: ${e.fondo}`,
-    `Layout: ${COMPOSICION[escena]} Any people are small, in the midground or background.`,
-    propia ? `Mood only if the scene does not set one: ${e.tono[escena]}` : `Mood: ${e.tono[escena]}`,
+    propia ? 'Art direction: use the visual identity of the game or style explicitly requested. If none is specified, choose a coherent finish without adding a different franchise, setting or theme. No text, logos or watermarks.' : `Art style: ${e.fondo}`,
+    `Layout (only where compatible with the request): ${COMPOSICION[escena]}`,
+    ...(!propia ? [`Mood: ${e.tono[escena]}`] : []),
   ].join('\n');
 }
 
