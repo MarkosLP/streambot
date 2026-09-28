@@ -1,6 +1,25 @@
-# Dónde lo dejamos — 26 sep 2026 (madrugada)
+# Dónde lo dejamos — 28 sep 2026
 
 Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.**
+
+---
+
+## 28 sep 2026 (591 tests; laboratorio 15/15 con 10 semillas)
+
+Rama `codex-fase2` (Codex por la mañana + Claude después). Lo de Codex, revisado: nada roto.
+
+- **`npm start` sin OBS abierto** (Codex): el WebSocket de OBS fallido cerraba en bucle y tumbaba el proceso. Arreglado en `transport/obs.ts`.
+- **Avatar**: Codex quitó desenfoques y mezclas de los overlays por rendimiento (sin medirlo). Se devolvió solo `mix-blend-mode: screen` al brillo de los ojos: sin él, una mancha naranja tapaba ojos y mejillas.
+- **Paneles de Twitch pintados con IA** (gpt-image-2, `high`, estilo taberna del gremio, texto incluido y revisado letra a letra). Jefes lleva los retratos de `biblioteca/imagenes/jefes/`. **JPG de 640 px: Twitch no deja subir más de 1 MB.** Cómo rehacer uno: `docs/paneles/README.md`. `paneles.html` (el de CSS) queda en el historial.
+- **«Probar» un efecto en el panel = un canje tuyo**: antes solo lanzaba la Action (el sonido); el Grito no llamaba a las armas ni caía el cofre. Si el Loot no puede hacer nada (apagado, sin directo, sin maldito), el panel dice por qué. Ojo: probar escribe en el chat real y da objetos reales.
+- **Terremoto** → sale un jefe de raid («el suelo se abre»); con jefe en pie, le cae el techo: −25 % de su vida máxima a nombre de quien canjea. Los canjes van en fila (el laboratorio vio mensajes desordenados).
+- **Lag** → congela el tiempo: con jefe, su reloj se para 30 s (en la barra ⏳ pasa a 📶 en azul y no baja); sin jefe, el próximo cofre cae en 30 s (nunca lo retrasa).
+- **Registro del bot en disco**: `logs/bot-AAAA-MM-DD.log`, 14 días. Sin lo que escribe la gente (de la charla, cuánto ocupaba; de un comando, el comando y sus argumentos cortos). Lo primero que mirar si algo «no hizo nada».
+- **Laboratorio**: escenarios nuevos (terremotos a la vez y en plena pelea, Lags, Gritos + Maldiciones + Pociones a la vez) y comprobación del orden de los mensajes.
+- **Quitado**: el botón «⚡ Optimizar las fuentes en OBS». **Música: no tocar**; Crid4m la pone de fondo a mano (modo manual).
+- Por qué el Grito «no hacía nada» el 27: nadie lo canjeó; se lanzó con «Probar» (log de Streamer.bot en `C:\StreamerBot\logs`: `TwitchRewardRedemption` = canje real, `with 7 arguments` = a mano).
+
+**Lo siguiente**: reiniciar el bot, subir los 4 JPG, y la prueba real con `crid4n` desde el móvil (duelo, Grito con directo, Maldición + duelo, Terremoto, Lag contra un jefe). Después, pasar `codex-fase2` a `main`. Sin probar aún con Twitch de verdad: follows, subs, emotes del chat en pantalla y avisos de moderación.
 
 ---
 
@@ -134,7 +153,7 @@ Crid4m: «ya será lo último en secciones, lo demás será seguir mejorando lo 
 
 - Los tamaños y posiciones de las fuentes `FX` en OBS son a propósito.
 - Si arrancas el bot con el directo ya empezado, en la pestaña Loot pulsa **El directo ya ha empezado**. Y **Terminar directo** si se queda marcado sin estar emitiendo.
-- Siguiente en la lista: retos al jugador, predicciones y contador de wipes. Ideas para Terremoto y Lag cuando haya plugins (el terremoto tira un objeto al suelo y se lo lleva el primero que escriba `!coger`).
+- Siguiente en la lista: retos al jugador, predicciones y contador de wipes. (Terremoto y Lag ya tienen su lado del Loot desde el 28 sep: ver arriba.)
 
 ---
 
