@@ -1,3 +1,4 @@
+import * as referencias from './referencias.js';
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -83,6 +84,7 @@ export interface PuertoStreamerbot {
 
 const PUBLICOS: Record<string, { archivo: string; tipo: string }> = {
   '/': { archivo: 'index.html', tipo: 'text/html; charset=utf-8' },
+  '/referencias.js': { archivo: 'referencias.js', tipo: 'text/javascript; charset=utf-8' },
   '/red.js': { archivo: 'red.js', tipo: 'text/javascript; charset=utf-8' },
   '/app.js': { archivo: 'app.js', tipo: 'text/javascript; charset=utf-8' },
   '/avatar-local.js': { archivo: 'avatar-local.js', tipo: 'text/javascript; charset=utf-8' },
@@ -103,10 +105,10 @@ class ErrorHttp extends Error {
   }
 }
 
-export function crearServidor(sb: PuertoStreamerbot, obs: ConObs = conObs): Server {
+export function crearServidor(sb: PuertoStreamerbot, obs: ConObs = conObs, dirReferencias = biblioteca.DIR_BIBLIOTECA): Server {
   const server = createServer((req, res) => {
-    atender(server, sb, obs, req, res).catch((err) => {
-      const status = err instanceof ErrorHttp ? err.status : 500;
+    atender(server, sb, obs, req, res, dirReferencias).catch((err) => {
+      const status = err instanceof ErrorHttp ? err.status : err instanceof referencias.ErrorReferencia ? 400 : 500;
       if (status === 500) log.error(`Panel: ${String(err)}`);
       json(res, status, { error: err instanceof Error ? err.message : String(err) });
     });
@@ -184,7 +186,7 @@ function lanzarLaboratorio(): Promise<unknown> {
   });
 }
 
-async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: IncomingMessage, res: ServerResponse) {
+async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: IncomingMessage, res: ServerResponse, dirReferencias: string) {
   const puerto = (server.address() as AddressInfo).port;
   const permitidos = [`127.0.0.1:${puerto}`, `localhost:${puerto}`];
 
@@ -645,7 +647,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   // Un fondo nuevo con IA (GPT Image): tarda ~30 s y cuesta unos céntimos. Uno
   // a la vez; al terminar se pone en esa escena.
   if (ruta === 'POST /api/escenas/fondo') {
-    const { escena, descripcion, titulo, maxImagenes } = await cuerpo(req);
+    const { escena, descripcion, titulo, maxImagenes, referencias: refs } = await cuerpo(req);
     if (maxImagenes !== 1) throw new ErrorHttp(400, 'Confirma el máximo de una imagen');
     if (!escenas.TIPOS.includes(escena as escenas.Tipo)) throw new ErrorHttp(400, 'escena no válida');
     if (generandoFondo) throw new ErrorHttp(409, 'Ya se está generando un fondo: espera a que termine');
@@ -654,11 +656,11 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       // Si cambias de estilo mientras se genera, se queda en el suyo: es el
       // último de ese estilo y sale al volver a él.
       const estilo = escenas.leer().estilo;
-      const nueva = await fondos.generar(escena as fondos.EscenaFondo, typeof descripcion === 'string' ? descripcion : '', estilo, undefined, rotulos.limpiarTitulo(titulo));
+      const nueva = await fondos.generar(escena as fondos.EscenaFondo, typeof descripcion === 'string' ? descripcion : '', estilo, undefined, rotulos.limpiarTitulo(titulo), referencias.seleccion(refs), dirReferencias);
       const config = escenas.leer().estilo === estilo ? escenas.cambiar({ fondos: { [escena as string]: nueva } }) : escenas.leer();
       return json(res, 200, { ruta: nueva, config });
     } catch (err) {
-      throw new ErrorHttp(err instanceof iaImagen.ErrorImagen ? 502 : 500, err instanceof Error ? err.message : String(err));
+      throw new ErrorHttp(err instanceof referencias.ErrorReferencia ? 400 : err instanceof iaImagen.ErrorImagen ? 502 : 500, err instanceof Error ? err.message : String(err));
     } finally {
       generandoFondo = null;
     }
@@ -674,7 +676,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     try {
       return json(res, 200, await avatarIa.rehacerVariantes(personaje as string));
     } catch (err) {
-      throw new ErrorHttp(err instanceof iaImagen.ErrorImagen ? 502 : 500, err instanceof Error ? err.message : String(err));
+      throw new ErrorHttp(err instanceof referencias.ErrorReferencia ? 400 : err instanceof iaImagen.ErrorImagen ? 502 : 500, err instanceof Error ? err.message : String(err));
     } finally {
       generandoFondo = null;
     }
@@ -682,16 +684,16 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
 
   // Un personaje nuevo para el avatar: cuatro imágenes (~1 min, unos céntimos).
   if (ruta === 'POST /api/escenas/avatar-ia') {
-    const { descripcion, titulo, maxImagenes } = await cuerpo(req);
+    const { descripcion, titulo, maxImagenes, referencias: refs } = await cuerpo(req);
     if (maxImagenes !== 7) throw new ErrorHttp(400, 'Confirma el máximo de siete imágenes');
     if (generandoFondo) throw new ErrorHttp(409, 'Ya se está generando una imagen: espera a que termine');
     generandoFondo = 'avatar';
     try {
       const estilo = escenas.leer().estilo;
-      const nuevo = await avatarIa.generar(typeof descripcion === 'string' ? descripcion : '', estilo, undefined, rotulos.limpiarTitulo(titulo));
+      const nuevo = await avatarIa.generar(typeof descripcion === 'string' ? descripcion : '', estilo, undefined, rotulos.limpiarTitulo(titulo), referencias.seleccion(refs), dirReferencias);
       return json(res, 200, { ruta: nuevo, config: escenas.leer().estilo === estilo ? escenas.cambiar({ avatarImagen: nuevo }) : escenas.leer() });
     } catch (err) {
-      throw new ErrorHttp(err instanceof iaImagen.ErrorImagen ? 502 : 500, err instanceof Error ? err.message : String(err));
+      throw new ErrorHttp(err instanceof referencias.ErrorReferencia ? 400 : err instanceof iaImagen.ErrorImagen ? 502 : 500, err instanceof Error ? err.message : String(err));
     } finally {
       generandoFondo = null;
     }
@@ -866,6 +868,14 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     return json(res, 200, r);
   }
 
+  if (ruta === 'GET /api/referencias/imagen') {
+    const png = await referencias.leer(url.searchParams.get('ruta') ?? '', dirReferencias);
+    res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'no-store' });
+    res.end(png); return;
+  }
+  if (ruta === 'GET /api/referencias') return json(res, 200, await referencias.listar(dirReferencias));
+  if (ruta === 'POST /api/referencias') return json(res, 201, await referencias.subir(await cuerpo(req, 6 * 1024 * 1024), dirReferencias));
+
   if (ruta === 'GET /api/biblioteca') return json(res, 200, await biblioteca.listar());
 
   if (ruta === 'GET /api/obs') {
@@ -1010,12 +1020,12 @@ async function efectos(sb: PuertoStreamerbot) {
   };
 }
 
-async function cuerpo(req: IncomingMessage): Promise<Record<string, unknown>> {
+async function cuerpo(req: IncomingMessage, limite = MAX_BODY): Promise<Record<string, unknown>> {
   let total = 0;
   const trozos: Buffer[] = [];
   for await (const trozo of req) {
     total += trozo.length;
-    if (total > MAX_BODY) throw new ErrorHttp(413, 'cuerpo demasiado grande');
+    if (total > limite) throw new ErrorHttp(413, 'cuerpo demasiado grande');
     trozos.push(trozo);
   }
   if (total === 0) return {};

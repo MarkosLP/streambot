@@ -808,6 +808,19 @@
         </div>
       </header>
 
+      <section class="bloque tarjeta" id="b-referencias">
+        <h2>Referencias para la IA</h2>
+        <p class="nota">Capturas del juego, lugares o personajes. Guardarlas es local y gratuito. Se enviarán al proveedor solo cuando las selecciones y autorices una generación.</p>
+        <form id="ref-subir" class="referencia-form">
+          <label class="campo"><span>Juego o colección</span><input type="text" id="ref-juego" required maxlength="80" placeholder="Lineage 2"></label>
+          <label class="campo"><span>Nombre de la referencia</span><input type="text" id="ref-nombre" required maxlength="80" placeholder="Castillo de Aden · fachada"></label>
+          <label class="campo"><span>Imagen · PNG, JPG o WebP, hasta 15 MB</span><input id="ref-archivo" type="file" accept="image/png,image/jpeg,image/webp" required></label>
+          <button class="boton" type="submit">Guardar referencia</button>
+        </form>
+        <p id="ref-estado" class="nota" role="status"></p>
+        <div id="ref-lista" class="referencias-lista"></div>
+      </section>
+
       <section class="bloque">
         <header class="bloque-cabecera"><h2>Sonidos</h2><span class="nota" id="n-sonidos"></span></header>
         <div class="lista-sonidos" id="b-sonidos"></div>
@@ -934,6 +947,7 @@
 <div class="tostada" id="tostada" role="status" aria-live="polite"></div>
 
 <script src="/red.js"></script>
+<script src="/referencias.js"></script>
 <script src="/app.js"></script>
 <script src="/avatar-local.js"></script>
 </body>

@@ -2,7 +2,7 @@
 // Ejecutar: node --import tsx scripts/pruebas-visuales.mjs [10|11|14|avatar]
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 process.env.NODE_TEST_CONTEXT = 'visuales';
@@ -12,7 +12,8 @@ const { setMotor } = await import('../src/services/ia-imagen.ts');
 const prohibido = async () => { throw new Error('IA de pago bloqueada en pruebas'); };
 setMotor({generar:prohibido, editar:prohibido, localizarCara:prohibido, comprobarVariante:prohibido});
 const { crearServidor } = await import('../src/panel/server.ts');
-const server = crearServidor({estado:()=>({conectado:false,destino:'Prueba aislada',intentosFallidos:0}),acciones:async()=>[],ejecutarAccion:async()=>{throw Error('Streamer.bot bloqueado');}},async()=>{throw Error('OBS bloqueado');});
+const dirReferencias = await mkdtemp(join(tmpdir(), 'crid4m-referencias-visuales-'));
+const server = crearServidor({estado:()=>({conectado:false,destino:'Prueba aislada',intentosFallidos:0}),acciones:async()=>[],ejecutarAccion:async()=>{throw Error('Streamer.bot bloqueado');}},async()=>{throw Error('OBS bloqueado');},dirReferencias);
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const raiz=`http://127.0.0.1:${server.address().port}`;
 const perfil=await mkdtemp(join(tmpdir(),'crid4m-navegador-'));
@@ -33,6 +34,41 @@ try {
   socket.onmessage=async e=>{const m=JSON.parse(e.data);if(m.id){const p=pendientes.get(m.id);if(p){clearTimeout(p.t);pendientes.delete(m.id);m.error?p.ko(Error(JSON.stringify(m.error))):p.ok(m.result);}}else if(m.method==='Fetch.requestPaused'){const {requestId,request}=m.params;await pedir(request.url.startsWith(raiz+'/')||request.url.startsWith('data:')?'Fetch.continueRequest':'Fetch.failRequest',{requestId,...(!request.url.startsWith(raiz+'/')&&!request.url.startsWith('data:')?{errorReason:'BlockedByClient'}:{})}).catch(e=>{if(!e.message.includes('Invalid InterceptionId'))console.error('Interceptación:',e.message);});}};
   await pedir('Page.enable');await pedir('Fetch.enable',{patterns:[{urlPattern:'*'}]});
   const caso=process.argv[2]||'10';
+  if(caso==='referencias') {
+    const { codificar } = await import('../src/services/png.ts');
+    const px = new Uint8Array(320*180*4);
+    for(let y=0;y<180;y++)for(let x=0;x<320;x++){const i=(y*320+x)*4;px[i]=30+x/3;px[i+1]=60+y/2;px[i+2]=160;px[i+3]=255;}
+    const archivo=join(dirReferencias,'referencia-prueba.png');await writeFile(archivo,codificar(320,180,px));
+    for(const w of [390,1366]) {
+      await abrir(`/?refs=${w}#/biblioteca`,w,w===390?844:1000);await evaluar("irA('biblioteca')");await esperar(500);
+      await evaluar("document.querySelector('#ref-juego').value='Lineage 2';document.querySelector('#ref-nombre').value='Referencia de prueba local'");
+      const doc=await pedir('DOM.getDocument');const nodo=await pedir('DOM.querySelector',{nodeId:doc.root.nodeId,selector:'#ref-archivo'});
+      await pedir('DOM.setFileInputFiles',{nodeId:nodo.nodeId,files:[archivo]});
+      await evaluar("document.querySelector('#ref-subir').requestSubmit()");
+      for(let i=0;i<40;i++){if((await evaluar("document.querySelector('#ref-estado').textContent")).includes('guardada'))break;await esperar(100);}
+      assert.match(await evaluar("document.querySelector('#ref-estado').textContent"),/guardada/);
+      assert.ok(await evaluar('document.documentElement.scrollWidth<=innerWidth'));
+      await captura(`referencias-biblioteca-${w}-despues`);
+      await evaluar("irA('escenas')");await esperar(600);
+      await evaluar("(()=>{const el=document.querySelector('[data-referencias=inicio]');el.parentElement.open=true;el.open=true;const s=el.querySelector('select');s.selectedIndex=1;s.dispatchEvent(new Event('change'));const uso=el.querySelectorAll('select')[1];uso.value='lugar';uso.dispatchEvent(new Event('change'));el.scrollIntoView({block:'center'});})()");await esperar(400);
+      assert.equal(await evaluar("seleccionReferencias('inicio')[0].uso"),'lugar');
+      assert.deepEqual(await evaluar("seleccionReferencias('avatar')"),[]);
+      assert.ok(await evaluar("document.querySelector('[data-referencias=inicio] img').naturalWidth>0"));
+      assert.ok(await evaluar('document.documentElement.scrollWidth<=innerWidth'));
+      await captura(`referencias-escenas-${w}-despues`);
+      await evaluar("(()=>{const el=document.querySelector('[data-referencias=avatar]');for(let p=el;p;p=p.parentElement)if(p.tagName==='DETAILS')p.open=true;const s=el.querySelector('select');s.selectedIndex=1;s.dispatchEvent(new Event('change'));el.scrollIntoView({block:'center'});})()");await esperar(300);await captura(`referencias-avatar-${w}-despues`);
+      // Captura el cuerpo de la generación sin autorizar ni llamar a un proveedor.
+      await evaluar("window.apiOriginal=api;window.peticionReferencia=null;api=async(r,b)=>{if(r==='/api/escenas/avatar-ia'){window.peticionReferencia=b;throw Error('Generación bloqueada en prueba visual');}return window.apiOriginal(r,b);};document.querySelector('#e-avatar-generar').disabled=false;document.querySelector('#e-avatar-generar').click()");await esperar(100);
+      assert.equal(await evaluar('window.peticionReferencia.referencias.length'),1);
+      await evaluar("api=async(r,b)=>{if(r==='/api/escenas/fondo'){window.peticionReferencia=b;throw Error('Generación bloqueada en prueba visual');}return window.apiOriginal(r,b);};const botonFondo=[...document.querySelectorAll('[data-tipo=inicio] button')].find(b=>b.textContent.includes('Generar fondo'));botonFondo.disabled=false;botonFondo.click()");await esperar(100);
+      assert.equal(await evaluar('window.peticionReferencia.referencias[0].uso'),'lugar');
+      await evaluar('api=window.apiOriginal');
+    }
+  }
+  if(caso==='referencias-antes')for(const w of [390,1366]) {
+    await abrir(`/?refs=${w}#/biblioteca`,w,w===390?844:1000);await evaluar("irA('biblioteca')");await esperar(500);await captura(`referencias-biblioteca-${w}-antes`);
+    await evaluar("irA('escenas')");await esperar(600);await captura(`referencias-escenas-${w}-antes`);
+  }
   if(caso.startsWith('biblioteca')) {
     const antes=caso.endsWith('antes');
     for(const w of [390,1366]) {
@@ -171,5 +207,5 @@ try {
 } finally {
   if(socket?.readyState===1){await pedir('Browser.close').catch(()=>{});socket.close();}
   for(const p of pendientes.values())clearTimeout(p.t);
-  edge.kill();server.closeAllConnections();await new Promise(r=>server.close(r));
+  edge.kill();await rm(dirReferencias,{recursive:true,force:true});server.closeAllConnections();await new Promise(r=>server.close(r));
 }

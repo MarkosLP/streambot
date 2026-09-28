@@ -24,6 +24,8 @@ export interface PeticionEdicion extends PeticionImagen {
   base: Buffer;
   /** PNG del mismo tamaño: solo se retoca lo transparente (services/png.ts). */
   mascara?: Buffer;
+  /** Referencias adicionales, en el mismo orden que el prompt. */
+  referencias?: Buffer[];
 }
 
 /** Dónde están ojos y boca en un retrato, de 0 a 1 (centro de cada cosa). */
@@ -88,7 +90,7 @@ const openai: Motor = {
         ...(transparente && { background: 'transparent' }),
       }),
     }),
-  editar: ({ prompt, tamano, transparente, calidad, base, mascara }) => {
+  editar: ({ prompt, tamano, transparente, calidad, base, mascara, referencias = [] }) => {
     const form = new FormData();
     form.append('model', transparente ? config.imagen.modeloTransparente : config.imagen.modelo);
     form.append('prompt', prompt);
@@ -97,6 +99,7 @@ const openai: Motor = {
     form.append('output_format', 'png');
     if (transparente) form.append('background', 'transparent');
     form.append('image[]', new Blob([new Uint8Array(base)], { type: 'image/png' }), 'base.png');
+    referencias.forEach((b, i) => form.append('image[]', new Blob([new Uint8Array(b)], { type: 'image/png' }), `referencia-${i + 2}.png`));
     if (mascara) form.append('mask', new Blob([new Uint8Array(mascara)], { type: 'image/png' }), 'mascara.png');
     return llamar('edits', { method: 'POST', body: form });
   },

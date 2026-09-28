@@ -2,6 +2,14 @@
 
 Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.**
 
+## Referencias visuales (28 sep, Codex)
+
+- Biblioteca permite subir PNG/JPG/WebP con nombre y juego. Se guarda copia PNG local en `biblioteca/imagenes/referencias/<juego>/`, con límites de tamaño y validación. No llama a IA al subir.
+- Fondos y avatar: selección explícita de hasta tres referencias con propósito por imagen (estilo/lugar/personaje); miniaturas y selección independiente por escena. También se respeta en la generación del conjunto. Selección temporal del panel, no persistida al recargar.
+- El generador envía los bytes en orden por `images/edits`, con instrucciones por referencia; sin referencias conserva `images/generations`. Modelos y autorizaciones de gasto existentes se mantienen. Notas de API: https://developers.openai.com/api/docs/guides/image-generation
+- Validación: 607 tests, motor y HTTP del proveedor simulados; subida real a servidor aislado y directorio temporal, selección en navegador a 390/1366 px. Capturas `referencias-*-antes/despues.png` en la carpeta habitual. Sin OBS real ni gasto; no se ha evaluado fidelidad artística con una generación pagada.
+- Instrucciones: `biblioteca/imagenes/referencias/README.md`. Reiniciar el bot y recargar el panel cuando el usuario decida aplicar el código.
+
 ## Peticiones a IA: juegos y avatares (28 sep, Codex)
 
 Corregida una interferencia restante: con descripción propia, fondos y avatares ya no añaden la temática del estilo del panel. Avatar tampoco reescribe la petición con `detallar`. Petición literal primero; edad, juego, especie y proporciones explícitos tienen prioridad. Los estilos predefinidos siguen aplicándose a descripciones vacías. Se mantiene el encuadre técnico del avatar. 604 tests aprobados, incluido avatar adulto Aniimo y fondo Aden de Lineage 2 con motor simulado. Sin generar imágenes ni gasto; fidelidad visual a juegos no verificada y no garantizable sin referencias. Reiniciar el bot para aplicar código nuevo, cuando Marcos lo decida.

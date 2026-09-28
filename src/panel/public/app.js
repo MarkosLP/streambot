@@ -1536,6 +1536,7 @@ for (const visor of document.querySelectorAll('.ovl-panel-vista')) escalarRotati
 const sinSonido = (url) => `${url}${url.includes('?') ? '&' : '?'}volumen=0`;
 
 async function cargarBiblioteca() {
+  await cargarReferencias();
   let lib;
   try {
     lib = await api('/api/biblioteca');
@@ -1684,6 +1685,8 @@ function pintarEstilos() {
 async function cargarEscenas() {
   try {
     escenas = await api('/api/escenas');
+    await cargarReferencias();
+    if (!document.querySelector('[data-referencias=avatar]')) $('e-avatar-desc').closest('label').after(selectorReferencias('avatar'));
   } catch (err) {
     tostada(err.message === 'no existe' ? 'Reinicia el bot para ver las Escenas (Ctrl+C y npm start)' : err.message, true);
     return;
@@ -1744,7 +1747,7 @@ async function cargarEscenas() {
       generar.disabled = true;
       generar.textContent = '🎨 Generando… (unos 30 s)';
       try {
-        const r = await api('/api/escenas/fondo', { escena: e.tipo, descripcion: descripcion.value, titulo: titulo.value });
+        const r = await api('/api/escenas/fondo', { escena: e.tipo, descripcion: descripcion.value, titulo: titulo.value, referencias: seleccionReferencias(e.tipo) });
         await cargarEscenas();
         const nuevo = escenas.fondos.find((f) => f.ruta === r.ruta);
         tostada(`Fondo nuevo en ${info.nombre}: «${nuevo?.titulo ?? 'sin título'}»`);
@@ -1766,6 +1769,7 @@ async function cargarEscenas() {
       h('details', { class: 'escena-avanzado' }, h('summary', {}, 'Crear un fondo con IA · de pago'),
         h('label', { class: 'campo' }, h('span', {}, 'Qué quieres ver: juego, lugar y ambiente'), descripcion),
         h('p', { class: 'nota' }, 'Tu descripción se envía literal y tiene prioridad sobre el estilo. El nombre de abajo solo sirve para organizar el fondo; no describe la imagen.'),
+        selectorReferencias(e.tipo),
         h('label', { class: 'campo' }, h('span', {}, 'Nombre para guardar en la biblioteca'), titulo),
         h('div', { class: 'escena-botones' }, generar,
           h('span', { class: 'nota' }, escenas.imagenIa ? '1 imagen de pago · requiere confirmación' : 'Generación no configurada'))));
@@ -1916,7 +1920,7 @@ $('e-avatar-generar').addEventListener('click', async (ev) => {
   b.disabled = true;
   b.textContent = '🎨 Creando… (≈1 min)';
   try {
-    const r = await api('/api/escenas/avatar-ia', { descripcion: $('e-avatar-desc').value, titulo: $('e-avatar-titulo').value });
+    const r = await api('/api/escenas/avatar-ia', { descripcion: $('e-avatar-desc').value, titulo: $('e-avatar-titulo').value, referencias: seleccionReferencias('avatar') });
     await cargarEscenas();
     tostada(`Personaje nuevo: «${escenas.personajes.find((p) => p.ruta === r.ruta)?.titulo ?? 'sin nombre'}», ya es el del avatar`);
     $('e-avatar-titulo').value = '';
@@ -2042,8 +2046,8 @@ async function generarTodoEstilo() {
       $('e-estilo-progreso').textContent = paso.avatar
         ? `🎨 Personaje (${i + 1} de ${pasos.length}, ~1 min)…`
         : `🎨 Fondo de ${ESCENAS_INFO[paso.tipo].nombre} (${i + 1} de ${pasos.length})…`;
-      if (paso.avatar) await api('/api/escenas/avatar-ia', { descripcion: $('e-avatar-desc').value, maxImagenes: 7 });
-      else await api('/api/escenas/fondo', { escena: paso.tipo, descripcion: descripcionesFondo[paso.tipo]?.value ?? '', maxImagenes: 1 });
+      if (paso.avatar) await api('/api/escenas/avatar-ia', { descripcion: $('e-avatar-desc').value, referencias: seleccionReferencias('avatar'), maxImagenes: 7 });
+      else await api('/api/escenas/fondo', { escena: paso.tipo, descripcion: descripcionesFondo[paso.tipo]?.value ?? '', referencias: seleccionReferencias(paso.tipo), maxImagenes: 1 });
       await cargarEscenas();
     }
     $('e-estilo-progreso').textContent = '✅ Listo: fondos y personaje nuevos';

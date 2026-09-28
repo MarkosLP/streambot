@@ -1,3 +1,4 @@
+import * as referencias from './referencias.js';
 import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -147,7 +148,7 @@ async function variantes(base: Buffer, errante: { cerrados: string; contento: st
  * Crea un personaje nuevo (tres imágenes) con su nombre (el que pongas, o uno
  * sacado de la descripción). Devuelve su carpeta ('imagenes/avatar/…').
  */
-export async function generar(descripcion: string, estilo: Estilo = POR_DEFECTO, dir = DIR_BIBLIOTECA, titulo = ''): Promise<string> {
+export async function generar(descripcion: string, estilo: Estilo = POR_DEFECTO, dir = DIR_BIBLIOTECA, titulo = '', refs: referencias.Seleccion[] = [], dirReferencias = dir): Promise<string> {
   const a = info(estilo).avatar;
   const que = descripcion.trim().slice(0, 600) || a.descripcion;
   // Lo que pides, primero y concretado (como en fondos.ts): si no, el estilo pesa más.
@@ -156,7 +157,7 @@ export async function generar(descripcion: string, estilo: Estilo = POR_DEFECTO,
   const direccion = descripcion.trim()
     ? 'Follow the requested game or franchise visual identity, age, species, proportions, clothing and colors. The original request has priority. Do not replace a named game with generic fantasy, invent canonical details, or turn an adult into a child or chibi. If no style is specified, choose a coherent finish without adding a different theme.'
     : `Art style: ${a.estilo}`;
-  const base = await imagen.generar({ prompt: `${personaje}\n${direccion}\n${ENCUADRE}`, tamano: '1024x1024', transparente: true });
+  const base = await referencias.generar({ prompt: `${personaje}\n${direccion}\n${ENCUADRE}`, tamano: '1024x1024', transparente: true }, refs, dirReferencias);
   const { medio, cerrados, contento, zonas, dudosas } = await variantes(base);
   const nombre = `${estilo}-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
   const destino = join(carpeta(dir), nombre);

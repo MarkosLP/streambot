@@ -1,3 +1,4 @@
+import * as referencias from './referencias.js';
 import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -57,10 +58,10 @@ const carpeta = (dir: string) => join(dir, 'imagenes', 'fondos');
  * Genera un fondo y lo guarda con su título (el que pongas, o uno sacado de la
  * descripción). Devuelve su ruta en la biblioteca ('imagenes/fondos/…').
  */
-export async function generar(escena: EscenaFondo, descripcion: string, estilo: Estilo = POR_DEFECTO, dir = DIR_BIBLIOTECA, titulo = ''): Promise<string> {
+export async function generar(escena: EscenaFondo, descripcion: string, estilo: Estilo = POR_DEFECTO, dir = DIR_BIBLIOTECA, titulo = '', refs: referencias.Seleccion[] = [], dirReferencias = dir): Promise<string> {
   const que = descripcion.trim().slice(0, 600) || info(estilo).descripciones[escena];
   // Sin reescritura intermedia: puede sustituir un lugar concreto por uno inventado.
-  const png = await imagen.generar({ prompt: prompt(escena, descripcion, estilo), tamano: '1920x1088' });
+  const png = await referencias.generar({ prompt: prompt(escena, descripcion, estilo), tamano: '1920x1088' }, refs, dirReferencias);
   await mkdir(carpeta(dir), { recursive: true });
   const nombre = `${estilo}-${escena}-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.png`;
   await writeFile(join(carpeta(dir), nombre), png);
