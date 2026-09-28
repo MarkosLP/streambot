@@ -127,7 +127,7 @@ Crid4m: «ya será lo último en secciones, lo demás será seguir mejorando lo 
 
 1. **Reinicia el bot** (sin estar en directo): trae los efectos conectados y `!purificar`.
 2. ~~Puntos de canal e iconos de las recompensas~~ **Hecho el 26 sep.** Las recompensas ya estaban en Twitch; solo hubo que ponerles icono. No se rehicieron, así que no cambia ningún id.
-3. **Subir los paneles** de `biblioteca/imagenes/twitch/paneles/` (Comandos, Recompensas, Loot). Cómo, en `docs/paneles/README.md`.
+3. **Subir los paneles** de `biblioteca/imagenes/twitch/paneles/` (Comandos, Recompensas, Loot y Jefes; JPG, pintados con IA el 28 sep). Cómo, en `docs/paneles/README.md`.
 4. **Probar el Loot con dos personas**: `crid4n` desde el móvil escribe en el chat; probar `!duelo`, un Grito de guerra con directo abierto y una Maldición seguida de un duelo.
 
 ### Cosas a tener en cuenta
@@ -335,7 +335,7 @@ O simplemente `!estado` en el chat.
 | `docs/05-NOTAS-PARA-EL-MOTOR.md` | Por qué el motor es como es |
 | `docs/06-DISENO-XP-Y-LOGROS.md` | El diseño de XP y por qué NO se construyó |
 | `docs/07-EFECTOS-CANAL.md` | **Nuevo.** La moneda Oro, precios y la guía paso a paso de los efectos |
-| `docs/paneles/` | Los paneles de Twitch (Comandos, Recompensas, Loot) y cómo regenerarlos |
+| `docs/paneles/` | Los paneles de Twitch (pintados con IA): cómo subirlos y cómo rehacer uno |
 
 - **Fondos y personajes hacen caso a lo que pides** (27 sep): «Giran de día con gente» salió de noche y vacío. Ahora la descripción va primero y manda sobre el estilo, y antes de pintar gpt-5-mini la pasa a inglés concretando cómo es el sitio o personaje del juego (`ia-imagen.detallar`, menos de 1 céntimo). Si falla, se usa tu texto tal cual.
 

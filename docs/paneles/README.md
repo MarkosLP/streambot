@@ -2,39 +2,41 @@
 
 Los paneles que van **debajo del directo**, en la pestaña Acerca de: Comandos, Recompensas, Loot del chat y Jefes de raid.
 
-`paneles.html` es la fuente. Los PNG salen a `biblioteca/imagenes/twitch/paneles/`, a 640 px de ancho (el doble de los 320 que enseña Twitch, para que se vean nítidos en pantallas con zoom).
+Desde el 28 sep 2026 están **pintados enteros con IA** (gpt-image-2, calidad `high`, estilo taberna del gremio), texto incluido. Los finales están en `biblioteca/imagenes/twitch/paneles/`: JPG de 640 px de ancho (el doble de los 320 que enseña Twitch, para que se vean nítidos en pantallas con zoom).
+
+**Twitch no deja subir imágenes de panel de más de 1 MB.** Por eso van en JPG: en PNG, incluso a 640 px, la pintura pasa de 1 MB; en JPG de calidad 92 pesan ~300-400 KB y no se nota la diferencia en el texto.
+
+El panel antiguo, hecho con HTML y CSS (`paneles.html`), sigue en el historial de git si alguna vez hace falta.
 
 ## Subirlos
 
 En tu canal de Twitch → **Acerca de** → **Editar paneles** → **+** → **Añadir panel de texto o imagen**:
 
 1. **Título**: vacío (la imagen ya lo lleva).
-2. **Imagen**: el PNG.
+2. **Imagen**: el JPG.
 3. **Descripción**: opcional. Twitch la pone debajo de la imagen.
 
-Orden recomendado: `comandos.png`, `recompensas.png`, `loot.png`, `jefes.png`.
+Orden recomendado: `comandos.jpg`, `recompensas.jpg`, `loot.jpg`, `jefes.jpg`.
 
-## Regenerarlos
+## Rehacer uno
 
-Si cambia un comando o un precio, se cambia en `paneles.html` y se regeneran. Desde la raíz del proyecto, en Git Bash (hace falta ImageMagick):
+Si cambia un comando, un precio o un jefe, hay que volver a pintar **ese** panel. Cada imagen cuesta dinero (OpenAI): se genera solo el que cambia.
 
-```bash
-EDGE="/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
-"$EDGE" --headless=new --disable-gpu --hide-scrollbars --window-size=320,1730 \
-  --force-device-scale-factor=2 --screenshot="$(cygpath -w $PWD)\\hoja-paneles.png" \
-  "file:///$(cygpath -m $PWD)/docs/paneles/paneles.html"
-y=0
-for p in comandos:490 recompensas:420 loot:425 jefes:395; do
-  n=${p%%:*}; h=${p##*:}
-  magick hoja-paneles.png -crop 640x$((h*2))+0+$((y*2)) +repage -strip \
-    -define png:compression-level=9 PNG24:"biblioteca/imagenes/twitch/paneles/$n.png"
-  y=$((y+h))
-done
-rm hoja-paneles.png
-```
+1. Cambia el texto en `generar-panel.mts` (`PANELES`). Los comandos son los de `src/interactions/loot/comandos.ts` (`LISTA`); los precios, los de `src/panel/efectos.ts`; los jefes, los de `src/interactions/loot/jefe.ts`.
+2. Desde la raíz del proyecto: `npx tsx docs/paneles/generar-panel.mts comandos` (o `recompensas`, `loot`, `jefes`). Deja el original (~3 MB) y su prompt en `biblioteca/imagenes/twitch/paneles-ia/`.
+3. **Revisa el texto letra a letra.** El modelo casi nunca se equivoca, pero si lo hace, se repite.
+4. Solo en **Jefes**: el modelo se inventa los retratos. Se tapan con los nuestros (`biblioteca/imagenes/jefes/`, los del overlay), sin gastar nada:
+   ```bash
+   node docs/paneles/anillos.mjs <jefes-original.png>      # centros de los 10 círculos
+   # copia esos centros en poner-jefes.sh (línea «set --») y:
+   bash docs/paneles/poner-jefes.sh <jefes-original.png> <jefes-con-retratos.png>
+   ```
+5. Reduce a JPG para Twitch y borra los originales:
+   ```bash
+   magick <original.png> -filter Lanczos -resize 640x -strip -quality 92 -sampling-factor 4:4:4 biblioteca/imagenes/twitch/paneles/<panel>.jpg
+   rm -r biblioteca/imagenes/twitch/paneles-ia
+   ```
 
-Las alturas (`490`, `420`, `425`, `395`) son las `--alto` de cada panel en `paneles.html`, en el mismo orden, y `--window-size` es su suma. Si cambias una, cambia las tres cosas. A veces Edge tarda un segundo en escribir la captura: si `magick` dice que no encuentra `hoja-paneles.png`, vuelve a lanzarlo.
+`prompts/` guarda el prompt exacto de cada panel actual (modelo, calidad, tamaño y fecha), para saber de dónde salió cada uno.
 
-Los retratos del panel de jefes son los del overlay (`biblioteca/overlays/jefe.html`, `TEMAS`), con los identificadores de sus degradados cambiados por jefe (`r-ojo` → `arana-ojo`) para que no se pisen en la misma página. Si cambias un retrato allí, cópialo aquí igual.
-
-**No reducir a 256 colores** (`-colors 256`, PNG8): pesan menos, pero los degradados y la textura del fondo se llenan de grano. Se probó el 27 sep y hubo que rehacerlos. A 640 px de ancho y a todo color pesan unos 600 KB cada uno.
+`generar-panel.mts comandos luminosa` hace la variante «aventura luminosa» (islas flotantes, cielo azul) que se probó el 28 sep; se eligió la taberna.
