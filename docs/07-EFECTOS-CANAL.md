@@ -56,7 +56,7 @@ necesitan un plugin gratuito.
 | 2 | **Poción de vida** | 500 | 10 min · máx. 2 por persona | Aparece "¡Bebe agua!" 5 s en pantalla | Nada |
 | 3 | **Maldición** | 2.500 | 20 min · máx. 2 por directo, 1 por persona | La pantalla se queda en blanco y negro 10 s | Nada |
 | 4 | **Terremoto** | 3.000 | 20 min · máx. 2 por directo, 1 por persona | La imagen del juego tiembla 5 s y sale un jefe de raid (si ya hay uno, le cae el techo) | Nada (lo hace el bot) |
-| 5 | **Lag** | 5.000 | 30 min · máx. 1 por directo | La imagen se congela 5 s | Plugin *Freeze Filter* |
+| 5 | **Lag** | 5.000 | 30 min · máx. 1 por directo | La imagen se congela 5 s y el tiempo también: el reloj del jefe se para 30 s o, sin jefe, el próximo cofre cae en 30 s | Plugin *Freeze Filter* |
 | — | **Cofre del tesoro** | 1.500 | 5 min · máx. 2 por persona | Abre un cofre del Loot | Nada (lo abre el bot) |
 
 Los plugins 4 y 5 son de Exeldro, gratuitos y de uso muy extendido. Déjalos para
@@ -178,6 +178,11 @@ cuarto de su vida máxima a nombre de quien canjea (cuenta para el MVP).
 
 Con **Freeze Filter** instalado, se añade el filtro **Freeze** a la fuente del
 juego, y se activa y desactiva como en 6.2 con un Delay de 5 s.
+
+Desde el 28 sep 2026 tiene también su lado del Loot (solo con el directo
+marcado): **congela el tiempo**. Con un jefe en pie, su reloj se para 30 s
+(en la barra de OBS también) y todos siguen pegando. Sin jefe, el próximo
+cofre cae en 30 s para quien esté en el chat (nunca lo retrasa).
 
 ---
 

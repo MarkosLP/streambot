@@ -100,6 +100,8 @@
   }
   .reloj.prisa { color: #ff5a4a; animation: late .6s ease-in-out infinite; }
   @keyframes late { 50% { transform: scale(1.12); } }
+  /* El Lag para el reloj (28 sep 2026): frío y quieto, aunque quede poco. */
+  .reloj.congelado { color: #8fe3ff; animation: none; text-shadow: 0 2px 0 #000, 0 0 14px rgba(80, 200, 255, .8); }
 
   .marco {
     position: absolute; left: 150px; right: 0; top: 64px; height: 52px;
@@ -1073,7 +1075,8 @@
       $('vida').style.width = `${pct}%`;
       $('rastro').style.width = `${pct}%`;
       $('cifra').textContent = `${j.vida} / ${j.vidaMax}`;
-      $('reloj').textContent = `⏳ ${mmss(j.quedanSeg)}`;
+      $('reloj').textContent = `${j.congelado ? '📶' : '⏳'} ${mmss(j.quedanSeg)}`;
+      $('reloj').classList.toggle('congelado', Boolean(j.congelado));
       $('reloj').classList.toggle('prisa', j.quedanSeg <= 30);
       $('jefe').classList.toggle('critica', pct <= 25);
       for (const g of j.golpes) if (g.n > visto) { numero(g); visto = g.n; }

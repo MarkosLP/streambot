@@ -434,6 +434,29 @@ async function main(): Promise<void> {
     return mezcla.length;
   });
 
+  // 28 sep 2026: el Lag congela el reloj del jefe 30 s.
+  await prueba('Lag: dos canjes a la vez en plena pelea, con terremotos', async (fallos, notas) => {
+    streams.open();
+    await aLaVez(GENTE.map((p) => mensaje(p, 'hola')), 0);
+    await jefe.invocar({ tipo: 'kraken' });
+    const antes = jefe.estado()!.quedanSeg;
+    const mezcla: Evento[] = [canje('ana', 'Lag'), canje('luis', 'Lag'), canje('pepe', 'Terremoto')];
+    for (const p of GENTE) mezcla.push(mensaje(p, '!atacar'));
+    await aLaVez(mezcla, 300);
+    const e = jefe.estado();
+    const congelados = enviados.filter((x) => x.texto.includes('congela el tiempo')).length;
+    if (congelados !== 2) fallos.push(`${congelados} mensajes de congelar (debían ser 2)`);
+    if (e) {
+      // Dos Lags: la parada se alarga, 60 s en total; mientras, el reloj no baja.
+      const quieto = jefe.estado(Date.now() + 45_000)!.quedanSeg;
+      if (Math.abs(quieto - e.quedanSeg) > 1) fallos.push(`a los 45 s el reloj ha bajado de ${e.quedanSeg} a ${quieto}: la segunda parada no se sumó`);
+      if (e.quedanSeg < antes - 2) fallos.push(`el reloj bajó de ${antes} a ${e.quedanSeg} estando congelado`);
+      notas.push(`${e.nombre}: reloj parado en ${e.quedanSeg} s, vida ${e.vida}/${e.vidaMax}`);
+    } else notas.push('el jefe cayó durante la prueba');
+    jefe.reset();
+    return mezcla.length;
+  });
+
   await prueba('Efectos a la vez: 3 Gritos, 2 Maldiciones y 2 Pociones', async (fallos, notas) => {
     streams.open();
     await aLaVez(GENTE.map((p) => mensaje(p, 'hola')), 0);

@@ -106,9 +106,18 @@ interface Jefe {
   bloqueos: Map<string, { hasta: number; icono: string; texto: string }>;
   debiles: Map<string, { hasta: number; factor: number }>;
   fallan: Set<string>;
+  /** El Lag para su reloj hasta aquí (quedanSeg se queda quieto mientras). */
+  congeladoHasta?: number;
 }
 
 let jefe: Jefe | null = null;
+
+/** Los segundos que le quedan, contando la parada del Lag si la hay. */
+function quedan(j: Jefe, now: number): number {
+  // Mientras está parado, lo que quedará al volver a andar: no baja.
+  const desde = j.congeladoHasta && now < j.congeladoHasta ? j.congeladoHasta : now;
+  return Math.max(0, Math.round((j.hasta - desde) / 1000));
+}
 let contador = 0;
 let golpesTotales = 0;
 let especialesTotales = 0;
@@ -214,8 +223,8 @@ export const atacar: Interaction<CtxComando> = {
     if (especial) mensajes.push(especial);
     if (!j.avisoMitad && j.vida <= j.vidaMax / 2) {
       j.avisoMitad = true;
-      const quedan = Math.max(0, Math.round((j.hasta - now) / 1000));
-      mensajes.push(`💥 ¡${mayuscula(j.nombre)} está a la mitad (${j.vida}/${j.vidaMax})! Quedan ${quedan} s: ¡!atacar!`);
+      const restan = quedan(j, now);
+      mensajes.push(`💥 ¡${mayuscula(j.nombre)} está a la mitad (${j.vida}/${j.vidaMax})! Quedan ${restan} s: ¡!atacar!`);
     }
     return mensajes.length ? { text: mensajes.join(' ') } : null;
   },
@@ -258,6 +267,25 @@ export const hayJefe = () => jefe !== null;
 // La recompensa solo hacía temblar la imagen, y costaba más que la Maldición.
 // Ahora el suelo se abre y sale un jefe para todo el chat; si ya hay uno en
 // pie, le cae el techo encima, a nombre de quien lo canjea.
+
+/** Lo que para el Lag el reloj del jefe (28 sep 2026). */
+export const CONGELA_MS = 30_000;
+
+/**
+ * El Lag con un jefe en pie: su reloj se para CONGELA_MS (en la barra de OBS
+ * también: quedanSeg no baja) y se alarga lo mismo. Si ya estaba parado, se
+ * alarga la parada. Devuelve los segundos que quedarán, o null sin jefe.
+ */
+export function congelarReloj(now = Date.now()): { nombre: string; quedanSeg: number } | null {
+  const j = jefe;
+  if (!j) return null;
+  j.hasta += CONGELA_MS;
+  j.congeladoHasta = Math.max(now, j.congeladoHasta ?? 0) + CONGELA_MS;
+  if (reloj) clearTimeout(reloj);
+  reloj = setTimeout(() => void terminarPorTiempo(), Math.max(0, j.hasta - now));
+  reloj.unref?.();
+  return { nombre: j.nombre, quedanSeg: quedan(j, now) };
+}
 
 export const NAME_TERREMOTO = 'loot-terremoto';
 /** Lo que quita el derrumbe: una parte de la vida máxima del jefe. */
@@ -415,7 +443,9 @@ export function paraOverlay(now = Date.now()) {
         nombre: jefe.nombre,
         vida: jefe.vida,
         vidaMax: jefe.vidaMax,
-        quedanSeg: Math.max(0, Math.round((jefe.hasta - now) / 1000)),
+        quedanSeg: quedan(jefe, now),
+        // El Lag: el reloj de la barra cambia ⏳ por 📶 mientras está parado.
+        congelado: Boolean(jefe.congeladoHasta && now < jefe.congeladoHasta),
         golpes: jefe.golpes,
         especial: jefe.especial && now - jefe.especial.at < CARTEL_ESPECIAL_MS ? jefe.especial : null,
         afectados: afectados(jefe, now),
@@ -438,7 +468,7 @@ export function estado(now = Date.now()) {
     nombre: jefe.nombre,
     vida: jefe.vida,
     vidaMax: jefe.vidaMax,
-    quedanSeg: Math.max(0, Math.round((jefe.hasta - now) / 1000)),
+    quedanSeg: quedan(jefe, now),
     atacantes: ranking(jefe).map((d) => ({ quien: d.viewer.displayName, dano: d.dano })),
   };
 }

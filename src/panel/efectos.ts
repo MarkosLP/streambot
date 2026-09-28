@@ -176,7 +176,7 @@ export const EFECTOS: Efecto[] = [
     cooldownSeg: 1800,
     maxPorDirecto: 1,
     maxPorPersona: 1,
-    queHace: 'La imagen del juego se congela 5 segundos, como si fuera lag de verdad.',
+    queHace: 'La imagen del juego se congela 5 segundos, como si fuera lag de verdad. Y el bot congela el tiempo: si hay jefe, su reloj se para 30 s; si no, el próximo cofre cae en 30 s.',
     necesita: 'Plugin Freeze Filter (Exeldro)',
     material: ['sonidos/lag.wav'],
     obs: {

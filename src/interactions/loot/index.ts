@@ -544,6 +544,8 @@ export function presente(viewer: Viewer): void {
 const SIN_DIRECTO = 'sin directo marcado no caen cofres (panel → Loot → El directo ya ha empezado)';
 /** El del Terremoto (jefe.ts): sin directo no sale ningún jefe. */
 export const SIN_DIRECTO_JEFE = 'sin directo marcado no salen jefes (panel → Loot → El directo ya ha empezado)';
+/** El del Lag (interactions/lag.ts): sin directo no hay reloj que congelar ni cofre que adelantar. */
+export const SIN_DIRECTO_LAG = 'sin directo marcado no hay jefe ni cofre que congelar (panel → Loot → El directo ya ha empezado)';
 
 /**
  * Por qué el canje de un efecto no hará nada en el Loot ahora mismo, o null.
@@ -551,11 +553,11 @@ export const SIN_DIRECTO_JEFE = 'sin directo marcado no salen jefes (panel → L
  * para decirte por qué no ha pasado nada (28 sep 2026).
  */
 export function motivoEfectoParado(efecto: string, twitchId: string): string | null {
-  // El Lag no tiene lado del Loot: nunca hay nada que explicar.
-  if (!['grito', 'maldicion', 'pocion', 'terremoto'].includes(efecto)) return null;
+  if (!['grito', 'maldicion', 'pocion', 'terremoto', 'lag'].includes(efecto)) return null;
   if (!ajustes.lootActivo()) return 'el Loot está apagado';
   if (efecto === 'grito' && !streams.current()) return SIN_DIRECTO;
   if (efecto === 'terremoto' && !streams.current()) return SIN_DIRECTO_JEFE;
+  if (efecto === 'lag' && !streams.current()) return SIN_DIRECTO_LAG;
   if (efecto === 'pocion' && !lootDb.tieneMaldito(twitchId)) return 'no llevas nada maldito, así que la Poción no ofrece !purificar';
   return null;
 }
@@ -724,6 +726,15 @@ let proximo: number | null = null;
 let ultimoCofre: number | null = null;
 /** Quién lanzó el Grito de guerra que ha convertido el próximo cofre en uno de guerra. */
 let cofreDeGuerra: string | null = null;
+
+/**
+ * El Lag sin jefe (28 sep 2026): el próximo cofre cae en `ms`, o antes si ya
+ * tocaba antes (nunca lo retrasa). Devuelve en cuántos segundos cae.
+ */
+export function adelantarCofre(ms: number, now = Date.now()): number {
+  if (!proximo || proximo - now > ms) programarEn(ms);
+  return Math.max(0, Math.round((proximo! - now) / 1000));
+}
 
 /** Cambia cuándo cae el próximo cofre. Lo usa el Grito de guerra para adelantarlo. */
 function programarEn(ms: number): void {

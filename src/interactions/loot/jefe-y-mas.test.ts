@@ -559,3 +559,45 @@ describe('🌋 el Terremoto trae un jefe', () => {
     assert.equal(fila?.detail, loot.SIN_DIRECTO_JEFE);
   });
 });
+
+// 28 sep 2026: el Lag no hacía nada en el Loot.
+describe('📶 el Lag congela el tiempo', () => {
+  test('con un jefe en pie, su reloj se para 30 s y luego se alarga lo mismo', async () => {
+    streams.open();
+    const t0 = Date.now();
+    await jefe.invocar({ now: t0 });
+    const antes = jefe.estado(t0)!.quedanSeg;
+    enviados = [];
+    await handleEvent(canje('ana', 'Lag'));
+    assert.match(enviados[0]!, /^📶 ¡El lag de ana congela el tiempo! El reloj (del [A-ZÁÉÍÓÚ]|de la ).+ se para 30 s/);
+    assert.doesNotMatch(enviados[0]!, /de el /);
+    // Parado: pasen 10 s o 25 s, le queda lo mismo.
+    const parado = jefe.estado(Date.now() + 10_000)!.quedanSeg;
+    assert.equal(jefe.estado(Date.now() + 25_000)!.quedanSeg, parado);
+    assert.ok(Math.abs(parado - antes) <= 1, `parado en ${parado}, tenía ${antes}`);
+    // Al volver a andar, baja otra vez.
+    assert.ok(jefe.estado(Date.now() + 40_000)!.quedanSeg < parado);
+    assert.equal(jefe.paraOverlay(Date.now() + 10_000).jefe?.quedanSeg, parado);
+  });
+
+  test('sin jefe, el próximo cofre cae en 30 s', async () => {
+    streams.open();
+    await handleEvent(canje('ana', 'Lag'));
+    assert.match(enviados[0]!, /^📶 ¡El lag de ana descoloca el reloj del servidor! El próximo cofre cae en 30 s/);
+    assert.ok(loot.estado().proximoEnSeg! <= 30);
+  });
+
+  test('si el cofre ya iba a caer antes, no lo retrasa', async () => {
+    streams.open();
+    await handleEvent(canje('ana', 'Lag'));
+    const primero = loot.estado().proximoEnSeg!;
+    await handleEvent(canje('luis', 'Lag'));
+    assert.ok(loot.estado().proximoEnSeg! <= primero);
+  });
+
+  test('sin directo marcado no hace nada, y queda en el registro por qué', async () => {
+    await handleEvent(canje('ana', 'Lag'));
+    assert.deepEqual(enviados, []);
+    assert.equal(interactionLog.all().find((f) => f.interaction === 'loot-lag')?.detail, loot.SIN_DIRECTO_LAG);
+  });
+});

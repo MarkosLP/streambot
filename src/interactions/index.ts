@@ -3,6 +3,7 @@ import * as preguntaIa from './pregunta-ia.js';
 import * as preguntaIncomoda from './pregunta-incomoda.js';
 import * as loot from './loot/index.js';
 import * as terremoto from './terremoto.js';
+import * as lag from './lag.js';
 
 /**
  * Registro de interacciones de Channel Point.
@@ -28,4 +29,6 @@ export const channelPoint: ChannelPointBinding[] = [
   ...loot.efectosBindings,
   // Terremoto: el temblor de la imagen lo hace el bot. El sonido, Streamer.bot.
   terremoto.channelPointBinding,
+  // Lag: la imagen la congela Streamer.bot; el bot congela el reloj del jefe.
+  lag.channelPointBinding,
 ];
