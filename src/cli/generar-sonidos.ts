@@ -8,7 +8,8 @@
  * gusta se retoca aquí y se vuelve a generar.
  *
  * Si prefieres un sonido de verdad, déjalo en la misma carpeta con el mismo
- * nombre y no vuelvas a ejecutar esto: lo pisaría.
+ * nombre y añádelo a GRABADOS (abajo): así esto no lo pisa. Desde el 28 sep
+ * 2026 solo la poción sigue siendo sintetizada.
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -471,10 +472,22 @@ const SONIDOS: Record<string, () => Senal> = {
  */
 const VOLUMEN: Record<string, number> = { terremoto: 0.7, lag: 0.7 };
 
+/**
+ * Los que ya son grabaciones de verdad (28 sep 2026, Freesound CC0; de dónde
+ * sale cada uno, en docs/SONIDOS.md): sintetizados quedaban «muy cutres o
+ * básicos». Se siguen calculando, para no mover el azar de los demás, pero no
+ * se escriben: esto los pisaría.
+ */
+const GRABADOS = new Set(['grito-de-guerra', 'maldicion', 'terremoto', 'lag', 'cofre', 'legendario']);
+
 mkdirSync(DESTINO, { recursive: true });
 for (const [nombre, generar] of Object.entries(SONIDOS)) {
   const inicio = Date.now();
   const senal = generar();
+  if (GRABADOS.has(nombre)) {
+    console.log(`${nombre}.wav · es una grabación (docs/SONIDOS.md): no se toca`);
+    continue;
+  }
   const vol = VOLUMEN[nombre] ?? 1;
   if (vol !== 1) for (let i = 0; i < senal.length; i++) senal[i] *= vol;
   const archivo = new URL(`${nombre}.wav`, DESTINO);
