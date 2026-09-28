@@ -3,6 +3,7 @@ import { log, captureRaw } from './logger.js';
 import { esBot } from './bots.js';
 import {
   describe,
+  describePrivado,
   type DomainEvent,
   type Viewer,
   type ViewerMessageEvent,
@@ -57,7 +58,7 @@ function isIgnored(viewer: Viewer): boolean {
 }
 
 export async function handleEvent(event: DomainEvent): Promise<void> {
-  log.info(`<${event.type}> ${describe(event)}`);
+  log.evento(`<${event.type}> ${describe(event)}`, `<${event.type}> ${describePrivado(event)}`);
   log.debug('evento normalizado', event);
 
   if (event.type === 'raw') {

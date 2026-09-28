@@ -1,5 +1,5 @@
 import { config } from './config.js';
-import { log } from './core/logger.js';
+import { activarArchivo, log } from './core/logger.js';
 import * as killswitch from './core/killswitch.js';
 import * as ajustes from './core/ajustes.js';
 import { setSender } from './core/output.js';
@@ -34,6 +34,8 @@ let panelServer: Server | null = null;
  */
 
 async function main(): Promise<void> {
+  // Lo primero: que el arranque también quede en logs/bot-AAAA-MM-DD.log.
+  activarArchivo();
   log.info('CRID4M Interaction System — Fase 5');
   log.info(`Dueño del canal: ${config.broadcasterLogin} · Interruptor: ${killswitch.status()}`);
 

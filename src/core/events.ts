@@ -494,3 +494,24 @@ export function describe(event: DomainEvent): string {
       return `evento sin normalizar: ${event.eventName}`;
   }
 }
+
+/**
+ * `describe` para el registro en disco (28 sep 2026): sin lo que escribe la
+ * gente. De un comando queda el comando y sus argumentos cortos (`!duelo
+ * ana`, `!dar ana 2`), que es lo que hace falta para saber qué pasó; de la
+ * charla y de lo escrito en un canje, solo cuánto ocupaba.
+ */
+export function describePrivado(event: DomainEvent): string {
+  if (event.type === 'viewer.message') {
+    const texto = event.text.trim();
+    if (!texto.startsWith('!')) return `${event.viewer.displayName}: (mensaje de ${texto.length} caracteres)`;
+    const [comando = '', ...resto] = texto.split(/\s+/);
+    const args = resto.join(' ');
+    return `${event.viewer.displayName}: ${comando}${args.length > 24 ? ` (${args.length} caracteres más)` : args ? ` ${args}` : ''}`;
+  }
+  if (event.type === 'viewer.redeem') {
+    return `${event.viewer.displayName} canjeó "${event.rewardTitle}" (${event.rewardCost} pts)` +
+      (event.userInput ? ` -> (${event.userInput.length} caracteres)` : '');
+  }
+  return describe(event);
+}
