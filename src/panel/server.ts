@@ -133,14 +133,15 @@ export async function arrancar(sb: PuertoStreamerbot): Promise<Server | null> {
 }
 
 /**
- * La música en automático va con la escena de OBS en emisión: se pregunta
- * cada 3 s, pero solo mientras la fuente de música esté abierta en OBS y el
- * modo sea automático (si no, no hace falta molestar a OBS).
+ * La música depende de la escena de OBS en emisión: suena solo en las
+ * escenas marcadas (y, en automático, cambia de lista). Se pregunta cada 3 s,
+ * pero solo mientras la fuente de música esté abierta en OBS y haga falta.
  */
 function vigilarEscenaParaMusica(obs: ConObs): void {
   let mirando = false;
   setInterval(async () => {
-    if (mirando || !musica.overlayActivo() || musica.leerAjustes().modo !== 'auto') return;
+    const a = musica.leerAjustes();
+    if (mirando || !musica.overlayActivo() || (a.modo !== 'auto' && !a.escenas.length)) return;
     mirando = true;
     try {
       const r = await obs((pedir) => pedir<{ currentProgramSceneName?: string; sceneName?: string }>('GetCurrentProgramScene'));

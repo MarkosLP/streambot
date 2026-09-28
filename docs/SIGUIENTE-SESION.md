@@ -16,7 +16,8 @@ Hecho en la rama `codex-fase2` (Codex por la mañana + Claude después) y pasado
 - **Lag** → congela el tiempo: con jefe, su reloj se para 30 s (en la barra ⏳ pasa a 📶 en azul y no baja); sin jefe, el próximo cofre cae en 30 s (nunca lo retrasa).
 - **Registro del bot en disco**: `logs/bot-AAAA-MM-DD.log`, 14 días. Sin lo que escribe la gente (de la charla, cuánto ocupaba; de un comando, el comando y sus argumentos cortos). Lo primero que mirar si algo «no hizo nada».
 - **Laboratorio**: escenarios nuevos (terremotos a la vez y en plena pelea, Lags, Gritos + Maldiciones + Pociones a la vez) y comprobación del orden de los mensajes.
-- **Quitado**: el botón «⚡ Optimizar las fuentes en OBS». **Música: no tocar**; Crid4m la pone de fondo a mano (modo manual).
+- **Quitado**: el botón «⚡ Optimizar las fuentes en OBS».
+- **Música, más simple** (a petición: «molesto tener que ir abajo del todo»): arriba, un desplegable para elegir canción (o al azar de una carpeta), ▶, ⏭ y un solo volumen; al lado, «Dónde suena» con las escenas de OBS en casillas: fuera de las marcadas se calla con un fundido y al volver sigue donde iba (`escenas` en los ajustes de `musica`; sin ninguna, suena en todas). Las instrucciones, plegadas abajo. El panel ya no ofrece el modo automático ni el mapa por escena (el código sigue, por si alguien lo tenía guardado); por defecto, manual. No volver a complicarla.
 - Por qué el Grito «no hacía nada» el 27: nadie lo canjeó; se lanzó con «Probar» (log de Streamer.bot en `C:\StreamerBot\logs`: `TwitchRewardRedemption` = canje real, `with 7 arguments` = a mano).
 
 **Lo siguiente**: reiniciar el bot, subir los 4 JPG, y la prueba real con `crid4n` desde el móvil (duelo, Grito con directo, Maldición + duelo, Terremoto, Lag contra un jefe). Todo está ya en `master` (28 sep). Sin probar aún con Twitch de verdad: follows, subs, emotes del chat en pantalla y avisos de moderación.

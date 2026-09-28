@@ -593,20 +593,20 @@
       </article>
     </section>
 
-    <!-- MÚSICA -->
+    <!-- MÚSICA (28 sep 2026: más simple; eliges canción y en qué escenas suena) -->
     <section class="vista" id="v-musica" hidden>
       <header class="cabecera-vista">
         <div>
-          <p class="antetitulo">Empezamos · Pausa · Final · De fondo</p>
+          <p class="antetitulo">De fondo, cuando tú quieras</p>
           <h1>Música</h1>
-          <p class="nota">Música libre de derechos para el directo, con una lista para cada momento. En automático cambia sola con la escena de OBS.</p>
+          <p class="nota">Elige una canción (o al azar de una carpeta) y dale al play. Suena solo en las escenas que marques.</p>
         </div>
-        <button class="boton" id="m-releer" type="button">Volver a leer las carpetas</button>
       </header>
 
       <div class="dos-col musica-arriba">
         <article class="tarjeta musica-ahora">
-          <header><h2>🎵 Sonando</h2><span class="nota" id="m-estado"></span></header>
+          <header><h2>🎵 Música</h2><span class="nota" id="m-estado"></span></header>
+          <label class="campo musica-elegir"><span>Canción</span><select id="m-elegir" aria-label="Elegir canción"></select></label>
           <div class="musica-pista">
             <div class="musica-barras" id="m-barras" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
             <div class="musica-textos">
@@ -619,54 +619,39 @@
           <div class="musica-mandos">
             <button class="boton" type="button" id="m-anterior" aria-label="Anterior" title="Anterior">⏮</button>
             <button class="boton primario musica-play" type="button" id="m-play" aria-label="Reproducir o pausar">▶</button>
-            <button class="boton" type="button" id="m-siguiente" aria-label="Siguiente" title="Siguiente">⏭</button>
-            <label class="musica-volumen"><span>🔉</span><input type="range" id="m-volumen" min="0" max="100" step="1" aria-label="Volumen de esta lista"><span id="m-volumen-n" class="nota"></span></label>
+            <button class="boton" type="button" id="m-siguiente" aria-label="Siguiente" title="Siguiente de la misma carpeta">⏭</button>
+            <label class="musica-volumen"><span>🔉</span><input type="range" id="m-volumen" min="0" max="100" step="1" aria-label="Volumen"><span id="m-volumen-n" class="nota"></span></label>
           </div>
           <p class="nota" id="m-aviso-obs"></p>
         </article>
 
         <article class="tarjeta">
-          <header>
-            <h2>🎬 Según la escena</h2>
-            <label class="interruptor-loot" title="La lista la decide la escena de OBS en emisión">
-              <span id="m-modo-texto">Automático</span>
-              <input type="checkbox" class="toggle" id="m-auto">
-            </label>
-          </header>
-          <p class="nota">En automático, al cambiar de escena en OBS cambia la lista (con un fundido) o se calla. En manual manda lo que pulses aquí.</p>
-          <div class="musica-mapa" id="m-mapa"></div>
-          <label class="interruptor-fila"><input type="checkbox" id="m-aviso"> <span>En las escenas del juego, un aviso pequeño con el título al empezar cada canción</span></label>
-        </article>
-      </div>
-
-      <div class="lista-musica" id="m-listas"></div>
-
-      <div class="dos-col">
-        <article class="tarjeta">
-          <header><h2>📥 Meter música</h2></header>
-          <ol class="pasos-musica">
-            <li>Entra en <a href="https://www.streambeats.com/" target="_blank" rel="noopener">streambeats.com</a> (de Harris Heller: gratis y sin avisos de copyright en Twitch ni YouTube) y pulsa <b>Download for Free</b>. Te lleva a <b>Bandcamp</b>: elige un álbum y descárgalo en <b>MP3</b> (si te pide precio, pon <b>0</b>).</li>
-            <li>Descomprime el zip y mete las canciones en la carpeta de cada momento: tranquilas y con ritmo para <b>Empezamos</b>, suaves para <b>Pausa</b>, algo emotivo para <b>Final</b> y lo-fi sin voz para <b>De fondo</b>.</li>
-            <li>Pulsa <b>Volver a leer las carpetas</b>. Título y artista salen del propio mp3.</li>
-          </ol>
-          <div class="escena-botones">
-            <button class="boton" type="button" id="m-abrir">📂 Abrir la carpeta de música</button>
-            <code id="m-carpeta"></code>
-          </div>
-          <p class="nota aviso-sueltas" id="m-sueltas" hidden></p>
-          <p class="nota">Nada de música de YouTube o Spotify: en Twitch trae avisos DMCA y te pueden silenciar los vídeos.</p>
-        </article>
-
-        <article class="tarjeta">
-          <header><h2>🔊 En OBS</h2><span class="nota" id="m-obs-estado"></span></header>
-          <p class="nota">Una sola fuente, <code>MUS Música</code>, compartida por las escenas que marques: al cambiar de escena la canción sigue. Su volumen general está en el mezclador de OBS; y la oyes también por tus cascos.</p>
+          <header><h2>🎬 Dónde suena</h2><span class="nota" id="m-obs-estado"></span></header>
+          <p class="nota" id="m-escenas-nota">Marca las escenas de OBS en las que quieres música. Al pasar a una que no esté marcada se pausa con un fundido y, al volver, sigue donde iba.</p>
           <div class="musica-escenas" id="m-escenas"></div>
           <div class="escena-botones">
-            <button class="boton primario" type="button" id="m-obs">🎬 Añadir la música a estas escenas</button>
+            <button class="boton" type="button" id="m-obs">➕ Poner la fuente de música en las marcadas</button>
           </div>
           <ul class="escena-resultado" id="m-obs-resultado" hidden></ul>
+          <label class="interruptor-fila musica-aviso"><input type="checkbox" id="m-aviso"> <span>Aviso pequeño con el título al empezar cada canción</span></label>
         </article>
       </div>
+
+      <details class="tarjeta musica-meter">
+        <summary><h2>📥 Meter canciones</h2></summary>
+        <ol class="pasos-musica">
+          <li>Entra en <a href="https://www.streambeats.com/" target="_blank" rel="noopener">streambeats.com</a> (de Harris Heller: gratis y sin avisos de copyright en Twitch ni YouTube) y pulsa <b>Download for Free</b>. Te lleva a <b>Bandcamp</b>: elige un álbum y descárgalo en <b>MP3</b> (si te pide precio, pon <b>0</b>).</li>
+          <li>Mete las canciones en una de las carpetas (<b>fondo</b>, <b>inicio</b>, <b>pausa</b> o <b>final</b>): son solo para ordenarlas; al acabar una canción sigue otra al azar de la misma carpeta.</li>
+          <li>Pulsa <b>Volver a leer las carpetas</b>. Título y artista salen del propio mp3.</li>
+        </ol>
+        <div class="escena-botones">
+          <button class="boton" type="button" id="m-abrir">📂 Abrir la carpeta de música</button>
+          <button class="boton" id="m-releer" type="button">Volver a leer las carpetas</button>
+          <code id="m-carpeta"></code>
+        </div>
+        <p class="nota aviso-sueltas" id="m-sueltas" hidden></p>
+        <p class="nota">Nada de música de YouTube o Spotify: en Twitch trae avisos DMCA y te pueden silenciar los vídeos.</p>
+      </details>
     </section>
 
     <!-- TEMAS PARA HABLAR -->

@@ -127,6 +127,9 @@ describe('qué suena', () => {
 });
 
 describe('según la escena de OBS', () => {
+  // Desde el 28 sep la música empieza en manual; el automático sigue para quien lo tuviera.
+  beforeEach(() => { musica.cambiarAjustes({ modo: 'auto' }); });
+
   test('las escenas del panel llevan su lista; las demás, la de fondo; Charla calla', async () => {
     await musica.alCambiarEscena('✦ Empezamos');
     assert.equal(musica.estado().lista, 'inicio');
@@ -170,6 +173,51 @@ describe('según la escena de OBS', () => {
     musica.cambiarAjustes({ aviso: false });
     await musica.alCambiarEscena('Juego');
     assert.equal(musica.paraOverlay().aviso, false);
+  });
+});
+
+// 28 sep 2026: la música, de fondo y a mano, solo en las escenas que marques.
+describe('en las escenas marcadas', () => {
+  test('por defecto está en manual: cambiar de escena no pone ni cambia nada', async () => {
+    await musica.alCambiarEscena('✦ Empezamos');
+    assert.equal(musica.estado().pista, null);
+  });
+
+  test('sin escenas marcadas suena en todas', async () => {
+    await musica.ponerPista('fondo/lofi.mp3');
+    await musica.alCambiarEscena('Juego');
+    assert.equal(musica.paraOverlay().sonando, true);
+    assert.equal(musica.estado().enEscena, true);
+  });
+
+  test('fuera de las marcadas se calla, sin perder la canción; al volver, sigue la misma', async () => {
+    musica.cambiarAjustes({ escenas: ['Juego', '✦ Pausa'] });
+    await musica.ponerPista('fondo/lofi.mp3');
+    const turno = musica.paraOverlay().turno;
+    await musica.alCambiarEscena('Juego');
+    assert.equal(musica.paraOverlay().sonando, true);
+    await musica.alCambiarEscena('✦ Charla');
+    assert.equal(musica.paraOverlay().sonando, false, 'callada en una escena sin marcar');
+    assert.equal(musica.estado().sonando, true, 'pero sigue puesta');
+    assert.equal(musica.estado().enEscena, false);
+    await musica.alCambiarEscena('✦ Pausa');
+    assert.equal(musica.paraOverlay().sonando, true);
+    assert.equal(musica.paraOverlay().pista!.id, 'fondo/lofi.mp3');
+    assert.equal(musica.paraOverlay().turno, turno, 'la misma: el reproductor la retoma donde iba');
+  });
+
+  test('mientras no se sabe la escena (OBS cerrado), suena', async () => {
+    musica.cambiarAjustes({ escenas: ['Juego'] });
+    await musica.ponerPista('fondo/lofi.mp3');
+    assert.equal(musica.paraOverlay().sonando, true);
+  });
+
+  test('las escenas marcadas se guardan, sin repetidas ni basura', () => {
+    musica.cambiarAjustes({ escenas: ['Juego', 'Juego', '', 42, 'x'.repeat(300), '✦ Pausa'] });
+    musica.reset();
+    assert.deepEqual(musica.leerAjustes().escenas, ['Juego', '✦ Pausa']);
+    musica.cambiarAjustes({ escenas: [] });
+    assert.deepEqual(musica.leerAjustes().escenas, [], 'vaciarlas vuelve a «en todas»');
   });
 });
 

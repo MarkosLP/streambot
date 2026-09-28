@@ -178,6 +178,11 @@ export interface Ajustes {
   otras: Destino;
   /** Un aviso pequeño («♪ título — artista») unos segundos al empezar cada canción, en las escenas del juego. */
   aviso: boolean;
+  /**
+   * Las escenas de OBS en las que suena (28 sep 2026). En las demás se pausa
+   * con un fundido y, al volver, sigue donde iba. Vacía: en todas.
+   */
+  escenas: string[];
 }
 
 /** Las escenas que crea el panel (Escenas → Crear en OBS). */
@@ -186,20 +191,27 @@ export const ESCENAS_POR_DEFECTO: Record<string, Destino> = {
 };
 
 const AJUSTES_POR_DEFECTO: Ajustes = {
-  modo: 'auto',
+  // 28 sep 2026: Crid4m la pone a mano («solo cuando quiera»); el panel ya no
+  // ofrece el automático, que sigue aquí para quien lo tuviera guardado.
+  modo: 'manual',
   // La de fondo, baja: va debajo del juego y de tu voz.
   volumen: { inicio: 0.5, pausa: 0.45, final: 0.5, fondo: 0.2 },
   mapa: {},
   otras: 'fondo',
   aviso: true,
+  escenas: [],
 };
 
 const CLAVE = 'musica';
 let ajustes: Ajustes | null = null;
 
 function limpiar(v: any): Ajustes {
-  const a: Ajustes = { ...AJUSTES_POR_DEFECTO, volumen: { ...AJUSTES_POR_DEFECTO.volumen }, mapa: {} };
+  const a: Ajustes = { ...AJUSTES_POR_DEFECTO, volumen: { ...AJUSTES_POR_DEFECTO.volumen }, mapa: {}, escenas: [] };
   if (!v || typeof v !== 'object') return a;
+  if (Array.isArray(v.escenas)) {
+    const validas = (v.escenas as unknown[]).filter((e): e is string => typeof e === 'string' && e.length > 0 && e.length <= 200);
+    a.escenas = [...new Set(validas)].slice(0, 100);
+  }
   if (v.modo === 'auto' || v.modo === 'manual') a.modo = v.modo;
   if (esDestino(v.otras)) a.otras = v.otras;
   if (typeof v.aviso === 'boolean') a.aviso = v.aviso;
@@ -392,12 +404,22 @@ export async function ponerModo(modo: 'auto' | 'manual'): Promise<Ajustes> {
   return a;
 }
 
+/**
+ * ¿Suena en la escena de OBS en emisión? Sin escenas marcadas, en todas; y
+ * mientras no se sepa la escena (OBS cerrado, recién arrancado), también.
+ */
+export function suenaEnEscena(a = leerAjustes()): boolean {
+  return !a.escenas.length || escenaObs === null || a.escenas.includes(escenaObs);
+}
+
 /** Lo que el overlay necesita para sonar (y para el aviso de canción, que en las escenas del panel ya enseñan ellas). */
 export function paraOverlay() {
   const a = leerAjustes();
   const v = lista ? a.volumen[lista] : 0.4;
   const enEscenaDelPanel = escenaObs !== null && escenaObs in ESCENAS_POR_DEFECTO;
-  return { sonando: sonando && pista !== null, pista, volumen: v, turno, aviso: a.aviso && !enEscenaDelPanel };
+  // Fuera de las escenas marcadas, el reproductor se calla con un fundido y
+  // se queda donde iba: `sonando` sigue siendo true y al volver retoma.
+  return { sonando: sonando && pista !== null && suenaEnEscena(a), pista, volumen: v, turno, aviso: a.aviso && !enEscenaDelPanel };
 }
 
 /** ¿Está la fuente de OBS pidiendo? (si no, no hace falta preguntar a OBS por la escena). */
@@ -455,6 +477,8 @@ export function estado() {
       ? { pos: Math.min(progreso.dur, progreso.pos + (sonando && overlayActivo() ? Math.min(5, (Date.now() - progreso.at) / 1000) : 0)), dur: progreso.dur }
       : null,
     escenaObs,
+    /** false: hay música puesta pero la escena en emisión no está marcada. */
+    enEscena: suenaEnEscena(a),
     destino: escenaObs ? destinoDe(escenaObs, a) : null,
     overlay: overlayActivo(),
     ajustes: a,

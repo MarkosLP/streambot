@@ -1996,12 +1996,14 @@ async function generarTodoEstilo() {
 }
 
 // ---------------------------------------------------------------------------
-// Música (core/musica.ts): lo que suena, las listas y cómo va con OBS
+// Música (core/musica.ts). 28 sep 2026, más simple: eliges canción (o al azar
+// de una carpeta), play, y marcas las escenas de OBS en las que suena.
 // ---------------------------------------------------------------------------
 
 let musicaDatos = null;
-let musicaEscenasObs = [];
-const DESTINOS_MUSICA = [['inicio', 'Empezamos'], ['pausa', 'Pausa'], ['final', 'Final'], ['fondo', 'De fondo'], ['silencio', 'Silencio']];
+let musicaObs = null; // { escenas, escenaActual } de OBS, o null si no está abierto
+const NOMBRES_LISTA = { inicio: 'Empezamos', pausa: 'Pausa', final: 'Final', fondo: 'De fondo' };
+const nombreLista = (id) => NOMBRES_LISTA[id] ?? id;
 
 async function cargarMusica(releer = false) {
   try {
@@ -2011,12 +2013,12 @@ async function cargarMusica(releer = false) {
     return;
   }
   pintarMusicaAhora();
-  pintarListasMusica();
-  pintarMapaMusica();
+  pintarElegirMusica();
+  pintarEscenasMusica();
   $('m-carpeta').textContent = musicaDatos.carpeta;
   const n = musicaDatos.sueltas ?? 0;
   $('m-sueltas').hidden = !n;
-  $('m-sueltas').textContent = n ? `⚠️ Hay ${n} ${n === 1 ? 'canción suelta' : 'canciones sueltas'} en la carpeta de música: no suenan hasta que las metas en inicio, pausa, final o fondo.` : '';
+  $('m-sueltas').textContent = n ? `⚠️ Hay ${n} ${n === 1 ? 'canción suelta' : 'canciones sueltas'} en la carpeta de música: no suenan hasta que las metas en fondo, inicio, pausa o final.` : '';
   if (releer) {
     const total = musicaDatos.listas.reduce((n, l) => n + l.canciones.length, 0);
     tostada(`${total} ${total === 1 ? 'canción' : 'canciones'} en las carpetas`);
@@ -2030,122 +2032,126 @@ async function accionMusica(cuerpo, aviso) {
     if (aviso) tostada(aviso);
     pintarMini(e);
     pintarMusicaAhora();
-    pintarListasMusica();
-    pintarMapaMusica();
+    pintarElegirMusica();
+    pintarEscenasMusica();
   } catch (err) {
     tostada(err.message, true);
   }
 }
-
-const nombreLista = (id) => DESTINOS_MUSICA.find(([k]) => k === id)?.[1] ?? id;
 
 function pintarMusicaAhora() {
   const m = musicaDatos;
   if (!m) return;
   const p = m.pista;
   $('m-titulo').textContent = p ? p.titulo : 'Nada';
-  $('m-artista').textContent = p ? [p.artista, `lista ${nombreLista(p.lista)}`].filter(Boolean).join(' · ') : 'Elige una lista abajo, o cambia de escena en automático';
+  $('m-artista').textContent = p ? [p.artista, nombreLista(p.lista)].filter(Boolean).join(' · ') : 'Elige una canción arriba y dale al ▶';
   $('m-play').textContent = m.sonando ? '⏸' : '▶';
-  $('m-barras').classList.toggle('quietas', !m.sonando);
-  $('m-estado').textContent = m.ajustes.modo === 'auto'
-    ? (m.escenaObs ? `Auto · «${m.escenaObs}» → ${nombreLista(m.destino)}` : 'Auto · esperando a OBS')
-    : 'Manual';
-  const vol = m.lista ? m.ajustes.volumen[m.lista] : null;
-  $('m-volumen').disabled = vol === null;
-  if (document.activeElement !== $('m-volumen')) $('m-volumen').value = String(Math.round((vol ?? 0) * 100));
-  $('m-volumen-n').textContent = vol === null ? '' : `${Math.round(vol * 100)} %`;
+  $('m-play').disabled = !p && !m.listas?.some((l) => l.canciones.length);
+  $('m-barras').classList.toggle('quietas', !m.sonando || m.enEscena === false);
+  $('m-estado').textContent = !m.sonando ? (p ? 'En pausa' : '')
+    : m.enEscena === false ? `Callada en «${m.escenaObs}»` : 'Sonando';
+  // Un volumen para todo: se guarda igual en todas las carpetas.
+  const vol = m.ajustes.volumen[m.lista ?? 'fondo'];
+  if (document.activeElement !== $('m-volumen')) $('m-volumen').value = String(Math.round(vol * 100));
+  $('m-volumen-n').textContent = `${Math.round(vol * 100)} %`;
   const pr = m.progreso;
   $('m-progreso').style.width = pr && pr.dur ? `${Math.min(100, (pr.pos / pr.dur) * 100)}%` : '0';
   $('m-pos').textContent = pr ? mmss(Math.floor(pr.pos)) : '';
   $('m-dur').textContent = pr ? mmss(Math.floor(pr.dur)) : '';
-  $('m-aviso-obs').textContent = m.overlay
-    ? ''
-    : '⚠️ La fuente «MUS Música» no está abierta en OBS: no suena nada hasta que la añadas (abajo) o abras OBS.';
-  $('m-auto').checked = m.ajustes.modo === 'auto';
-  $('m-modo-texto').textContent = m.ajustes.modo === 'auto' ? 'Automático' : 'Manual';
+  $('m-aviso-obs').textContent = !m.overlay
+    ? '⚠️ La fuente de música no está abierta en OBS: no suena nada hasta que la pongas en tus escenas (a la derecha) o abras OBS.'
+    : m.sonando && m.enEscena === false ? `🔇 «${m.escenaObs}» no está marcada: la música espera ahí y sigue al volver a una escena marcada.` : '';
   $('m-aviso').checked = m.ajustes.aviso;
 }
 
-function pintarListasMusica() {
+/** El desplegable: al azar de una carpeta, o una canción concreta. */
+function pintarElegirMusica() {
   const m = musicaDatos;
-  $('m-listas').replaceChildren(...m.listas.map((l) => {
-    const suena = m.lista === l.id;
-    const vol = h('input', { type: 'range', min: '0', max: '100', step: '1', value: String(Math.round(m.ajustes.volumen[l.id] * 100)), 'aria-label': `Volumen de ${l.nombre}` });
-    const volN = h('span', { class: 'nota' }, `${Math.round(m.ajustes.volumen[l.id] * 100)} %`);
-    vol.addEventListener('input', () => { volN.textContent = `${vol.value} %`; });
-    vol.addEventListener('change', () => accionMusica({ accion: 'ajustes', ajustes: { volumen: { [l.id]: Number(vol.value) / 100 } } }));
-    const canciones = l.canciones.length
-      ? h('ol', { class: 'musica-canciones' }, l.canciones.map((c) => h('li', { class: m.pista?.id === c.id ? 'actual' : '' },
-        h('button', { type: 'button', class: 'escuchar pequeno', 'aria-label': `Poner ${c.titulo}`, onclick: () => accionMusica({ accion: 'pista', id: c.id }) }),
-        h('span', {}, h('strong', {}, c.titulo), c.artista ? h('span', { class: 'nota' }, ` · ${c.artista}`) : null))))
-      : h('p', { class: 'nota' }, 'Vacía: mete canciones en su carpeta (abajo) y pulsa «Volver a leer las carpetas».');
-    return h('article', { class: `tarjeta musica-lista${suena ? ' sonando' : ''}` },
-      h('header', {}, h('h2', {}, `${{ inicio: '🌅', pausa: '⏳', final: '🌙', fondo: '🎮' }[l.id]} ${l.nombre}`),
-        h('span', { class: 'nota' }, `${l.canciones.length} ${l.canciones.length === 1 ? 'canción' : 'canciones'}`)),
-      h('div', { class: 'escena-botones' },
-        h('button', { class: `boton${suena ? '' : ' primario'}`, type: 'button', disabled: !l.canciones.length, onclick: () => accionMusica({ accion: 'lista', lista: l.id }, `▶ ${l.nombre}`) }, suena ? '↻ Otra de esta lista' : '▶ Poner esta lista'),
-        h('label', { class: 'musica-volumen' }, h('span', {}, '🔉'), vol, volN)),
-      h('details', { class: 'musica-detalle' }, h('summary', {}, 'Canciones'), canciones));
+  if (!m || document.activeElement === $('m-elegir')) return;
+  const conCanciones = m.listas.filter((l) => l.canciones.length);
+  const opciones = [h('option', { value: '', disabled: true, selected: !m.pista }, conCanciones.length ? 'Elige una canción…' : 'No hay canciones: mira «Meter canciones» abajo')];
+  if (conCanciones.length) {
+    opciones.push(h('optgroup', { label: '🎲 Al azar' }, conCanciones.map((l) =>
+      h('option', { value: `lista:${l.id}` }, `Al azar · ${l.nombre} (${l.canciones.length})`))));
+  }
+  for (const l of conCanciones) {
+    opciones.push(h('optgroup', { label: l.nombre }, l.canciones.map((c) =>
+      h('option', { value: `pista:${c.id}`, selected: m.pista?.id === c.id }, c.artista ? `${c.titulo} · ${c.artista}` : c.titulo))));
+  }
+  $('m-elegir').replaceChildren(...opciones);
+}
+
+/** Las escenas de OBS con su casilla: marcadas = ahí suena. */
+function pintarEscenasMusica() {
+  const cont = $('m-escenas');
+  const marcadas = musicaDatos?.ajustes.escenas ?? [];
+  if (!musicaObs) {
+    $('m-obs-estado').textContent = 'OBS no está conectado';
+    cont.replaceChildren(h('p', { class: 'nota' }, marcadas.length
+      ? `Marcadas: ${marcadas.join(', ')}. Abre OBS para cambiarlas.`
+      : 'Abre OBS para elegir las escenas. Mientras no marques ninguna, suena en todas.'));
+    $('m-obs').disabled = true;
+    return;
+  }
+  $('m-obs-estado').textContent = marcadas.length ? `${marcadas.length} marcada${marcadas.length === 1 ? '' : 's'}` : 'En todas';
+  $('m-obs').disabled = !marcadas.length;
+  // Las marcadas que ya no existen en OBS también salen, para poder quitarlas.
+  const escenas = [...new Set([...musicaObs.escenas, ...marcadas])];
+  cont.replaceChildren(...escenas.map((e) => {
+    const casilla = h('input', { type: 'checkbox', value: e, checked: marcadas.includes(e) });
+    casilla.addEventListener('change', () => {
+      const nuevas = [...document.querySelectorAll('#m-escenas input:checked')].map((i) => i.value);
+      accionMusica({ accion: 'ajustes', ajustes: { escenas: nuevas } }, nuevas.length ? null : 'Sin escenas marcadas: suena en todas');
+    });
+    const etiqueta = e === musicaObs.escenaActual ? `${e} (en emisión)` : musicaObs.escenas.includes(e) ? e : `${e} (ya no está en OBS)`;
+    return h('label', { class: `interruptor-fila${e === musicaDatos?.escenaObs ? ' actual' : ''}` }, casilla, h('span', {}, etiqueta));
   }));
 }
 
-/** Qué suena en cada escena de OBS (en automático). */
-function pintarMapaMusica() {
-  const m = musicaDatos;
-  const escenas = [...new Set([...Object.keys(m.escenasPorDefecto), ...musicaEscenasObs])];
-  const fila = (nombre, valor, alCambiar, etiqueta) => {
-    const sel = h('select', { 'aria-label': `Música en ${etiqueta}` }, DESTINOS_MUSICA.map(([k, t]) => h('option', { value: k, selected: k === valor }, t)));
-    sel.addEventListener('change', () => alCambiar(sel.value));
-    return h('div', { class: `musica-fila${m.escenaObs === nombre ? ' actual' : ''}` }, h('span', {}, etiqueta), sel);
-  };
-  $('m-mapa').replaceChildren(
-    ...escenas.map((e) => fila(e, m.ajustes.mapa[e] ?? m.escenasPorDefecto[e] ?? m.ajustes.otras,
-      (v) => accionMusica({ accion: 'ajustes', ajustes: { mapa: { [e]: v } } }), e)),
-    fila(null, m.ajustes.otras, (v) => accionMusica({ accion: 'ajustes', ajustes: { otras: v } }), 'Cualquier otra escena'));
-}
-
-/** Las escenas de OBS, para el mapa y para elegir dónde va la fuente. */
 async function cargarMusicaObs() {
-  const cont = $('m-escenas');
   try {
     const o = await api('/api/obs');
-    if (!o.conectado) {
-      musicaEscenasObs = [];
-      $('m-obs-estado').textContent = 'OBS no está conectado';
-      cont.replaceChildren(h('p', { class: 'nota' }, 'Abre OBS para elegir las escenas.'));
-      return;
-    }
-    musicaEscenasObs = o.escenas;
-    $('m-obs-estado').textContent = `${o.escenas.length} escenas`;
-    // Por defecto: las del panel (✦) y la que estás emitiendo (la del juego, normalmente).
-    cont.replaceChildren(...o.escenas.map((e) => h('label', { class: 'interruptor-fila' },
-      h('input', { type: 'checkbox', value: e, checked: e.startsWith('✦') || e === o.escenaActual }), h('span', {}, e === o.escenaActual ? `${e} (en emisión)` : e))));
-    if (musicaDatos) pintarMapaMusica();
+    musicaObs = o.conectado ? { escenas: o.escenas, escenaActual: o.escenaActual } : null;
   } catch {
-    $('m-obs-estado').textContent = 'OBS no está conectado';
+    musicaObs = null;
   }
+  pintarEscenasMusica();
 }
 
+$('m-elegir').addEventListener('change', (ev) => {
+  const [tipo, valor] = [ev.target.value.slice(0, ev.target.value.indexOf(':')), ev.target.value.slice(ev.target.value.indexOf(':') + 1)];
+  ev.target.blur();
+  if (tipo === 'lista') accionMusica({ accion: 'lista', lista: valor }, `🎲 ${nombreLista(valor)}`);
+  else if (tipo === 'pista') accionMusica({ accion: 'pista', id: valor });
+});
 $('m-releer').addEventListener('click', () => cargarMusica(true));
-$('m-play').addEventListener('click', () => accionMusica({ accion: musicaDatos?.sonando ? 'pausar' : 'reanudar' }));
+$('m-play').addEventListener('click', () => {
+  // Sin nada puesto aún: al azar de la de fondo (o de la primera con canciones).
+  if (!musicaDatos?.pista) {
+    const l = musicaDatos?.listas.find((x) => x.id === 'fondo' && x.canciones.length) ?? musicaDatos?.listas.find((x) => x.canciones.length);
+    if (l) accionMusica({ accion: 'lista', lista: l.id });
+    return;
+  }
+  accionMusica({ accion: musicaDatos.sonando ? 'pausar' : 'reanudar' });
+});
 $('m-siguiente').addEventListener('click', () => accionMusica({ accion: 'siguiente' }));
 $('m-anterior').addEventListener('click', () => accionMusica({ accion: 'anterior' }));
 $('m-volumen').addEventListener('input', () => { $('m-volumen-n').textContent = `${$('m-volumen').value} %`; });
 $('m-volumen').addEventListener('change', () => {
-  if (musicaDatos?.lista) accionMusica({ accion: 'ajustes', ajustes: { volumen: { [musicaDatos.lista]: Number($('m-volumen').value) / 100 } } });
+  const v = Number($('m-volumen').value) / 100;
+  accionMusica({ accion: 'ajustes', ajustes: { volumen: { inicio: v, pausa: v, final: v, fondo: v } } });
 });
-$('m-auto').addEventListener('change', (ev) => accionMusica({ accion: 'modo', modo: ev.target.checked ? 'auto' : 'manual' }, ev.target.checked ? 'Música automática: va con la escena' : 'Música en manual'));
 $('m-aviso').addEventListener('change', (ev) => accionMusica({ accion: 'ajustes', ajustes: { aviso: ev.target.checked } }));
 $('m-abrir').addEventListener('click', () => api('/api/biblioteca/abrir', { seccion: 'musica' }).catch((err) => tostada(err.message, true)));
 $('m-obs').addEventListener('click', async () => {
-  const elegidas = [...document.querySelectorAll('#m-escenas input:checked')].map((i) => i.value);
+  const elegidas = musicaDatos?.ajustes.escenas ?? [];
   if (!elegidas.length) return tostada('Marca al menos una escena', true);
-  if (!confirm(`Se añadirá la fuente «MUS Música» a:\n\n${elegidas.join('\n')}\n\nNo cambia la escena que estás emitiendo ni borra nada. Si ya hay una lista puesta, empezará a sonar. ¿Sigo?`)) return;
+  if (!confirm(`Se añadirá la fuente de música a:\n\n${elegidas.join('\n')}\n\nNo cambia la escena que estás emitiendo ni borra nada; en las que ya la tengan, no hace nada. ¿Sigo?`)) return;
   try {
     const r = await api('/api/musica/obs', { escenas: elegidas });
     $('m-obs-resultado').hidden = false;
     $('m-obs-resultado').replaceChildren(...r.hecho.map((x) => h('li', {}, x)));
-    tostada('Música añadida en OBS');
+    tostada('Música puesta en OBS');
   } catch (err) {
     tostada(err.message, true);
   }
@@ -2197,7 +2203,7 @@ DirectoRed.sondear(async () => {
     musicaDatos = e;
     pintarMini(e);
     pintarMusicaAhora();
-    if (cambio) { pintarListasMusica(); pintarMapaMusica(); }
+    if (cambio) { pintarElegirMusica(); pintarEscenasMusica(); }
   } catch {}
 }, 2000, false);
 

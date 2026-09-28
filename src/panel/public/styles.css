@@ -1076,26 +1076,20 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
 .musica-play { min-width: 56px !important; }
 .musica-volumen { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
 .musica-volumen input[type="range"] { width: 140px; accent-color: var(--oro); }
-.musica-mapa { display: grid; gap: 8px; margin: 10px 0 14px; }
-.musica-fila { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 10px; align-items: center; padding: 6px 10px; border-radius: 9px; border: 1px solid var(--borde); }
-.musica-fila.actual { border-color: var(--oro); }
-.musica-fila span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.musica-fila select { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--borde-2); background: var(--fondo); color: var(--texto); font: inherit; }
 .interruptor-fila { display: flex; gap: 10px; align-items: flex-start; font-size: .9rem; cursor: pointer; }
 .interruptor-fila input { margin-top: 3px; accent-color: var(--oro); }
-.lista-musica { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); margin-bottom: 20px; }
-.musica-lista.sonando { border-color: var(--oro); }
-.musica-lista .musica-volumen { margin-left: auto; }
-.musica-lista .musica-volumen input[type="range"] { width: 100px; }
-.musica-detalle { margin-top: 12px; }
-.musica-detalle summary { cursor: pointer; font-weight: 600; font-size: .9rem; }
-.musica-canciones { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; max-height: 280px; overflow: auto; }
-.musica-canciones li { display: flex; align-items: center; gap: 10px; padding: 4px 6px; border-radius: 8px; min-width: 0; }
-.musica-canciones li > span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.musica-canciones li.actual { background: color-mix(in srgb, var(--oro) 12%, transparent); }
 .pasos-musica { margin: 0 0 14px; padding-left: 20px; display: grid; gap: 8px; font-size: .92rem; line-height: 1.5; }
 .pasos-musica a { color: var(--oro-claro); }
-.musica-escenas { display: grid; gap: 6px; margin: 12px 0 14px; max-height: 220px; overflow: auto; }
+.musica-escenas { display: grid; gap: 6px; margin: 12px 0 14px; max-height: 260px; overflow: auto; }
+.musica-escenas .interruptor-fila { padding: 7px 10px; border-radius: 9px; border: 1px solid var(--borde); align-items: center; }
+.musica-escenas .interruptor-fila input { margin-top: 0; }
+.musica-escenas .interruptor-fila.actual { border-color: var(--oro); }
+.musica-elegir { display: grid; gap: 6px; margin: 0 0 16px; }
+.musica-elegir select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--borde-2); background: var(--fondo); color: var(--texto); font: inherit; font-size: 1rem; }
+.musica-aviso { margin-top: 14px; }
+.musica-meter summary { cursor: pointer; }
+.musica-meter summary h2 { display: inline; }
+.musica-meter[open] summary { margin-bottom: 12px; }
 @media (max-width: 1100px) { .musica-arriba { grid-template-columns: 1fr; } }
 
 /* Temas para hablar */
