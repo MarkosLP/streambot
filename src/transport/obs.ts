@@ -40,6 +40,9 @@ export async function conObs<T>(
   const ws = crearSocket(url);
   let fallo: Error | null = null;
   const detener = (error: Error) => {
+    // close() puede emitir error síncronamente en Undici: cerrar solo una vez.
+    // Marcar antes de cerrar también conserva la causa inicial en el finally.
+    if (fallo) return;
     fallo = error;
     for (const p of pendientes.values()) p.ko(error);
     pendientes.clear();
