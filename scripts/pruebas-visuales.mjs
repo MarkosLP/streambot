@@ -56,9 +56,9 @@ try {
     await pedir('Input.dispatchKeyEvent',{type:'keyDown',key:'Home'});
     assert.equal(await evaluar('document.activeElement.id'),'tab-directo');
   }
-  if(caso==='11')for(const [nombre,ruta] of [['escena','escena.html?tipo=inicio&demo=1'],['avatar','avatar.html?demo=1'],['jefe','jefe.html?demo=1&jefe=liche&volumen=0']]){
-    await abrir('/biblioteca/overlays/'+ruta,1920,1080);await esperar(3500);await captura(`11-${nombre}-despues`);
-    assert.equal(await evaluar(`[...document.querySelectorAll('*')].filter(e=>getComputedStyle(e).filter.includes('blur(')||getComputedStyle(e).backdropFilter!=='none'||getComputedStyle(e).mixBlendMode!=='normal').length`),0);
+  if(caso.startsWith('11'))for(const [nombre,ruta] of [['escena','escena.html?tipo=inicio&demo=1'],['avatar','avatar.html?demo=1'],['jefe','jefe.html?demo=1&jefe=liche&volumen=0']]){
+    await abrir('/biblioteca/overlays/'+ruta,1920,1080);await esperar(3500);await captura(`11-${nombre}-${caso==='11-antes'?'antes':'despues'}`);
+    if(caso!=='11-antes')assert.equal(await evaluar(`[...document.querySelectorAll('*')].filter(e=>getComputedStyle(e).filter.includes('blur(')||getComputedStyle(e).backdropFilter!=='none'||getComputedStyle(e).mixBlendMode!=='normal').length`),0);
   }
   console.log('Pruebas visuales terminadas:',caso,destino);
 } finally {

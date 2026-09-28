@@ -69,7 +69,7 @@
     box-shadow: 0 0 60px 20px rgba(var(--halo), .35), 0 0 220px 90px rgba(var(--halo), .18); }
   .halo { position: absolute; left: 1620px; top: 190px; width: 1800px; height: 1800px; margin: -900px 0 0 -900px;
     background: radial-gradient(circle, rgba(var(--halo), .22) 0%, rgba(var(--halo), .08) 25%, transparent 55%); }
-  .rayos { position: absolute; left: 1620px; top: 190px; width: 2600px; height: 2600px; margin: -1300px 0 0 -1300px; mix-blend-mode: screen; opacity: .5; filter: blur(14px);
+  .rayos { position: absolute; left: 1620px; top: 190px; width: 2600px; height: 2600px; margin: -1300px 0 0 -1300px; opacity: .5;
     background: conic-gradient(from 200deg, transparent 0deg, rgba(var(--halo), .10) 8deg, transparent 20deg, transparent 38deg, rgba(var(--halo), .08) 46deg, transparent 60deg,
       transparent 96deg, rgba(var(--halo), .12) 104deg, transparent 118deg, transparent 150deg, rgba(var(--halo), .07) 160deg, transparent 176deg, transparent 360deg);
     -webkit-mask-image: radial-gradient(circle, #000 3%, transparent 42%); mask-image: radial-gradient(circle, #000 3%, transparent 42%);
@@ -134,7 +134,7 @@
   .hilo::before, .hilo::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(232, 162, 74, .7), transparent); }
   .hilo i { width: 7px; height: 7px; transform: rotate(45deg); border: 1px solid var(--ambar); }
   .revela { animation: revela 2.4s cubic-bezier(.2, .7, .2, 1) both; }
-  @keyframes revela { from { opacity: 0; filter: blur(14px); transform: translateY(14px); } }
+  @keyframes revela { from { opacity: 0; transform: translateY(14px); } }
   .sin-intro .revela { animation: none; }
   .revela.d1 { animation-delay: .3s; } .revela.d2 { animation-delay: .8s; } .revela.d3 { animation-delay: 1.3s; } .revela.d4 { animation-delay: 1.8s; }
 
@@ -160,7 +160,7 @@
   .dato .val { margin-top: 10px; font-family: var(--serif); font-size: 33px; font-weight: 500; line-height: 1.15; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
   .dato .sub { margin-top: 5px; font-size: 17px; color: var(--tenue); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
   .cambia { animation: cambia .9s ease both; }
-  @keyframes cambia { from { opacity: 0; filter: blur(6px); } }
+  @keyframes cambia { from { opacity: 0; } }
   .r-comun { --r: var(--comun); } .r-raro { --r: var(--raro); } .r-epico { --r: var(--epico); } .r-legendario { --r: var(--legendario); } .r-maldito { --r: var(--maldito); }
   .objeto { color: var(--r); text-shadow: 0 0 18px color-mix(in srgb, var(--r) 55%, transparent); }
 
@@ -202,7 +202,7 @@
     -webkit-mask-image: linear-gradient(180deg, transparent, #000 30%); mask-image: linear-gradient(180deg, transparent, #000 30%); }
   .msg { animation: msg .6s cubic-bezier(.2, .8, .2, 1) both; transition: opacity 2s ease; }
   .msg.viejo { opacity: 0; }
-  @keyframes msg { from { opacity: 0; transform: translateY(16px); filter: blur(4px); } }
+  @keyframes msg { from { opacity: 0; transform: translateY(16px); } }
   .msg .quien { display: block; font-size: 14px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 4px; }
   .msg .quien em { font-style: normal; margin-left: 10px; font-size: 12px; letter-spacing: .14em; color: var(--tenue); }
   .msg .txt { font-size: 23px; line-height: 1.38; color: #ece4d6; overflow-wrap: anywhere; text-shadow: 0 1px 8px rgba(0, 0, 0, .8); }
@@ -250,7 +250,7 @@
   .aviso .linea { font-family: var(--serif); font-size: 46px; font-weight: 500; text-shadow: 0 4px 30px #000, 0 0 2px #000; }
   .aviso .linea .objeto { font-weight: 600; }
   .aviso::after { content: ""; width: 560px; height: 1px; background: linear-gradient(90deg, transparent, var(--r), transparent); animation: barre 6.5s ease both; }
-  @keyframes aviso { 0% { opacity: 0; filter: blur(10px); transform: translate(-50%, 10px); } 10%, 85% { opacity: 1; filter: blur(0); transform: translate(-50%, 0); } 100% { opacity: 0; filter: blur(8px); } }
+  @keyframes aviso { 0% { opacity: 0; transform: translate(-50%, 10px); } 10%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
   @keyframes barre { 0% { transform: scaleX(0); } 20% { transform: scaleX(1); } }
 
   /* =====================================================================
