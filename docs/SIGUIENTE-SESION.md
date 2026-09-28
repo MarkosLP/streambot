@@ -2,6 +2,15 @@
 
 Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.**
 
+## Actualización compartida: Escenas (28 sep, Codex)
+
+Por petición de Marcos, continuar junto con Claude sobre `master`, con cambios agrupados por trabajo y sin exigir un commit por arreglo. Los dos cambios de Escenas y fondos se han agrupado en un único commit; no se han modificado los trabajos anteriores de Claude.
+
+- Escenas: selector de las cuatro vistas, previa grande con controles por escena, estilo común debajo y avatar a todo el ancho. Generación y configuración OBS plegadas. Elegir una vista no cambia el directo.
+- Fondos: petición original literal primero, sin reescritura intermedia; juego y lugar tienen prioridad sobre estilo. Prueba con «Castillo de Aden de Lineage 2». El nombre de biblioteca no describe la imagen.
+- Validación: `npm run check`, 597 pruebas aprobadas; navegador a 390 y 1366 px. Sin OBS real ni generación de pago. Falta comprobar la fidelidad de una imagen generada si Marcos autoriza el gasto.
+- Detalles y capturas: [ESCENAS-FASE3.md](ESCENAS-FASE3.md). Los cambios anteriores de música se conservan.
+
 ---
 
 ## 28 sep 2026 (591 tests; laboratorio 15/15 con 10 semillas)

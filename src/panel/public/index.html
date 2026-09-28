@@ -406,9 +406,14 @@
         </div>
       </header>
 
+      <nav id="e-selector" class="escena-selector" aria-label="Escena que quieres preparar"></nav>
+      <p class="nota escena-aviso">Elegir una pestaña solo cambia esta vista. Fondo, estilo y cuenta atrás se aplican al directo al cambiarlos; los textos se aplican al guardar.</p>
+      <div class="lista-escenas" id="e-lista"></div>
+
       <article class="tarjeta">
-        <header><h2>🎨 Estilo</h2><span class="nota" id="e-estilo-nota"></span></header>
+        <header><h2>🎨 Estilo común de las cuatro escenas</h2><span class="nota" id="e-estilo-nota"></span></header>
         <div class="estilos" id="e-estilos" role="radiogroup" aria-label="Estilo de las escenas"></div>
+        <details class="escena-avanzado"><summary>Crear o editar estilos y generar imágenes</summary>
         <div class="estilo-acciones">
           <button class="boton" type="button" id="e-estilo-nuevo">➕ Crear mi estilo</button>
           <button class="boton" type="button" id="e-estilo-editar" hidden>✏️ Editar este estilo</button>
@@ -473,11 +478,12 @@
             <p class="nota">Así queda con el color de fondo. Con «Generar», la IA pinta los fondos y el personaje de esta temática.</p>
           </div>
         </form>
+        </details>
       </article>
 
-      <div class="dos-col escenas-mandos">
-        <article class="tarjeta">
-          <header><h2>⏳ Cuenta atrás</h2><span class="nota" id="e-cuenta-estado">Sin cuenta atrás</span></header>
+      <div class="escenas-mandos">
+        <article class="tarjeta" id="e-control-cuenta">
+          <header><h2>⏳ Cuenta atrás · Empezamos y Pausa</h2><span class="nota" id="e-cuenta-estado">Sin cuenta atrás</span></header>
           <div class="rapidas" id="e-cuenta">
             <button class="boton" type="button" data-min="3">3 min</button>
             <button class="boton" type="button" data-min="5">5 min</button>
@@ -492,9 +498,9 @@
           <p class="nota">Sale en Empezamos («Empezamos en…») y en Pausa («Vuelvo en…»). Al llegar a cero: «¡Arrancamos!».</p>
         </article>
 
-        <article class="tarjeta">
+        <article class="tarjeta" id="e-control-avatar">
           <header>
-            <h2>🧙 Sin cámara</h2>
+            <h2>🧙 Avatar · Charla y fuentes de avatar</h2>
             <label class="interruptor-loot" title="En la escena Charla, un avatar tapa el hueco de la cámara">
               <span id="e-avatar-texto-estado">Avatar apagado</span>
               <input type="checkbox" class="toggle" id="e-avatar">
@@ -505,6 +511,7 @@
             <div class="avatar-mandos">
               <p class="nota">Para cuando apagues la cámara. Enciéndelo aquí y aparece <b>en la escena Charla</b> (en el hueco de la cámara) y <b>donde hayas añadido el avatar</b> (la escena del juego, por ejemplo). Apagado, es transparente.</p>
               <p class="nota">Respira, mira al chat y reacciona al botín. El parpadeo depende de que el personaje tenga variantes válidas o una calibración local activada; si no, conserva la imagen base.</p>
+              <details class="escena-avanzado"><summary>Personaje, parpadeo y creación de imágenes</summary>
               <div class="campo"><span>Personaje</span>
                 <div class="con-boton"><select id="e-avatar-personaje" aria-label="Personaje"></select><button class="boton" type="button" id="e-avatar-renombrar" title="Cambiar el nombre de este personaje" aria-label="Cambiar el nombre">✏️</button><button class="boton" type="button" id="e-avatar-parpadeo" title="Rehace sus ojos entornados, cerrados y su sonrisa retocando solo la cara (3 imágenes, céntimos)" aria-label="Arreglar el parpadeo">👁</button><button class="boton peligro" type="button" id="e-avatar-borrar" title="Borrar este personaje para siempre" aria-label="Borrar este personaje">🗑</button></div></div>
               <button class="boton" type="button" id="e-avatar-local">Calibrar parpadeo local · gratis</button>
@@ -514,22 +521,25 @@
                 <label class="campo"><span>Cómo es (en castellano)</span><textarea id="e-avatar-desc" rows="3" maxlength="600" spellcheck="false"></textarea></label>
                 <div class="escena-botones"><button class="boton" type="button" id="e-avatar-generar">🎨 Crear personaje</button><span class="nota">Hasta 7 imágenes de pago · más texto y visión · requiere confirmación</span></div>
               </details>
+              </details>
               <form class="escenas-avatar" id="e-avatar-form">
                 <label class="campo"><span>Su bocadillo en Charla</span><input type="text" id="e-avatar-dice" maxlength="90" autocomplete="off"></label>
                 <button class="boton" type="submit">Guardar</button>
               </form>
+              <details class="escena-avanzado"><summary>Configurar el avatar en OBS</summary>
               <form class="escenas-avatar" id="e-avatar-obs">
                 <label class="campo"><span>Añadirlo a una escena de OBS</span><select id="e-avatar-escena"><option value="">Cargando escenas…</option></select></label>
                 <button class="boton primario" type="submit">🎬 Añadir</button>
               </form>
               <p class="nota" id="e-avatar-resultado"></p>
+              </details>
             </div>
           </div>
         </article>
       </div>
 
-      <article class="tarjeta">
-        <header><h2>✍️ Textos</h2><span class="nota">Vacío = el de por defecto</span></header>
+      <article class="tarjeta" id="e-control-textos">
+        <header><h2>✍️ Textos de esta escena</h2><span class="nota">Vacío = el de por defecto</span></header>
         <form class="escenas-textos" id="e-textos">
           <label class="campo"><span>Empezamos · título</span><input type="text" data-clave="titulo" maxlength="90" autocomplete="off"></label>
           <label class="campo"><span>Empezamos · debajo</span><input type="text" data-clave="subtitulo" maxlength="90" autocomplete="off"></label>
@@ -541,7 +551,7 @@
       </article>
 
 
-      <div class="lista-escenas" id="e-lista"></div>
+
     </section>
 
     <!-- OVERLAYS -->

@@ -988,6 +988,34 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
 .escenas-avatar input, .escenas-textos input, .escenas-hora input { padding: 9px 12px; border-radius: 9px; border: 1px solid var(--borde-2); background: var(--fondo); color: var(--texto); font: inherit; }
 .escenas-textos { display: grid; gap: 12px 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); align-items: end; }
 .lista-escenas { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr)); margin-top: 20px; }
+.escena-selector { display:flex; flex-wrap:wrap; gap:8px; }
+.escena-selector [aria-pressed="true"] { background:var(--oro); color:var(--fondo); border-color:var(--oro); }
+.escena-aviso { margin:12px 0; }
+#e-lista { grid-template-columns:minmax(0,1fr); margin:16px 0 24px; }
+#e-lista .escena { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(310px,1fr); align-items:start; }
+.escena-presentacion { min-width:0; position:sticky; top:12px; }
+.escena-controles { min-width:0; padding:16px; border-left:1px solid var(--borde); display:grid; gap:16px; }
+.escena-controles .escena-fondo { padding:0; border:0; }
+.escena-controles .tarjeta { padding:0; border:0; box-shadow:none; background:none; }
+.escena-controles .escenas-textos { grid-template-columns:minmax(0,1fr); }
+.escena-controles input, .escena-controles select { min-width:0; max-width:100%; }
+.escena-controles .con-boton select { width:100%; }
+.escena-avanzado { margin-top:12px; }
+.escena-avanzado > summary { cursor:pointer; color:var(--texto-2); font-size:.9rem; padding:8px 0; }
+.escena-avanzado[open] > summary { margin-bottom:10px; color:var(--texto); }
+.escena-obs { padding:0 16px 16px; }
+#e-control-avatar { margin-top:20px; }
+#e-control-avatar .avatar-bloque { grid-template-columns:220px minmax(0,1fr); }
+#e-control-avatar .avatar-vista { width:220px; }
+@media (max-width:1050px) {
+  #e-lista .escena { grid-template-columns:minmax(0,1fr); }
+  .escena-presentacion { position:static; }
+  .escena-controles { border-left:0; border-top:1px solid var(--borde); }
+}
+@media (max-width:600px) {
+  #e-control-avatar .avatar-bloque { grid-template-columns:minmax(0,1fr); }
+  #e-control-avatar .avatar-vista { width:180px; }
+}
 .tarjeta.escena { padding: 0; overflow: hidden; }
 .escena-vista { border-radius: 0; border: 0; border-bottom: 1px solid var(--borde); background: repeating-conic-gradient(#1a1f2e 0 25%, #141824 0 50%) 0 0 / 22px 22px; }
 .escena-pie { display: grid; gap: 12px; padding: 14px 16px 16px; }

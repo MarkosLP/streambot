@@ -42,8 +42,10 @@ export function prompt(escena: EscenaFondo, descripcion: string, estilo: Estilo 
   const propia = descripcion.trim().slice(0, 600);
   const que = propia || e.descripciones[escena];
   return [
-    detalle ? `SCENE (follow it exactly): ${detalle}\n(Original request in Spanish: ${que})` : `SCENE (described in Spanish, follow it exactly): ${que}`,
-    'The scene above has priority: if it sets the time of day, weather, colors, mood or people, use those even if the art style below suggests otherwise.',
+    `PRIMARY SCENE REQUEST (verbatim, in Spanish): ${que}`,
+    'Preserve the exact named game or franchise AND the specific location, building or character. Depict that subject recognizably within its original world, not a generic substitute or a location from another game. Do not invent landmark details you do not know.',
+    'The original request above has priority over ALL instructions below, including art style and layout. Preserve its architecture, landmarks, silhouette and materials as well as any specified time of day, weather, colors, mood and people.',
+    ...(!propia && detalle ? [`Optional supporting description, subordinate to the original: ${detalle}`] : []),
     `Art style: ${e.fondo}`,
     `Layout: ${COMPOSICION[escena]} Any people are small, in the midground or background.`,
     propia ? `Mood only if the scene does not set one: ${e.tono[escena]}` : `Mood: ${e.tono[escena]}`,
@@ -58,8 +60,8 @@ const carpeta = (dir: string) => join(dir, 'imagenes', 'fondos');
  */
 export async function generar(escena: EscenaFondo, descripcion: string, estilo: Estilo = POR_DEFECTO, dir = DIR_BIBLIOTECA, titulo = ''): Promise<string> {
   const que = descripcion.trim().slice(0, 600) || info(estilo).descripciones[escena];
-  const detalle = await imagen.detallar(descripcion.trim().slice(0, 600), 'fondo');
-  const png = await imagen.generar({ prompt: prompt(escena, descripcion, estilo, detalle), tamano: '1920x1088' });
+  // Sin reescritura intermedia: puede sustituir un lugar concreto por uno inventado.
+  const png = await imagen.generar({ prompt: prompt(escena, descripcion, estilo), tamano: '1920x1088' });
   await mkdir(carpeta(dir), { recursive: true });
   const nombre = `${estilo}-${escena}-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.png`;
   await writeFile(join(carpeta(dir), nombre), png);

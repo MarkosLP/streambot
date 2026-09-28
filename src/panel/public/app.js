@@ -1483,7 +1483,7 @@ function usadoEn(lista) {
 
 // Los overlays miden 1920×1080: la vista previa los encoge al ancho de la tarjeta.
 const escalarOverlay = new ResizeObserver((entradas) => {
-  for (const e of entradas) e.target.style.setProperty('--escala', String(e.contentRect.width / 1920));
+  for (const e of entradas) if (e.contentRect.width > 0) e.target.style.setProperty('--escala', String(e.contentRect.width / 1920));
 });
 // 28 sep 2026: encoger la vista completa, no recortar sus 480 px en el móvil.
 const escalarRotativo = new ResizeObserver((entradas) => {
@@ -1571,6 +1571,21 @@ const ESCENAS_INFO = {
 
 let escenas = null;
 let escenasPintadas = false;
+let escenaElegida = 'inicio';
+function elegirEscena(tipo) {
+  if (!ESCENAS_INFO[tipo]) return;
+  escenaElegida = tipo;
+  for (const b of $('e-selector').children) b.setAttribute('aria-pressed', String(b.dataset.tipo === tipo));
+  for (const tarjeta of $('e-lista').children) tarjeta.hidden = tarjeta.dataset.tipo !== tipo;
+  const mandos = document.querySelector(`#e-lista [data-tipo="${tipo}"] .escena-controles`);
+  if (!mandos) return;
+  mandos.append($('e-control-textos'), $('e-control-cuenta'));
+  const vista = mandos.parentElement.querySelector('.escena-vista');
+  vista.style.setProperty('--escala', String(vista.clientWidth / 1920));
+  $('e-control-cuenta').hidden = !['inicio', 'pausa'].includes(tipo);
+  const claves = { inicio: ['titulo', 'subtitulo'], charla: ['charla'], pausa: ['pausa'], final: ['final'] }[tipo];
+  for (const input of document.querySelectorAll('#e-textos [data-clave]')) input.closest('label').hidden = !claves.includes(input.dataset.clave);
+}
 const descripcionesFondo = {};
 /** El selector de fondo de cada escena, para rellenarlo cada vez que se carga. */
 const selectoresFondo = {};
@@ -1651,6 +1666,10 @@ async function cargarEscenas() {
   $('e-avatar-vista').src = '/biblioteca/overlays/avatar.html?siempre=1&fondo=1&bocadillo=reacciones';
   $('e-avatar-generar').disabled = !escenas.imagenIa;
   cargarEscenasObs();
+  $('e-selector').replaceChildren(...Object.entries(ESCENAS_INFO).map(([tipo, info]) => h('button', {
+    type: 'button', class: 'boton', 'data-tipo': tipo, 'aria-pressed': String(tipo === escenaElegida),
+    onclick: () => elegirEscena(tipo),
+  }, `${info.icono} ${info.nombre}`)));
   $('e-lista').replaceChildren(...escenas.escenas.map((e) => {
     const info = ESCENAS_INFO[e.tipo];
     const ruta = `/biblioteca/overlays/escena.html?tipo=${e.tipo}`;
@@ -1701,27 +1720,30 @@ async function cargarEscenas() {
     renombrar.addEventListener('click', () => renombrarImagen(selFondo.value, escenas.fondos.find((f) => f.ruta === selFondo.value)?.titulo));
     const borrar = h('button', { class: 'boton peligro', type: 'button', title: 'Borrar este fondo para siempre', 'aria-label': 'Borrar este fondo' }, '🗑');
     borrar.addEventListener('click', () => borrarImagen(selFondo.value, escenas.fondos.find((f) => f.ruta === selFondo.value)?.titulo));
+    descripcion.placeholder = 'Ejemplo: Castillo de Aden de Lineage 2, de día';
     const bloqueFondo = h('div', { class: 'escena-fondo' },
-      h('div', { class: 'campo' }, h('span', {}, 'Fondo'), h('div', { class: 'con-boton' }, selFondo, renombrar, borrar)),
-      h('label', { class: 'campo' }, h('span', {}, 'Qué quieres de fondo (en castellano)'), descripcion),
-      h('label', { class: 'campo' }, h('span', {}, 'Título del fondo nuevo'), titulo),
-      h('div', { class: 'escena-botones' }, generar,
-        h('span', { class: 'nota' }, escenas.imagenIa ? 'GPT Image de tu OpenAI · ~30 s · unos céntimos' : 'Falta OPENAI_API_KEY en el .env')));
+      h('div', { class: 'campo' }, h('span', {}, 'Fondo · se aplica al elegir'), h('div', { class: 'con-boton' }, selFondo, renombrar, borrar)),
+      h('details', { class: 'escena-avanzado' }, h('summary', {}, 'Crear un fondo con IA · de pago'),
+        h('label', { class: 'campo' }, h('span', {}, 'Qué quieres ver: juego, lugar y ambiente'), descripcion),
+        h('p', { class: 'nota' }, 'Tu descripción se envía literal y tiene prioridad sobre el estilo. El nombre de abajo solo sirve para organizar el fondo; no describe la imagen.'),
+        h('label', { class: 'campo' }, h('span', {}, 'Nombre para guardar en la biblioteca'), titulo),
+        h('div', { class: 'escena-botones' }, generar,
+          h('span', { class: 'nota' }, escenas.imagenIa ? '1 imagen de pago · requiere confirmación' : 'Generación no configurada'))));
 
-    return h('article', { class: 'tarjeta escena' },
-      vista,
-      bloqueFondo,
+    return h('article', { class: 'tarjeta escena', 'data-tipo': e.tipo, hidden: e.tipo !== escenaElegida },
+      h('div', { class: 'escena-presentacion' }, vista,
       h('div', { class: 'escena-pie' },
         h('div', {}, h('h2', {}, `${info.icono} ${info.nombre}`), h('p', { class: 'nota' }, info.que),
           h('p', { class: 'nota' }, 'En OBS: ', h('code', {}, e.escena))),
         h('div', { class: 'escena-botones' },
-          crear,
           h('a', { class: 'boton', href: ruta, target: '_blank', rel: 'noopener' }, '↗ Ver en grande'),
           botonCopiar(e.url, 'Copiar dirección'))),
-      resultado);
+        h('details', { class: 'escena-avanzado escena-obs' }, h('summary', {}, 'Configurar esta escena en OBS'), crear, resultado)),
+      h('div', { class: 'escena-controles' }, bloqueFondo));
   }));
   pintarSelectoresFondo();
   pintarEstilos();
+  elegirEscena(escenaElegida);
 }
 
 function pintarCuentaEscenas() {

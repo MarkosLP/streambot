@@ -17,7 +17,7 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const raiz=`http://127.0.0.1:${server.address().port}`;
 const perfil=await mkdtemp(join(tmpdir(),'crid4m-navegador-'));
 const destino=resolve('../StreamerBotApi-fase2-capturas');await mkdir(destino,{recursive:true});
-const edge=spawn(process.env.EDGE_BIN || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',['--headless=new','--remote-debugging-port=0',`--user-data-dir=${perfil}`,'--no-first-run','--mute-audio','about:blank'],{windowsHide:true,stdio:'ignore'});
+const edge=spawn(process.env.EDGE_BIN || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',['--headless=new','--disable-gpu','--remote-debugging-port=0',`--user-data-dir=${perfil}`,'--no-first-run','--mute-audio','about:blank'],{windowsHide:true,stdio:'ignore'});
 const esperar=ms=>new Promise(r=>setTimeout(r,ms));
 let socket, siguiente=0;const pendientes=new Map();
 function pedir(method,params={}) { return new Promise((ok,ko)=>{const id=++siguiente;const t=setTimeout(()=>{pendientes.delete(id);ko(Error(`CDP agotado: ${method}`));},15000);pendientes.set(id,{ok,ko,t});socket.send(JSON.stringify({id,method,params}));}); }
@@ -33,6 +33,25 @@ try {
   socket.onmessage=async e=>{const m=JSON.parse(e.data);if(m.id){const p=pendientes.get(m.id);if(p){clearTimeout(p.t);pendientes.delete(m.id);m.error?p.ko(Error(JSON.stringify(m.error))):p.ok(m.result);}}else if(m.method==='Fetch.requestPaused'){const {requestId,request}=m.params;await pedir(request.url.startsWith(raiz+'/')||request.url.startsWith('data:')?'Fetch.continueRequest':'Fetch.failRequest',{requestId,...(!request.url.startsWith(raiz+'/')&&!request.url.startsWith('data:')?{errorReason:'BlockedByClient'}:{})}).catch(e=>{if(!e.message.includes('Invalid InterceptionId'))console.error('Interceptación:',e.message);});}};
   await pedir('Page.enable');await pedir('Fetch.enable',{patterns:[{urlPattern:'*'}]});
   const caso=process.argv[2]||'10';
+  if(caso==='escenas')for(const w of [390,1366]) {
+    await abrir(`/?prueba=${w}#/escenas`,w,w===390?844:900);await evaluar("irA('escenas')");await esperar(700);await evaluar('window.scrollTo(0,0)');await esperar(300);
+    const antes = await evaluar("api('/api/escenas').then(r=>r.config)");
+    for(const tipo of ['inicio','charla','pausa','final']) {
+      await evaluar(`document.querySelector('#e-selector [data-tipo=${tipo}]').click()`);await esperar(200);
+      const r=await evaluar(`(()=>{const a=document.querySelector('#e-lista > article:not([hidden])'),v=a.querySelector('.overlay-vista'),f=v.querySelector('iframe');return {tipo:a.dataset.tipo,cantidad:document.querySelectorAll('#e-lista > article:not([hidden])').length,scroll:document.documentElement.scrollWidth,ancho:v.clientWidth,marco:f.getBoundingClientRect().width,cuenta:document.querySelector('#e-control-cuenta').hidden,textos:[...document.querySelectorAll('#e-textos label:not([hidden]) input')].map(x=>x.dataset.clave)};})()`);
+      assert.equal(r.tipo,tipo);assert.equal(r.cantidad,1);assert.ok(r.scroll<=w,JSON.stringify(r));assert.ok(Math.abs(r.ancho-r.marco)<2,JSON.stringify(r));
+      assert.equal(r.cuenta,!['inicio','pausa'].includes(tipo));assert.deepEqual(r.textos,{inicio:['titulo','subtitulo'],charla:['charla'],pausa:['pausa'],final:['final']}[tipo]);
+      await captura(`escenas-fase3-${w}-${tipo}-despues`);
+    }
+    assert.deepEqual(await evaluar("api('/api/escenas').then(r=>r.config)"),antes,'cambiar vista no modifica el directo');
+    await evaluar("(()=>{document.querySelector('#e-selector [data-tipo=inicio]').click();const d=document.querySelector('#e-lista > article:not([hidden]) textarea');d.value='Castillo de Aden de Lineage 2';d.closest('details').open=true;document.querySelector('#e-selector [data-tipo=pausa]').click();document.querySelector('#e-selector [data-tipo=inicio]').click()})()");
+    assert.equal(await evaluar("document.querySelector('#e-lista > article:not([hidden]) textarea').value"),'Castillo de Aden de Lineage 2');
+    await evaluar("document.querySelector('#e-lista > article:not([hidden]) textarea').scrollIntoView({block:'center'})");await captura(`escenas-fase3-${w}-peticion-despues`);
+    await evaluar("document.querySelector('#e-control-avatar').scrollIntoView({block:'center'})");await captura(`escenas-fase3-${w}-avatar-despues`);
+  }
+  if(caso==='escenas-antes')for(const w of [390,1366]) {
+    await abrir(`/?prueba=${w}#/escenas`,w,w===390?844:900);await evaluar("irA('escenas')");await esperar(800);await captura(`escenas-fase3-${w}-antes`);
+  }
   if(caso==='avatar') {
     for(const [nombre,ruta,puntos,altura] of [
       ['chico','imagenes/avatar/oscuro-2026-09-27T09-12-36',[[413,334],[466,342],[555,342],[614,330]],.22],

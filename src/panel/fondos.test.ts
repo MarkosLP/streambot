@@ -28,6 +28,7 @@ let dir: string;
 let pedidas: Array<{ tipo: string; prompt: string; transparente?: boolean; conBase: boolean; conMascara?: boolean }> = [];
 /** Lo que contesta el «modelo que ve» al comprobar una variante (null: no mira). */
 let veredicto: { ok: boolean; motivo: string } | null = null;
+let reescrituras = 0;
 
 before(async () => {
   configureDatabase(':memory:');
@@ -37,6 +38,7 @@ before(async () => {
     editar: async (p) => { pedidas.push({ tipo: 'editar', prompt: p.prompt, transparente: p.transparente, conBase: p.base.length > 0, conMascara: !!p.mascara }); return muestra(true); },
     localizarCara: async () => ({ ojos: [{ x: .41, y: .3 }, { x: .55, y: .3 }], boca: { x: .48, y: .38 }, anchoOjo: .06 }),
     comprobarVariante: async () => veredicto,
+    detallar: async () => { reescrituras++; return null; },
   });
 });
 after(async () => {
@@ -45,6 +47,7 @@ after(async () => {
 });
 beforeEach(() => {
   pedidas = [];
+  reescrituras = 0;
   veredicto = { ok: true, motivo: '' };
   truncateAll();
   escenas.reset();
@@ -62,10 +65,21 @@ describe('fondos con IA', () => {
   test('lo que pides va delante del estilo y manda sobre su ambiente', () => {
     // 27 sep: «Giran de día con gente» salió de noche y vacío por el estilo oscuro.
     const p = fondos.prompt('inicio', 'Giran de Lineage 2 de día con gente', 'oscuro', 'Giran city at midday, crowded plaza');
-    assert.ok(p.indexOf('Giran city at midday') < p.indexOf('dark fantasy'), 'lo tuyo primero');
+    assert.ok(p.startsWith('PRIMARY SCENE REQUEST (verbatim, in Spanish): Giran de Lineage 2 de día con gente'), 'petición literal primero');
+    assert.doesNotMatch(p, /Giran city at midday/, 'la reescritura no sustituye la petición');
     assert.match(p, /has priority/);
     assert.match(p, /Mood only if the scene does not set one/);
     assert.doesNotMatch(p, /no people/);
+  });
+
+  test('Aden de Lineage 2 llega literal al motor, sin reescritura ni castillo genérico predeterminado', async () => {
+    const descripcion = 'Castillo de Aden de Lineage 2';
+    await fondos.generar('inicio', descripcion, 'oscuro', dir);
+    assert.equal(reescrituras, 0);
+    assert.equal(pedidas.length, 1);
+    assert.ok(pedidas[0]!.prompt.startsWith(`PRIMARY SCENE REQUEST (verbatim, in Spanish): ${descripcion}\n`));
+    assert.doesNotMatch(pedidas[0]!.prompt, /castillo gótico sobre un acantilado/);
+    assert.match(pedidas[0]!.prompt, /not a generic substitute/);
   });
 
   test('genera, guarda en imagenes/fondos y aparece en la lista', async () => {
