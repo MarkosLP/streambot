@@ -36,6 +36,7 @@ import * as temas from './temas.js';
 import * as alertas from '../core/alertas.js';
 import * as fondos from './fondos.js';
 import * as avatarIa from './avatar-ia.js';
+import * as avatarLocal from './avatar-local.js';
 import * as iaImagen from '../services/ia-imagen.js';
 import * as eventos from '../interactions/loot/eventos.js';
 import * as temporada from '../interactions/loot/temporada.js';
@@ -83,6 +84,7 @@ const PUBLICOS: Record<string, { archivo: string; tipo: string }> = {
   '/': { archivo: 'index.html', tipo: 'text/html; charset=utf-8' },
   '/red.js': { archivo: 'red.js', tipo: 'text/javascript; charset=utf-8' },
   '/app.js': { archivo: 'app.js', tipo: 'text/javascript; charset=utf-8' },
+  '/avatar-local.js': { archivo: 'avatar-local.js', tipo: 'text/javascript; charset=utf-8' },
   '/styles.css': { archivo: 'styles.css', tipo: 'text/css; charset=utf-8' },
 };
 
@@ -245,6 +247,24 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   }
 
   const ruta = `${metodo} ${url.pathname}`;
+
+  if (ruta === 'GET /api/overlay/avatar-local') {
+    try {
+      const png = avatarLocal.variante(url.searchParams.get('personaje') ?? '', url.searchParams.get('paso') ?? 'base');
+      res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
+      res.end(png); return;
+    } catch { throw new ErrorHttp(404, 'Base local no disponible'); }
+  }
+  if (ruta === 'GET /api/escenas/avatar-local') return json(res, 200, { calibracion: avatarLocal.leer(url.searchParams.get('personaje') ?? '') });
+  if (ruta === 'POST /api/escenas/avatar-local/vista' || ruta === 'POST /api/escenas/avatar-local') {
+    const b = await cuerpo(req);
+    if (!avatarIa.rutaValida(b.personaje)) throw new ErrorHttp(400, 'Personaje no válido');
+    try {
+      if (ruta.endsWith('/vista')) return json(res, 200, avatarLocal.vista(b.personaje as string, b.calibracion));
+      if (b.desactivar === true) { avatarLocal.desactivar(b.personaje as string); return json(res, 200, { desactivado: true }); }
+      return json(res, 200, avatarLocal.guardar(b.personaje as string, b.calibracion, b.hash, b.revisado));
+    } catch (e) { throw new ErrorHttp(400, e instanceof Error ? e.message : 'Calibración no válida'); }
+  }
 
   // Lo que pinta la barra del jefe en OBS. El overlay corre en un origen
   // propio (el sandbox de arriba), así que necesita CORS para leerlo. Solo se

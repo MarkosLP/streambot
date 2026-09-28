@@ -374,9 +374,9 @@ let zonasGuardadas = null;
 function cargar(img, src) {
   return new Promise((ok) => { img.onload = () => ok(true); img.onerror = () => ok(false); img.crossOrigin = 'anonymous'; img.src = src; });
 }
-async function ponerRetrato(ruta, zonas = null, version = '') {
+async function ponerRetrato(ruta, zonas = null, version = '', local = null) {
   if (!/^imagenes\/avatar\/[\w.-]+$/.test(ruta || '')) ruta = 'imagenes/avatar/errante';
-  const clave = JSON.stringify([ruta, zonas, version]);
+  const clave = JSON.stringify([ruta, zonas, version, local]);
   if (clave === retratoPuesto || clave === retratoCargando) return;
   const carga = ++cargaRetrato;
   retratoCargando = clave;
@@ -384,7 +384,7 @@ async function ponerRetrato(ruta, zonas = null, version = '') {
   const anteriores = ['r-base', 'r-medio', 'r-cerrados', 'r-contento'].map($);
   const nuevas = anteriores.map((anterior) => { const img = new Image(); img.id = anterior.id; img.className = anterior.className; return img; });
   const [base, medio, cerrados, contento] = nuevas;
-  const url = (v) => `../${ruta}/${v}.png?v=${encodeURIComponent(version)}`;
+  const url = (v) => local && (v === 'medio' || v === 'cerrados') ? `/api/overlay/avatar-local?personaje=${encodeURIComponent(ruta)}&paso=${v}&v=${encodeURIComponent(JSON.stringify(local))}` : `../${ruta}/${local && v === 'contento' ? 'base' : v}.png?v=${encodeURIComponent(version)}`;
   try {
     const cargas = await Promise.all(['base', 'medio', 'cerrados', 'contento'].map((v, i) => cargar(nuevas[i], url(v))));
     if (carga !== cargaRetrato) return;
@@ -411,7 +411,7 @@ async function ponerRetrato(ruta, zonas = null, version = '') {
   // Hecho con máscara (avatar-ia.ts): solo cambió esa zona, y se sabe cuál. Si
   // no, se busca comparando, y si no encaja, la variante va entera.
   const valida = (z) => z && ['x', 'y', 'w', 'h'].every((k) => typeof z[k] === 'number' && z[k] >= 0 && z[k] <= 1);
-  const ojos = valida(zonas?.ojos) ? { ...zonas.ojos, dx: 0, dy: 0 } : zonaQueCambia(pb, pc);
+  const ojos = local ? null : valida(zonas?.ojos) ? { ...zonas.ojos, dx: 0, dy: 0 } : zonaQueCambia(pb, pc);
   colocar(cerrados, ojos, 'c');
   medio.classList.toggle('entera', !ojos); // misma zona y mismo sitio que los cerrados
   // Alegrarse, sin zona guardada, cambia más que los ojos (boca, hombros, brillos): entera, con un fundido.
@@ -456,7 +456,7 @@ DirectoRed.alReiniciar(() => { vistosChat.clear(); vistosBotin.clear(); primera 
 function pintar(d) {
   const visible = SIEMPRE || d.config.avatar;
   ponerEstilo(q.get('estilo') || d.config.estilo, q.get('estilo') ? null : d.config.apariencia);
-  ponerRetrato(q.get('imagen') ?? d.config.avatarImagen ?? '', q.get('imagen') ? null : d.config.avatarZonas ?? null, d.config.avatarVersion ?? '');
+  ponerRetrato(q.get('imagen') ?? d.config.avatarImagen ?? '', q.get('imagen') ? null : d.config.avatarZonas ?? null, d.config.avatarVersion ?? '', q.get('imagen') ? null : d.config.avatarLocal ?? null);
   escena.classList.toggle('fuera', !visible);
   fijo = d.config.avatarTexto || '';
   if (Date.now() >= decirHasta) volverAlFijo();

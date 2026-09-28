@@ -1812,6 +1812,10 @@ $('e-avatar-borrar').addEventListener('click', () => {
   const ruta = sel.value || escenas.personajes.find((p) => p.estilo === escenas.config.estilo)?.ruta || 'imagenes/avatar/errante';
   borrarImagen(ruta, escenas.personajes.find((p) => p.ruta === ruta)?.titulo);
 });
+$('e-avatar-local').addEventListener('click', () => {
+  const ruta = $('e-avatar-personaje').value || escenas.personajes.find(p => p.estilo === escenas.config.estilo)?.ruta || 'imagenes/avatar/errante';
+  abrirAvatarLocal(ruta, escenas.personajes.find(p => p.ruta === ruta)?.titulo ?? 'Personaje');
+});
 $('e-avatar-parpadeo').addEventListener('click', async (ev) => {
   const sel = $('e-avatar-personaje');
   const ruta = sel.value || escenas.personajes.find((p) => p.estilo === escenas.config.estilo)?.ruta || 'imagenes/avatar/errante';

@@ -30,9 +30,52 @@ try {
   assert.ok(puerto,'Edge debe abrir su puerto de prueba');
   const paginas=await(await fetch(`http://127.0.0.1:${puerto}/json`)).json();
   socket=new WebSocket(paginas.find(x=>x.type==='page').webSocketDebuggerUrl);await new Promise(r=>socket.onopen=r);
-  socket.onmessage=async e=>{const m=JSON.parse(e.data);if(m.id){const p=pendientes.get(m.id);if(p){clearTimeout(p.t);pendientes.delete(m.id);m.error?p.ko(Error(JSON.stringify(m.error))):p.ok(m.result);}}else if(m.method==='Fetch.requestPaused'){const {requestId,request}=m.params;await pedir(request.url.startsWith(raiz+'/')||request.url.startsWith('data:')?'Fetch.continueRequest':'Fetch.failRequest',{requestId,...(!request.url.startsWith(raiz+'/')&&!request.url.startsWith('data:')?{errorReason:'BlockedByClient'}:{})});}};
+  socket.onmessage=async e=>{const m=JSON.parse(e.data);if(m.id){const p=pendientes.get(m.id);if(p){clearTimeout(p.t);pendientes.delete(m.id);m.error?p.ko(Error(JSON.stringify(m.error))):p.ok(m.result);}}else if(m.method==='Fetch.requestPaused'){const {requestId,request}=m.params;await pedir(request.url.startsWith(raiz+'/')||request.url.startsWith('data:')?'Fetch.continueRequest':'Fetch.failRequest',{requestId,...(!request.url.startsWith(raiz+'/')&&!request.url.startsWith('data:')?{errorReason:'BlockedByClient'}:{})}).catch(e=>{if(!e.message.includes('Invalid InterceptionId'))console.error('Interceptación:',e.message);});}};
   await pedir('Page.enable');await pedir('Fetch.enable',{patterns:[{urlPattern:'*'}]});
   const caso=process.argv[2]||'10';
+  if(caso==='avatar') {
+    for(const [nombre,ruta,puntos,altura] of [
+      ['chico','imagenes/avatar/oscuro-2026-09-27T09-12-36',[[413,334],[466,342],[555,342],[614,330]],.22],
+      ['magmarex','imagenes/avatar/oscuro-2026-09-27T17-18-25',[[376,383],[435,428],[589,428],[650,378]],.18],
+    ]) {
+      await abrir('/#/escenas',1440,1080);await evaluar("irA('escenas')");await esperar(900);
+      await evaluar(`document.querySelector('#e-avatar-personaje').value=${JSON.stringify(ruta)};document.querySelector('#e-avatar-local').click()`);await esperar(800);
+      assert.equal(await evaluar("document.querySelector('#avatar-local').open"),true);
+      await captura(`avatar-${nombre}-antes`);
+      for (const [x,y] of puntos) {
+        const rect = await evaluar("(()=>{const r=document.querySelector('#al-lienzo').getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height}})()");
+        const pos={x:rect.x+x/1024*rect.w,y:rect.y+y/1024*rect.h};
+        await pedir('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...pos});await pedir('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...pos});
+      }
+      await evaluar(`document.querySelector('#al-altura').value=${altura};document.querySelector('#al-altura').dispatchEvent(new Event('input'));document.querySelector('#al-calcular').click()`);
+      for(let i=0;i<60;i++){if(!await evaluar("document.querySelector('[data-paso=medio]').disabled"))break;await esperar(250);}
+      assert.equal(await evaluar("document.querySelector('[data-paso=medio]').disabled"),false,await evaluar("document.querySelector('#al-estado').textContent"));
+      assert.equal(await evaluar("document.querySelector('#al-guardar').disabled"),true);
+      for(const paso of ['base','medio','cerrados']) {
+        await evaluar(`document.querySelector('[data-paso=${paso}]').click()`);await esperar(400);
+        const congelada = await evaluar("document.querySelector('#al-lienzo').toDataURL()");await esperar(200);
+        assert.equal(await evaluar("document.querySelector('#al-lienzo').toDataURL()"),congelada);
+        await captura(`avatar-${nombre}-${paso}-despues`);
+      }
+      await evaluar("document.querySelector('#al-revisado').click();document.querySelector('#al-guardar').click()");await esperar(400);
+      assert.match(await evaluar("document.querySelector('#al-estado').textContent"),/guardada y activada/);
+      const guardada=await evaluar(`api('/api/escenas/avatar-local?personaje=${encodeURIComponent(ruta)}')`);
+      assert.equal(guardada.calibracion.puntos.length,4);
+      await writeFile(join(destino,`avatar-${nombre}-calibracion-revisada.json`),JSON.stringify(guardada,null,2));
+      await evaluar("document.querySelector('#al-altura').dispatchEvent(new Event('input'))");
+      assert.equal(await evaluar("document.querySelector('#al-guardar').disabled"),true);
+      assert.equal(await evaluar("document.querySelector('#al-revisado').checked"),false);
+      // Solo la base de datos en memoria: comprueba integración del overlay sin activar el bot real.
+      await evaluar(`api('/api/escenas', {avatar:true,avatarImagen:${JSON.stringify(ruta)}})`);
+      await abrir('/biblioteca/overlays/avatar.html',700,900);await esperar(1000);
+      assert.ok(await evaluar("document.querySelector('#r-cerrados').src.includes('/api/overlay/avatar-local')"));
+      await captura(`avatar-${nombre}-overlay-despues`);
+    }
+    await abrir('/#/escenas',390,844);await evaluar("irA('escenas')");await esperar(700);
+    await evaluar("document.querySelector('#e-avatar-local').click()");await esperar(500);
+    assert.ok(await evaluar("document.querySelector('#avatar-local').scrollWidth<=document.querySelector('#avatar-local').clientWidth"));
+    await captura('avatar-herramienta-390-despues');
+  }
   if(caso==='10')for(const w of [390,768,1366]){
     await abrir('/#/overlays',w,w===390?844:768);await evaluar("irA('overlays')");await esperar(800);
     const medidas=await evaluar(`(()=>{const v=document.querySelector('.ovl-panel-vista'),f=v.querySelector('iframe');return {ancho:innerWidth,scroll:document.documentElement.scrollWidth,visor:v.clientWidth,marco:f.getBoundingClientRect().width};})()`);

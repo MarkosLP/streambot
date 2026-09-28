@@ -807,3 +807,11 @@ test('imágenes: no inicia gasto sin aceptar el máximo de la operación', async
     assert.match(await r.text(),/Confirma el máximo/);
   }
 });
+
+test('avatar local: la escritura exige el panel y rechaza rutas/calibraciones inválidas', async () => {
+  const raiz = `http://127.0.0.1:${puerto}`;
+  assert.equal((await fetch(`${raiz}/api/escenas/avatar-local`, {method:'POST',body:'{}'})).status,403);
+  assert.equal((await post('/api/escenas/avatar-local/vista', {personaje:'../fuera'})).status,400);
+  assert.equal((await post('/api/escenas/avatar-local', {personaje:'imagenes/avatar/inexistente',calibracion:{}})).status,400);
+  assert.equal((await fetch(`${raiz}/api/overlay/avatar-local?personaje=../fuera`)).status,404);
+});

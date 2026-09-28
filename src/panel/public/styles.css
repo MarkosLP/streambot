@@ -1211,3 +1211,15 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
 .log.corto .act.warn .msg { color: var(--ambar); }
 .log.corto .act.error .msg { color: var(--rojo); }
 .log.corto { font: 0.86rem/1.5 inherit; font-family: inherit; }
+/* Calibrador: la base conserva sus proporciones y las vistas quedan congeladas. */
+#avatar-local { width: min(1120px, 96vw); max-height: 94vh; overflow: auto; background: var(--fondo, #171a22); color: var(--texto, #eee); border: 1px solid #666; border-radius: 12px; padding: 20px; }
+#avatar-local::backdrop { background: #000b; }
+.al-cabecera { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.al-cuerpo { display:grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr); gap:20px; }
+#al-lienzo { width:100%; height:auto; align-self:start; cursor:crosshair; background:#222; }
+.al-mandos { display:grid; gap:12px; align-content:start; }
+#al-coordenadas { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+#al-coordenadas fieldset { min-width:0; padding:6px; border:1px solid #555; }
+#al-coordenadas label { display:block; } #al-coordenadas input { width:75px; }
+#avatar-local [aria-pressed="true"] { outline:2px solid #daa65b; }
+@media (max-width:700px) { .al-cuerpo { grid-template-columns:minmax(0, 1fr); } #avatar-local { padding:10px; } }
