@@ -79,9 +79,10 @@
   #escena.feliz .salto { animation: salta .5s ease-in-out 3; }
   @keyframes salta { 50% { transform: translateY(-2.2%); } }
   @keyframes sorpresa { 30% { transform: translateY(-3%) scale(1.03); } }
-  /* Oscuro: los ojos brillan un poco más al hablar o alegrarse. */
+  /* Oscuro: los ojos brillan un poco más al hablar o alegrarse. Con screen
+     suma luz; sin ella tiñe ojos y mejillas de naranja (28 sep 2026). */
   .brillo-ojos { position: absolute; left: var(--ox); top: var(--oy); width: var(--ow); height: var(--oh); transform: translate(-50%, -50%); border-radius: 50%;
-    background: radial-gradient(closest-side, rgba(255, 190, 90, .55), transparent); opacity: .25; transition: opacity .4s; pointer-events: none; }
+    background: radial-gradient(closest-side, rgba(255, 190, 90, .55), transparent); mix-blend-mode: screen; opacity: .25; transition: opacity .4s; pointer-events: none; }
   #escena.habla .brillo-ojos, #escena.feliz .brillo-ojos, #escena.sorpresa .brillo-ojos { opacity: .8; }
   #escena.dormido .brillo-ojos, body:not(.e-oscuro) .brillo-ojos { opacity: 0; }
 
