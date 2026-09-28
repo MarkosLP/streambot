@@ -113,6 +113,7 @@ function irA(tab) {
   DirectoRed.cancelarLecturas();
   for (const b of document.querySelectorAll('.pestanas button')) {
     b.setAttribute('aria-selected', String(b.dataset.tab === tab));
+    b.tabIndex = b.dataset.tab === tab ? 0 : -1;
   }
   for (const v of document.querySelectorAll('.vista')) v.hidden = v.id !== `v-${tab}`;
   try { localStorage.setItem('panel-tab', tab); } catch { /* sin almacenamiento, da igual */ }
@@ -131,6 +132,32 @@ for (const d of document.querySelectorAll('details[data-recordar]')) {
 document.querySelector('.pestanas').addEventListener('click', (e) => {
   const tab = e.target.closest('button')?.dataset.tab;
   if (tab) irA(tab);
+});
+// 28 sep 2026: un único tabulador en el menú; flechas, Inicio y Fin entre secciones.
+const pestanas = [...document.querySelectorAll('.pestanas button')];
+for (const b of pestanas) {
+  b.id = `tab-${b.dataset.tab}`;
+  b.setAttribute('aria-controls', `v-${b.dataset.tab}`);
+  const vista = $(`v-${b.dataset.tab}`);
+  vista.setAttribute('role', 'tabpanel');
+  vista.setAttribute('aria-labelledby', b.id);
+  vista.tabIndex = 0;
+}
+const menuEstrecho = matchMedia('(max-width: 820px)');
+const orientarMenu = () => document.querySelector('.pestanas').setAttribute('aria-orientation', menuEstrecho.matches ? 'horizontal' : 'vertical');
+menuEstrecho.addEventListener('change', orientarMenu);
+orientarMenu();
+document.querySelector('.pestanas').addEventListener('keydown', (e) => {
+  const actual = pestanas.indexOf(e.target.closest('button'));
+  if (actual < 0) return;
+  const avance = menuEstrecho.matches ? 'ArrowRight' : 'ArrowDown';
+  const retroceso = menuEstrecho.matches ? 'ArrowLeft' : 'ArrowUp';
+  const destino = e.key === 'Home' ? 0 : e.key === 'End' ? pestanas.length - 1
+    : e.key === avance ? (actual + 1) % pestanas.length : e.key === retroceso ? (actual + pestanas.length - 1) % pestanas.length : null;
+  if (destino === null) return;
+  e.preventDefault();
+  irA(pestanas[destino].dataset.tab);
+  pestanas[destino].focus();
 });
 document.addEventListener('click', (e) => {
   const destino = e.target.closest('[data-ir]')?.dataset.ir;
@@ -938,6 +965,7 @@ async function cargarLoot() {
   if (document.activeElement !== $('loot-activo')) $('loot-activo').checked = d.activo;
   $('loot-activo-texto').textContent = d.activo ? 'Loot activo' : 'Loot apagado';
   if (document.activeElement !== $('loot-canal-juega')) $('loot-canal-juega').checked = d.canalJuega;
+  $('l-regalo-ayuda').textContent = `Vacío: uno para cada persona del chat, haya escrito o no. Sin bots${d.canalJuega ? '; tú también participas' : ' y sin ti'}.`;
 
   const esperando = !d.activo ? 'Loot apagado' : !d.directo ? 'Esperando al directo' : null;
   ficha('l-proximo', esperando ? '' : 'oro', esperando ?? (d.proximoEnSeg !== null ? mmss(d.proximoEnSeg) : '—'),

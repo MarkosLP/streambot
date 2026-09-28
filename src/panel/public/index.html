@@ -308,7 +308,7 @@
             <span>Para</span>
             <input type="text" id="l-regalo-para" list="l-regalo-lista" placeholder="Todo el chat" autocomplete="off" spellcheck="false">
             <datalist id="l-regalo-lista"></datalist>
-            <small>Vacío: uno para cada persona del chat, haya escrito o no. Sin bots y sin ti.</small>
+            <small id="l-regalo-ayuda">Vacío: uno para cada persona del chat, haya escrito o no. Tu participación depende de «Yo también juego».</small>
           </label>
           <label class="campo">
             <span>Cofre</span>
@@ -504,7 +504,7 @@
             <div class="avatar-vista"><iframe id="e-avatar-vista" sandbox="allow-scripts" title="Avatar" tabindex="-1"></iframe></div>
             <div class="avatar-mandos">
               <p class="nota">Para cuando apagues la cámara. Enciéndelo aquí y aparece <b>en la escena Charla</b> (en el hueco de la cámara) y <b>donde hayas añadido el avatar</b> (la escena del juego, por ejemplo). Apagado, es transparente.</p>
-              <p class="nota">Respira, parpadea, mira al chat cuando alguien escribe, se alegra con el botín (y se sorprende con un legendario) y se duerme si el chat calla 90 s.</p>
+              <p class="nota">Respira, mira al chat y reacciona al botín. El parpadeo depende de que el personaje tenga variantes válidas o una calibración local activada; si no, conserva la imagen base.</p>
               <div class="campo"><span>Personaje</span>
                 <div class="con-boton"><select id="e-avatar-personaje" aria-label="Personaje"></select><button class="boton" type="button" id="e-avatar-renombrar" title="Cambiar el nombre de este personaje" aria-label="Cambiar el nombre">✏️</button><button class="boton" type="button" id="e-avatar-parpadeo" title="Rehace sus ojos entornados, cerrados y su sonrisa retocando solo la cara (3 imágenes, céntimos)" aria-label="Arreglar el parpadeo">👁</button><button class="boton peligro" type="button" id="e-avatar-borrar" title="Borrar este personaje para siempre" aria-label="Borrar este personaje">🗑</button></div></div>
               <details class="avatar-crear">

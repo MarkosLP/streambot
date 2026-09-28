@@ -1,4 +1,4 @@
-﻿// Pruebas reales de navegador, siempre con SQLite en memoria y puertos efímeros.
+// Pruebas reales de navegador, siempre con SQLite en memoria y puertos efímeros.
 // Ejecutar: node --import tsx scripts/pruebas-visuales.mjs [10|11|14|avatar]
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -39,6 +39,22 @@ try {
     assert.ok(medidas.scroll<=w,JSON.stringify(medidas));assert.ok(Math.abs(medidas.visor-medidas.marco)<2,JSON.stringify(medidas));
     await evaluar("document.querySelector('.ovl-panel-vista').scrollIntoView({block:'center'})");await captura(`10-overlays-${w}-despues`);
     console.log('Correcto: vista proporcional sin desbordamiento',w);
+  }
+  if(caso==='14')for(const w of [390,1366]) {
+    await abrir('/#/directo',w,w===390?844:768);
+    await evaluar("irA('directo');document.querySelector('#tab-directo').focus()");
+    await pedir('Input.dispatchKeyEvent',{type:'keyDown',key:w===390?'ArrowRight':'ArrowDown'});
+    await esperar(800);
+    assert.equal(await evaluar('document.activeElement.id'),'tab-loot');
+    assert.equal(await evaluar("document.querySelector('#v-loot').hidden"),false);
+    assert.equal(await evaluar("document.querySelectorAll('.pestanas button[tabindex=\"0\"]').length"),1);
+    assert.equal(await evaluar("document.querySelector('#v-loot').getAttribute('aria-labelledby')"),'tab-loot');
+    await evaluar("document.querySelector('#l-regalo-ayuda').scrollIntoView({block:'center'})");
+    await captura(`14-teclado-${w}-despues`);
+    await pedir('Input.dispatchKeyEvent',{type:'keyDown',key:'End'});
+    assert.equal(await evaluar('document.activeElement.id'),'tab-registro');
+    await pedir('Input.dispatchKeyEvent',{type:'keyDown',key:'Home'});
+    assert.equal(await evaluar('document.activeElement.id'),'tab-directo');
   }
   if(caso==='11')for(const [nombre,ruta] of [['escena','escena.html?tipo=inicio&demo=1'],['avatar','avatar.html?demo=1'],['jefe','jefe.html?demo=1&jefe=liche&volumen=0']]){
     await abrir('/biblioteca/overlays/'+ruta,1920,1080);await esperar(3500);await captura(`11-${nombre}-despues`);
