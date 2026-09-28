@@ -46,6 +46,7 @@ import * as arena from '../interactions/loot/arena.js';
 import { MOCHILA_MAX, PROBABILIDADES, tirar } from '../interactions/loot/objetos.js';
 import * as cooldowns from '../core/cooldowns.js';
 import { conObs, type PedirObs } from '../transport/obs.js';
+import { probarVisual, EFECTOS_PRUEBA, type EfectoPrueba } from './prueba-efecto.js';
 
 /** Abre una conexión con OBS para un trabajo. Se inyecta para probarlo sin OBS. */
 export type ConObs = <T>(trabajo: (pedir: PedirObs) => Promise<T>) => Promise<T>;
@@ -158,6 +159,7 @@ function vigilarEscenaParaMusica(obs: ConObs): void {
 // ---------------------------------------------------------------------------
 
 let laboratorioEnMarcha = false;
+let pruebaEfectoEnMarcha = false;
 /** El fondo que se está generando con IA (una escena), o null. */
 let generandoFondo: string | null = null;
 
@@ -898,8 +900,24 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     return json(res, 200, { ok: true });
   }
 
+  if (ruta === 'POST /api/efectos/prueba') {
+    const { efecto, escena, fuente } = await cuerpo(req);
+    if (!EFECTOS_PRUEBA.includes(efecto as EfectoPrueba)) throw new ErrorHttp(400, 'Efecto no válido');
+    if (pruebaEfectoEnMarcha) throw new ErrorHttp(409, 'Ya hay una prueba de efecto en marcha');
+    pruebaEfectoEnMarcha = true;
+    try {
+      await probarVisual(obs, efecto as EfectoPrueba, typeof escena === 'string' ? escena : '', typeof fuente === 'string' ? fuente : '');
+      return json(res, 200, { ok: true, aviso: 'Prueba terminada. Sin canjes, mensajes ni cambios en el Loot.' });
+    } catch (err) { throw new ErrorHttp(409, err instanceof Error ? err.message : String(err)); }
+    finally { pruebaEfectoEnMarcha = false; }
+  }
+
   const ejecutar = /^POST \/api\/acciones\/([\w-]+)\/ejecutar$/.exec(ruta);
   if (ejecutar) {
+    const acciones = await sb.acciones();
+    const probada = acciones.find(a => a.id === ejecutar[1]);
+    if (!probada) throw new ErrorHttp(404, 'La Action ya no existe');
+    if (!probada.enabled) throw new ErrorHttp(409, 'La Action está desactivada en Streamer.bot');
     // Como si lo hubieras canjeado tú: sin esto, un %user% en la acción sale
     // tal cual en el chat, porque al probar no hay nadie que haya canjeado.
     const login = config.broadcasterLogin;
@@ -913,7 +931,6 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     // OBS). La del bot va con el canje: el cofre del Grito, el objeto de la
     // Maldición, la oferta de la Poción, el temblor del Terremoto. Al probar un
     // efecto del catálogo, el bot recibe un canje tuyo, por el mismo camino.
-    const probada = (await sb.acciones().catch(() => [])).find((a) => a.id === ejecutar[1]);
     const efecto = probada && EFECTOS.find((e) => mismoNombre(probada.name, e.accion));
     if (!efecto) return json(res, 200, { ok: true });
     const yo = users.findByLogin(login);
@@ -981,6 +998,8 @@ async function efectos(sb: PuertoStreamerbot) {
         material: e.material.map((m) => ({ id: m, archivo: enBiblioteca(m) })),
         montado: acciones === null ? null : accion !== null,
         accionId: accion?.id ?? null,
+        habilitada: accion?.enabled ?? false,
+        requisitoLoot: loot.motivoEfectoParado(e.id, users.findByLogin(config.broadcasterLogin)?.twitch_id ?? ''),
       };
     }),
     // Las Actions del grupo de efectos que no están en el catálogo: las que

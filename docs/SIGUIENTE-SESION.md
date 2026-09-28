@@ -2,6 +2,13 @@
 
 Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.**
 
+## Efectos y Biblioteca (28 sep, Codex)
+
+- Efectos: pruebas sin directo separadas del canje real. Sonido en el navegador; efectos visuales en la escena elegida, con OBS detenido y restauración del estado anterior incluso ante errores. Sin chat ni Loot. Los cofres siguen en Loot. Preparación plegada, requisitos visibles y Actions desactivadas bloqueadas.
+- Biblioteca: «Escenas actuales» sustituye las demos antiguas y muestra las cuatro escenas configuradas. `escena.html` se conserva porque es su renderizador; retirados montañas, castillo y luna procedurales. Sin imagen queda un fondo de color. Imagen fallida deja de enseñar la anterior. Repetir conserva el silencio.
+- Validación: 603 pruebas y TypeScript correctos; navegador aislado a 390/1366 px, capturas de antes/después en `D:/Descargas/StreamerBotApi-fase2-capturas` (efectos-pruebas, biblioteca, escena-fondo). Sin OBS real, bot real ni gasto. Prueba de las conexiones OBS mediante dobles; pendiente verificación real autorizada.
+- Se observó actividad concurrente sobre imágenes de fondos y avatares: esos cambios no son de este trabajo ni se incluyen en su commit.
+
 ## Actualización compartida: Escenas (28 sep, Codex)
 
 **Overlays, después de Escenas:** a petición de Marcos, retirados los avisos propios de follows y suscripciones (incluidos resubs y regalos), gestionados en Streamlabs. Quitados controles y demos; servidor impide reactivarlos con ajustes antiguos o pruebas HTTP. Se conservan contadores, metas, último follow/sub y avisos de bits/raids. Las vistas se etiquetan como ejemplos y el botón se llama «Emitir prueba» para distinguirlo de una prueba local. `npm run check`: 599 pruebas, TypeScript correcto; navegador a 390/1366 px y capturas `overlays-streamlabs-*-antes/despues.png` en la carpeta habitual. Un solo commit en `master`. Sin tocar OBS ni reiniciar el bot real; se aplica al reiniciar el bot y recargar el panel. Ideas propuestas, no implementadas: ampliar la vista de las alertas, pruebas solo en el panel y ordenar las tarjetas del rotativo.

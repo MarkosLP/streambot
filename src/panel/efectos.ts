@@ -73,7 +73,7 @@ export const EFECTOS: Efecto[] = [
     cooldownSeg: 600,
     maxPorDirecto: 4,
     maxPorPersona: 1,
-    queHace: 'Suena un grito de guerra: tambores y un cuerno.',
+    queHace: 'Suena un grito de guerra. En un canje real durante el directo, atrae un cofre de guerra en 1-2 minutos.',
     necesita: null,
     material: ['sonidos/grito-de-guerra.wav'],
     obs: null,
@@ -92,7 +92,7 @@ export const EFECTOS: Efecto[] = [
     cooldownSeg: 600,
     maxPorDirecto: null,
     maxPorPersona: 2,
-    queHace: 'Aparece "¡Bebe agua!" en pantalla 5 segundos, con un frasco animado.',
+    queHace: 'Aparece "¡Bebe agua!" durante 5 segundos. En un canje real, si llevas un objeto maldito, ofrece !purificar durante 5 minutos.',
     necesita: null,
     material: ['overlays/pocion.html', 'sonidos/pocion.wav'],
     obs: {
@@ -123,7 +123,7 @@ export const EFECTOS: Efecto[] = [
     cooldownSeg: 1200,
     maxPorDirecto: 2,
     maxPorPersona: 1,
-    queHace: 'La pantalla se queda en blanco y negro 10 segundos.',
+    queHace: 'El juego se queda en blanco y negro 10 segundos. En un canje real, el Loot entrega un objeto maldito a quien lo canjea.',
     necesita: null,
     material: ['sonidos/maldicion.wav'],
     obs: {
@@ -235,7 +235,7 @@ export function guia(e: Efecto): Fase[] {
       ...e.obs,
       // Lo que sabe crear el panel solo (src/panel/obs-setup.ts).
       ...(['pocion', 'maldicion', 'lag'].includes(e.id) && {
-        atajo: 'Atajo: cierra esta guía y usa **Preparar en OBS**, arriba en esta misma pestaña. Hace esta fase por ti; luego sigue por la siguiente.',
+        atajo: 'Atajo: cierra esta guía y usa **Preparar en OBS**, en Preparación al final de esta pestaña. Hace esta fase por ti; luego sigue por la siguiente.',
       }),
     });
   }

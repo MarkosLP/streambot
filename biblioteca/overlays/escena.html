@@ -9,8 +9,7 @@
                Fraunces y polvo de luz
     propios    los que crea Crid4m en el panel (id 'mi…'): forma oscura o
                redonda, sus cuatro colores, una letra y unas partículas
-  El fondo es la foto generada con IA para ese estilo; sin ella, el paisaje
-  dibujado (oscuro) o solo el color del cielo (los demás).
+  El fondo es la imagen elegida en el panel; sin ella, un fondo de color.
 
     escena.html?tipo=inicio   Empezamos en breve
     escena.html?tipo=charla   Just Chatting: hueco de cámara, chat y datos.
@@ -63,24 +62,6 @@
   @keyframes acerca { from { transform: scale(1); } to { transform: scale(1.06) translate(-10px, 6px); } }
   .cielo { position: absolute; inset: 0;
     background: linear-gradient(180deg, var(--cielo-alto) 0%, var(--cielo-medio) 48%, var(--horizonte) 72%, var(--cielo-medio) 100%); }
-  .estrellas { position: absolute; left: 0; top: 0; width: 100%; height: 55%; opacity: .55; }
-  .luna { position: absolute; left: 1560px; top: 130px; width: 120px; height: 120px; border-radius: 50%;
-    background: radial-gradient(circle at 42% 40%, #fff 0%, var(--luna) 45%, rgba(var(--halo), .55) 100%);
-    box-shadow: 0 0 60px 20px rgba(var(--halo), .35), 0 0 220px 90px rgba(var(--halo), .18); }
-  .halo { position: absolute; left: 1620px; top: 190px; width: 1800px; height: 1800px; margin: -900px 0 0 -900px;
-    background: radial-gradient(circle, rgba(var(--halo), .22) 0%, rgba(var(--halo), .08) 25%, transparent 55%); }
-  .rayos { position: absolute; left: 1620px; top: 190px; width: 2600px; height: 2600px; margin: -1300px 0 0 -1300px; opacity: .5;
-    background: conic-gradient(from 200deg, transparent 0deg, rgba(var(--halo), .10) 8deg, transparent 20deg, transparent 38deg, rgba(var(--halo), .08) 46deg, transparent 60deg,
-      transparent 96deg, rgba(var(--halo), .12) 104deg, transparent 118deg, transparent 150deg, rgba(var(--halo), .07) 160deg, transparent 176deg, transparent 360deg);
-    -webkit-mask-image: radial-gradient(circle, #000 3%, transparent 42%); mask-image: radial-gradient(circle, #000 3%, transparent 42%);
-    animation: rayos 90s linear infinite alternate; }
-  @keyframes rayos { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
-  #paisaje { position: absolute; left: -120px; top: 0; width: 2160px; height: 1080px; }
-  #paisaje > svg { position: absolute; inset: 0; width: 2160px; height: 1080px; overflow: visible; }
-  .capa { animation: deriva var(--t) ease-in-out infinite alternate; }
-  @keyframes deriva { from { transform: translateX(calc(var(--d) * -1)); } to { transform: translateX(var(--d)); } }
-  .ventana { animation: vela 3s ease-in-out infinite alternate; }
-  @keyframes vela { 0% { opacity: .95; } 40% { opacity: .55; } 100% { opacity: 1; } }
   .niebla { position: absolute; left: -10%; width: 240%; height: var(--alto, 260px); top: var(--y); opacity: var(--o, .5);
     background:
       radial-gradient(40% 50% at 12% 50%, rgba(var(--niebla), .55), transparent 70%),
@@ -96,12 +77,11 @@
   .vineta { position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 42%, transparent 45%, rgba(0, 0, 0, .78) 100%); }
   .sombra-baja { position: absolute; left: 0; right: 0; bottom: 0; height: 460px; background: linear-gradient(180deg, transparent, rgba(4, 4, 7, .85)); }
 
-  /* Con un fondo de verdad (generado con IA en el panel), el paisaje dibujado
-     se retira y quedan solo la luz, la niebla, la ceniza y el grano encima. */
+  /* Las imágenes conservan movimiento suave y contraste para los textos. */
   .foto { position: absolute; inset: 0; background: center / cover no-repeat; opacity: 0; }
   body.con-foto .foto { opacity: 1; animation: deriva-foto 70s ease-in-out infinite alternate; }
   @keyframes deriva-foto { from { transform: translate(0, 0); } to { transform: translate(-1.2%, -.8%); } }
-  body.con-foto .cielo, body.con-foto .estrellas, body.con-foto .halo, body.con-foto .rayos, body.con-foto .luna, body.con-foto #paisaje { display: none; }
+  body.con-foto .cielo { display: none; }
   .niebla.suelta { display: none; }
   body.con-foto .niebla.suelta { display: block; }
   .velo { position: absolute; inset: 0; opacity: 0; transition: opacity 1.6s ease;
@@ -280,10 +260,9 @@
     --grad: linear-gradient(90deg, var(--acento), var(--acento-2), var(--acento-3));
   }
 
-  /* El mundo: sin el paisaje dibujado; un cielo de degradado si no hay foto. */
+  /* Fondo de color cuando no hay imagen. */
   body.redondo .cielo { background: radial-gradient(90% 60% at 50% 100%, var(--cielo-c), transparent 70%), linear-gradient(180deg, var(--cielo-a) 0%, var(--cielo-b) 70%, var(--cielo-c) 130%); }
-  body.redondo .luna, body.redondo .halo, body.redondo .rayos, body.redondo #paisaje, body.redondo .niebla { display: none !important; }
-  body.redondo .estrellas { opacity: .35; }
+  body.redondo .niebla { display: none !important; }
   body.redondo .grano { opacity: .035; }
   body.redondo .vineta { background: radial-gradient(120% 95% at 50% 40%, transparent 55%, rgba(0, 0, 0, .55) 100%); }
   body.redondo .sombra-baja { height: 420px; background: linear-gradient(180deg, transparent, var(--sombra-baja)); }
@@ -376,7 +355,6 @@
     --ambar: var(--c1); --ambar-claro: color-mix(in srgb, var(--c1) 55%, #fff);
     --cielo-alto: color-mix(in srgb, var(--c3) 55%, #000); --cielo-medio: var(--c3); --horizonte: var(--c4);
   }
-  body.e-propio:not(.redondo) .luna, body.e-propio:not(.redondo) .halo, body.e-propio:not(.redondo) .rayos, body.e-propio:not(.redondo) #paisaje { display: none; }
   body.e-propio:not(.redondo) .dato, body.e-propio:not(.redondo) .cifra { border-left-color: color-mix(in srgb, var(--c1) 35%, transparent); }
   body.e-propio:not(.redondo) .hilo::before, body.e-propio:not(.redondo) .hilo::after { background: linear-gradient(90deg, transparent, var(--c1), transparent); }
   body.e-propio:not(.redondo) .cam::before { border-color: color-mix(in srgb, var(--c1) 55%, transparent); }
@@ -415,11 +393,6 @@
   <div class="camara">
     <div class="foto" id="foto"></div>
     <div class="cielo"></div>
-    <svg class="estrellas" id="estrellas" viewBox="0 0 2000 600" preserveAspectRatio="none" aria-hidden="true"></svg>
-    <div class="halo"></div>
-    <div class="rayos"></div>
-    <div class="luna"></div>
-    <div id="paisaje"></div>
   </div>
   <div class="niebla suelta" style="--y:700px;--alto:300px;--o:.22;--t:140s"></div>
   <div class="niebla suelta" style="--y:860px;--alto:260px;--o:.18;--t:100s"></div>
@@ -496,100 +469,6 @@ function h(tag, attrs = {}, ...hijos) {
   return el;
 }
 const lista = (...xs) => xs.flat(Infinity).filter((x) => x !== null && x !== undefined && x !== false);
-
-// ======================= El paisaje =======================
-// Montañas por desplazamiento de punto medio, con semilla fija: siempre el
-// mismo paisaje. Cada capa es un svg aparte para poder meter niebla entre
-// ellas; más lejos = más clara y más brumosa.
-(function paisaje() {
-  let semilla = 11;
-  const azar = () => ((semilla = (semilla * 16807) % 2147483647) / 2147483647);
-  const NS = 'http://www.w3.org/2000/svg';
-  const el = (t, a) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
-  const cont = $('paisaje');
-  const css = getComputedStyle(document.body);
-  const c = (v) => css.getPropertyValue(v).trim();
-
-  // Picos: una serie de montañas triangulares de alturas distintas, con el
-  // perfil roto por desplazamiento de punto medio (la roca no es recta).
-  function cresta(base, amp, rugosidad, picos = 7) {
-    const cumbres = [[-60, base]];
-    const ancho = 2280 / picos;
-    for (let i = 0; i < picos; i++) {
-      const x = -60 + ancho * (i + .5 + (azar() - .5) * .5);
-      cumbres.push([x, base - amp * (.45 + azar() * .55)]);
-      cumbres.push([-60 + ancho * (i + 1) + (azar() - .5) * 40, base - amp * (.05 + azar() * .25)]);
-    }
-    let pts = cumbres;
-    let d = amp * .22;
-    for (let it = 0; it < 6; it++) {
-      const n = [];
-      for (let i = 0; i < pts.length - 1; i++) {
-        const [x1, y1] = pts[i], [x2, y2] = pts[i + 1];
-        n.push(pts[i], [(x1 + x2) / 2 + (azar() - .5) * d * .3, (y1 + y2) / 2 + (azar() * 2 - 1) * d]);
-      }
-      n.push(pts[pts.length - 1]);
-      pts = n; d *= rugosidad;
-    }
-    return pts;
-  }
-  const linea = (pts) => pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L');
-  const alturaEn = (pts, x) => { for (let i = 0; i < pts.length - 1; i++) if (pts[i + 1][0] >= x) return pts[i][1] + (pts[i + 1][1] - pts[i][1]) * ((x - pts[i][0]) / (pts[i + 1][0] - pts[i][0])); return 1080; };
-
-  const capas = [
-    { base: 770, amp: 290, rug: .55, picos: 9, arriba: '--capa1', abajo: '--capa2', t: '70s', d: '14px', niebla: { y: 660, alto: 200, o: .34, t: '130s' } },
-    { base: 860, amp: 240, rug: .55, picos: 6, arriba: '--capa2', abajo: '--capa3', t: '60s', d: '26px', niebla: { y: 760, alto: 220, o: .4, t: '100s' }, castillo: 1700 },
-    { base: 960, amp: 190, rug: .58, picos: 5, arriba: '--capa3', abajo: '--capa4', t: '50s', d: '42px', niebla: { y: 890, alto: 200, o: .28, t: '80s' } },
-    { base: 1020, amp: 150, rug: .6, picos: 4, arriba: '--capa4', abajo: '--capa4', t: '40s', d: '64px' },
-  ];
-  capas.forEach((k, i) => {
-    const svg = el('svg', { viewBox: '0 0 2160 1080', class: 'capa', style: `--t:${k.t};--d:${k.d}` });
-    const g = el('linearGradient', { id: `capa${i}`, x1: 0, y1: 0, x2: 0, y2: 1 });
-    g.append(el('stop', { offset: 0, 'stop-color': c(k.arriba) }), el('stop', { offset: 1, 'stop-color': c(k.abajo) }));
-    svg.append(el('defs', {}), g);
-    svg.firstChild.append(g);
-    const pts = cresta(k.base, k.amp, k.rug, k.picos);
-    svg.append(el('path', { d: `M-60 1080 L${linea(pts)} L2220 1080 Z`, fill: `url(#capa${i})` }));
-    // La cresta, apenas tocada por la luna.
-    svg.append(el('path', { d: `M${linea(pts)}`, fill: 'none', stroke: `rgba(${c('--halo')}, ${(.2 - i * .05).toFixed(2)})`, 'stroke-width': 1.4 }));
-    if (k.castillo) svg.append(castillo(alturaEn(pts, k.castillo), k.castillo, c(k.arriba)));
-    cont.append(svg);
-    if (k.niebla) {
-      const n = document.createElement('div');
-      n.className = 'niebla';
-      n.style.cssText = `--y:${k.niebla.y}px;--alto:${k.niebla.alto}px;--o:${k.niebla.o};--t:${k.niebla.t}`;
-      cont.append(n);
-    }
-  });
-
-  // El castillo en la cresta de la segunda capa: murallas, torres con tejados
-  // en punta y alguna ventana encendida.
-  function castillo(suelo, x0, color) {
-    const g = el('g', {});
-    const e = .62;
-    const torre = (x, ancho, alto, tejado) => {
-      x = x0 + (x - x0) * e; ancho *= e; alto *= e; tejado *= e;
-      g.append(el('rect', { x: x - ancho / 2, y: suelo - alto, width: ancho, height: alto + 60, fill: color }));
-      g.append(el('path', { d: `M${x - ancho / 2 - 5} ${suelo - alto} L${x} ${suelo - alto - tejado} L${x + ancho / 2 + 5} ${suelo - alto} Z`, fill: color }));
-    };
-    g.append(el('rect', { x: x0 - 120 * e, y: suelo - 70 * e, width: 240 * e, height: 130, fill: color }));
-    for (let i = 0; i < 12; i++) g.append(el('rect', { x: x0 - 120 * e + i * 20 * e, y: suelo - 82 * e, width: 11 * e, height: 14 * e, fill: color }));
-    torre(x0 - 130, 34, 150, 62);
-    torre(x0 + 128, 30, 124, 54);
-    torre(x0 - 32, 46, 236, 100);
-    torre(x0 + 42, 26, 178, 72);
-    const luz = `rgb(${c('--halo')})`;
-    for (const [x, y] of [[-32, 196], [-32, 156], [42, 142], [-130, 118], [74, 42], [-72, 38]]) {
-      g.append(el('rect', { class: 'ventana', x: x0 + x * e - 2, y: suelo - y * e, width: 4, height: 7, rx: 2, fill: luz, style: `animation-delay:${(-azar() * 3).toFixed(2)}s` }));
-    }
-    return g;
-  }
-
-  const est = $('estrellas');
-  for (let i = 0; i < 150; i++) {
-    est.append(el('circle', { cx: (azar() * 2000).toFixed(1), cy: (azar() * 600).toFixed(1), r: (azar() * 1.5 + .3).toFixed(2), fill: '#fff', opacity: (azar() * .7 + .15).toFixed(2) }));
-  }
-})();
 
 // ======================= Estilo =======================
 // Lo elige el panel (config.estilo, con su config.apariencia); ?estilo=alegre
@@ -930,6 +809,11 @@ function pintarFoto(ruta) {
     el.style.backgroundImage = `url("../${ruta}")`;
     document.body.classList.add('con-foto');
     document.body.style.setProperty('--velo', String(veloPara(img)));
+  };
+  img.onerror = () => {
+    if (fotoPuesta !== ruta) return;
+    document.body.classList.remove('con-foto');
+    el.style.backgroundImage = '';
   };
   img.src = `../${ruta}`;
 }

@@ -864,3 +864,10 @@ test('overlays: no permite emitir pruebas de follows, subs ni regalos gestionado
     assert.match(r.body.error, /Streamlabs/);
   }
 });
+
+test('efectos: probar sin directo no ejecuta Actions ni manda chat', async () => {
+  const n=ejecutadas.length, mensajes=enviados.length;
+  const r=await post('/api/efectos/prueba',{efecto:'grito'});
+  assert.equal(r.status,200);assert.equal(ejecutadas.length,n);assert.equal(enviados.length,mensajes);
+  assert.equal((await post('/api/efectos/prueba',{efecto:'inventado'})).status,400);
+});

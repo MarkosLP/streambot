@@ -630,7 +630,9 @@ $('f-chat').addEventListener('submit', async (e) => {
 // Efectos
 // ---------------------------------------------------------------------------
 
+let pruebaEfectoActiva = false;
 async function cargarEfectos() {
+  if (pruebaEfectoActiva) return;
   try {
     const datos = await api('/api/efectos');
     $('efectos-sin-sb').hidden = datos.conectado;
@@ -675,6 +677,7 @@ function pintarBotonera(datos) {
     const el = h('button', {
       class: `boton-fx ${r.clase} ${montado ? '' : 'no-montado'}`,
       type: 'button',
+      disabled: montado && !e.habilitada,
       title: montado ? `${e.queHace} Lo lanza como si lo canjearas tú, sin gastar puntos.` : 'Todavía no está montado en Streamer.bot. Pulsa para ver cómo.',
       onclick: async () => {
         if (!montado) {
@@ -741,14 +744,47 @@ function botonProbar(accionId, habilitada = true) {
         tostada(err.message, true);
       }
     },
-  }, 'Probar');
+  }, 'Lanzar efecto real');
+}
+
+function botonPruebaSinDirecto(e) {
+  return h('button', {
+    type: 'button', class: 'boton primario', 'data-prueba-efecto': e.id,
+    onclick: async () => {
+      if (pruebaEfectoActiva) return;
+      if (e.id !== 'grito' && (!obsElegido.escena || (e.id !== 'pocion' && !obsElegido.fuente))) {
+        $('preparacion-efectos').open = true;
+        $('obs-prep').scrollIntoView({ block: 'center' });
+        return tostada('Elige la escena y la fuente en Preparación. No necesitas estar en directo.', true);
+      }
+      pruebaEfectoActiva = true;
+      document.querySelectorAll('[data-prueba-efecto]').forEach(b => { b.disabled = true; });
+      const estado = $('fx-prueba-estado');
+      estado.textContent = `Probando ${e.recompensa}${e.id === 'grito' ? '' : ` en «${obsElegido.escena}»`}. Sonido en este navegador; sin canje ni cambios en el Loot.`;
+      const sonido = e.material.find(m => m.id.startsWith('sonidos/'));
+      let audio, avisoSonido = '';
+      try {
+        if (sonido?.archivo) {
+          audio = new Audio(sonido.archivo.url); audio.volume = .5;
+          await audio.play().catch(() => { avisoSonido = ' No se pudo reproducir el sonido en el navegador.'; });
+        } else avisoSonido = ' Falta el archivo de sonido.';
+        const r = await api('/api/efectos/prueba', { efecto: e.id, escena: obsElegido.escena, fuente: obsElegido.fuente });
+        if (e.id === 'grito' && audio && !avisoSonido) await new Promise(r => setTimeout(r, Math.min(20000, (sonido.archivo.duracionSeg ?? 5) * 1000)));
+        estado.textContent = r.aviso + avisoSonido;
+      } catch (err) { estado.textContent = err.message; }
+      finally {
+        audio?.pause(); pruebaEfectoActiva = false;
+        document.querySelectorAll('[data-prueba-efecto]').forEach(b => { b.disabled = false; });
+      }
+    },
+  }, 'Probar sin directo');
 }
 
 function tarjetaEfecto(e) {
   const estadoChip = e.montado === null
     ? h('span', { class: 'chip' }, 'Sin conexión')
     : e.montado
-      ? h('span', { class: 'chip ok' }, 'Montado')
+      ? h('span', { class: `chip ${e.habilitada ? 'ok' : 'falta'}` }, e.habilitada ? 'Action encontrada' : 'Action desactivada')
       : h('span', { class: 'chip falta' }, 'Por montar');
 
   const r = rareza(e.coste);
@@ -759,6 +795,7 @@ function tarjetaEfecto(e) {
       estadoChip),
     h('div', { class: 'efecto-cuerpo' },
       h('p', {}, e.queHace),
+      e.requisitoLoot && h('p', { class: 'nota' }, `Canje real: ${e.requisitoLoot}. La prueba de sonido y visual sigue disponible.`),
       h('div', { class: 'meta' },
         h('span', { class: 'coste' }, `🪙 ${e.coste.toLocaleString('es-ES')}`),
         h('span', {}, `· cooldown ${cooldownTexto(e.cooldownSeg)}`),
@@ -766,13 +803,16 @@ function tarjetaEfecto(e) {
       ),
       e.material?.length > 0 && h('div', { class: 'material' }, e.material.map(filaMaterial)),
       h('div', { class: 'pie' },
-        botonProbar(e.accionId),
+        botonPruebaSinDirecto(e),
         h('button', {
           class: `boton ${e.montado === false && !e.necesita ? 'destacado' : ''}`,
           type: 'button',
           onclick: () => abrirGuia(e),
         }, e.montado ? 'Ver la guía' : 'Cómo montarlo'),
       ),
+      h('details', { class: 'escena-avanzado' }, h('summary', {}, 'Lanzar el efecto completo como un canje'),
+        h('p', { class: 'nota' }, 'Ejecuta la Action y las reglas del Loot: puede escribir al chat, dar objetos o modificar un jefe. No gasta Oros.'),
+        botonProbar(e.accionId, e.habilitada)),
     ),
   );
 }
@@ -828,7 +868,7 @@ function abrirGuia(e) {
   const r = rareza(e.coste);
   const dialogo = $('guia');
   const estado = e.montado === null ? h('span', { class: 'chip' }, 'Sin conexión')
-    : e.montado ? h('span', { class: 'chip ok' }, 'Montado') : h('span', { class: 'chip falta' }, 'Por montar');
+    : e.montado ? h('span', { class: 'chip' }, e.habilitada ? 'Action encontrada' : 'Action desactivada') : h('span', { class: 'chip falta' }, 'Por montar');
 
   dialogo.className = `guia ${r.clase}`;
   dialogo.replaceChildren(
@@ -861,7 +901,7 @@ function abrirGuia(e) {
     ),
     h('footer', { class: 'guia-pie' },
       h('span', { class: 'nota' }, '¿Algún botón no se llama así en tu pantalla? Dímelo y corrijo la guía.'),
-      botonProbar(e.accionId)),
+      botonProbar(e.accionId, e.habilitada)),
   );
   if (!dialogo.open) dialogo.showModal();
   dialogo.querySelector('.guia-cuerpo').scrollTop = 0;
@@ -1546,9 +1586,9 @@ async function cargarBiblioteca() {
         vista,
         chips,
         h('div', { class: 'overlay-pie' },
-          h('div', { class: 'sonido-info' }, h('strong', {}, o.nombre), h('span', { class: 'sonido-meta' }, usadoEn(o.usadoPor))),
+          h('div', { class: 'sonido-info' }, h('strong', {}, o.nombre === 'escena.html' ? 'Escenas actuales' : o.nombre), h('span', { class: 'sonido-meta' }, o.nombre === 'escena.html' ? 'Fondos y textos configurados en Escenas' : usadoEn(o.usadoPor))),
           // Misma dirección no recarga: se pasa por about:blank para repetir la animación.
-          h('button', { class: 'boton pequeno', type: 'button', onclick: () => { marco.src = 'about:blank'; setTimeout(() => { marco.src = o.url + actual; }, 30); } }, '↻ Repetir'),
+          h('button', { class: 'boton pequeno', type: 'button', onclick: () => { marco.src = 'about:blank'; setTimeout(() => { marco.src = sinSonido(o.url + actual); }, 30); } }, '↻ Repetir'),
           botonCopiar(o.ruta)));
     })
     : [vacioBiblioteca('overlays', 'No hay overlays todavía.')]));
@@ -1610,7 +1650,7 @@ function pintarSelectoresFondo() {
     const opcion = (f) => h('option', { value: f.ruta, selected: f.ruta === actual },
       `${f.estilo === estilo ? '' : `${iconoEstilo(f.estilo)} `}${ESCENAS_INFO[f.escena]?.icono ?? '🖼️'} ${f.titulo ?? ESCENAS_INFO[f.escena]?.nombre ?? 'Fondo'} · ${fechaFondo(f.at)}`);
     sel.replaceChildren(
-      h('option', { value: 'dibujado', selected: actual === 'dibujado' }, estilo === 'oscuro' ? 'Paisaje dibujado (sin imagen)' : 'Solo color (sin imagen)'),
+      h('option', { value: 'dibujado', selected: actual === 'dibujado' }, 'Solo color (sin imagen)'),
       propios.length ? h('optgroup', { label: 'De esta escena' }, propios.map(opcion)) : null,
       mismoEstilo.length ? h('optgroup', { label: 'De otras escenas, mismo estilo' }, mismoEstilo.map(opcion)) : null,
       otros.length ? h('optgroup', { label: 'De otros estilos' }, otros.map(opcion)) : null);
@@ -2494,14 +2534,8 @@ const VARIANTES_OVERLAY = {
     { nombre: 'Transparente', q: '?demo=1' },
   ],
   'escena.html': [
-    { nombre: '🌅 Empezamos', q: '?tipo=inicio&demo=1' },
-    { nombre: '💬 Charla', q: '?tipo=charla&demo=1' },
-    { nombre: '🧙 Sin cámara', q: '?tipo=charla&demo=1&avatar=1' },
-    { nombre: '📰 Con tema', q: '?tipo=charla&demo=1&tema=1' },
-    { nombre: '⏳ Pausa', q: '?tipo=pausa&demo=1' },
-    { nombre: '🌙 Final', q: '?tipo=final&demo=1' },
-    { nombre: '💠 Vibrante', q: '?tipo=inicio&demo=1&estilo=alegre' },
-    { nombre: '🕯️ Cálido', q: '?tipo=pausa&demo=1&estilo=acogedor' },
+    ...[['inicio', 'Empezamos'], ['charla', 'Charla'], ['pausa', 'Pausa'], ['final', 'Final']]
+      .map(([tipo, nombre]) => ({ nombre, q: `?tipo=${tipo}&intro=0` })),
   ],
   'jefe.html': [
     ...[['dragon', '🐉 Dragón'], ['esqueleto', '💀 Esqueleto'], ['hidra', '🐍 Hidra'], ['golem', '🗿 Gólem'], ['liche', '☠️ Liche'],

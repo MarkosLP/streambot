@@ -231,14 +231,20 @@
         <div>
           <p class="antetitulo">Channel Points · Oros 🪙</p>
           <h1>Efectos</h1>
-          <p class="nota">Se montan en Streamer.bot. Aquí ves cuáles faltan, cómo montarlos, y los pruebas.</p>
+          <p class="nota">Prueba el sonido y los efectos visuales sin emitir. La preparación y los canjes completos tienen sus propios controles.</p>
         </div>
         <button class="boton" id="r-efectos" type="button">Actualizar</button>
       </header>
       <div class="aviso" id="efectos-sin-sb" hidden>
-        Sin conexión con Streamer.bot: no se puede saber qué está montado.
+        Sin conexión con Streamer.bot: no se pueden comprobar las Actions. Las pruebas sin directo siguen disponibles con OBS abierto.
       </div>
 
+      <p class="aviso">Probar sin directo: sonido en este navegador y efecto visual en la escena elegida de OBS, con la emisión detenida. No lanza canjes, no escribe al chat ni cambia el Loot. Los cofres se prueban en Loot.</p>
+      <p class="nota">«Action encontrada» solo confirma su nombre en Streamer.bot; revisa sus disparadores y la preparación de OBS.</p>
+      <p id="fx-prueba-estado" class="nota" role="status" aria-live="polite"></p>
+      <div class="efectos" id="efectos"></div>
+      <div id="efectos-extra"></div>
+      <details class="plegable tarjeta" id="preparacion-efectos"><summary>Preparación · OBS e importación en Streamer.bot</summary>
       <article class="tarjeta obs-prep" id="obs-prep">
         <header>
           <h2>Preparar OBS automáticamente</h2>
@@ -254,8 +260,7 @@
         </header>
         <div id="importar-cuerpo"></div>
       </article>
-      <div class="efectos" id="efectos"></div>
-      <div id="efectos-extra"></div>
+      </details>
     </section>
 
     <!-- LOOT -->
@@ -286,8 +291,8 @@
       </div>
 
       <div class="aviso" id="l-sin-directo" hidden>
-        Sin directo no caen cofres. El bot mira en OBS cada minuto si estás emitiendo, y lo abre solo. Para probar sin emitir:
-        <button class="boton pequeno" id="l-marcar-directo" type="button">Marcar en directo para probar</button>
+        Sin directo no caen cofres automáticos. Para ver un banner, usa Pruebas: no necesitas marcar un directo. Este botón abre el estado real del juego, con cofres y recompensas:
+        <button class="boton pequeno" id="l-marcar-directo" type="button">Abrir juego manualmente</button>
       </div>
       <div class="aviso" id="l-suelo" hidden></div>
       <p class="nota l-con-directo" id="l-con-directo" hidden>
@@ -355,7 +360,7 @@
       </div>
 
       <details class="plegable tarjeta" id="l-plegable-pruebas" data-recordar>
-        <summary><span>🧪 Pruebas</span><span class="nota">Tiradas y subs de mentira, para ver cómo queda</span></summary>
+        <summary><span>🧪 Pruebas</span><span class="nota">Banners sin guardar · simulaciones de subs con efectos reales</span></summary>
         <div class="loot-acciones">
           <button class="boton" id="l-prueba" type="button">Tirada de prueba</button>
           <button class="boton" id="l-prueba-oro" type="button">🗝️ Prueba de Cofre del tesoro</button>

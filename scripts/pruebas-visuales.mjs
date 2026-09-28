@@ -33,6 +33,41 @@ try {
   socket.onmessage=async e=>{const m=JSON.parse(e.data);if(m.id){const p=pendientes.get(m.id);if(p){clearTimeout(p.t);pendientes.delete(m.id);m.error?p.ko(Error(JSON.stringify(m.error))):p.ok(m.result);}}else if(m.method==='Fetch.requestPaused'){const {requestId,request}=m.params;await pedir(request.url.startsWith(raiz+'/')||request.url.startsWith('data:')?'Fetch.continueRequest':'Fetch.failRequest',{requestId,...(!request.url.startsWith(raiz+'/')&&!request.url.startsWith('data:')?{errorReason:'BlockedByClient'}:{})}).catch(e=>{if(!e.message.includes('Invalid InterceptionId'))console.error('Interceptación:',e.message);});}};
   await pedir('Page.enable');await pedir('Fetch.enable',{patterns:[{urlPattern:'*'}]});
   const caso=process.argv[2]||'10';
+  if(caso.startsWith('biblioteca')) {
+    const antes=caso.endsWith('antes');
+    for(const w of [390,1366]) {
+      await abrir(`/?biblioteca=${w}#/biblioteca`,w,w===390?844:1000);await evaluar("irA('biblioteca')");await esperar(700);
+      await evaluar("document.querySelector('#b-overlays').scrollIntoView({block:'start'})");await esperar(2500);await captura(`biblioteca-${w}-${antes?'antes':'despues'}`);
+      if(!antes) {
+        assert.ok(await evaluar('document.documentElement.scrollWidth<=innerWidth'));
+        assert.equal(await evaluar("VARIANTES_OVERLAY['escena.html'].length"),4);
+        assert.ok(await evaluar("VARIANTES_OVERLAY['escena.html'].every(v=>!v.q.includes('demo'))"));
+      }
+    }
+    await abrir('/biblioteca/overlays/escena.html?tipo=inicio&demo=1',1920,1080);await esperar(700);await captura(`escena-fondo-${antes?'antes':'despues'}`);
+    if(!antes) {
+      assert.equal(await evaluar("document.querySelector('#paisaje')"),null);
+      await evaluar("pintarFoto('imagenes/fondos/alegre-inicio-2026-09-27T13-58-37.png')");await esperar(900);
+      assert.equal(await evaluar("document.body.classList.contains('con-foto')"),true);
+      await evaluar("pintarFoto('imagenes/fondos/no-existe.png')");await esperar(300);
+      assert.equal(await evaluar("document.body.classList.contains('con-foto')"),false);
+    }
+  }
+  if(caso==='efectos')for(const w of [390,1366]) {
+    await abrir(`/?efectos=${w}#/efectos`,w,w===390?844:1000);await evaluar("irA('efectos')");await esperar(600);
+    assert.equal(await evaluar("document.querySelectorAll('[data-prueba-efecto]').length"),5);
+    assert.equal(await evaluar("document.querySelector('#preparacion-efectos').open"),false);
+    assert.ok(await evaluar('document.documentElement.scrollWidth<=innerWidth'));
+    await captura(`efectos-pruebas-${w}-despues`);
+    await evaluar("window.Audio=class{play(){return Promise.resolve()}pause(){}};datosEfectos.efectos.find(e=>e.id==='grito').material.find(m=>m.archivo).archivo.duracionSeg=.01;document.querySelector('[data-prueba-efecto=grito]').click()");
+    await esperar(600);
+    assert.match(await evaluar("document.querySelector('#fx-prueba-estado').textContent"),/Prueba terminada/);
+    assert.equal(await evaluar('pruebaEfectoActiva'),false);
+    await evaluar("document.querySelector('#l-plegable-pruebas').open=true;irA('loot');document.querySelector('#l-plegable-pruebas').scrollIntoView({block:'center'})");await esperar(300);await captura(`loot-pruebas-${w}-despues`);
+  }
+  if(caso==='efectos-antes')for(const w of [390,1366]) {
+    await abrir(`/?efectos=${w}#/efectos`,w,w===390?844:1000);await evaluar("irA('efectos')");await esperar(600);await captura(`efectos-pruebas-${w}-antes`);
+  }
   if(caso.startsWith('overlays'))for(const w of [390,1366]) {
     await abrir(`/?overlays=${w}#/overlays`,w,w===390?844:1000);await evaluar("irA('overlays')");await esperar(600);
     await captura(`overlays-streamlabs-${w}-${caso==='overlays-antes'?'antes':'despues'}`);
