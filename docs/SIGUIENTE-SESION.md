@@ -6,7 +6,7 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 
 ## 28 sep 2026 (591 tests; laboratorio 15/15 con 10 semillas)
 
-Rama `codex-fase2` (Codex por la mañana + Claude después). Lo de Codex, revisado: nada roto.
+Hecho en la rama `codex-fase2` (Codex por la mañana + Claude después) y pasado a `master` el mismo día. Lo de Codex, revisado: nada roto.
 
 - **`npm start` sin OBS abierto** (Codex): el WebSocket de OBS fallido cerraba en bucle y tumbaba el proceso. Arreglado en `transport/obs.ts`.
 - **Avatar**: Codex quitó desenfoques y mezclas de los overlays por rendimiento (sin medirlo). Se devolvió solo `mix-blend-mode: screen` al brillo de los ojos: sin él, una mancha naranja tapaba ojos y mejillas.
@@ -19,7 +19,7 @@ Rama `codex-fase2` (Codex por la mañana + Claude después). Lo de Codex, revisa
 - **Quitado**: el botón «⚡ Optimizar las fuentes en OBS». **Música: no tocar**; Crid4m la pone de fondo a mano (modo manual).
 - Por qué el Grito «no hacía nada» el 27: nadie lo canjeó; se lanzó con «Probar» (log de Streamer.bot en `C:\StreamerBot\logs`: `TwitchRewardRedemption` = canje real, `with 7 arguments` = a mano).
 
-**Lo siguiente**: reiniciar el bot, subir los 4 JPG, y la prueba real con `crid4n` desde el móvil (duelo, Grito con directo, Maldición + duelo, Terremoto, Lag contra un jefe). Después, pasar `codex-fase2` a `main`. Sin probar aún con Twitch de verdad: follows, subs, emotes del chat en pantalla y avisos de moderación.
+**Lo siguiente**: reiniciar el bot, subir los 4 JPG, y la prueba real con `crid4n` desde el móvil (duelo, Grito con directo, Maldición + duelo, Terremoto, Lag contra un jefe). Todo está ya en `master` (28 sep). Sin probar aún con Twitch de verdad: follows, subs, emotes del chat en pantalla y avisos de moderación.
 
 ---
 
