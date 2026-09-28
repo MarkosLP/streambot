@@ -33,6 +33,16 @@ try {
   socket.onmessage=async e=>{const m=JSON.parse(e.data);if(m.id){const p=pendientes.get(m.id);if(p){clearTimeout(p.t);pendientes.delete(m.id);m.error?p.ko(Error(JSON.stringify(m.error))):p.ok(m.result);}}else if(m.method==='Fetch.requestPaused'){const {requestId,request}=m.params;await pedir(request.url.startsWith(raiz+'/')||request.url.startsWith('data:')?'Fetch.continueRequest':'Fetch.failRequest',{requestId,...(!request.url.startsWith(raiz+'/')&&!request.url.startsWith('data:')?{errorReason:'BlockedByClient'}:{})}).catch(e=>{if(!e.message.includes('Invalid InterceptionId'))console.error('Interceptación:',e.message);});}};
   await pedir('Page.enable');await pedir('Fetch.enable',{patterns:[{urlPattern:'*'}]});
   const caso=process.argv[2]||'10';
+  if(caso.startsWith('overlays'))for(const w of [390,1366]) {
+    await abrir(`/?overlays=${w}#/overlays`,w,w===390?844:1000);await evaluar("irA('overlays')");await esperar(600);
+    await captura(`overlays-streamlabs-${w}-${caso==='overlays-antes'?'antes':'despues'}`);
+    if(caso!=='overlays-antes') {
+      assert.equal(await evaluar("document.querySelector('#o-tipos').children.length"),2);
+      assert.ok(await evaluar("[...document.querySelectorAll('#o-tipos label')].every(x=>!(/Follow|Sub/i.test(x.textContent)))"));
+      assert.ok(await evaluar('document.documentElement.scrollWidth<=innerWidth'));
+      assert.equal(await evaluar("document.querySelector('#o-rotativo').children.length"),4);
+    }
+  }
   if(caso==='escenas')for(const w of [390,1366]) {
     await abrir(`/?prueba=${w}#/escenas`,w,w===390?844:900);await evaluar("irA('escenas')");await esperar(700);await evaluar('window.scrollTo(0,0)');await esperar(300);
     const antes = await evaluar("api('/api/escenas').then(r=>r.config)");

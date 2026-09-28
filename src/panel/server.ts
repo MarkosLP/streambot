@@ -803,7 +803,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   if (ruta === 'POST /api/overlays') {
     const { accion, tipo, ajustes: cambios, cual, escena } = await cuerpo(req);
     if (accion === 'probar') {
-      if (!alertas.TIPOS.includes(tipo as alertas.TipoAlerta)) throw new ErrorHttp(400, 'tipo de alerta no válido');
+      if (!alertas.TIPOS_PROPIOS.includes(tipo as alertas.TipoAlerta)) throw new ErrorHttp(400, 'tipo de alerta no disponible: follows y suscripciones se gestionan en Streamlabs');
       alertas.probar(tipo as alertas.TipoAlerta);
       return json(res, 200, alertas.estado());
     }

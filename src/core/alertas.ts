@@ -8,8 +8,8 @@ import type { DomainEvent } from './events.js';
  * más, para no llenar la pantalla:
  *
  *  - Alertas (biblioteca/overlays/alertas.html, fuente `OVL Alertas`): un aviso
- *    de unos segundos al seguir, suscribirse, regalar subs, mandar bits o
- *    traer una raid. En cola: nunca dos a la vez.
+ *    de unos segundos al mandar bits o traer una raid. Follows y suscripciones
+ *    se muestran en Streamlabs. En cola: nunca dos a la vez.
  *  - Panel rotativo (biblioteca/overlays/panel.html, fuente `OVL Panel`): una
  *    caja pequeña que va cambiando entre el top de la temporada, el último
  *    follow, el último sub y una meta del mes.
@@ -22,6 +22,8 @@ import type { DomainEvent } from './events.js';
 
 export const TIPOS = ['follow', 'sub', 'regalo', 'bits', 'raid'] as const;
 export type TipoAlerta = (typeof TIPOS)[number];
+/** Follows y suscripciones los muestra Streamlabs; se conservan sus contadores. */
+export const TIPOS_PROPIOS: readonly TipoAlerta[] = ['bits', 'raid'];
 
 export interface Alerta {
   n: number;
@@ -60,7 +62,7 @@ export interface Ajustes {
 }
 
 const POR_DEFECTO: Ajustes = {
-  alertas: { follow: true, sub: true, regalo: true, bits: true, raid: true },
+  alertas: { follow: false, sub: false, regalo: false, bits: true, raid: true },
   volumen: 0.3,
   rotativo: ['top', 'follow', 'sub', 'meta'],
   segundos: 12,
@@ -85,7 +87,7 @@ const entero = (v: unknown, min: number, max: number, si: number) => (typeof v =
 function limpiarAjustes(v: any): Ajustes {
   const a: Ajustes = structuredClone(POR_DEFECTO);
   if (!v || typeof v !== 'object') return a;
-  if (v.alertas && typeof v.alertas === 'object') for (const t of TIPOS) if (typeof v.alertas[t] === 'boolean') a.alertas[t] = v.alertas[t];
+  if (v.alertas && typeof v.alertas === 'object') for (const t of TIPOS_PROPIOS) if (typeof v.alertas[t] === 'boolean') a.alertas[t] = v.alertas[t];
   if (typeof v.volumen === 'number' && Number.isFinite(v.volumen)) a.volumen = Math.min(1, Math.max(0, v.volumen));
   if (Array.isArray(v.rotativo)) a.rotativo = [...new Set(v.rotativo.filter((r: unknown): r is Rotativo => (ROTATIVOS as readonly unknown[]).includes(r)))] as Rotativo[];
   a.segundos = entero(v.segundos, 5, 60, a.segundos);
@@ -152,6 +154,7 @@ const seguidos = new Map<string, number>();
 const SIN_REPETIR_FOLLOW_MS = 24 * 3600_000;
 
 function alertar(tipo: TipoAlerta, quien: string, linea: string, prueba = false): Alerta | null {
+  if (!TIPOS_PROPIOS.includes(tipo)) return null;
   if (!prueba && !leer().ajustes.alertas[tipo]) return null;
   const a: Alerta = { n: siguiente++, tipo, quien: texto(quien, 40) || 'Alguien', texto: texto(linea, 90), prueba, at: nowIso() };
   recientes.push(a);
@@ -211,6 +214,7 @@ const PRUEBAS: Record<TipoAlerta, [string, string]> = {
 
 /** Una alerta de prueba (panel): se ve igual, no cuenta ni cambia el último follow o sub. */
 export function probar(tipo: TipoAlerta): Alerta {
+  if (!TIPOS_PROPIOS.includes(tipo)) throw new Error('Los avisos de follows y suscripciones se gestionan en Streamlabs');
   const [quien, linea] = PRUEBAS[tipo];
   return alertar(tipo, quien, linea, true)!;
 }

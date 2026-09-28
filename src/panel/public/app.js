@@ -2372,7 +2372,7 @@ $('t-vaciar').addEventListener('click', () => { if (confirm('¿Vaciar el guion d
 // ---------------------------------------------------------------------------
 
 let ovl = null;
-const TIPOS_ALERTA = [['follow', '❤ Follows'], ['sub', '★ Subs'], ['regalo', '🎁 Subs regalados'], ['bits', '◆ Bits'], ['raid', '⚔ Raids']];
+const TIPOS_ALERTA = [['bits', '◆ Bits'], ['raid', '⚔ Raids']];
 const PARTES_PANEL = [['top', '🏆 Top de la temporada'], ['follow', '❤ Último follow'], ['sub', '★ Último sub'], ['meta', '🎯 Meta']];
 
 async function cargarOverlays() {
@@ -2398,7 +2398,7 @@ function pintarOverlays() {
   const a = ovl.ajustes;
   $('o-tipos').replaceChildren(...TIPOS_ALERTA.map(([t, nombre]) => h('div', { class: 'ovl-tipo' },
     h('label', { class: 'interruptor-fila' }, h('input', { type: 'checkbox', checked: a.alertas[t], onchange: (ev) => guardarOverlays({ accion: 'ajustes', ajustes: { alertas: { [t]: ev.target.checked } } }) }), h('span', {}, nombre)),
-    h('button', { class: 'boton pequeno', type: 'button', onclick: () => guardarOverlays({ accion: 'probar', tipo: t }, `Alerta de prueba: ${nombre}`) }, 'Probar'))));
+    h('button', { class: 'boton pequeno', type: 'button', onclick: () => guardarOverlays({ accion: 'probar', tipo: t }, `Alerta de prueba: ${nombre}`) }, 'Emitir prueba'))));
   if (document.activeElement !== $('o-volumen')) $('o-volumen').value = String(Math.round(a.volumen * 100));
   $('o-volumen-n').textContent = `${Math.round(a.volumen * 100)} %`;
   $('o-rotativo').replaceChildren(...PARTES_PANEL.map(([k, nombre]) => h('label', { class: 'interruptor-fila' },

@@ -856,3 +856,11 @@ test('avatar local: la escritura exige el panel y rechaza rutas/calibraciones in
   assert.equal((await post('/api/escenas/avatar-local', {personaje:'imagenes/avatar/inexistente',calibracion:{}})).status,400);
   assert.equal((await fetch(`${raiz}/api/overlay/avatar-local?personaje=../fuera`)).status,404);
 });
+
+test('overlays: no permite emitir pruebas de follows, subs ni regalos gestionados por Streamlabs', async () => {
+  for (const tipo of ['follow', 'sub', 'regalo']) {
+    const r = await post('/api/overlays', { accion: 'probar', tipo });
+    assert.equal(r.status, 400);
+    assert.match(r.body.error, /Streamlabs/);
+  }
+});

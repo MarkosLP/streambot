@@ -1,6 +1,6 @@
 import { test, describe, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { configureDatabase, truncateAll } from '../data/db.js';
+import { configureDatabase, truncateAll, getDb } from '../data/db.js';
 import { normalize, type DomainEvent } from './events.js';
 import * as alertas from './alertas.js';
 
@@ -18,11 +18,21 @@ beforeEach(() => {
 const ev = (nombre: string, datos: any): DomainEvent => normalize(nombre, datos, 'simulator');
 
 describe('alertas', () => {
-  test('un follow de Twitch llega como evento y sale como alerta, con el último follow', () => {
+  test('Streamlabs: ajustes antiguos o nuevas peticiones no reactivan follows ni suscripciones', () => {
+    getDb().prepare('INSERT INTO ajustes (clave, valor, at) VALUES (?, ?, ?)').run('overlays', JSON.stringify({ ajustes: { alertas: { follow: true, sub: true, regalo: true } } }), new Date().toISOString());
+    alertas.reset();
+    for (const tipo of ['follow', 'sub', 'regalo'] as const) {
+      assert.equal(alertas.ajustes().alertas[tipo], false);
+      alertas.cambiarAjustes({ alertas: { [tipo]: true } });
+      assert.equal(alertas.ajustes().alertas[tipo], false);
+      assert.throws(() => alertas.probar(tipo), /Streamlabs/);
+    }
+    assert.equal(alertas.paraAlertas().alertas.length, 0);
+  });
+  test('un follow se cuenta y guarda sin emitir una alerta propia', () => {
     const e = ev('Twitch.Follow', { user_id: '7', user_login: 'raftaei', user_name: 'raftaei' });
     assert.equal(e.type, 'viewer.follow');
-    const a = alertas.alEvento(e)!;
-    assert.deepEqual([a.tipo, a.quien, a.texto], ['follow', 'raftaei', 'ahora te sigue']);
+    assert.equal(alertas.alEvento(e), null);
     assert.equal(alertas.estado().ultimoFollow?.quien, 'raftaei');
     assert.equal(alertas.estado().mes.follows, 1);
   });
@@ -36,10 +46,10 @@ describe('alertas', () => {
   });
 
   test('subs, regalos, bomba, bits y raid; los regalos sueltos de una bomba no repiten alerta', () => {
-    assert.equal(alertas.alEvento(ev('Twitch.ReSub', { userName: 'ana', displayName: 'Ana', cumulativeMonths: 6 }))!.texto, 'se resuscribe · 6 meses');
-    assert.equal(alertas.alEvento(ev('Twitch.GiftBomb', { userName: 'pepe', displayName: 'Pepe', gifts: 5 }))!.texto, 'regala 5 subs a la comunidad');
+    assert.equal(alertas.alEvento(ev('Twitch.ReSub', { userName: 'ana', displayName: 'Ana', cumulativeMonths: 6 })), null);
+    assert.equal(alertas.alEvento(ev('Twitch.GiftBomb', { userName: 'pepe', displayName: 'Pepe', gifts: 5 })), null);
     assert.equal(alertas.alEvento(ev('Twitch.GiftSub', { userName: 'pepe', displayName: 'Pepe', recipientUserName: 'luis', recipientDisplayName: 'Luis', fromSubBomb: true, subBombCount: 5 })), null);
-    assert.equal(alertas.alEvento(ev('Twitch.GiftSub', { userName: 'pepe', displayName: 'Pepe', recipientUserName: 'eva', recipientDisplayName: 'Eva' }))!.texto, 'regala un sub a Eva');
+    assert.equal(alertas.alEvento(ev('Twitch.GiftSub', { userName: 'pepe', displayName: 'Pepe', recipientUserName: 'eva', recipientDisplayName: 'Eva' })), null);
     assert.equal(alertas.alEvento(ev('Twitch.Cheer', { userName: 'sombra', displayName: 'Sombra', bits: 500 }))!.texto, 'manda 500 bits');
     assert.equal(alertas.alEvento(ev('Twitch.Raid', { from_broadcaster_user_login: 'otro', from_broadcaster_user_name: 'Otro', viewers: 12 }))!.texto, 'llega de raid con 12 personas');
     assert.equal(alertas.estado().mes.subs, 3, 'el resub y los dos regalos');
@@ -52,7 +62,7 @@ describe('alertas', () => {
   });
 
   test('«Probar» se ve en el overlay pero no cuenta ni cambia el último follow', () => {
-    alertas.probar('follow');
+    alertas.probar('raid');
     assert.equal(alertas.paraAlertas().alertas.length, 1);
     assert.equal(alertas.estado().ultimoFollow, null);
     assert.equal(alertas.estado().mes.follows, 0);

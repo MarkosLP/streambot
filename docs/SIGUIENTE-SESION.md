@@ -4,6 +4,8 @@ Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.
 
 ## Actualización compartida: Escenas (28 sep, Codex)
 
+**Overlays, después de Escenas:** a petición de Marcos, retirados los avisos propios de follows y suscripciones (incluidos resubs y regalos), gestionados en Streamlabs. Quitados controles y demos; servidor impide reactivarlos con ajustes antiguos o pruebas HTTP. Se conservan contadores, metas, último follow/sub y avisos de bits/raids. Las vistas se etiquetan como ejemplos y el botón se llama «Emitir prueba» para distinguirlo de una prueba local. `npm run check`: 599 pruebas, TypeScript correcto; navegador a 390/1366 px y capturas `overlays-streamlabs-*-antes/despues.png` en la carpeta habitual. Un solo commit en `master`. Sin tocar OBS ni reiniciar el bot real; se aplica al reiniciar el bot y recargar el panel. Ideas propuestas, no implementadas: ampliar la vista de las alertas, pruebas solo en el panel y ordenar las tarjetas del rotativo.
+
 Por petición de Marcos, continuar junto con Claude sobre `master`, con cambios agrupados por trabajo y sin exigir un commit por arreglo. Los dos cambios de Escenas y fondos se han agrupado en un único commit; no se han modificado los trabajos anteriores de Claude.
 
 - Escenas: selector de las cuatro vistas, previa grande con controles por escena, estilo común debajo y avatar a todo el ancho. Generación y configuración OBS plegadas. Elegir una vista no cambia el directo.

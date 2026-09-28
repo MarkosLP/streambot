@@ -560,7 +560,7 @@
         <div>
           <p class="antetitulo">Alertas, panel rotativo y OBS</p>
           <h1>Overlays</h1>
-          <p class="nota">Lo que sale encima del juego además de las escenas: avisos de follows, subs y raids, y una caja pequeña que va rotando. El jefe, los cofres y la poción se montan en Efectos.</p>
+          <p class="nota">Lo que sale encima del juego además de las escenas: avisos de bits y raids, y una caja pequeña que va rotando. El jefe, los cofres y la poción se montan en Efectos.</p>
         </div>
       </header>
 
@@ -569,15 +569,17 @@
         <div class="ovl-cols">
           <section class="ovl-bloque">
             <h3>Alertas</h3>
-            <p class="nota">Un aviso arriba en el centro al seguir, suscribirse, regalar subs, mandar bits o traer una raid. De uno en uno. «Probar» lo enseña en OBS de verdad (no cuenta para nada).</p>
-            <div class="overlay-vista ovl-vista" id="o-vista-alertas"><iframe src="/biblioteca/overlays/alertas.html?demo=1&amp;volumen=0" sandbox="allow-scripts" title="Alertas" tabindex="-1"></iframe></div>
+            <p class="nota">Follows y suscripciones (también resubs y regalos) se gestionan en Streamlabs. Aquí solo quedan bits y raids. «Emitir prueba» envía un aviso real al overlay, sin sumar a los contadores.</p>
+            <div class="overlay-vista ovl-vista" id="o-vista-alertas"><iframe src="/biblioteca/overlays/alertas.html?demo=1&amp;volumen=0" sandbox="allow-scripts" title="Ejemplo de alertas" tabindex="-1"></iframe></div>
+            <p class="nota">Vista de ejemplo · sin sonido · no refleja eventos reales.</p>
             <div class="ovl-tipos" id="o-tipos"></div>
             <label class="musica-volumen ovl-volumen"><span>🔉 Sonido</span><input type="range" id="o-volumen" min="0" max="100" step="1" aria-label="Volumen de las alertas"><span class="nota" id="o-volumen-n"></span></label>
           </section>
           <section class="ovl-bloque">
             <h3>Panel rotativo</h3>
             <p class="nota">Una caja pequeña para las escenas del juego que va cambiando entre lo que marques. Lo que aún no tiene datos se salta.</p>
-            <div class="ovl-panel-vista"><iframe src="/biblioteca/overlays/panel.html?demo=1" sandbox="allow-scripts" title="Panel rotativo" tabindex="-1"></iframe></div>
+            <div class="ovl-panel-vista"><iframe src="/biblioteca/overlays/panel.html?demo=1" sandbox="allow-scripts" title="Ejemplo del panel rotativo" tabindex="-1"></iframe></div>
+            <p class="nota">Vista de ejemplo. Los últimos follows, subs y la meta siguen contando aunque sus alertas las muestre Streamlabs.</p>
             <div class="ovl-rotativo" id="o-rotativo"></div>
             <label class="campo ovl-segundos"><span>Segundos por cosa</span><input type="number" id="o-segundos" min="5" max="60" step="1"></label>
             <form class="ovl-meta" id="o-meta">

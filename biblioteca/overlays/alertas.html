@@ -1,8 +1,8 @@
 <!doctype html>
 <!--
   Alertas del directo, para OBS (27 sep 2026). Fuente «OVL Alertas», a
-  pantalla completa: un aviso arriba en el centro al seguir, suscribirse,
-  regalar subs, mandar bits o traer una raid. De uno en uno, en cola.
+  pantalla completa: un aviso arriba en el centro al mandar bits o traer
+  una raid. Follows y suscripciones los muestra Streamlabs.
 
   Los datos vienen de core/alertas.ts (GET /api/overlay/alertas, CORS abierto
   como las demás: el overlay corre en su sandbox). Colores y letra, los del
@@ -64,16 +64,13 @@ const q = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
 const API = new URL('/api/overlay/alertas', location.href);
 const INFO = {
-  follow: { icono: '❤', etq: 'Nuevo seguidor', seg: 5.5, sonido: 'cofre.wav' },
-  sub: { icono: '★', etq: 'Suscripción', seg: 7, sonido: 'legendario.wav' },
-  regalo: { icono: '🎁', etq: 'Subs regalados', seg: 7, sonido: 'legendario.wav' },
   bits: { icono: '◆', etq: 'Bits', seg: 6, sonido: 'cofre.wav' },
   raid: { icono: '⚔', etq: 'Raid', seg: 8, sonido: 'legendario.wav' },
 };
 // Los emblemas pintados, cargados de antemano: la alerta sale en cuanto llega.
 // Si una falla (no existe), ese tipo usa el símbolo de siempre.
 const PINTADOS = {};
-for (const tipo of ['follow', 'sub', 'regalo', 'raid']) {
+for (const tipo of ['raid']) {
   const im = new Image();
   PINTADOS[tipo] = im.src = `../imagenes/emblemas/${tipo}.png`;
   im.onerror = () => { delete PINTADOS[tipo]; };
@@ -109,7 +106,8 @@ function siguiente() {
   const a = DirectoRed.extraer(cola);
   if (!a) return;
   mostrando = true;
-  const i = INFO[a.tipo] ?? INFO.follow;
+  const i = INFO[a.tipo];
+  if (!i) { mostrando = false; siguiente(); return; }
   const el = document.createElement('div');
   el.className = `alerta t-${a.tipo}`;
   let icono;
@@ -141,13 +139,13 @@ function aplicar(d) {
   volumen = Number(d.volumen) || 0;
   // Al abrir, lo que ya había no se repite: solo lo nuevo.
   if (vistas === null) { vistas = Math.max(0, ...d.alertas.map((a) => a.n)); return; }
-  for (const a of d.alertas) if (a.n > vistas) { vistas = a.n; DirectoRed.encolar(cola, a); }
+  for (const a of d.alertas) if (a.n > vistas) { vistas = a.n; if (Object.hasOwn(INFO, a.tipo)) DirectoRed.encolar(cola, a); }
   siguiente();
 }
 
 if (q.get('demo') === '1') {
   vistas = 0;
-  const demo = [['follow', 'raftaei', 'ahora te sigue'], ['sub', 'Ana_la_Tanque', 'se resuscribe · 6 meses'], ['raid', 'OtroCanal', 'llega de raid con 23 personas']];
+  const demo = [['raid', 'OtroCanal', 'llega de raid con 23 personas'], ['bits', 'Sombra', 'manda 500 bits']];
   // En bucle: es la vista previa del panel.
   let vuelta = 0;
   const tanda = () => aplicar({ estilo: q.get('estilo') || 'oscuro', volumen: 0, alertas: demo.map(([tipo, quien, texto], i) => ({ n: vuelta * 10 + i + 1, tipo, quien, texto })) });
