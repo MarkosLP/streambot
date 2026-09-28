@@ -34,15 +34,16 @@ const PANELES: Record<string, string> = {
     LUMINOSA ? CABECERA_LUMINOSA : 'HEADER (only the top ~15% of the panel, a short wide strip): a painted scene of the tavern\'s guild counter — a warm hearth, hanging lanterns, a wooden quest board with blank pinned parchments (no writing on them), two crossed swords mounted on the wall above, a frothy mug on the counter; it blends softly into the panel.',
     'Right under the header, centered: the title "COMANDOS" in a large carved gold serif (Cinzel-like) with a soft warm glow, and under it a smaller cream line "Escríbelos en el chat".',
     'Then a small ornamental divider with the section label "LOOT" in gold small caps.',
-    'Then a two-column list of 14 entries, 7 rows. Each entry is a glossy gold plaque with dark bold monospace text for the command, and directly under it a short description in bright cream-white bold sans-serif.',
+    'Then a two-column list of 15 entries in 8 rows (the 8th row has a single entry, centered). Each entry is a glossy gold plaque with dark bold monospace text for the command, and directly under it a short description in bright cream-white bold sans-serif.',
     'TEXT SIZE: this panel is shown shrunk to 320 px wide, so all text must be LARGE: command text about 42 px tall and description text about 36 px tall in this 1024 px wide image, filling most of each column width. Use the vertical space for text, not for decoration. Rows read left then right:',
     'Row 1: "!loot" / "Cómo funciona" — "!pj" / "Tu ficha de personaje".',
-    'Row 2: "!inventario" / "Tu mochila" — "!top" / "Podio del mes".',
-    'Row 3: "!temporada" / "Tus puntos y premios" — "!evento" / "Evento de la semana".',
-    'Row 4: "!duelo nombre" / "Reta a alguien" — "!dar ana 2" / "Regala un objeto".',
-    'Row 5: "!usar" / "Usa un objeto mágico" — "!atacar" / "Pega al jefe".',
-    'Row 6: "!forjar" / "3 iguales → 1 mejor" — "!presumir" / "Tu mejor pieza en pantalla".',
-    'Row 7: "!coleccion" / "Colección y títulos" — "!purificar" / "Limpia un maldito (Poción)".',
+    'Row 2: "!inventario" / "Tu mochila" — "!poder" / "Tu poder y tus duelos".',
+    'Row 3: "!top" / "Podio del mes" — "!temporada" / "Tus puntos y premios".',
+    'Row 4: "!evento" / "Evento de la semana" — "!duelo nombre" / "Reta a alguien".',
+    'Row 5: "!dar ana 2" / "Regala un objeto" — "!usar" / "Usa un objeto mágico".',
+    'Row 6: "!atacar" / "Pega al jefe" — "!forjar" / "3 iguales → 1 mejor".',
+    'Row 7: "!presumir" / "Tu mejor pieza en pantalla" — "!coleccion" / "Colección y títulos".',
+    'Row 8 (one entry, centered): "!purificar" / "Limpia un maldito (Poción)".',
     'Then, with clear space above and below it (as much as between the title and "LOOT"), another ornamental divider with the section label "CON EL BOT".',
     'Then one row of 2 entries: "!pregunta" / "Pregúntale a la IA" — "!incomoda" / "Pregunta incómoda (subs)".',
     'Leave comfortable margins inside the frame; nothing touches the frame. Thin faint separators between rows.',
@@ -58,7 +59,7 @@ const PANELES: Record<string, string> = {
     'Row 3 (rarity blue): icon a small treasure chest; title "Cofre del tesoro"; description "Mejor suerte, al momento"; price "1.500".',
     'Row 4 (rarity purple): icon a cursed purple skull with dark smoke; title "Maldición"; description "Blanco y negro + objeto maldito"; price "2.500".',
     'Row 5 (rarity purple): icon a cracked boulder; title "Terremoto"; description "Tiembla y sale un jefe"; price "3.000".',
-    'Row 6 (rarity orange-legendary): icon a frozen glitched hourglass; title "Lag"; description "La imagen se congela 5 s"; price "5.000".',
+    'Row 6 (rarity orange-legendary): icon a frozen glitched hourglass; title "Lag"; description "Congela la imagen y al jefe"; price "5.000".',
     'Prices use a dot as thousands separator exactly as written. Leave comfortable margins inside the frame.',
   ].join(' '),
 
@@ -95,7 +96,7 @@ const PANELES: Record<string, string> = {
     'TEXT SIZE: this panel is shown shrunk to 320 px wide, so text must be LARGE: boss names about 34 px tall, attacks about 30 px tall in this 1024 px wide image; names may wrap to two lines. Portraits are painted anime RPG monster art, mature, not cute.',
   ].join(' '),
 };
-const TAMANOS: Record<string, string> = { comandos: '1024x1568', recompensas: '1024x1344', loot: '1024x1600', jefes: '1024x1472' };
+const TAMANOS: Record<string, string> = { comandos: '1024x1712', recompensas: '1024x1344', loot: '1024x1600', jefes: '1024x1472' };
 
 const nombre = process.argv[2] ?? '';
 const detalle = PANELES[nombre];
