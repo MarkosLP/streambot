@@ -662,8 +662,10 @@ async function cargarEfectos() {
   }
 }
 
+/** Lanza la Action y, si es un efecto, el bot lo recibe como un canje tuyo. Devuelve el aviso, si lo hay. */
 async function lanzar(accionId) {
-  await api(`/api/acciones/${accionId}/ejecutar`, {});
+  const r = await api(`/api/acciones/${accionId}/ejecutar`, {});
+  return r?.aviso ?? null;
 }
 
 function pintarBotonera(datos) {
@@ -673,18 +675,18 @@ function pintarBotonera(datos) {
     const el = h('button', {
       class: `boton-fx ${r.clase} ${montado ? '' : 'no-montado'}`,
       type: 'button',
-      title: montado ? `${e.queHace} Lo lanza sin gastar puntos.` : 'Todavía no está montado en Streamer.bot. Pulsa para ver cómo.',
+      title: montado ? `${e.queHace} Lo lanza como si lo canjearas tú, sin gastar puntos.` : 'Todavía no está montado en Streamer.bot. Pulsa para ver cómo.',
       onclick: async () => {
         if (!montado) {
           irA('efectos');
           return abrirGuia(e);
         }
         try {
-          await lanzar(e.accionId);
+          const aviso = await lanzar(e.accionId);
           el.classList.remove('lanzado');
           void el.offsetWidth; // reinicia la animación
           el.classList.add('lanzado');
-          tostada(`${icono(e.id)} ${e.recompensa} lanzado`);
+          tostada(aviso ?? `${icono(e.id)} ${e.recompensa} lanzado`, Boolean(aviso));
         } catch (err) {
           tostada(err.message, true);
         }
@@ -730,11 +732,11 @@ function botonProbar(accionId, habilitada = true) {
     class: 'boton primario',
     type: 'button',
     disabled: !accionId || !habilitada,
-    title: !accionId ? 'Todavía no existe en Streamer.bot' : !habilitada ? 'La Action está desactivada en Streamer.bot' : 'Ejecuta la Action, sin gastar puntos',
+    title: !accionId ? 'Todavía no existe en Streamer.bot' : !habilitada ? 'La Action está desactivada en Streamer.bot' : 'Lo lanza como si lo canjearas tú, sin gastar puntos',
     onclick: async () => {
       try {
-        await lanzar(accionId);
-        tostada('Efecto lanzado');
+        const aviso = await lanzar(accionId);
+        tostada(aviso ?? 'Efecto lanzado', Boolean(aviso));
       } catch (err) {
         tostada(err.message, true);
       }

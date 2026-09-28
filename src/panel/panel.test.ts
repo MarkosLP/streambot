@@ -16,6 +16,9 @@ import { ErrorObs, autenticacion } from '../transport/obs.js';
 import { descodificar } from './importar.js';
 import { mostrarBotin, temblar } from './obs-setup.js';
 import { EFECTOS, mismoNombre } from './efectos.js';
+import * as users from '../data/users.js';
+import * as streams from '../data/streams.js';
+import * as loot from '../interactions/loot/index.js';
 
 /**
  * Panel de control.
@@ -324,6 +327,44 @@ describe('efectos', () => {
     await post('/api/acciones/a1/ejecutar');
     assert.equal(ultimosArgs?.user, 'Crid4m');
     assert.equal(ultimosArgs?.userName, 'crid4m');
+  });
+
+  // 28 sep 2026: «Probar» solo hacía sonar el Grito; el cofre de guerra no caía.
+  describe('probar hace también la parte del bot, como un canje tuyo', () => {
+    const yo = { id: '1001', login: 'crid4m', displayName: 'Crid4m', isBroadcaster: true, isModerator: false, isVip: false, isSubscriber: false, rawRole: null };
+    beforeEach(() => loot.reset());
+    after(() => loot.reset());
+
+    test('Grito con directo: el bot llama a las armas en el chat', async () => {
+      users.touch(yo);
+      ajustes.setLootActivo(true, 'test');
+      streams.open();
+      const r = await post('/api/acciones/a1/ejecutar');
+      assert.equal(r.body.aviso, null);
+      assert.equal(enviados.length, 1);
+      assert.match(enviados[0]!, /A las armas.*Crid4m.*cofre de guerra/);
+    });
+
+    test('Grito sin directo: suena, y el panel dice por qué no cae el cofre', async () => {
+      users.touch(yo);
+      ajustes.setLootActivo(true, 'test');
+      const r = await post('/api/acciones/a1/ejecutar');
+      assert.deepEqual(ejecutadas, ['a1']);
+      assert.match(r.body.aviso, /Grito de guerra: ha sonado.*sin directo marcado/);
+      assert.deepEqual(enviados, []);
+    });
+
+    test('si el bot aún no te conoce, lo dice en vez de canjear a nombre de nadie', async () => {
+      const r = await post('/api/acciones/a1/ejecutar');
+      assert.match(r.body.aviso, /aún no te conoce/);
+    });
+
+    test('una Action que no es del catálogo solo se ejecuta', async () => {
+      users.touch(yo);
+      const r = await post('/api/acciones/a3/ejecutar');
+      assert.deepEqual(ejecutadas, ['a3']);
+      assert.equal(r.body.aviso, undefined);
+    });
   });
 });
 

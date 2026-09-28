@@ -541,6 +541,20 @@ function presente(viewer: Viewer): void {
   registrarActividad(viewer);
 }
 
+const SIN_DIRECTO = 'sin directo marcado no caen cofres (panel → Loot → El directo ya ha empezado)';
+
+/**
+ * Por qué el canje de un efecto no hará nada en el Loot ahora mismo, o null.
+ * Son las mismas condiciones que sus guards: el «Probar» del panel lo usa
+ * para decirte por qué no ha pasado nada (28 sep 2026).
+ */
+export function motivoEfectoParado(efecto: EfectoCanal, twitchId: string): string | null {
+  if (!ajustes.lootActivo()) return 'el Loot está apagado';
+  if (efecto === 'grito' && !streams.current()) return SIN_DIRECTO;
+  if (efecto === 'pocion' && !lootDb.tieneMaldito(twitchId)) return 'no llevas nada maldito, así que la Poción no ofrece !purificar';
+  return null;
+}
+
 export const grito: Interaction<CtxEfecto> = {
   name: 'loot-grito',
   spontaneous: false,
@@ -548,10 +562,7 @@ export const grito: Interaction<CtxEfecto> = {
   // Registro del panel está por qué.
   guards: [
     () => (ajustes.lootActivo() ? { ok: true } : { ok: false, motivo: 'el Loot está apagado', registrar: true }),
-    () =>
-      streams.current()
-        ? { ok: true }
-        : { ok: false, motivo: 'sin directo marcado no caen cofres (panel → Loot → El directo ya ha empezado)', registrar: true },
+    () => (streams.current() ? { ok: true } : { ok: false, motivo: SIN_DIRECTO, registrar: true }),
   ],
   run: (ctx) => ({ text: atraerCofreDeGuerra(ctx.viewer.displayName, ctx.azar) }),
 };

@@ -22,7 +22,7 @@ import * as loot from '../interactions/loot/index.js';
 import * as lootDb from '../data/loot.js';
 import * as lootComandos from '../interactions/loot/comandos.js';
 import * as jefe from '../interactions/loot/jefe.js';
-import * as terremoto from '../interactions/terremoto.js';
+import * as users from '../data/users.js';
 import * as directo from '../core/directo.js';
 import { handleEvent } from '../core/handler.js';
 import { normalize } from '../core/events.js';
@@ -917,11 +917,27 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       desdePanel: true,
     });
     log.info(`Panel: acción ${ejecutar[1]} ejecutada a mano.`);
-    // El Terremoto es sonido (Streamer.bot) + temblor (el bot): al probarlo, los dos.
+    // 28 sep 2026: la Action a mano solo hacía la parte de Streamer.bot (sonido,
+    // OBS). La del bot va con el canje: el cofre del Grito, el objeto de la
+    // Maldición, la oferta de la Poción, el temblor del Terremoto. Al probar un
+    // efecto del catálogo, el bot recibe un canje tuyo, por el mismo camino.
     const probada = (await sb.acciones().catch(() => [])).find((a) => a.id === ejecutar[1]);
-    const terremotoCat = EFECTOS.find((e) => e.id === 'terremoto');
-    if (probada && terremotoCat && mismoNombre(probada.name, terremotoCat.accion)) terremoto.temblar();
-    return json(res, 200, { ok: true });
+    const efecto = probada && EFECTOS.find((e) => mismoNombre(probada.name, e.accion));
+    if (!efecto) return json(res, 200, { ok: true });
+    const yo = users.findByLogin(login);
+    if (!yo) return json(res, 200, { ok: true, aviso: 'Ha sonado, pero el bot aún no te conoce: escribe algo en el chat y vuelve a probar.' });
+    const parado = efecto.id === 'grito' || efecto.id === 'maldicion' || efecto.id === 'pocion' ? loot.motivoEfectoParado(efecto.id, yo.twitch_id) : null;
+    await handleEvent(normalize('Twitch.RewardRedemption', {
+      id: `panel-${Date.now()}`,
+      user_id: yo.twitch_id,
+      user_login: yo.login,
+      user_name: yo.display_name,
+      user_input: '',
+      status: 'fulfilled',
+      reward: { id: `panel-${efecto.id}`, title: efecto.recompensa, cost: efecto.coste },
+      redeemed_at: new Date().toISOString(),
+    }, 'simulator'));
+    return json(res, 200, { ok: true, aviso: parado && `${efecto.recompensa}: ha sonado, pero en el Loot no pasa nada porque ${parado}.` });
   }
 
   throw new ErrorHttp(404, 'no existe');
