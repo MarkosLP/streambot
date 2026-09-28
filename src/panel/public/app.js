@@ -1456,6 +1456,11 @@ function usadoEn(lista) {
 const escalarOverlay = new ResizeObserver((entradas) => {
   for (const e of entradas) e.target.style.setProperty('--escala', String(e.contentRect.width / 1920));
 });
+// 28 sep 2026: encoger la vista completa, no recortar sus 480 px en el móvil.
+const escalarRotativo = new ResizeObserver((entradas) => {
+  for (const e of entradas) e.target.style.setProperty('--escala', String(e.contentRect.width / 480));
+});
+for (const visor of document.querySelectorAll('.ovl-panel-vista')) escalarRotativo.observe(visor);
 
 // Las vistas previas van mudas: el jefe y el botín en demo suenan en bucle, y
 // siguen sonando aunque cambies de pestaña. En OBS suenan como siempre.

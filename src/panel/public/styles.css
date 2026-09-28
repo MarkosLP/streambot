@@ -1135,13 +1135,13 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
 /* Escenas → Alertas y panel rotativo */
 .ovl { margin-top: 20px; }
 .ovl-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
-.ovl-bloque { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.ovl-bloque { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-content: start; min-width: 0; }
 .ovl-bloque h3 { margin: 0; font-size: 1rem; }
 .ovl-bloque .nota { margin: 0; }
 .ovl-vista { border-radius: 10px; border: 1px solid var(--borde); }
-.ovl-panel-vista { width: 480px; max-width: 100%; height: 140px; border-radius: 10px; overflow: hidden; border: 1px solid var(--borde);
+.ovl-panel-vista { width: min(100%, 480px); aspect-ratio: 24 / 7; box-sizing: content-box; border-radius: 10px; overflow: hidden; border: 1px solid var(--borde);
   background: repeating-conic-gradient(#1c2130 0% 25%, #151924 0% 50%) 0 0 / 20px 20px; }
-.ovl-panel-vista iframe { width: 480px; height: 140px; border: 0; display: block; color-scheme: light; }
+.ovl-panel-vista iframe { width: 480px; height: 140px; border: 0; display: block; color-scheme: light; transform: scale(var(--escala, 1)); transform-origin: top left; }
 .ovl-tipos { display: grid; gap: 6px; }
 .ovl-tipo { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 4px 8px; border: 1px solid var(--borde); border-radius: 9px; }
 .ovl-volumen { margin-left: 0; }
@@ -1152,7 +1152,7 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
 .ovl-meta > strong, .ovl-meta > .nota { grid-column: 1 / -1; }
 .ovl-pie { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--borde); display: grid; gap: 8px; }
 .ovl-pie .nota { margin: 0; }
-@media (max-width: 1000px) { .ovl-cols { grid-template-columns: 1fr; } }
+@media (max-width: 1000px) { .ovl-cols { grid-template-columns: minmax(0, 1fr); } }
 .aviso-sueltas { color: var(--ambar); }
 
 /* Mini reproductor de la barra lateral */

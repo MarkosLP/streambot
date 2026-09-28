@@ -1,0 +1,52 @@
+﻿// Pruebas reales de navegador, siempre con SQLite en memoria y puertos efímeros.
+// Ejecutar: node --import tsx scripts/pruebas-visuales.mjs [10|11|14|avatar]
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+process.env.NODE_TEST_CONTEXT = 'visuales';
+const { configureDatabase } = await import('../src/data/db.ts');
+configureDatabase(':memory:');
+const { setMotor } = await import('../src/services/ia-imagen.ts');
+const prohibido = async () => { throw new Error('IA de pago bloqueada en pruebas'); };
+setMotor({generar:prohibido, editar:prohibido, localizarCara:prohibido, comprobarVariante:prohibido});
+const { crearServidor } = await import('../src/panel/server.ts');
+const server = crearServidor({estado:()=>({conectado:false,destino:'Prueba aislada',intentosFallidos:0}),acciones:async()=>[],ejecutarAccion:async()=>{throw Error('Streamer.bot bloqueado');}},async()=>{throw Error('OBS bloqueado');});
+await new Promise(r=>server.listen(0,'127.0.0.1',r));
+const raiz=`http://127.0.0.1:${server.address().port}`;
+const perfil=await mkdtemp(join(tmpdir(),'crid4m-navegador-'));
+const destino=resolve('../StreamerBotApi-fase2-capturas');await mkdir(destino,{recursive:true});
+const edge=spawn(process.env.EDGE_BIN || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',['--headless=new','--remote-debugging-port=0',`--user-data-dir=${perfil}`,'--no-first-run','--mute-audio','about:blank'],{windowsHide:true,stdio:'ignore'});
+const esperar=ms=>new Promise(r=>setTimeout(r,ms));
+let socket, siguiente=0;const pendientes=new Map();
+function pedir(method,params={}) { return new Promise((ok,ko)=>{const id=++siguiente;const t=setTimeout(()=>{pendientes.delete(id);ko(Error(`CDP agotado: ${method}`));},15000);pendientes.set(id,{ok,ko,t});socket.send(JSON.stringify({id,method,params}));}); }
+async function evaluar(expression) { const r=await pedir('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value; }
+async function abrir(ruta,w=1366,h=768) {await pedir('Emulation.setDeviceMetricsOverride',{width:w,height:h,deviceScaleFactor:1,mobile:false});await pedir('Page.navigate',{url:raiz+ruta});await esperar(1800);}
+async function captura(nombre){const r=await pedir('Page.captureScreenshot',{format:'png'});await writeFile(join(destino,`${nombre}.png`),Buffer.from(r.data,'base64'));}
+try {
+  let puerto;
+  for(let i=0;i<100;i++){try{puerto=Number((await readFile(join(perfil,'DevToolsActivePort'),'utf8')).split('\n')[0]);break;}catch{await esperar(100);}}
+  assert.ok(puerto,'Edge debe abrir su puerto de prueba');
+  const paginas=await(await fetch(`http://127.0.0.1:${puerto}/json`)).json();
+  socket=new WebSocket(paginas.find(x=>x.type==='page').webSocketDebuggerUrl);await new Promise(r=>socket.onopen=r);
+  socket.onmessage=async e=>{const m=JSON.parse(e.data);if(m.id){const p=pendientes.get(m.id);if(p){clearTimeout(p.t);pendientes.delete(m.id);m.error?p.ko(Error(JSON.stringify(m.error))):p.ok(m.result);}}else if(m.method==='Fetch.requestPaused'){const {requestId,request}=m.params;await pedir(request.url.startsWith(raiz+'/')||request.url.startsWith('data:')?'Fetch.continueRequest':'Fetch.failRequest',{requestId,...(!request.url.startsWith(raiz+'/')&&!request.url.startsWith('data:')?{errorReason:'BlockedByClient'}:{})});}};
+  await pedir('Page.enable');await pedir('Fetch.enable',{patterns:[{urlPattern:'*'}]});
+  const caso=process.argv[2]||'10';
+  if(caso==='10')for(const w of [390,768,1366]){
+    await abrir('/#/overlays',w,w===390?844:768);await evaluar("irA('overlays')");await esperar(800);
+    const medidas=await evaluar(`(()=>{const v=document.querySelector('.ovl-panel-vista'),f=v.querySelector('iframe');return {ancho:innerWidth,scroll:document.documentElement.scrollWidth,visor:v.clientWidth,marco:f.getBoundingClientRect().width};})()`);
+    assert.ok(medidas.scroll<=w,JSON.stringify(medidas));assert.ok(Math.abs(medidas.visor-medidas.marco)<2,JSON.stringify(medidas));
+    await evaluar("document.querySelector('.ovl-panel-vista').scrollIntoView({block:'center'})");await captura(`10-overlays-${w}-despues`);
+    console.log('Correcto: vista proporcional sin desbordamiento',w);
+  }
+  if(caso==='11')for(const [nombre,ruta] of [['escena','escena.html?tipo=inicio&demo=1'],['avatar','avatar.html?demo=1'],['jefe','jefe.html?demo=1&jefe=liche&volumen=0']]){
+    await abrir('/biblioteca/overlays/'+ruta,1920,1080);await esperar(3500);await captura(`11-${nombre}-despues`);
+    assert.equal(await evaluar(`[...document.querySelectorAll('*')].filter(e=>getComputedStyle(e).filter.includes('blur(')||getComputedStyle(e).backdropFilter!=='none'||getComputedStyle(e).mixBlendMode!=='normal').length`),0);
+  }
+  console.log('Pruebas visuales terminadas:',caso,destino);
+} finally {
+  if(socket?.readyState===1){await pedir('Browser.close').catch(()=>{});socket.close();}
+  for(const p of pendientes.values())clearTimeout(p.t);
+  edge.kill();server.closeAllConnections();await new Promise(r=>server.close(r));
+}
