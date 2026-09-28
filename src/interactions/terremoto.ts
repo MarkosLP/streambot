@@ -32,6 +32,9 @@ export function temblar(): boolean {
 
 const limpiar = (t: string) => t.normalize('NFD').replace(/\p{M}/gu, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim().toLowerCase();
 
+/** Los canjes de Terremoto, en fila (ver abajo). */
+let fila: Promise<void> = Promise.resolve();
+
 export const channelPointBinding = {
   matches: (event: ViewerRedeemEvent) => limpiar(event.rewardTitle) === 'terremoto',
   // Sin await: el temblor dura 5 s y el resto de eventos no tiene por qué esperarlo.
@@ -39,7 +42,12 @@ export const channelPointBinding = {
     if (temblar()) log.info(`Terremoto de ${event.viewer.displayName}: tiembla la imagen.`);
     // Su lado del Loot (28 sep 2026): sale un jefe, o le cae el techo al que hay.
     presente(event.viewer);
-    await engine.run(jefe.terremoto, { viewer: event.viewer, trigger: 'channel-point' as const, azar: Math.random });
+    // De uno en uno, cada uno con sus mensajes ya dichos: el laboratorio vio
+    // «el techo cae sobre la Hidra» antes de «¡Aparece la Hidra!», y el jefe
+    // nuevo anunciado antes del reparto del que acababa de caer.
+    const turno = fila.then(() => engine.run(jefe.terremoto, { viewer: event.viewer, trigger: 'channel-point' as const, azar: Math.random }));
+    fila = turno.catch(() => {});
+    await turno;
   },
 };
 
@@ -47,4 +55,5 @@ export const channelPointBinding = {
 export function reset(): void {
   temblor = null;
   temblando = false;
+  fila = Promise.resolve();
 }

@@ -875,15 +875,6 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     }
   }
 
-  // 30 fps en nuestras fuentes y las de las escenas del panel apagadas mientras no se ven.
-  if (ruta === 'POST /api/obs/optimizar') {
-    const hecho = await obs((pedir) => obsSetup.optimizar(pedir)).catch((err) => {
-      throw new ErrorHttp(502, err instanceof Error ? err.message : String(err));
-    });
-    for (const h of hecho) log.info(`Panel → OBS: ${h}`);
-    return json(res, 200, { hecho });
-  }
-
   if (ruta === 'POST /api/obs/preparar') {
     const { escena, fuente, efectos } = await cuerpo(req);
     const validos = Object.keys(obsSetup.PREPARABLES);

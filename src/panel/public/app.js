@@ -2400,16 +2400,6 @@ $('o-meta').addEventListener('submit', (ev) => {
     tipo: $('o-meta-tipo').value, titulo: $('o-meta-titulo').value, objetivo: Number($('o-meta-objetivo').value), base: Number($('o-meta-base').value),
   } } }, 'Meta guardada');
 });
-$('o-optimizar').addEventListener('click', async () => {
-  if (!confirm('Se pondrán nuestras fuentes de OBS a 30 fps, y las de las escenas del panel (✦) se apagarán mientras no se vean.\n\nOBS recarga cada fuente que cambia (un parpadeo): mejor fuera del directo. ¿Sigo?')) return;
-  try {
-    const r = await api('/api/obs/optimizar', {});
-    $('o-obs-resultado').textContent = r.hecho.join(' ');
-    tostada('Fuentes optimizadas');
-  } catch (err) {
-    tostada(err.message, true);
-  }
-});
 $('o-obs').addEventListener('click', async (ev) => {
   const b = ev.target.closest('[data-cual]');
   if (!b) return;

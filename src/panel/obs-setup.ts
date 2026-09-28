@@ -557,34 +557,3 @@ export async function anadirOverlay(pedir: PedirObs, cual: OverlayDirecto, escen
   });
   return `Panel rotativo añadido a «${escena}», arriba a la izquierda. Arrástralo en OBS a donde mejor quede.`;
 }
-
-// ---------------------------------------------------------------------------
-// Optimizar lo que ya está en OBS (27 sep 2026: tirones con varias fuentes)
-// ---------------------------------------------------------------------------
-
-/** Las fuentes de navegador que crea este panel: por su nombre. */
-const NUESTRAS = /^(ESC|FX|MUS|OVL) /;
-
-/**
- * A las fuentes que ya existen les pone lo que llevan las nuevas: 30 fps, y
- * las de las escenas del panel (✦) apagadas mientras no se ven. No toca
- * nada más (ni tamaños ni posiciones). OBS recarga cada fuente que cambia:
- * mejor fuera del directo.
- */
-export async function optimizar(pedir: PedirObs): Promise<string[]> {
-  const { inputs } = await pedir<{ inputs: { inputName: string; inputKind: string }[] }>('GetInputList', { inputKind: 'browser_source' });
-  const escenas = new Set(Object.values(ESCENAS_OBS).map((e) => e.fuente));
-  const hecho: string[] = [];
-  for (const i of inputs) {
-    if (!NUESTRAS.test(i.inputName)) continue;
-    const { inputSettings } = await pedir<{ inputSettings: Record<string, unknown> }>('GetInputSettings', { inputName: i.inputName });
-    const cambios: Record<string, unknown> = {};
-    if (inputSettings.fps_custom !== true || inputSettings.fps !== FPS.fps) Object.assign(cambios, FPS);
-    if (escenas.has(i.inputName) && inputSettings.shutdown !== true) cambios.shutdown = true;
-    if (!Object.keys(cambios).length) continue;
-    await pedir('SetInputSettings', { inputName: i.inputName, inputSettings: cambios, overlay: true });
-    hecho.push(`«${i.inputName}»: ${[cambios.fps ? '30 fps' : null, cambios.shutdown ? 'apagada mientras no se ve' : null].filter(Boolean).join(' y ')}.`);
-  }
-  if (!hecho.length) hecho.push('Todas nuestras fuentes ya estaban optimizadas.');
-  return hecho;
-}

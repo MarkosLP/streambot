@@ -377,15 +377,87 @@ async function main(): Promise<void> {
     return 4;
   });
 
-  await prueba('Terremoto: tres canjes a la vez', async (fallos) => {
+  // 28 sep 2026: el Terremoto trae un jefe, o le tira el techo al que hay.
+  await prueba('Terremoto: tres canjes a la vez (un jefe, dos derrumbes)', async (fallos, notas) => {
     streams.open();
     let temblores = 0;
     terremoto.setTemblor(async () => { temblores++; await esperar(300); });
     await aLaVez(['ana', 'luis', 'pepe'].map((p) => canje(p, 'Terremoto')), 20);
     await esperar(400);
     if (temblores !== 1) fallos.push(`tembló ${temblores} veces a la vez (debía ser 1: no se pisan)`);
+    const suelos = enviados.filter((e) => e.texto.includes('abre el suelo')).length;
+    const techos = enviados.filter((e) => e.texto.includes('techo sobre')).length;
+    if (suelos !== 1) fallos.push(`salieron ${suelos} jefes (debía ser 1)`);
+    if (techos !== 2) fallos.push(`${techos} derrumbes sobre el jefe (debían ser 2)`);
+    // En el chat, primero aparece el jefe y luego le cae el techo.
+    const primerTecho = enviados.findIndex((e) => e.texto.includes('techo sobre'));
+    if (primerTecho !== -1 && primerTecho < enviados.findIndex((e) => e.texto.includes('abre el suelo'))) {
+      fallos.push('el chat ve caer el techo sobre el jefe antes de que aparezca');
+    }
+    const e = jefe.estado();
+    if (!e) fallos.push('el jefe no está en pie');
+    else {
+      const esperada = e.vidaMax - 2 * Math.round(e.vidaMax * jefe.DERRUMBE);
+      if (e.vida !== esperada) fallos.push(`al jefe le quedan ${e.vida} (debían ser ${esperada})`);
+      notas.push(`${e.nombre}: ${e.vida}/${e.vidaMax} tras dos derrumbes`);
+    }
     terremoto.reset();
+    jefe.reset();
     return 3;
+  });
+
+  await prueba('Terremotos en plena pelea: 8 atacando y el techo cayendo', async (fallos, notas) => {
+    streams.open();
+    await aLaVez(GENTE.map((p) => mensaje(p, 'hola')), 0);
+    await jefe.invocar({ tipo: 'golem' });
+    const mezcla: Evento[] = [];
+    for (let r = 0; r < 6; r++) for (const p of GENTE) mezcla.push(mensaje(p, '!atacar'));
+    // 5 derrumbes de un cuarto: lo tumban seguro, y alguno llega con el jefe ya caído.
+    for (const p of ['ana', 'marta', 'dani', 'sofia', 'luis']) mezcla.push(canje(p, 'Terremoto'));
+    await aLaVez(mezcla, 1500);
+    const caidas = enviados.filter((e) => /ha caído/.test(e.texto)).length;
+    if (caidas > 1) fallos.push(`el jefe cayó ${caidas} veces`);
+    // El reparto del que cae va antes de anunciar el siguiente.
+    const caida = enviados.findIndex((e) => /ha caído/.test(e.texto));
+    const siguiente = enviados.findIndex((e) => e.texto.includes('abre el suelo'));
+    if (caida !== -1 && siguiente !== -1 && siguiente < caida) fallos.push('el chat ve el jefe nuevo antes del reparto del que ha caído');
+    const v = jefe.paraOverlay().jefe?.vida;
+    if (v !== undefined && v < 0) fallos.push(`vida del jefe negativa: ${v}`);
+    // Del reparto: un cofre por atacante y, como mucho, el del tesoro del MVP.
+    const porPersona = new Map<string, number>();
+    for (const f of filasLoot().filter((x) => x.origen === 'jefe')) porPersona.set(f.twitch_id, (porPersona.get(f.twitch_id) ?? 0) + 1);
+    for (const [id, n] of porPersona) if (n > 2) fallos.push(`${id} se llevó ${n} premios del mismo jefe`);
+    const nuevos = enviados.filter((e) => e.texto.includes('abre el suelo')).length;
+    if (nuevos) notas.push(`${nuevos} jefe(s) nuevo(s) tras caer el primero`);
+    notas.push(caidas ? 'el jefe cayó una vez' : `el jefe sigue en pie (${v})`);
+    jefe.reset();
+    return mezcla.length;
+  });
+
+  await prueba('Efectos a la vez: 3 Gritos, 2 Maldiciones y 2 Pociones', async (fallos, notas) => {
+    streams.open();
+    await aLaVez(GENTE.map((p) => mensaje(p, 'hola')), 0);
+    meter('sofia', 'Anillo sombrío', 'raro', true);
+    const antes = filasLoot().filter((f) => f.maldito).length;
+    await aLaVez([
+      canje('ana', 'Grito de guerra'), canje('luis', '⚔️ Grito de Guerra!'), canje('pepe', 'grito de guerra'),
+      canje('marta', 'Maldición'), canje('dani', 'Maldición'),
+      canje('sofia', 'Poción de vida'), canje('raftaei', 'Poción de vida'),
+    ], 40);
+    const llamadas = enviados.filter((e) => e.texto.includes('A las armas')).length;
+    const unidos = enviados.filter((e) => e.texto.includes('se une al grito')).length;
+    if (llamadas !== 1 || unidos !== 2) fallos.push(`${llamadas} llamadas a las armas y ${unidos} «se une» (debían ser 1 y 2)`);
+    const malditos = filasLoot().filter((f) => f.maldito).length - antes;
+    if (malditos !== 2) fallos.push(`las 2 Maldiciones dieron ${malditos} objetos malditos`);
+    const ofertas = enviados.filter((e) => e.texto.includes('!purificar')).length;
+    if (ofertas !== 1) fallos.push(`${ofertas} ofertas de !purificar (debía ser 1: solo sofia lleva un maldito)`);
+    // El cofre de guerra cae una vez, solo armas, para todo el chat.
+    const r = await loot.soltarCofre();
+    const deGuerra = filasLoot().filter((f) => f.origen === 'guerra').length;
+    if (!r.ok || deGuerra !== GENTE.length) fallos.push(`el cofre de guerra dio ${deGuerra} objetos (debían ser ${GENTE.length}, uno por persona)`);
+    if (loot.estado().cofreDeGuerra !== null) fallos.push('quedó otro cofre de guerra pendiente');
+    notas.push(`cofre de guerra: ${deGuerra} armas repartidas`);
+    return 7;
   });
 
   await prueba('Dos jefes invocados a la vez desde el panel', async (fallos) => {
