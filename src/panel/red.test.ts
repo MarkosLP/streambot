@@ -23,3 +23,11 @@ test('sondeo: no se solapan trabajos lentos y se puede detener',async()=>{
   const parar=red.sondear(async()=>{activos++;maximo=Math.max(maximo,activos);veces++;await new Promise(r=>setTimeout(r,15));activos--;},2);
   await new Promise(r=>setTimeout(r,60));parar();assert.equal(maximo,1);assert.ok(veces>=2);
 });
+
+test('memoria y avisos: límites constantes, caducidad y reinicio de sesión',async()=>{
+  let sesion='uno';const red=preparar(async()=>({ok:true,headers:{get:()=>sesion},json:async()=>({})}));
+  const vistos=red.memoria(30);for(let i=0;i<10000;i++)vistos.add(i);assert.equal(vistos.size,30);assert.equal(vistos.has(1),false);
+  let reinicios=0;red.alReiniciar(()=>{reinicios++;vistos.clear();});await red.consultar('/datos');sesion='dos';await red.consultar('/datos');assert.equal(reinicios,1);assert.equal(vistos.size,0);
+  const cola:any[]=[];for(let i=0;i<1000;i++)red.encolar(cola,{i},20);assert.equal(cola.length,20);
+  cola[0].__hasta=0;assert.equal(red.extraer(cola).i,981);
+});

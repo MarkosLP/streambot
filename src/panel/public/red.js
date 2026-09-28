@@ -2,6 +2,8 @@
 (() => {
   const lecturas = new Map();
   const fallos = new Set();
+  const reinicios = new Set();
+  let sesion = null;
   let generacion = 0;
   function cancelarLecturas() {
     ++generacion;
@@ -23,6 +25,12 @@
         const d = await r.json();
         if (control.signal.aborted || (lectura && turno !== generacion)) throw new DOMException('Consulta reemplazada', 'AbortError');
         if (!r.ok) throw new Error(d.error || `Error ${r.status}`);
+        const recibida = r.headers?.get('X-Sesion-Overlay');
+        if (recibida && sesion !== recibida) {
+          const reinicio = sesion !== null;
+          sesion = recibida;
+          if (reinicio) for (const fn of reinicios) fn();
+        }
         fallos.delete(clave.split('?')[0]);
         return d;
       } catch (causa) {
@@ -57,5 +65,20 @@
       catch (error) { document.documentElement.dataset.datos = 'obsoletos'; throw error; }
     }, cada);
   }
-  globalThis.DirectoRed = { consultar, cancelarLecturas, sondear, overlay };
+  function memoria(maximo = 500) {
+    const vistos = new Set();
+    return { has: (id) => vistos.has(id), clear: () => vistos.clear(), get size() { return vistos.size; },
+      add(id) { vistos.add(id); while (vistos.size > maximo) vistos.delete(vistos.values().next().value); } };
+  }
+  function encolar(cola, valor, maximo = 30, vigencia = 120000) {
+    while (cola.length && cola[0].__hasta <= Date.now()) cola.shift();
+    if (cola.length >= maximo) cola.shift();
+    cola.push({ ...valor, __hasta: Date.now() + vigencia });
+  }
+  function extraer(cola) {
+    while (cola.length) { const v = cola.shift(); if (v.__hasta > Date.now()) return v; }
+    return null;
+  }
+  globalThis.DirectoRed = { consultar, cancelarLecturas, sondear, overlay, memoria, encolar, extraer,
+    alReiniciar: (fn) => { reinicios.add(fn); return () => reinicios.delete(fn); } };
 })();

@@ -106,8 +106,9 @@ function sonar(archivo) {
 
 function siguiente() {
   if (mostrando || !cola.length) return;
+  const a = DirectoRed.extraer(cola);
+  if (!a) return;
   mostrando = true;
-  const a = cola.shift();
   const i = INFO[a.tipo] ?? INFO.follow;
   const el = document.createElement('div');
   el.className = `alerta t-${a.tipo}`;
@@ -134,12 +135,13 @@ function siguiente() {
 }
 
 let vistas = null;
+DirectoRed.alReiniciar(() => { vistas = null; cola.length = 0; });
 function aplicar(d) {
   ponerEstilo(d.estilo, d.apariencia);
   volumen = Number(d.volumen) || 0;
   // Al abrir, lo que ya había no se repite: solo lo nuevo.
   if (vistas === null) { vistas = Math.max(0, ...d.alertas.map((a) => a.n)); return; }
-  for (const a of d.alertas) if (a.n > vistas) { vistas = a.n; cola.push(a); }
+  for (const a of d.alertas) if (a.n > vistas) { vistas = a.n; DirectoRed.encolar(cola, a); }
   siguiente();
 }
 

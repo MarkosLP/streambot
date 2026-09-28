@@ -1033,18 +1033,20 @@ function pintarChat(chat) {
 }
 
 // ======================= Aviso de botín =======================
-const vistos = new Set();
+const vistos = DirectoRed.memoria();
 const cola = [];
 let avisando = false;
+DirectoRed.alReiniciar(() => { vistos.clear(); cola.length = 0; primera = true; pintarChat([]); });
 function avisos(botin) {
   if (primera) { for (const b of botin) vistos.add(b.id); return; }
-  for (const b of [...botin].reverse()) if (!vistos.has(b.id)) { vistos.add(b.id); cola.push(b); }
+  for (const b of [...botin].reverse()) if (!vistos.has(b.id)) { vistos.add(b.id); DirectoRed.encolar(cola, b); }
   siguiente();
 }
 function siguiente() {
   if (avisando || !cola.length) return;
+  const b = DirectoRed.extraer(cola);
+  if (!b) return;
   avisando = true;
-  const b = cola.shift();
   const el = h('div', { class: `aviso ${RAREZA(b)}` },
     h('div', { class: 'etq' }, b.rareza === 'legendario' ? 'Botín legendario' : b.maldito ? 'Botín maldito' : 'Botín'),
     h('div', { class: 'linea' }, `${b.quien} obtiene `, h('span', { class: 'objeto' }, b.objeto)));

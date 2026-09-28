@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
@@ -87,6 +88,7 @@ const PUBLICOS: Record<string, { archivo: string; tipo: string }> = {
 
 const DIR_PUBLICO = new URL('./public/', import.meta.url);
 const MAX_BODY = 16 * 1024;
+const sesionOverlay = randomUUID();
 const arrancado = new Date().toISOString();
 
 class ErrorHttp extends Error {
@@ -187,6 +189,10 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
 
   const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
   const metodo = req.method ?? 'GET';
+  if (url.pathname.startsWith('/api/overlay/') || url.pathname === '/api/reproductor/musica') {
+    res.setHeader('X-Sesion-Overlay', sesionOverlay);
+    res.setHeader('Access-Control-Expose-Headers', 'X-Sesion-Overlay');
+  }
 
   // El reproductor aislado solo puede reportar con su credencial privada (27 sep 2026).
   if (metodo === 'POST' && url.pathname === '/api/reproductor/musica') {
@@ -326,6 +332,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   if (ruta === 'GET /api/loot') {
     return json(res, 200, {
       ...loot.estado(),
+      pantalla: loot.estadoPantalla(),
       // Para el regalo: todo el que está en el chat, haya escrito o no.
       jefe: jefe.estado(),
       vigilante: directo.estado(),

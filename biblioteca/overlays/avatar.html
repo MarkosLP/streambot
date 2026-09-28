@@ -449,9 +449,10 @@ async function ponerRetrato(ruta, zonas = null, version = '') {
 })();
 
 // ---------------- Datos ----------------
-const vistosChat = new Set();
-const vistosBotin = new Set();
+const vistosChat = DirectoRed.memoria();
+const vistosBotin = DirectoRed.memoria();
 let primera = true;
+DirectoRed.alReiniciar(() => { vistosChat.clear(); vistosBotin.clear(); primera = true; });
 function pintar(d) {
   const visible = SIEMPRE || d.config.avatar;
   ponerEstilo(q.get('estilo') || d.config.estilo, q.get('estilo') ? null : d.config.apariencia);

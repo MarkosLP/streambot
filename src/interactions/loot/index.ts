@@ -1,3 +1,4 @@
+import { ColaTemporal } from '../../core/cola-temporal.js';
 import { config, MAX_MESSAGE_LENGTH } from '../../config.js';
 import type { Viewer, ViewerRedeemEvent } from '../../core/events.js';
 import * as ajustes from '../../core/ajustes.js';
@@ -148,7 +149,8 @@ export function aventureros(now = Date.now()): Viewer[] {
 export type OrigenPantalla = 'cofre' | 'oro' | 'panel' | 'regalo' | 'jefe' | 'fidelidad' | 'suscriptor' | 'raid' | 'bits' | 'prueba' | 'forja' | 'presumir' | 'guerra' | 'maldicion' | 'purificar';
 export type Pantalla = (quien: string, botin: Botin, origen: OrigenPantalla) => Promise<void>;
 let pantalla: Pantalla | null = null;
-let fila: Promise<void> = Promise.resolve();
+const fila = new ColaTemporal<() => Promise<void>>((mostrar) => mostrar(), (err) => log.warn(`Loot: el botín no salió en pantalla (${String(err)}).`));
+export const estadoPantalla = () => ({ pendientes: fila.pendientes, descartados: fila.descartados });
 
 /**
  * Cómo se enseña un botín en pantalla. Se inyecta desde index.ts (el banner
@@ -157,6 +159,7 @@ let fila: Promise<void> = Promise.resolve();
  */
 export function setPantalla(fn: Pantalla | null): void {
   pantalla = fn;
+  fila.vaciar();
 }
 
 /**
@@ -169,10 +172,9 @@ export function setPantalla(fn: Pantalla | null): void {
 export function enPantalla(quien: string, botin: Botin, origen: OrigenPantalla): boolean {
   if (!pantalla) return false;
   const mostrar = pantalla;
-  fila = fila
-    .then(() => mostrar(quien, botin, origen))
-    .catch((err) => log.warn(`Loot: el botín de ${quien} no salió en pantalla (${err instanceof Error ? err.message : String(err)}).`));
-  return true;
+  const aceptado = fila.encolar(() => mostrar(quien, botin, origen));
+  if (!aceptado && fila.descartados % 20 === 1) log.warn('Loot: cola de pantalla llena; los objetos siguen guardados en la mochila.');
+  return aceptado;
 }
 
 // ---------------------------------------------------------------------------
@@ -783,7 +785,7 @@ export function reset(): void {
   chatters = null;
   lanzador = null;
   enElSuelo = null;
-  fila = Promise.resolve();
+  fila.vaciar();
   eventos.reset();
   temporada.reset();
 }

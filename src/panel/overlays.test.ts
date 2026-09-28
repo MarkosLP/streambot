@@ -1,4 +1,4 @@
-﻿import { readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -25,7 +25,7 @@ export function entorno() {
     setTimeout: (fn: () => void, ms: number) => { relojes.set(++id, { fn, hasta: ahora + ms }); return id; },
     clearTimeout: (n: number) => relojes.delete(n), clearInterval() {}, setInterval() {},
     Date: { now: () => ahora }, console, URL, URLSearchParams, location: { href: 'http://prueba/', search: '?volumen=0' },
-    Image: class {}, Audio: class { play() { return Promise.resolve(); } }, fetch: () => new Promise(() => {}), DirectoRed: { overlay() {} },
+    Image: class {}, Audio: class { play() { return Promise.resolve(); } }, fetch: () => new Promise(() => {}), DirectoRed: { overlay() {}, alReiniciar() {} },
   };
   return { ctx, $, nodo, avanzar(ms: number) { const fin = ahora + ms; for (;;) { const siguiente = [...relojes].filter(([,r]) => r.hasta <= fin).sort((a,b)=>a[1].hasta-b[1].hasta)[0]; if(!siguiente) break; ahora=siguiente[1].hasta; relojes.delete(siguiente[0]); siguiente[1].fn(); } ahora = fin; } };
 }
