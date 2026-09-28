@@ -123,6 +123,7 @@
   <div class="zzz" id="zzz">z z</div>
 </div>
 
+<script src="/red.js"></script>
 <script>
 'use strict';
 const q = new URLSearchParams(location.search);
@@ -481,12 +482,7 @@ if (DEMO) {
 } else {
   const api = new URL('/api/overlay/escena', location.href);
   api.searchParams.set('tipo', 'charla');
-  const preguntar = () => fetch(api, { cache: 'no-store' })
-    .then((r) => (r.ok ? r.json() : null))
-    .then((d) => { if (d) pintar(d); })
-    .catch(() => {})
-    .finally(() => setTimeout(preguntar, 1500));
-  preguntar();
+  DirectoRed.overlay(api, pintar, 1500);
 }
 </script>
 </body>

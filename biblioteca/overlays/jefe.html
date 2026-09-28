@@ -561,6 +561,7 @@
   <div class="podio" id="podio"></div>
 </div>
 
+<script src="/red.js"></script>
 <script>
   // Todo como texto, nunca como HTML: los nombres los elige cada espectador.
   const $ = (id) => document.getElementById(id);
@@ -1308,13 +1309,7 @@
   else if (params.get('demo') === 'duelo') demoDuelos();
   else {
     const api = new URL('/api/overlay/jefe', location.href);
-    const preguntar = () =>
-      fetch(api, { cache: 'no-store' })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => d && pintar(d))
-        .catch(() => {})
-        .finally(() => setTimeout(preguntar, 500));
-    preguntar();
+    DirectoRed.overlay(api, pintar, 500);
   }
 
   /** Unos duelos de mentira, uno detrás de otro. */

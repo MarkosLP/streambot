@@ -49,6 +49,7 @@
   <div class="textos"><div class="etq">Sonando</div><div class="titulo" id="av-titulo"></div><div class="artista" id="av-artista"></div></div>
 </div>
 
+<script src="/red.js"></script>
 <script>
 'use strict';
 const q = new URLSearchParams(location.search);
@@ -85,11 +86,11 @@ function rampa(a, hasta, ms = FUNDIDO_MS) {
 async function avisar(tipo, extra = {}) {
   const id = idActual, turno = turnoActual;
   try {
-    const r = await fetch(new URL('/api/reproductor/musica', location.href), {
+    const datos = await DirectoRed.consultar(new URL('/api/reproductor/musica', location.href), {
       method: 'POST', headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ credencial: '__MUSICA_CREDENCIAL__', tipo, id, turno, ...extra }),
     });
-    if (r.ok && id === idActual && turno === turnoActual) aplicar(await r.json());
+    if (id === idActual && turno === turnoActual) aplicar(datos);
   } catch (error) { console.warn('No se pudo reportar la música', error); }
 }
 
@@ -168,12 +169,7 @@ if (q.get('demo') === '1') {
   avisoPermitido = true;
   mostrarAviso({ titulo: 'Level Up', artista: 'StreamBeats' }, 'demo');
 } else {
-  const preguntar = () => fetch(API, { cache: 'no-store' })
-    .then((r) => (r.ok ? r.json() : null))
-    .then((d) => { if (d) aplicar(d); })
-    .catch(() => {})
-    .finally(() => setTimeout(preguntar, 1000));
-  preguntar();
+  DirectoRed.overlay(API, aplicar, 1000);
 }
 </script>
 </body>

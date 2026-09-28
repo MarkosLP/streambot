@@ -57,6 +57,7 @@
 </head>
 <body>
 <div id="caja"></div>
+<script src="/red.js"></script>
 <script>
 'use strict';
 const q = new URLSearchParams(location.search);
@@ -151,12 +152,7 @@ if (q.get('demo') === '1') {
   tanda();
   setInterval(() => { if (!mostrando && !cola.length) { vuelta++; tanda(); } }, 4000);
 } else {
-  const preguntar = () => fetch(API, { cache: 'no-store' })
-    .then((r) => (r.ok ? r.json() : null))
-    .then((d) => { if (d) aplicar(d); })
-    .catch(() => {})
-    .finally(() => setTimeout(preguntar, 1500));
-  preguntar();
+  DirectoRed.overlay(API, aplicar, 1500);
 }
 </script>
 </body>

@@ -39,10 +39,7 @@ async function api(ruta, cuerpo) {
   const opciones = cuerpo === undefined
     ? {}
     : { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Panel': '1' }, body: JSON.stringify(cuerpo) };
-  const res = await fetch(ruta, opciones);
-  const datos = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(datos.error || `Error ${res.status}`);
-  return datos;
+  return DirectoRed.consultar(ruta, opciones, cuerpo === undefined ? 10000 : maximo ? 900000 : 180000);
 }
 
 let tostadaTimer;
@@ -113,6 +110,7 @@ const cargadores = {
 };
 
 function irA(tab) {
+  DirectoRed.cancelarLecturas();
   for (const b of document.querySelectorAll('.pestanas button')) {
     b.setAttribute('aria-selected', String(b.dataset.tab === tab));
   }
@@ -157,7 +155,8 @@ async function refrescar() {
     pintarGasto(estado.gasto, estado.bot.modelo);
     pintarPendientes(estado.pendientes);
     anadirLog(estado.log);
-  } catch {
+  } catch (error) {
+    if (error.name === 'AbortError') return;
     $('sin-bot').hidden = false;
     const sb = $('p-sb');
     sb.className = 'estado mal';
@@ -256,7 +255,7 @@ for (const [id, ruta, cuerpo, texto] of [
     }
   });
 }
-setInterval(() => { if (!$('v-directo').hidden) pintarLootInicio(); }, 5000);
+DirectoRed.sondear(() => { if (!$('v-directo').hidden) return pintarLootInicio(); }, 5000, false);
 pintarLootInicio();
 
 // ---------------------------------------------------------------------------
@@ -361,7 +360,7 @@ $('resumen-directo').addEventListener('change', (e) => {
   resumenElegido = e.target.value;
   cargarResumen();
 });
-setInterval(() => { if (!$('v-directo').hidden && !resumenElegido) cargarResumen(); }, 60_000);
+DirectoRed.sondear(() => { if (!$('v-directo').hidden && !resumenElegido) return cargarResumen(); }, 60_000, false);
 cargarResumen();
 
 // ---------------------------------------------------------------------------
@@ -1162,7 +1161,7 @@ for (const [id, abierto, texto] of [
 
 
 // La cuenta atrás se refresca sola mientras miras la pestaña.
-setInterval(() => { if (!$('v-loot').hidden) cargarLoot(); }, 5000);
+DirectoRed.sondear(() => { if (!$('v-loot').hidden) return cargarLoot(); }, 5000, false);
 
 // ---------------------------------------------------------------------------
 // Importar en Streamer.bot
@@ -2149,14 +2148,14 @@ $('mm-play').addEventListener('click', () => accionMini(miniEstado?.sonando ? 'p
 $('mm-siguiente').addEventListener('click', () => accionMini('siguiente'));
 $('mm-anterior').addEventListener('click', () => accionMini('anterior'));
 $('mm-ir').addEventListener('click', () => irA('musica'));
-setInterval(async () => {
+DirectoRed.sondear(async () => {
   if (!$('v-musica').hidden) return; // allí ya pregunta la pestaña
   try { pintarMini(await api('/api/musica/estado')); } catch {}
-}, 2000);
+}, 2000, false);
 api('/api/musica/estado').then(pintarMini, () => {});
 
 // Mientras la pestaña está abierta: lo que suena y por dónde va.
-setInterval(async () => {
+DirectoRed.sondear(async () => {
   if ($('v-musica').hidden || !musicaDatos) return;
   try {
     const e = await api('/api/musica');
@@ -2166,7 +2165,7 @@ setInterval(async () => {
     pintarMusicaAhora();
     if (cambio) { pintarListasMusica(); pintarMapaMusica(); }
   } catch {}
-}, 2000);
+}, 2000, false);
 
 // ---------------------------------------------------------------------------
 // Temas para hablar (temas.ts): titulares, guion y lo que sale en pantalla
@@ -2906,7 +2905,7 @@ irA(inicial);
 $('hoy').textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
 refrescar();
-setInterval(refrescar, INTERVALO_MS);
+DirectoRed.sondear(refrescar, INTERVALO_MS, false);
 if (inicial !== 'efectos') cargarEfectos();
 // La botonera se entera sola cuando montas una Action nueva en Streamer.bot.
-setInterval(cargarEfectos, 15000);
+DirectoRed.sondear(cargarEfectos, 15000, false);

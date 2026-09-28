@@ -80,6 +80,7 @@ export interface PuertoStreamerbot {
 
 const PUBLICOS: Record<string, { archivo: string; tipo: string }> = {
   '/': { archivo: 'index.html', tipo: 'text/html; charset=utf-8' },
+  '/red.js': { archivo: 'red.js', tipo: 'text/javascript; charset=utf-8' },
   '/app.js': { archivo: 'app.js', tipo: 'text/javascript; charset=utf-8' },
   '/styles.css': { archivo: 'styles.css', tipo: 'text/css; charset=utf-8' },
 };

@@ -475,6 +475,7 @@
   <div class="barras" aria-hidden="true"><i></i><i></i><i></i></div>
 </div>
 
+<script src="/red.js"></script>
 <script>
 'use strict';
 const q = new URLSearchParams(location.search);
@@ -1081,12 +1082,7 @@ if (DEMO) {
   const api = new URL('/api/overlay/escena', location.href);
   api.searchParams.set('tipo', TIPO);
   const cada = TIPO === 'charla' ? 1500 : 4000;
-  const preguntar = () => fetch(api, { cache: 'no-store' })
-    .then((r) => (r.ok ? r.json() : null))
-    .then((d) => { if (d) pintar(d); })
-    .catch(() => {})
-    .finally(() => setTimeout(preguntar, cada));
-  preguntar();
+  DirectoRed.overlay(api, pintar, cada);
 }
 </script>
 </body>
