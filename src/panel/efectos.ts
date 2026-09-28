@@ -152,7 +152,7 @@ export const EFECTOS: Efecto[] = [
     cooldownSeg: 1200,
     maxPorDirecto: 2,
     maxPorPersona: 1,
-    queHace: 'La imagen del juego tiembla 5 segundos. El temblor lo hace el bot; la Action solo pone el sonido.',
+    queHace: 'La imagen del juego tiembla 5 segundos, el suelo se abre y sale un jefe de raid para todo el chat; si ya hay uno, le cae el techo encima. El temblor y el jefe los pone el bot; la Action solo pone el sonido.',
     necesita: null,
     material: ['sonidos/terremoto.wav'],
     obs: {
@@ -165,7 +165,7 @@ export const EFECTOS: Efecto[] = [
     subacciones: {
       pasos: [
         playSound('sonidos/terremoto.wav'),
-        'Y ya está: el temblor lo pone el bot al ver el canje.',
+        'Y ya está: el temblor y el jefe los pone el bot al ver el canje.',
       ],
     },
   }),

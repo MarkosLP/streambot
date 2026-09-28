@@ -1,5 +1,8 @@
 import type { ViewerRedeemEvent } from '../core/events.js';
 import { log } from '../core/logger.js';
+import * as engine from '../core/engine.js';
+import { presente } from './loot/index.js';
+import * as jefe from './loot/jefe.js';
 
 /**
  * Terremoto: al canjear la recompensa, la imagen del juego tiembla 5 s.
@@ -34,6 +37,9 @@ export const channelPointBinding = {
   // Sin await: el temblor dura 5 s y el resto de eventos no tiene por qué esperarlo.
   run: async (event: ViewerRedeemEvent) => {
     if (temblar()) log.info(`Terremoto de ${event.viewer.displayName}: tiembla la imagen.`);
+    // Su lado del Loot (28 sep 2026): sale un jefe, o le cae el techo al que hay.
+    presente(event.viewer);
+    await engine.run(jefe.terremoto, { viewer: event.viewer, trigger: 'channel-point' as const, azar: Math.random });
   },
 };
 

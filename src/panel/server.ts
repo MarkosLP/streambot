@@ -926,7 +926,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     if (!efecto) return json(res, 200, { ok: true });
     const yo = users.findByLogin(login);
     if (!yo) return json(res, 200, { ok: true, aviso: 'Ha sonado, pero el bot aún no te conoce: escribe algo en el chat y vuelve a probar.' });
-    const parado = efecto.id === 'grito' || efecto.id === 'maldicion' || efecto.id === 'pocion' ? loot.motivoEfectoParado(efecto.id, yo.twitch_id) : null;
+    const parado = loot.motivoEfectoParado(efecto.id, yo.twitch_id);
     await handleEvent(normalize('Twitch.RewardRedemption', {
       id: `panel-${Date.now()}`,
       user_id: yo.twitch_id,

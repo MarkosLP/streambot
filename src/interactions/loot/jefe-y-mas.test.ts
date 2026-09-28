@@ -518,3 +518,44 @@ describe('🐉 jefe de raid', () => {
     assert.equal((await jefe.invocar()).ok, false);
   });
 });
+
+// 28 sep 2026: el Terremoto solo hacía temblar la imagen.
+describe('🌋 el Terremoto trae un jefe', () => {
+  test('sin jefe, el suelo se abre y sale uno, en un solo mensaje', async () => {
+    streams.open();
+    await handleEvent(canje('ana', 'Terremoto'));
+    assert.ok(jefe.hayJefe());
+    assert.equal(enviados.length, 1);
+    assert.match(enviados[0]!, /^🌋 ¡El terremoto de ana abre el suelo… 🐉 ¡Aparece .+ !atacar/);
+  });
+
+  test('con un jefe en pie, le cae el techo: un cuarto de su vida, a nombre de quien canjea', async () => {
+    streams.open();
+    await jefe.invocar();
+    const { vidaMax } = jefe.estado()!;
+    enviados = [];
+    await handleEvent(canje('ana', 'Terremoto'));
+    const e = jefe.estado()!;
+    assert.equal(e.vida, vidaMax - Math.round(vidaMax * jefe.DERRUMBE));
+    assert.deepEqual(e.atacantes, [{ quien: 'ana', dano: Math.round(vidaMax * jefe.DERRUMBE) }]);
+    assert.match(enviados[0]!, /techo sobre .+: −\d+! Le quedan/);
+  });
+
+  test('si el derrumbe lo tumba, se reparte el botín en un segundo mensaje', async () => {
+    streams.open();
+    await jefe.invocar();
+    for (let i = 0; i < 4 && jefe.hayJefe(); i++) await handleEvent(canje('ana', 'Terremoto'));
+    assert.equal(jefe.hayJefe(), false);
+    assert.match(enviados.at(-2)!, /techo sobre/);
+    assert.ok(enviados.at(-1)!.length > 0);
+    assert.doesNotMatch(enviados.at(-1)!, /techo sobre/);
+  });
+
+  test('sin directo marcado no sale jefe, y queda en el registro por qué', async () => {
+    await handleEvent(canje('ana', 'Terremoto'));
+    assert.equal(jefe.hayJefe(), false);
+    assert.deepEqual(enviados, []);
+    const fila = interactionLog.all().find((f) => f.interaction === jefe.NAME_TERREMOTO);
+    assert.equal(fila?.detail, loot.SIN_DIRECTO_JEFE);
+  });
+});

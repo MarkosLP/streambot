@@ -2,7 +2,7 @@ import { config } from '../../config.js';
 import * as ajustes from '../../core/ajustes.js';
 import * as consent from '../../core/consent.js';
 import * as cooldowns from '../../core/cooldowns.js';
-import type { Interaction, Salida } from '../../core/interaction.js';
+import type { Ctx, Interaction, Salida } from '../../core/interaction.js';
 import { log } from '../../core/logger.js';
 import { send } from '../../core/output.js';
 import type { Viewer } from '../../core/events.js';
@@ -10,11 +10,12 @@ import * as interactionLog from '../../data/interactions.js';
 import * as lootDb from '../../data/loot.js';
 import { esBot } from '../../core/bots.js';
 import type { CtxComando } from './comandos.js';
-import { aventureros, componerCofre, enPantalla, juega, type Reparto } from './index.js';
+import { aventureros, componerCofre, enPantalla, juega, SIN_DIRECTO_JEFE, type Reparto } from './index.js';
 import { tirar, type Azar } from './objetos.js';
 import { ESPECIALES, UMBRAL } from './especiales.js';
 import * as eventos from './eventos.js';
 import * as temporadas from '../../data/temporadas.js';
+import * as streams from '../../data/streams.js';
 import { PUNTOS_MVP } from './temporada.js';
 
 /**
@@ -133,7 +134,7 @@ let reloj: ReturnType<typeof setTimeout> | null = null;
 export type ResultadoInvocar = { ok: true; nombre: string; vida: number; enviado: boolean } | { ok: false; motivo: string };
 
 export async function invocar(
-  { azar = Math.random, now = Date.now(), tipo }: { azar?: Azar; now?: number; tipo?: string } = {},
+  { azar = Math.random, now = Date.now(), tipo, intro }: { azar?: Azar; now?: number; tipo?: string; intro?: string } = {},
 ): Promise<ResultadoInvocar> {
   if (!ajustes.lootActivo()) return { ok: false, motivo: 'el Loot está apagado' };
   if (jefe) return { ok: false, motivo: `${jefe.nombre} sigue en pie` };
@@ -148,7 +149,8 @@ export async function invocar(
   reloj.unref?.();
 
   const outcome = await send({
-    text: `🐉 ¡Aparece ${nombre} con ${vidaMax} de vida! Escribid !atacar para derribarlo: tenéis ${DURACION_MS / 60_000} min. Botín para todos los que peguen.`,
+    // `intro`: quién lo ha traído, en el mismo mensaje (el Terremoto). Uno menos del tope por hora.
+    text: `${intro ? `${intro} ` : ''}🐉 ¡Aparece ${nombre} con ${vidaMax} de vida! Escribid !atacar para derribarlo: tenéis ${DURACION_MS / 60_000} min. Botín para todos los que peguen.`,
     reason: NAME,
     solicitado: true,
   });
@@ -248,6 +250,57 @@ export function golpesDeBits(viewer: Viewer, bits: number, azar: Azar = Math.ran
 
 /** ¿Hay un jefe en pie? */
 export const hayJefe = () => jefe !== null;
+
+// ---------------------------------------------------------------------------
+// Terremoto (28 sep 2026)
+// ---------------------------------------------------------------------------
+//
+// La recompensa solo hacía temblar la imagen, y costaba más que la Maldición.
+// Ahora el suelo se abre y sale un jefe para todo el chat; si ya hay uno en
+// pie, le cae el techo encima, a nombre de quien lo canjea.
+
+export const NAME_TERREMOTO = 'loot-terremoto';
+/** Lo que quita el derrumbe: una parte de la vida máxima del jefe. */
+export const DERRUMBE = 0.25;
+
+/**
+ * El techo sobre el jefe en pie. Como los bits: pega aunque estés congelado y
+ * sin esperar. Uno o dos mensajes (el segundo, el reparto si lo tumba), o
+ * null si no hay jefe.
+ */
+export function derrumbe(viewer: Viewer, azar: Azar = Math.random): string[] | null {
+  const j = jefe;
+  if (!j) return null;
+  const dano = Math.min(j.vida, Math.round(j.vidaMax * DERRUMBE));
+  apuntarGolpe(j, { quien: viewer.displayName, dano, critico: true, tipo: 'golpe', icono: '🌋' });
+  j.danos.set(viewer.id, { viewer, dano: (j.danos.get(viewer.id)?.dano ?? 0) + dano });
+  j.vida = Math.max(0, j.vida - dano);
+  const inicio = `🌋 ¡El terremoto de ${viewer.displayName} hace caer el techo sobre ${j.nombre}: −${dano}!`;
+  if (j.vida === 0) return [inicio, derrotado(j, azar).text];
+  return [`${inicio} Le quedan ${j.vida}/${j.vidaMax}.`];
+}
+
+export const terremoto: Interaction<Ctx & { trigger: 'channel-point'; azar: Azar }> = {
+  name: NAME_TERREMOTO,
+  spontaneous: false,
+  // Registrados: si la imagen tiembla y no sale nada, en el Registro está por qué.
+  guards: [
+    () => (ajustes.lootActivo() ? { ok: true } : { ok: false, motivo: 'el Loot está apagado', registrar: true }),
+    () => (streams.current() ? { ok: true } : { ok: false, motivo: SIN_DIRECTO_JEFE, registrar: true }),
+    (ctx) => (consent.haPedidoOlvido(ctx.viewer.id) ? { ok: false, motivo: 'pidió el olvido' } : { ok: true }),
+  ],
+  run: async (ctx) => {
+    const golpes = derrumbe(ctx.viewer, ctx.azar);
+    if (golpes) {
+      if (golpes.length > 1) await send({ text: golpes[0]!, reason: NAME_TERREMOTO, solicitado: true });
+      return { text: golpes[golpes.length - 1]! };
+    }
+    // invocar() dice lo suyo y lo deja en el registro como loot-jefe.
+    const r = await invocar({ azar: ctx.azar, intro: `🌋 ¡El terremoto de ${ctx.viewer.displayName} abre el suelo…` });
+    if (!r.ok) log.info(`Terremoto: no sale jefe (${r.motivo}).`);
+    return null;
+  },
+};
 
 function apuntarGolpe(j: Jefe, g: Omit<Golpe, 'n'>): void {
   j.golpes.push({ ...g, n: ++golpesTotales });

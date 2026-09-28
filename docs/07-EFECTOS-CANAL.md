@@ -55,7 +55,7 @@ necesitan un plugin gratuito.
 | 1 | **Grito de guerra** | 750 | 10 min · máx. 4 por directo, 1 por persona | Suena un sonido | Nada |
 | 2 | **Poción de vida** | 500 | 10 min · máx. 2 por persona | Aparece "¡Bebe agua!" 5 s en pantalla | Nada |
 | 3 | **Maldición** | 2.500 | 20 min · máx. 2 por directo, 1 por persona | La pantalla se queda en blanco y negro 10 s | Nada |
-| 4 | **Terremoto** | 3.000 | 20 min · máx. 2 por directo, 1 por persona | La imagen del juego tiembla 5 s | Nada (lo hace el bot) |
+| 4 | **Terremoto** | 3.000 | 20 min · máx. 2 por directo, 1 por persona | La imagen del juego tiembla 5 s y sale un jefe de raid (si ya hay uno, le cae el techo) | Nada (lo hace el bot) |
 | 5 | **Lag** | 5.000 | 30 min · máx. 1 por directo | La imagen se congela 5 s | Plugin *Freeze Filter* |
 | — | **Cofre del tesoro** | 1.500 | 5 min · máx. 2 por persona | Abre un cofre del Loot | Nada (lo abre el bot) |
 
@@ -167,7 +167,12 @@ el WebSocket de OBS, y la deja exactamente donde estaba.
 
 La Action de Streamer.bot solo pone el sonido (y un aviso en el chat). El
 panel la genera con «Copiar código para Import», y su botón **Probar** hace
-las dos cosas: sonido y temblor.
+lo mismo que un canje tuyo.
+
+Desde el 28 sep 2026 tiene también su lado del Loot (solo con el directo
+marcado): **el suelo se abre y sale un jefe de raid** para todo el chat, en un
+solo mensaje. Si ya hay un jefe en pie, **le cae el techo encima**: le quita un
+cuarto de su vida máxima a nombre de quien canjea (cuenta para el MVP).
 
 ### 6.4 Lag *(plugin Freeze Filter)*
 

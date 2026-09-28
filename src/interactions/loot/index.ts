@@ -535,22 +535,27 @@ interface CtxEfecto extends Ctx {
 }
 
 /** El que canjea un efecto está en el directo: cuenta como activo para los cofres. */
-function presente(viewer: Viewer): void {
+export function presente(viewer: Viewer): void {
   if (!juega(viewer.login)) return;
   if (consent.haPedidoOlvido(viewer.id)) return;
   registrarActividad(viewer);
 }
 
 const SIN_DIRECTO = 'sin directo marcado no caen cofres (panel → Loot → El directo ya ha empezado)';
+/** El del Terremoto (jefe.ts): sin directo no sale ningún jefe. */
+export const SIN_DIRECTO_JEFE = 'sin directo marcado no salen jefes (panel → Loot → El directo ya ha empezado)';
 
 /**
  * Por qué el canje de un efecto no hará nada en el Loot ahora mismo, o null.
  * Son las mismas condiciones que sus guards: el «Probar» del panel lo usa
  * para decirte por qué no ha pasado nada (28 sep 2026).
  */
-export function motivoEfectoParado(efecto: EfectoCanal, twitchId: string): string | null {
+export function motivoEfectoParado(efecto: string, twitchId: string): string | null {
+  // El Lag no tiene lado del Loot: nunca hay nada que explicar.
+  if (!['grito', 'maldicion', 'pocion', 'terremoto'].includes(efecto)) return null;
   if (!ajustes.lootActivo()) return 'el Loot está apagado';
   if (efecto === 'grito' && !streams.current()) return SIN_DIRECTO;
+  if (efecto === 'terremoto' && !streams.current()) return SIN_DIRECTO_JEFE;
   if (efecto === 'pocion' && !lootDb.tieneMaldito(twitchId)) return 'no llevas nada maldito, así que la Poción no ofrece !purificar';
   return null;
 }

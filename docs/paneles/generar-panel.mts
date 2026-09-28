@@ -57,7 +57,7 @@ const PANELES: Record<string, string> = {
     'Row 2 (rarity gray-silver): icon a war horn; title "Grito de guerra"; description "Cae un cofre de armas"; price "750".',
     'Row 3 (rarity blue): icon a small treasure chest; title "Cofre del tesoro"; description "Mejor suerte, al momento"; price "1.500".',
     'Row 4 (rarity purple): icon a cursed purple skull with dark smoke; title "Maldición"; description "Blanco y negro + objeto maldito"; price "2.500".',
-    'Row 5 (rarity purple): icon a cracked boulder; title "Terremoto"; description "El juego tiembla 5 s"; price "3.000".',
+    'Row 5 (rarity purple): icon a cracked boulder; title "Terremoto"; description "Tiembla y sale un jefe"; price "3.000".',
     'Row 6 (rarity orange-legendary): icon a frozen glitched hourglass; title "Lag"; description "La imagen se congela 5 s"; price "5.000".',
     'Prices use a dot as thousands separator exactly as written. Leave comfortable margins inside the frame.',
   ].join(' '),
