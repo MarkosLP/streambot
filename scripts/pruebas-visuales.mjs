@@ -104,8 +104,8 @@ try {
   if(caso==='efectos-antes')for(const w of [390,1366]) {
     await abrir(`/?efectos=${w}#/efectos`,w,w===390?844:1000);await evaluar("irA('efectos')");await esperar(600);await captura(`efectos-pruebas-${w}-antes`);
   }
-  if(caso.startsWith('combate'))for(const [nombre,ruta,ms] of [['duelo','jefe.html?demo=duelo&volumen=0',3800],['jefe','jefe.html?demo=1&jefe=liche&volumen=0',1500]]) {
-    await abrir('/biblioteca/overlays/'+ruta,1920,1080);await esperar(ms);await captura(`combate-${nombre}-${caso.endsWith('antes')?'antes':'despues'}`);
+  if(caso.startsWith('combate'))for(const [nombre,ruta,ms] of [['duelo','jefe.html?demo=duelo&volumen=0',3800],['jefe','jefe.html?demo=1&jefe=liche&volumen=0',2000]]) {
+    await abrir('/biblioteca/overlays/'+ruta,1920,1080);await esperar(ms);await captura(`combate-${nombre}-${caso.endsWith('antes')?'antes':caso==='combate-real'?'tipografia-final':'despues'}`);
     if(caso==='combate' && nombre==='duelo') {
       assert.equal(await evaluar("document.querySelector('#duelo').hidden"),false);
       await esperar(23500);
@@ -123,10 +123,12 @@ try {
     const colores=new Set();
     for(const tipo of ['dragon','esqueleto','hidra','golem','liche','arana','kraken','minotauro','tanque','lag']) {
       await abrir(`/biblioteca/overlays/jefe.html?demo=1&jefe=${tipo}&quieto=1&volumen=0`,1920,1080);
-      const datos=await evaluar("({tipo:document.body.dataset.jefe,color:document.body.style.getPropertyValue('--t2'),foto:document.querySelector('#foto-combate').naturalWidth,visible:!document.querySelector('#foto-combate').hidden,marco:getComputedStyle(document.querySelector('#jefe')).backgroundImage})");
+      if(tipo==='liche') await captura('combate-jefe-entrada-tipografia-final');
+      const datos=await evaluar(`(()=>{const j=document.querySelector('#jefe'),intro=j.classList.contains('intro');j.classList.remove('intro');const n=document.querySelector('#nombre'),p=document.querySelector('.jefe .pista'),r=document.createRange();r.selectNodeContents(p);const pb=p.getBoundingClientRect(),tr=r.getBoundingClientRect();return {tipo:document.body.dataset.jefe,color:document.body.style.getPropertyValue('--t2'),foto:document.querySelector('#foto-combate').naturalWidth,visible:!document.querySelector('#foto-combate').hidden,marco:getComputedStyle(j).backgroundImage,fuente:document.fonts.check('700 32px "Cinzel Decorative Local"'),fuentes:[...document.fonts].map(f=>[f.family,f.status]),estilo:getComputedStyle(n).fontFamily,nombreCabe:n.scrollWidth<=n.clientWidth+1,pistaDesvio:Math.abs((tr.left+tr.right-pb.left-pb.right)/2),avisoOculto:document.querySelector('#aviso').hidden,intro};})()`);
       assert.equal(datos.tipo,tipo);assert.ok(datos.foto>0 && datos.visible,JSON.stringify(datos));
-      assert.match(datos.marco,/jefe-marco\.png/);colores.add(datos.color);
-      if(['dragon','hidra','lag'].includes(tipo)){await evaluar("document.querySelector('#aviso').hidden=true");await captura(`combate-jefe-${tipo}-despues`);}
+      assert.match(datos.marco,/jefe-marco\.png/);assert.ok(datos.fuente && datos.nombreCabe && datos.avisoOculto && datos.intro,JSON.stringify(datos));
+      assert.ok(datos.pistaDesvio<12,JSON.stringify(datos));colores.add(datos.color);
+      if(['dragon','hidra','liche','lag'].includes(tipo))await captura(`combate-jefe-${tipo}-tipografia-final`);
     }
     assert.ok(colores.size>=8,'los jefes mantienen paletas distintas');
   }

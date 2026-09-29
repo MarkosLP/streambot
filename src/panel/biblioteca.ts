@@ -169,6 +169,10 @@ export function resolver(pathname: string, dir = DIR_BIBLIOTECA): { ruta: string
     if (!(seccion === 'musica' ? NOMBRE_CANCION : NOMBRE_VALIDO).test(parte) || parte.includes('..')) return null;
     partes.push(parte);
   }
+  // Las tipografías del combate son recursos del overlay, no tarjetas de imágenes.
+  if (seccion === 'imagenes' && partes.length === 3 && partes[0] === 'combate' && partes[1] === 'fuentes' && extname(partes[2]).toLowerCase() === '.ttf') {
+    return { ruta: join(dir, seccion, ...partes), tipo: 'font/ttf' };
+  }
   const tipo = (TIPOS[seccion] as Record<string, string>)[extname(partes.at(-1)!).toLowerCase()];
   if (!tipo) return null;
   return { ruta: join(dir, seccion, ...partes), tipo };

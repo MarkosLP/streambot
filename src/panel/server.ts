@@ -245,7 +245,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       'Content-Security-Policy': 'sandbox allow-scripts',
       // Las imágenes, legibles desde los overlays (van en su sandbox, con origen propio):
       // el avatar busca dónde tiene los ojos leyendo los píxeles. Solo lectura.
-      ...(archivo.tipo.startsWith('image/') && { 'Access-Control-Allow-Origin': '*' }),
+      ...((archivo.tipo.startsWith('image/') || archivo.tipo.startsWith('font/')) && { 'Access-Control-Allow-Origin': '*' }),
     });
     res.end(contenido);
     return;
