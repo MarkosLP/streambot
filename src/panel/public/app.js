@@ -2590,7 +2590,7 @@ const CARPETAS = {
   jefes: { titulo: 'Jefes', ancho: false },
   objetos: { titulo: 'Objetos del botín', ancho: false },
 };
-// Cada personaje es una carpeta con fecha (avatar/oscuro-2026-09-27T09-02-55):
+// Cada personaje es una carpeta con fecha (avatar/oscuro-2026-09-27T09-12-36):
 // en los filtros van todos juntos, y cada uno se llama por su título.
 const esPersonaje = (c) => c.startsWith('avatar/');
 const filtroDe = (c) => (esPersonaje(c) ? 'avatar' : c);

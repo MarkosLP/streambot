@@ -198,7 +198,6 @@ try {
   if(caso==='avatar') {
     for(const [nombre,ruta,puntos,altura] of [
       ['chico','imagenes/avatar/oscuro-2026-09-27T09-12-36',[[413,334],[466,342],[555,342],[614,330]],.22],
-      ['magmarex','imagenes/avatar/oscuro-2026-09-27T17-18-25',[[376,383],[435,428],[589,428],[650,378]],.18],
     ]) {
       await abrir('/#/escenas',1440,1080);await evaluar("irA('escenas')");await esperar(900);
       await evaluar(`document.querySelector('#e-avatar-personaje').value=${JSON.stringify(ruta)};document.querySelector('#e-avatar-local').click()`);await esperar(800);
