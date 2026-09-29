@@ -119,6 +119,17 @@ try {
     await evaluar("[...document.querySelectorAll('#b-overlays article')].find(x=>x.querySelector('strong')?.textContent==='Duelo · !duelo').scrollIntoView({block:'center'})");await esperar(500);
     await captura('combate-biblioteca-despues');
   }
+  if(caso==='combate-real') {
+    const colores=new Set();
+    for(const tipo of ['dragon','esqueleto','hidra','golem','liche','arana','kraken','minotauro','tanque','lag']) {
+      await abrir(`/biblioteca/overlays/jefe.html?demo=1&jefe=${tipo}&quieto=1&volumen=0`,1920,1080);
+      const datos=await evaluar("({tipo:document.body.dataset.jefe,color:document.body.style.getPropertyValue('--t2'),foto:document.querySelector('#foto-combate').naturalWidth,visible:!document.querySelector('#foto-combate').hidden,marco:getComputedStyle(document.querySelector('#jefe')).backgroundImage})");
+      assert.equal(datos.tipo,tipo);assert.ok(datos.foto>0 && datos.visible,JSON.stringify(datos));
+      assert.match(datos.marco,/jefe-marco\.png/);colores.add(datos.color);
+      if(['dragon','hidra','lag'].includes(tipo)){await evaluar("document.querySelector('#aviso').hidden=true");await captura(`combate-jefe-${tipo}-despues`);}
+    }
+    assert.ok(colores.size>=8,'los jefes mantienen paletas distintas');
+  }
   if(caso.startsWith('overlays'))for(const w of [390,1366]) {
     await abrir(`/?overlays=${w}#/overlays`,w,w===390?844:1000);await evaluar("irA('overlays')");await esperar(600);
     await captura(`overlays-streamlabs-${w}-${caso==='overlays-antes'?'antes':'despues'}`);

@@ -504,6 +504,83 @@
   .ruleta-barra { height: 19px; box-shadow: 0 0 0 3px #0d1018, 0 0 0 4px #bb9b6c; }
   .ruleta-pct { font-size: 21px; }
   .extra { top: 335px; font-size: 24px; }
+
+  /* Marcos pintados: el texto, la vida y la foto siguen siendo datos vivos. */
+  .jefe {
+    top: 16px; width: 1540px; height: 445px;
+    background: url('../imagenes/combate/jefe-marco.png') center / 100% 100% no-repeat;
+    filter: drop-shadow(0 5px 16px rgba(var(--tb), .55));
+  }
+  .jefe::before { display: none; }
+  .foto-combate {
+    position: absolute; left: 96px; top: 62px; width: 300px; height: 300px;
+    object-fit: cover; clip-path: circle(46%); z-index: 2;
+    box-shadow: none;
+  }
+  .jefe .emblema { left: 95px; top: 64px; width: 302px; height: 302px; filter: none; }
+  .jefe .emblema:not(.reserva) { display: none; }
+  .jefe .insignia { display: none; }
+  .jefe .cartel { left: 476px; right: 130px; top: 116px; height: 55px; padding-left: 0; gap: 14px; align-items: center; }
+  .jefe .etiqueta { font-size: 17px; color: var(--t1); white-space: nowrap; }
+  .jefe .nombre, .jefe .nombre.largo { min-width: 0; max-width: 515px; color: #fff0d3; font-size: 34px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 3px 9px #000; }
+  .jefe .nombre.largo { font-size: 28px; }
+  .jefe .reloj { position: absolute; left: 740px; top: -2px; min-width: 140px; font-size: 32px; text-align: center; color: #fff1d8; }
+  .jefe .marco { left: 455px; right: 177px; top: 208px; height: 53px; padding: 6px; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+  .jefe .barra { height: 100%; background: rgba(5, 3, 14, .5); border-radius: 2px; box-shadow: inset 0 0 8px #000; }
+  .jefe .rastro { background: color-mix(in srgb, var(--t1) 70%, white); }
+  .jefe .vida { background: linear-gradient(180deg, var(--t1), var(--t2) 46%, var(--t3)); }
+  .jefe .cifra { font-size: 24px; }
+  .jefe .marcas { opacity: .35; }
+  .jefe .pista { left: 520px; top: 315px; font-size: 23px; }
+  .jefe .afectados { left: 505px; top: 313px; right: 100px; }
+  #ambiente .particula { opacity: .45; }
+
+  .duelo {
+    top: 50%; width: 1540px; height: 421px; left: 50%; right: auto;
+    transform: translate(-50%, -50%);
+    background: url('../imagenes/combate/duelo-marco.png') center / 100% 100% no-repeat;
+    filter: drop-shadow(0 16px 24px rgba(0, 0, 0, .55));
+  }
+  @keyframes duelo-sale { to { opacity: 0; transform: translate(-50%, -50%) scale(1.03); } }
+  .duelo-fondo { display: none; }
+  .duelo .luchador { top: 159px; width: 430px; }
+  .duelo .luchador.izq { left: 145px; }
+  .duelo .luchador.der { right: 145px; }
+  .duelo .luchador .quien { font-size: 55px; }
+  .duelo .luchador .titulo { font-size: 19px; }
+  .duelo .luchador .poder { font-size: 24px; }
+  .duelo .luchador .sello { top: -50px; font-size: 26px; border-width: 2px; }
+  .duelo .vs { top: 102px; font-size: 76px; }
+  .duelo .destello { opacity: .5; }
+  .duelo .ruleta { top: 329px; width: 1120px; }
+  .duelo .ruleta-barra { height: 27px; border-radius: 3px; box-shadow: 0 0 0 2px #090612; }
+  .duelo .ruleta-a { background: linear-gradient(180deg, #9e66ff, #4b1e9b); }
+  .duelo .ruleta-b { background: linear-gradient(180deg, #ffba79, #9b371c); }
+  .duelo .ruleta-pct { font-size: 19px; }
+  .duelo .extra { top: 389px; font-size: 22px; }
+
+  .aviso {
+    left: 50%; right: auto; top: 50%; width: 1250px; height: 365px;
+    transform: translate(-50%, -50%);
+    background: url('../imagenes/combate/jefe-marco.png') center / 100% 100% no-repeat;
+    filter: drop-shadow(0 8px 24px rgba(var(--tb), .6));
+  }
+  .aviso::before, .aviso::after { display: none; }
+  .aviso-texto { width: 700px; margin-left: 260px; }
+  .aviso-retrato { position: absolute; left: 76px; top: 72px; width: 230px; height: 230px; margin: 0; }
+  .aviso-texto span { font-size: 22px; letter-spacing: .25em; animation: none; }
+  .aviso-texto strong { max-width: 680px; font-size: 53px; line-height: 1.12; background: none; color: #fff0d3; filter: none; text-shadow: 0 4px 14px #000; }
+  .aviso-destello { inset: 0; }
+
+  .final { width: 1200px; min-height: 340px; padding: 48px 110px 38px;
+    background: url('../imagenes/combate/jefe-marco.png') center / 100% 100% no-repeat;
+    filter: drop-shadow(0 9px 24px rgba(var(--tb), .5)); }
+  .final .rayos { opacity: .35; }
+  .final-retrato { width: 125px; height: 125px; margin-bottom: 0; }
+  .final .titular { font-size: 88px; filter: none; text-shadow: 0 4px 14px #000; }
+  .final.escapa .titular { filter: none; }
+  .final .subtitulo { font-size: 29px; }
+  .final .podio { margin-top: 12px; }
 </style>
 </head>
 <body>
@@ -513,6 +590,7 @@
 
 <!-- La barra del jefe -->
 <div class="jefe" id="jefe" hidden>
+  <img class="foto-combate" id="foto-combate" alt="" hidden>
   <svg class="emblema" id="emblema" viewBox="0 0 200 200" aria-hidden="true">
     <defs>
       <radialGradient id="fondo" cx="50%" cy="45%" r="60%">
@@ -1041,6 +1119,10 @@
   function ponerRetrato(tipo) {
     const t = TEMAS[tipo] || TEMA_BASE;
     $('retrato').innerHTML = PINTADOS[tipo] ? RETRATO_PINTADO(tipo) : (t.retrato || RETRATO_BASE);
+    const foto = $('foto-combate');
+    foto.hidden = !PINTADOS[tipo];
+    if (PINTADOS[tipo]) foto.src = urlPintado(tipo);
+    $('emblema').classList.toggle('reserva', !PINTADOS[tipo]);
     $('aviso-retrato').innerHTML = copiaEmblema('aviso');
   }
 
@@ -1212,7 +1294,7 @@
     if (j.especial && !(j.vida === j.vidaMax && j.golpes.length === 0)) especialVisto = Math.max(especialVisto, j.especial.n - 1);
     const nombre = mayuscula(j.nombre);
     $('nombre').textContent = nombre;
-    $('nombre').classList.toggle('largo', nombre.length > 24);
+    $('nombre').classList.toggle('largo', nombre.length > 20);
     $('aviso-nombre').textContent = nombre;
     vestir(j.tipo);
     ultimoPct = 100;
