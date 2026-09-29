@@ -112,6 +112,26 @@ try {
       assert.ok(await evaluar("[...document.querySelectorAll('#o-tipos label')].every(x=>!(/Follow|Sub/i.test(x.textContent)))"));
       assert.ok(await evaluar('document.documentElement.scrollWidth<=innerWidth'));
       assert.equal(await evaluar("document.querySelector('#o-rotativo').children.length"),4);
+      if(caso==='overlays') {
+        const estadoAntes=await evaluar("api('/api/overlays')");
+        await evaluar("window.peticionesPrueba=[];window.apiOriginal=api;api=async(r,b)=>{if(b)window.peticionesPrueba.push({r,b});return window.apiOriginal(r,b)};document.querySelector('[data-prueba-alerta=bits]').click()");
+        await esperar(900);
+        assert.match(await evaluar("document.querySelector('#o-vista-alertas iframe').src"),/tipo=bits/);
+        assert.deepEqual(await evaluar('window.peticionesPrueba'),[],'la prueba local no escribe en ninguna API');
+        assert.deepEqual(await evaluar("api('/api/overlays')"),estadoAntes);
+        await captura(`overlays-local-${w}-despues`);
+        await evaluar("document.querySelector('[data-tarjeta=follow] button').click()");await esperar(400);
+        assert.deepEqual(await evaluar("api('/api/overlays').then(d=>d.ajustes.rotativo)"),['follow','top','sub','meta']);
+        await evaluar("document.querySelector('[data-tarjeta=sub] input').click()");await esperar(300);
+        await evaluar("document.querySelector('[data-tarjeta=sub] input').click()");await esperar(300);
+        assert.deepEqual(await evaluar("api('/api/overlays').then(d=>d.ajustes.rotativo)"),['follow','top','meta','sub']);
+        await evaluar('cargarOverlays()');
+        assert.equal(await evaluar("document.querySelector('#o-rotativo').firstChild.dataset.tarjeta"),'follow');
+        assert.match(await evaluar("document.querySelector('.ovl-panel-vista iframe').src"),/orden=follow,top,meta,sub/);
+        await evaluar("document.querySelector('#o-rotativo').scrollIntoView({block:'center'})");await captura(`overlays-orden-${w}-despues`);
+        assert.ok(await evaluar('document.documentElement.scrollWidth<=innerWidth'));
+        await evaluar("guardarOverlays({accion:'ajustes',ajustes:{rotativo:['top','follow','sub','meta']}});api=window.apiOriginal");await esperar(300);
+      }
     }
   }
   if(caso==='escenas')for(const w of [390,1366]) {

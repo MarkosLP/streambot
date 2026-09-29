@@ -1,6 +1,15 @@
-# Dónde lo dejamos — 28 sep 2026
+# Dónde lo dejamos — 29 sep 2026
 
 Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.**
+
+## Overlays: pendientes completados (29 sep, Codex)
+
+- Vista de alertas ampliada: encuadra el aviso en lugar de reducir toda la pantalla de OBS.
+- «Ver aquí» reproduce bits o raid solo en el iframe del panel, sin sonido, llamadas de escritura ni eventos reales. «Emitir prueba» conserva su función y aviso de emisión real.
+- Tarjetas del rotativo ordenables con flechas accesibles. Desactivar conserva el orden de las restantes; reactivar añade al final. La previa usa datos de ejemplo con el orden y segundos guardados, incluso si no hay tarjetas activas.
+- Validación: TypeScript y 607 pruebas correctas; navegador aislado a 390/1366 px, sin desbordamiento, prueba local sin escrituras y persistencia del orden. Capturas `overlays-local-*` y `overlays-orden-*` en `D:/Descargas/StreamerBotApi-fase2-capturas`.
+- Recargar el panel para ver los cambios. No se reinició el bot ni se usó OBS real o IA de pago. Siguen pendientes las verificaciones reales de OBS y fidelidad de imágenes; la subida de JPG a Twitch no está confirmada. El log del 28 sep a las 23:51 confirma un duelo real, por lo que esa prueba ya no está pendiente.
+- Las tres ideas de Overlays anotadas el 28 sep más abajo quedan completadas con este cambio.
 
 ## Referencias visuales (28 sep, Codex)
 

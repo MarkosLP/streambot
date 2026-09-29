@@ -2442,14 +2442,36 @@ function pintarOverlays() {
   const a = ovl.ajustes;
   $('o-tipos').replaceChildren(...TIPOS_ALERTA.map(([t, nombre]) => h('div', { class: 'ovl-tipo' },
     h('label', { class: 'interruptor-fila' }, h('input', { type: 'checkbox', checked: a.alertas[t], onchange: (ev) => guardarOverlays({ accion: 'ajustes', ajustes: { alertas: { [t]: ev.target.checked } } }) }), h('span', {}, nombre)),
-    h('button', { class: 'boton pequeno', type: 'button', onclick: () => guardarOverlays({ accion: 'probar', tipo: t }, `Alerta de prueba: ${nombre}`) }, 'Emitir prueba'))));
+    h('div', { class: 'ovl-acciones' },
+      h('button', { class: 'boton pequeno', type: 'button', 'data-prueba-alerta': t, onclick: () => {
+        $('o-vista-alertas').querySelector('iframe').src = `/biblioteca/overlays/alertas.html?demo=1&volumen=0&encuadre=1&tipo=${t}`;
+        $('o-prueba-estado').textContent = `Prueba local: ${nombre} · sin sonido · solo en este panel.`;
+      } }, 'Ver aquí'),
+      h('button', { class: 'boton pequeno', type: 'button', onclick: () => guardarOverlays({ accion: 'probar', tipo: t }, `Alerta de prueba: ${nombre}`) }, 'Emitir prueba')))));
   if (document.activeElement !== $('o-volumen')) $('o-volumen').value = String(Math.round(a.volumen * 100));
   $('o-volumen-n').textContent = `${Math.round(a.volumen * 100)} %`;
-  $('o-rotativo').replaceChildren(...PARTES_PANEL.map(([k, nombre]) => h('label', { class: 'interruptor-fila' },
-    h('input', { type: 'checkbox', checked: a.rotativo.includes(k), onchange: (ev) => {
-      const r = PARTES_PANEL.map(([x]) => x).filter((x) => (x === k ? ev.target.checked : a.rotativo.includes(x)));
-      guardarOverlays({ accion: 'ajustes', ajustes: { rotativo: r } });
-    } }), h('span', {}, nombre))));
+  const orden = [...a.rotativo, ...PARTES_PANEL.map(([k]) => k).filter(k => !a.rotativo.includes(k))];
+  $('o-rotativo').replaceChildren(...orden.map(k => {
+    const nombre = PARTES_PANEL.find(([x]) => x === k)[1];
+    const indice = a.rotativo.indexOf(k);
+    const mover = (paso) => {
+      const rotativo = [...a.rotativo];
+      [rotativo[indice], rotativo[indice + paso]] = [rotativo[indice + paso], rotativo[indice]];
+      guardarOverlays({ accion: 'ajustes', ajustes: { rotativo } });
+    };
+    return h('div', { class: 'ovl-tipo', 'data-tarjeta': k },
+      h('label', { class: 'interruptor-fila' },
+        h('input', { type: 'checkbox', checked: indice >= 0, onchange: ev => {
+          const rotativo = ev.target.checked ? [...a.rotativo, k] : a.rotativo.filter(x => x !== k);
+          guardarOverlays({ accion: 'ajustes', ajustes: { rotativo } });
+        } }), h('span', {}, nombre)),
+      h('div', { class: 'ovl-acciones' },
+        h('button', { class: 'boton pequeno', type: 'button', disabled: indice <= 0, 'aria-label': `Subir ${nombre}`, onclick: () => mover(-1) }, '↑'),
+        h('button', { class: 'boton pequeno', type: 'button', disabled: indice < 0 || indice === a.rotativo.length - 1, 'aria-label': `Bajar ${nombre}`, onclick: () => mover(1) }, '↓')));
+  }));
+  const previaRotativo = document.querySelector('.ovl-panel-vista iframe');
+  const previaSrc = `/biblioteca/overlays/panel.html?demo=1&orden=${a.rotativo.join(',')}&segundos=${a.segundos}`;
+  if (previaRotativo.getAttribute('src') !== previaSrc) previaRotativo.src = previaSrc;
   if (document.activeElement !== $('o-segundos')) $('o-segundos').value = String(a.segundos);
   for (const [id, k] of [['o-meta-tipo', 'tipo'], ['o-meta-titulo', 'titulo'], ['o-meta-objetivo', 'objetivo'], ['o-meta-base', 'base']]) {
     if (document.activeElement !== $(id)) $(id).value = String(a.meta[k]);
@@ -2462,7 +2484,9 @@ function pintarOverlays() {
   $('o-ultimos').textContent = partes.length ? partes.join(' · ') : 'Aún no ha llegado ningún follow ni sub desde que el bot los escucha.';
 }
 
-escalarOverlay.observe($('o-vista-alertas'));
+new ResizeObserver(entradas => {
+  for (const e of entradas) e.target.style.setProperty('--escala', String(e.contentRect.width / 1000));
+}).observe($('o-vista-alertas'));
 $('o-volumen').addEventListener('input', () => { $('o-volumen-n').textContent = `${$('o-volumen').value} %`; });
 $('o-volumen').addEventListener('change', () => guardarOverlays({ accion: 'ajustes', ajustes: { volumen: Number($('o-volumen').value) / 100 } }));
 $('o-segundos').addEventListener('change', () => guardarOverlays({ accion: 'ajustes', ajustes: { segundos: Number($('o-segundos').value) } }));

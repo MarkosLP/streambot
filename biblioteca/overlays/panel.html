@@ -178,7 +178,9 @@ function aplicar(d) {
 function demo() {
   const hace = (min) => new Date(Date.now() - min * 60_000).toISOString();
   return {
-    estilo: q.get('estilo') || 'oscuro', orden: ['top', 'follow', 'sub', 'meta'], segundos: 4,
+    estilo: q.get('estilo') || 'oscuro',
+    orden: q.has('orden') ? [...new Set(q.get('orden').split(',').filter(k => Object.hasOwn(VISTAS, k)))] : ['top', 'follow', 'sub', 'meta'],
+    segundos: q.has('segundos') ? Math.max(5, Math.min(60, Number(q.get('segundos')) || 12)) : 4,
     top: { nombre: 'septiembre', podio: [{ nombre: 'Ana_la_Tanque', puntos: 184 }, { nombre: 'raftaei', puntos: 131 }, { nombre: 'Pepe', puntos: 77 }] },
     ultimoFollow: { quien: 'Sombra_22', at: hace(12) },
     ultimoSub: { quien: 'raftaei', texto: 'se resuscribe · 6 meses', at: hace(95) },

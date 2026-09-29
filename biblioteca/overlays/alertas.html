@@ -61,6 +61,10 @@
 <script>
 'use strict';
 const q = new URLSearchParams(location.search);
+if (q.get('demo') === '1' && q.get('encuadre') === '1') {
+  document.documentElement.style.width = document.body.style.width = '1000px';
+  document.documentElement.style.height = document.body.style.height = '260px';
+}
 const $ = (id) => document.getElementById(id);
 const API = new URL('/api/overlay/alertas', location.href);
 const INFO = {
@@ -145,12 +149,12 @@ function aplicar(d) {
 
 if (q.get('demo') === '1') {
   vistas = 0;
-  const demo = [['raid', 'OtroCanal', 'llega de raid con 23 personas'], ['bits', 'Sombra', 'manda 500 bits']];
+  const demo = [['raid', 'OtroCanal', 'llega de raid con 23 personas'], ['bits', 'Sombra', 'manda 500 bits']].filter(([tipo]) => !q.has('tipo') || q.get('tipo') === tipo);
   // En bucle: es la vista previa del panel.
   let vuelta = 0;
   const tanda = () => aplicar({ estilo: q.get('estilo') || 'oscuro', volumen: 0, alertas: demo.map(([tipo, quien, texto], i) => ({ n: vuelta * 10 + i + 1, tipo, quien, texto })) });
   tanda();
-  setInterval(() => { if (!mostrando && !cola.length) { vuelta++; tanda(); } }, 4000);
+  if (!q.has('tipo')) setInterval(() => { if (!mostrando && !cola.length) { vuelta++; tanda(); } }, 4000);
 } else {
   DirectoRed.overlay(API, aplicar, 1500);
 }
