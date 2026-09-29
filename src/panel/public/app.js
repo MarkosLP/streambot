@@ -1567,9 +1567,10 @@ async function cargarBiblioteca() {
     })
     : [vacioBiblioteca('sonidos', 'No hay sonidos. Genera los de los efectos con npm run sonidos, o mete los tuyos.')]));
 
-  $('b-overlays').replaceChildren(...(lib.overlays.length
-    ? lib.overlays.map((o) => {
-      const vars = VARIANTES_OVERLAY[o.nombre] || [];
+  const overlaysBiblioteca = lib.overlays.flatMap(o => o.nombre === 'jefe.html' ? [o, { ...o, vista: 'duelo' }] : [o]);
+  $('b-overlays').replaceChildren(...(overlaysBiblioteca.length
+    ? overlaysBiblioteca.map((o) => {
+      const vars = VARIANTES_OVERLAY[o.vista || o.nombre] || [];
       let actual = vars[0]?.q ?? '';
       const marco = h('iframe', { src: sinSonido(o.url + actual), sandbox: 'allow-scripts', title: o.nombre, tabindex: '-1' });
       const vista = h('div', { class: 'overlay-vista' }, marco);
@@ -1587,7 +1588,7 @@ async function cargarBiblioteca() {
         vista,
         chips,
         h('div', { class: 'overlay-pie' },
-          h('div', { class: 'sonido-info' }, h('strong', {}, o.nombre === 'escena.html' ? 'Escenas actuales' : o.nombre), h('span', { class: 'sonido-meta' }, o.nombre === 'escena.html' ? 'Fondos y textos configurados en Escenas' : usadoEn(o.usadoPor))),
+          h('div', { class: 'sonido-info' }, h('strong', {}, o.vista === 'duelo' ? 'Duelo · !duelo' : o.nombre === 'jefe.html' ? 'Jefes de raid' : o.nombre === 'escena.html' ? 'Escenas actuales' : o.nombre), h('span', { class: 'sonido-meta' }, o.vista === 'duelo' ? 'La misma fuente «FX Jefe», con cada duelo del chat' : o.nombre === 'escena.html' ? 'Fondos y textos configurados en Escenas' : usadoEn(o.usadoPor))),
           // Misma dirección no recarga: se pasa por about:blank para repetir la animación.
           h('button', { class: 'boton pequeno', type: 'button', onclick: () => { marco.src = 'about:blank'; setTimeout(() => { marco.src = sinSonido(o.url + actual); }, 30); } }, '↻ Repetir'),
           botonCopiar(o.ruta)));
@@ -2569,8 +2570,8 @@ const VARIANTES_OVERLAY = {
     ...[['dragon', '🐉 Dragón'], ['esqueleto', '💀 Esqueleto'], ['hidra', '🐍 Hidra'], ['golem', '🗿 Gólem'], ['liche', '☠️ Liche'],
       ['arana', '🕷️ Araña'], ['kraken', '🐙 Kraken'], ['minotauro', '🐂 Minotauro'], ['tanque', '🛡️ Tanque'], ['lag', '📶 Lag']]
       .map(([tipo, nombre]) => ({ nombre, q: `?demo=1&jefe=${tipo}` })),
-    { nombre: '⚔️ Duelos', q: '?demo=duelo' },
   ],
+  duelo: [{ nombre: 'Duelo', q: '?demo=duelo' }],
   'botin.html': [
     { nombre: 'Legendario', q: '?rareza=legendario&item=Espada%20del%20Amanecer%20Eterno' },
     { nombre: 'Épico', q: '?rareza=epico&item=Capa%20de%20las%20Sombras' },

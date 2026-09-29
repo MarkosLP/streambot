@@ -104,6 +104,21 @@ try {
   if(caso==='efectos-antes')for(const w of [390,1366]) {
     await abrir(`/?efectos=${w}#/efectos`,w,w===390?844:1000);await evaluar("irA('efectos')");await esperar(600);await captura(`efectos-pruebas-${w}-antes`);
   }
+  if(caso.startsWith('combate'))for(const [nombre,ruta,ms] of [['duelo','jefe.html?demo=duelo&volumen=0',3800],['jefe','jefe.html?demo=1&jefe=liche&volumen=0',1500]]) {
+    await abrir('/biblioteca/overlays/'+ruta,1920,1080);await esperar(ms);await captura(`combate-${nombre}-${caso.endsWith('antes')?'antes':'despues'}`);
+    if(caso==='combate' && nombre==='duelo') {
+      assert.equal(await evaluar("document.querySelector('#duelo').hidden"),false);
+      await esperar(23500);
+      assert.equal(await evaluar("document.querySelector('#duelo').hidden"),false,'la demo vuelve a aparecer después de los tres duelos');
+    }
+  }
+  if(caso==='combate') {
+    await abrir('/#/biblioteca',1366,900);await evaluar("irA('biblioteca')");await esperar(500);
+    assert.equal(await evaluar("[...document.querySelectorAll('#b-overlays strong')].filter(x=>x.textContent==='Duelo · !duelo').length"),1);
+    assert.match(await evaluar("[...document.querySelectorAll('#b-overlays article')].find(x=>x.querySelector('strong')?.textContent==='Duelo · !duelo').querySelector('iframe').src"),/demo=duelo/);
+    await evaluar("[...document.querySelectorAll('#b-overlays article')].find(x=>x.querySelector('strong')?.textContent==='Duelo · !duelo').scrollIntoView({block:'center'})");await esperar(500);
+    await captura('combate-biblioteca-despues');
+  }
   if(caso.startsWith('overlays'))for(const w of [390,1366]) {
     await abrir(`/?overlays=${w}#/overlays`,w,w===390?844:1000);await evaluar("irA('overlays')");await esperar(600);
     await captura(`overlays-streamlabs-${w}-${caso==='overlays-antes'?'antes':'despues'}`);

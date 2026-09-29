@@ -2,6 +2,12 @@
 
 Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.**
 
+## Duelo y jefes en Biblioteca (29 sep, Codex)
+
+- `!duelo` tiene tarjeta propia en Biblioteca aunque comparte `jefe.html` y la fuente `FX Jefe` con los jefes. Su demo repite tandas de tres duelos y ya no queda vacía tras la primera.
+- Aspecto revisado: duelo en tarjeta oscura compacta; jefe sobre una placa legible con barra más limpia. Los retratos pintados de los diez jefes siguen intactos.
+- Verificación: 607 pruebas y TypeScript correctos; navegador aislado con duelo visible, repetición comprobada tras la tanda y tarjeta de Biblioteca. Capturas `combate-*-antes/despues.png` en `D:/Descargas/StreamerBotApi-fase2-capturas`. En el bot abierto basta recargar Biblioteca; OBS recogerá el HTML nuevo al refrescar la fuente `FX Jefe` o al abrir OBS de nuevo.
+
 ## Overlays: pendientes completados (29 sep, Codex)
 
 - Vista de alertas ampliada: encuadra el aviso en lugar de reducir toda la pantalla de OBS.
