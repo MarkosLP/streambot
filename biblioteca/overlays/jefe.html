@@ -539,6 +539,14 @@
   .jefe .marcas { opacity: .35; }
   .jefe .pista { left: 515px; top: 304px; width: 705px; height: 53px; display: flex; justify-content: center; align-items: center; gap: 7px; box-sizing: border-box; font-family: 'Rajdhani Local', sans-serif; font-size: 27px; font-weight: 700; letter-spacing: .025em; text-align: center; white-space: nowrap; }
   .jefe .afectados { left: 505px; top: 313px; right: 100px; }
+  .contador-golpes { position: absolute; left: 430px; top: 284px; width: 92px; height: 92px; z-index: 4;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none;
+    color: #f8e5b5; text-shadow: 0 2px 3px #000, 0 0 12px rgba(var(--tb), .9); }
+  .contador-golpes .espadas { font: 48px/1 'Segoe UI Symbol', 'Segoe UI', sans-serif; }
+  .contador-golpes.con-golpes .espadas { font-size: 25px; line-height: .9; }
+  .contador-golpes b { font: 700 32px/.95 'Rajdhani Local', sans-serif; font-variant-numeric: tabular-nums; }
+  .contador-golpes.pulso { animation: pulso-golpe .55s ease-out; }
+  @keyframes pulso-golpe { 35% { transform: scale(1.24); color: var(--t1); } }
   .jefe.intro .pista { font-size: 0; gap: 0; }
   .jefe.intro .pista::after { content: '¡APARECE UN JEFE!'; font-size: 27px; color: #fff0cf; letter-spacing: .14em; text-shadow: 0 0 12px rgba(var(--tb), .85), 0 2px 3px #000; }
   #ambiente .particula { opacity: .3; }
@@ -605,6 +613,7 @@
 <!-- La barra del jefe -->
 <div class="jefe" id="jefe" hidden>
   <img class="foto-combate" id="foto-combate" alt="" hidden>
+  <div class="contador-golpes" id="contador-golpes" title="Golpes acertados"><span class="espadas">⚔︎</span><b id="golpes-numero" hidden>0</b></div>
   <svg class="emblema" id="emblema" viewBox="0 0 200 200" aria-hidden="true">
     <defs>
       <radialGradient id="fondo" cx="50%" cy="45%" r="60%">
@@ -1215,7 +1224,15 @@
       $('reloj').classList.toggle('congelado', Boolean(j.congelado));
       $('reloj').classList.toggle('prisa', j.quedanSeg <= 30);
       $('jefe').classList.toggle('critica', pct <= 25);
-      for (const g of j.golpes) if (g.n > visto) { numero(g); visto = g.n; }
+      let golpeNuevo = false;
+      for (const g of j.golpes) if (g.n > visto) { numero(g); visto = g.n; golpeNuevo ||= g.tipo === 'golpe'; }
+      const golpesAcertados = j.golpesAcertados ?? j.golpes.filter((g) => g.tipo === 'golpe').length;
+      const contador = $('contador-golpes');
+      $('golpes-numero').textContent = String(golpesAcertados);
+      $('golpes-numero').hidden = golpesAcertados === 0;
+      contador.classList.toggle('con-golpes', golpesAcertados > 0);
+      contador.title = `${golpesAcertados} golpes acertados`;
+      if (golpeNuevo) { contador.classList.remove('pulso'); void contador.offsetWidth; contador.classList.add('pulso'); }
       if (j.especial && j.especial.n > especialVisto) especial(j.especial);
       else if (!j.especial && !$('cartel-especial').hidden) quitarCartel();
       pintarAfectados(j.afectados || []);
@@ -1507,7 +1524,7 @@
     }
     const estado = () => ({
       jefe: vida > 0 ? {
-        id: 1, tipo, nombre, vida, vidaMax, quedanSeg: segundos, golpes: golpes.slice(-20),
+        id: 1, tipo, nombre, vida, vidaMax, quedanSeg: segundos, golpes: golpes.slice(-20), golpesAcertados: golpes.filter((g) => g.tipo === 'golpe').length,
         especial: especialDemo && Date.now() - especialDemo.at < 6000 ? especialDemo : null,
         afectados: afectado && afectado.hasta > Date.now() ? [{ quien: afectado.quien, icono: afectado.icono, quedanSeg: Math.ceil((afectado.hasta - Date.now()) / 1000) }] : [],
       } : null,

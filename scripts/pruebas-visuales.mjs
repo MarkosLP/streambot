@@ -104,7 +104,7 @@ try {
   if(caso==='efectos-antes')for(const w of [390,1366]) {
     await abrir(`/?efectos=${w}#/efectos`,w,w===390?844:1000);await evaluar("irA('efectos')");await esperar(600);await captura(`efectos-pruebas-${w}-antes`);
   }
-  if(caso.startsWith('combate'))for(const [nombre,ruta,ms] of [['duelo','jefe.html?demo=duelo&volumen=0',3800],['jefe','jefe.html?demo=1&jefe=liche&volumen=0',2000]]) {
+  if(caso.startsWith('combate')&&caso!=='combate-medallon')for(const [nombre,ruta,ms] of [['duelo','jefe.html?demo=duelo&volumen=0',3800],['jefe','jefe.html?demo=1&jefe=liche&volumen=0',2000]]) {
     await abrir('/biblioteca/overlays/'+ruta,1920,1080);await esperar(ms);await captura(`combate-${nombre}-${caso.endsWith('antes')?'antes':caso==='combate-real'?'tipografia-final':caso==='combate-compacto'?'compacto':'despues'}`);
     if(caso==='combate-compacto') {
       const ancho=await evaluar(`document.querySelector('#${nombre}').getBoundingClientRect().width`);
@@ -136,6 +136,15 @@ try {
       if(['dragon','hidra','liche','lag'].includes(tipo))await captura(`combate-jefe-${tipo}-${sufijo}`);
     }
     assert.ok(colores.size>=8,'los jefes mantienen paletas distintas');
+  }
+  if(caso==='combate-medallon') {
+    await abrir('/biblioteca/overlays/jefe.html?demo=1&jefe=liche&quieto=1&volumen=0',1920,1080);
+    assert.equal(await evaluar("document.querySelector('#golpes-numero').hidden"),true);
+    await captura('combate-medallon-inicial');
+    await abrir('/biblioteca/overlays/jefe.html?demo=1&jefe=liche&volumen=0',1920,1080);await esperar(4500);
+    const golpes=await evaluar("({n:Number(document.querySelector('#golpes-numero').textContent),visible:!document.querySelector('#golpes-numero').hidden,clase:document.querySelector('#contador-golpes').classList.contains('con-golpes')})");
+    assert.ok(golpes.n>0&&golpes.visible&&golpes.clase,JSON.stringify(golpes));
+    await captura('combate-medallon-golpes');
   }
   if(caso.startsWith('overlays'))for(const w of [390,1366]) {
     await abrir(`/?overlays=${w}#/overlays`,w,w===390?844:1000);await evaluar("irA('overlays')");await esperar(600);

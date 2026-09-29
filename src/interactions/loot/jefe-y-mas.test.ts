@@ -337,12 +337,16 @@ describe('💥 ataques especiales del jefe', () => {
     await jefe.invocar({ tipo: 'minotauro', azar: () => 0 });
     await hastaElEspecial();
     const vida = jefe.paraOverlay().jefe!.vida;
+    const aciertosAntes = jefe.paraOverlay().jefe!.golpesAcertados;
     cooldowns.reset();
     await handleEvent(mensaje('ana', '!atacar'));
     assert.equal(jefe.paraOverlay().jefe!.golpes.at(-1)!.tipo, 'fallo');
     assert.equal(jefe.paraOverlay().jefe!.vida, vida);
+    const acertadosTrasFallo = jefe.paraOverlay().jefe!.golpesAcertados;
+    assert.equal(acertadosTrasFallo, aciertosAntes);
     cooldowns.reset();
     await handleEvent(mensaje('ana', '!atacar'));
+    assert.equal(jefe.paraOverlay().jefe!.golpesAcertados, acertadosTrasFallo + 1);
     assert.ok(jefe.paraOverlay().jefe!.vida < vida, 'el siguiente, sí');
   });
 

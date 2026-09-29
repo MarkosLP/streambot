@@ -95,6 +95,7 @@ interface Jefe {
   tipo: TipoJefe;
   nombre: string;
   golpes: Golpe[];
+  golpesAcertados: number;
   vidaMax: number;
   vida: number;
   hasta: number;
@@ -151,7 +152,7 @@ export async function invocar(
   const elegido = JEFES.find((x) => x.tipo === tipo) ?? JEFES[Math.floor(azar() * JEFES.length)]!;
   const nombre = elegido.nombre;
   const vidaMax = VIDA_POR_PERSONA * Math.max(1, aventureros(now).length);
-  jefe = { id: ++contador, tipo: elegido.tipo, nombre, golpes: [], vidaMax, vida: vidaMax, hasta: now + DURACION_MS, danos: new Map(), avisoMitad: false,
+  jefe = { id: ++contador, tipo: elegido.tipo, nombre, golpes: [], golpesAcertados: 0, vidaMax, vida: vidaMax, hasta: now + DURACION_MS, danos: new Map(), avisoMitad: false,
     especialUsado: false, especial: null, bloqueos: new Map(), debiles: new Map(), fallan: new Set() };
   final = null;
   reloj = setTimeout(() => void terminarPorTiempo(), DURACION_MS);
@@ -332,6 +333,7 @@ export const terremoto: Interaction<Ctx & { trigger: 'channel-point'; azar: Azar
 
 function apuntarGolpe(j: Jefe, g: Omit<Golpe, 'n'>): void {
   j.golpes.push({ ...g, n: ++golpesTotales });
+  if (g.tipo === 'golpe') j.golpesAcertados++;
   if (j.golpes.length > 20) j.golpes.shift();
 }
 
@@ -447,6 +449,7 @@ export function paraOverlay(now = Date.now()) {
         // El Lag: el reloj de la barra cambia ⏳ por 📶 mientras está parado.
         congelado: Boolean(jefe.congeladoHasta && now < jefe.congeladoHasta),
         golpes: jefe.golpes,
+        golpesAcertados: jefe.golpesAcertados,
         especial: jefe.especial && now - jefe.especial.at < CARTEL_ESPECIAL_MS ? jefe.especial : null,
         afectados: afectados(jefe, now),
       }
