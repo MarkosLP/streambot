@@ -510,9 +510,13 @@
   /* Marcos pintados: el texto, la vida y la foto siguen siendo datos vivos. */
   .jefe {
     top: 16px; width: 1540px; height: 445px;
+    transform: translateX(-50%) scale(.72); transform-origin: top center;
     background: url('../imagenes/combate/jefe-marco.png') center / 100% 100% no-repeat;
     filter: drop-shadow(0 5px 16px rgba(var(--tb), .55));
   }
+  @keyframes baja { from { transform: translate(-50%, -240px) scale(.72); } }
+  @keyframes sube { to { transform: translate(-50%, -240px) scale(.72); opacity: 0; } }
+  body.glitch .jefe { transform: translate(calc(-50% + 8px), 2px) scale(.72) skewX(-4deg); }
   .jefe::before { display: none; }
   .foto-combate {
     position: absolute; left: 96px; top: 62px; width: 300px; height: 300px;
@@ -537,15 +541,15 @@
   .jefe .afectados { left: 505px; top: 313px; right: 100px; }
   .jefe.intro .pista { font-size: 0; gap: 0; }
   .jefe.intro .pista::after { content: '¡APARECE UN JEFE!'; font-size: 27px; color: #fff0cf; letter-spacing: .14em; text-shadow: 0 0 12px rgba(var(--tb), .85), 0 2px 3px #000; }
-  #ambiente .particula { opacity: .45; }
+  #ambiente .particula { opacity: .3; }
 
   .duelo {
     top: 50%; width: 1540px; height: 421px; left: 50%; right: auto;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(.67);
     background: url('../imagenes/combate/duelo-marco.png') center / 100% 100% no-repeat;
     filter: drop-shadow(0 16px 24px rgba(0, 0, 0, .55));
   }
-  @keyframes duelo-sale { to { opacity: 0; transform: translate(-50%, -50%) scale(1.03); } }
+  @keyframes duelo-sale { to { opacity: 0; transform: translate(-50%, -50%) scale(.70); } }
   .duelo-fondo { display: none; }
   .duelo .luchador { top: 159px; width: 430px; }
   .duelo .luchador.izq { left: 145px; }
@@ -580,8 +584,11 @@
   .aviso-destello { inset: 0; }
 
   .final { width: 1200px; min-height: 340px; padding: 48px 110px 38px;
+    transform: translate(-50%, -50%) scale(.75);
     background: url('../imagenes/combate/jefe-marco.png') center / 100% 100% no-repeat;
     filter: drop-shadow(0 9px 24px rgba(var(--tb), .5)); }
+  @keyframes final-entra { from { opacity: 0; transform: translate(-50%, -50%) scale(.25); } }
+  @keyframes final-sale { to { opacity: 0; transform: translate(-50%, -58%) scale(.79); } }
   .final .rayos { opacity: .35; }
   .final-retrato { width: 125px; height: 125px; margin-bottom: 0; }
   .final .titular { font-size: 88px; filter: none; text-shadow: 0 4px 14px #000; }
