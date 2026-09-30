@@ -1,8 +1,8 @@
-﻿# Prueba de sonidos de jefes
+# Prueba de sonidos de jefes
 
 Prueba local: `http://127.0.0.1:7070/biblioteca/overlays/propuestas-sonidos-jefes.html`.
 
-Los botones reproducen audio solo en el navegador; no envían eventos a OBS ni al chat. Las seis muestras aprobadas para dragón, liche y tanque permanecen en la página. Los otros siete jefes tienen propuestas de entrada y especial para escuchar antes de activarlas en los raids.
+Los botones reproducen audio solo en el navegador; no envían eventos a OBS ni al chat. Los diez jefes tienen un sonido de entrada y otro para su ataque especial activos en el overlay de raids. La página permite escuchar cada archivo por separado. El Dragón de Escarcha añade el impacto de hielo después de la preparación.
 
 ## Procedencia y licencias
 

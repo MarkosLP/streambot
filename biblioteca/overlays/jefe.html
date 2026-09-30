@@ -756,6 +756,18 @@
     return q.has('volumen') && Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.35;
   })();
   const sonar = (archivo, factor = 1) => { const a = new Audio(`../sonidos/${archivo}`); a.volume = Math.min(1, VOLUMEN * factor); a.play().catch(() => {}); };
+  const SONIDOS_JEFE = {
+    dragon: { entrada: 'propuesta-dragon-rugido.mp3', especial: 'propuesta-dragon-hielo.wav' },
+    esqueleto: { entrada: 'jefe-esqueleto-entrada.ogg', especial: 'jefe-esqueleto-especial.ogg' },
+    hidra: { entrada: 'jefe-hidra-entrada.ogg', especial: 'jefe-hidra-especial.ogg' },
+    golem: { entrada: 'jefe-golem-entrada.ogg', especial: 'terremoto.wav' },
+    liche: { entrada: 'propuesta-liche-nigromancia.wav', especial: 'propuesta-liche-drenaje.wav' },
+    arana: { entrada: 'jefe-arana-entrada.ogg', especial: 'jefe-arana-especial.ogg' },
+    kraken: { entrada: 'jefe-kraken-entrada.ogg', especial: 'jefe-kraken-especial.ogg' },
+    minotauro: { entrada: 'jefe-minotauro-entrada.ogg', especial: 'jefe-minotauro-especial.ogg' },
+    tanque: { entrada: 'jefe-tanque-entrada.ogg', especial: 'propuesta-tanque-escudo.wav' },
+    lag: { entrada: 'jefe-lag-entrada.ogg', especial: 'lag.wav' },
+  };
 
   // ---------- Los jefes: retrato, colores y ambiente ----------
   //
@@ -1249,7 +1261,7 @@
       contador.classList.toggle('con-golpes', golpesAcertados > 0);
       contador.title = `${golpesAcertados} golpes acertados`;
       if (golpeNuevo) { contador.classList.remove('pulso'); void contador.offsetWidth; contador.classList.add('pulso'); }
-      if (j.especial && j.especial.n > especialVisto) especial(j.especial);
+      if (j.especial && j.especial.n > especialVisto) especial(j.especial, j.tipo);
       else if (!j.especial && !$('cartel-especial').hidden) quitarCartel();
       pintarAfectados(j.afectados || []);
     } else if (actual !== null) {
@@ -1353,7 +1365,7 @@
     // La propia barra pintada anuncia al jefe sin duplicar el marco en medio de la pantalla.
     if (j.vida === j.vidaMax && j.golpes.length === 0) {
       $('jefe').classList.add('intro');
-      sonar('terremoto.wav');
+      sonar(SONIDOS_JEFE[j.tipo]?.entrada || 'terremoto.wav');
       const ciclo = cicloJefe;
       avisoReloj = setTimeout(() => { if (ciclo === cicloJefe) $('jefe').classList.remove('intro'); }, 3400);
     } else $('jefe').classList.remove('intro');
@@ -1417,7 +1429,7 @@
 
   let cartelReloj = null;
 
-  function especial(e) {
+  function especial(e, tipo) {
     clearTimeout(salidaCartel);
     especialVisto = e.n;
     $('ce-icono').textContent = e.icono;
@@ -1430,7 +1442,8 @@
     d.className = 'destello-jefe';
     document.body.append(d);
     setTimeout(() => d.remove(), 1200);
-    sonar('maldicion.wav', 0.9);
+    sonar(SONIDOS_JEFE[tipo]?.especial || 'maldicion.wav', 0.9);
+    if (tipo === 'dragon') setTimeout(() => sonar('propuesta-dragon-hielo-impacto.wav', 0.9), 450);
     clearTimeout(cartelReloj);
     cartelReloj = setTimeout(quitarCartel, 5500);
   }
