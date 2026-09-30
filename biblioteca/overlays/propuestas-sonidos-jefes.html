@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prueba de sonido de jefes</title>
+<style>
+  body { max-width: 820px; margin: 32px auto; padding: 0 18px; background: #11131b; color: #f4ead8; font: 16px/1.5 system-ui, sans-serif; }
+  h1 { margin-bottom: 4px; } p { color: #c6bdad; }
+  .control { display: flex; gap: 12px; align-items: center; margin: 20px 0; }
+  .grupo { border-top: 1px solid #3c3941; padding: 15px 0; }
+  .grupo h2 { margin: 0 0 8px; font-size: 19px; }
+  .muestras { display: flex; flex-wrap: wrap; gap: 8px; }
+  button { padding: 9px 14px; background: #302830; color: inherit; border: 1px solid #ab8958; border-radius: 5px; font: inherit; cursor: pointer; }
+  button:hover { background: #493749; } button:focus-visible { outline: 3px solid #dab579; }
+  #estado { min-height: 24px; }
+</style>
+</head>
+<body>
+<h1>Segunda prueba de sonido</h1>
+<p>Estas muestras son candidatas. Todavía no suenan en los combates. Escúchalas para decidir si este tono encaja antes de preparar el resto de los jefes.</p>
+<div class="control"><label for="volumen">Volumen</label><input id="volumen" type="range" min="0" max="100" value="35"><output id="nivel">35 %</output></div>
+<section class="grupo"><h2>Dragón de Escarcha</h2><div class="muestras"><button data-archivo="propuesta-dragon-rugido.mp3">▶ Rugido de entrada</button><button data-archivo="propuesta-dragon-hielo.wav">▶ Hielo: preparación</button><button data-archivo="propuesta-dragon-hielo-impacto.wav">▶ Hielo: impacto</button></div></section>
+<section class="grupo"><h2>Liche sin Nombre</h2><div class="muestras"><button data-archivo="propuesta-liche-nigromancia.wav">▶ Nigromancia</button><button data-archivo="propuesta-liche-drenaje.wav">▶ Drenaje de alma</button></div></section>
+<section class="grupo"><h2>Tanque que no sabe tanquear</h2><div class="muestras"><button data-archivo="propuesta-tanque-escudo.wav">▶ Golpe de escudo</button></div></section>
+<p id="estado" role="status"></p>
+<script>
+'use strict';
+const volumen = document.getElementById('volumen');
+const estado = document.getElementById('estado');
+let actual;
+volumen.addEventListener('input', () => {
+  document.getElementById('nivel').textContent = `${volumen.value} %`;
+  if (actual) actual.volume = Number(volumen.value) / 100;
+});
+for (const boton of document.querySelectorAll('button[data-archivo]')) boton.addEventListener('click', () => {
+  if (actual) { actual.pause(); actual.currentTime = 0; }
+  actual = new Audio(`../sonidos/${boton.dataset.archivo}`);
+  actual.volume = Number(volumen.value) / 100;
+  estado.textContent = `Suena: ${boton.textContent.replace('▶ ', '')}`;
+  actual.play().catch(() => { estado.textContent = 'No se pudo reproducir esta muestra.'; });
+  const esta = actual;
+  setTimeout(() => { if (actual === esta && !esta.paused) esta.pause(); }, 5000);
+});
+</script>
+</body>
+</html>
