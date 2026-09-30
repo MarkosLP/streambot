@@ -85,6 +85,57 @@ beforeEach(() => {
   });
 });
 
+describe('⚡ sentencia del dueño del canal', () => {
+  test('deja al jefe con 1 de vida; el siguiente ataque lo derrota y conserva el botín del chat', async () => {
+    await jefe.invocar({ tipo: 'tanque', azar: () => 0 });
+    const vida = jefe.estado()!.vida;
+    await handleEvent(mensaje(config.broadcasterLogin, '!sentencia'));
+    assert.equal(jefe.estado()!.vida, 1);
+    assert.equal(lootDb.recientes(10).length, 0, 'sentenciar no mata ni reparte');
+    assert.deepEqual(jefe.estado()!.atacantes, [], 'el daño administrativo no roba el MVP');
+    const visual = jefe.paraOverlay().jefe!;
+    assert.equal(visual.golpes.at(-1)!.dano, vida - 1);
+    assert.equal(visual.especial!.titulo, 'Sentencia del canal');
+    assert.match(enviados.at(-1)!, /SENTENCIA.*1 de vida/);
+    await handleEvent(mensaje('ana', '!atacar'));
+    assert.equal(jefe.estado(), null);
+    assert.match(enviados.at(-1)!, /ha caído! MVP ana/);
+    assert.equal(lootDb.recientes(10).length, 1);
+  });
+
+  test('un espectador o moderador no puede usarla, aunque copie el nombre visible del canal', async () => {
+    await jefe.invocar({ tipo: 'liche', azar: () => 0 });
+    const vida = jefe.estado()!.vida;
+    await handleEvent(mensaje('ana', '!sentencia'));
+    const evento = mensaje('mod', '!auntoque');
+    if (evento.type !== 'viewer.message') throw Error('Mensaje esperado');
+    evento.viewer.isModerator = true;
+    evento.viewer.isBroadcaster = true;
+    evento.viewer.displayName = config.broadcasterLogin;
+    await handleEvent(evento);
+    assert.equal(jefe.estado()!.vida, vida);
+    assert.equal(jefe.paraOverlay().jefe!.golpes.length, 0);
+  });
+
+  test('el alias funciona una vez por jefe y no actúa sin jefe ni con el Loot apagado', async () => {
+    await handleEvent(mensaje(config.broadcasterLogin, '!sentencia'));
+    assert.equal(enviados.length, 0);
+    await jefe.invocar({ tipo: 'liche', azar: () => 0 });
+    const vida = jefe.estado()!.vida;
+    ajustes.setLootActivo(false, 'test');
+    await handleEvent(mensaje(config.broadcasterLogin, '!sentencia'));
+    assert.equal(jefe.estado()!.vida, vida);
+    ajustes.setLootActivo(true, 'test');
+    await handleEvent(mensaje(config.broadcasterLogin, '!auntoque'));
+    assert.equal(jefe.estado()!.vida, 1);
+    const mensajes = enviados.length;
+    await handleEvent(mensaje(config.broadcasterLogin, '!sentencia'));
+    assert.equal(enviados.length, mensajes);
+    assert.equal(jefe.paraOverlay().jefe!.golpes.length, 1);
+    jefe.retirar();
+  });
+});
+
 describe('⚔️ el cofre de guerra sin nadie en el chat', () => {
   test('se queda en el suelo, se dice, y se lo lleva el primero que escribe', async () => {
     streams.open();

@@ -1,0 +1,16 @@
+{
+  "titulo": "Crea un avatar inspirado en un héroe",
+  "descripcion": "Crea un avatar inspirado en un héroe humano de la clase Gladiador de Lineage II: un guerrero adulto de complexión atlética y poderosa, rostro decidido, una pequeña cicatriz y cabello oscuro corto. Viste una armadura pesada de fantasía medieval, con placas de acero, detalles dorados y hombreras imponentes. Empuña dos espadas, una en cada mano, con un sutil brillo azul en las hojas.\nDebe transmitir valentía, orgullo y experiencia en combate. Estética épica de MMORPG coreano clásico, con proporciones estilizadas y acabados detallados. Silueta clara y fácilmente reconocible incluso en tamaño peque",
+  "ojos": {
+    "x": 0.5,
+    "y": 0.25390625,
+    "w": 0.26953125,
+    "h": 0.17
+  },
+  "cara": {
+    "x": 0.5,
+    "y": 0.2730859375,
+    "w": 0.32953125,
+    "h": 0.238359375
+  }
+}

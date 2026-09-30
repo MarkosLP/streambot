@@ -31,6 +31,19 @@ test('parpadeo local: rechaza ojos desordenados, fuera de límites o sin cuatro 
   for(const mala of [null,{}, {...c,altura:NaN},{...c,puntos:c.puntos.slice(1)},{...c,puntos:[c.puntos[1],c.puntos[0],...c.puntos.slice(2)]},{...c,puntos:[{x:2,y:.3},...c.puntos.slice(1)]}]) assert.throws(()=>validar(mala));
   assert.throws(()=>vista('../fuera',c,dir));
 });
+test('el cierre completo conserva una línea oscura de párpado sin dejar el iris abierto', () => {
+  const piel = new Uint8Array(200 * 200 * 4);
+  for (let i = 0; i < piel.length; i += 4) piel.set([210, 160, 110, 255], i);
+  for (const x0 of [60, 120]) for (let y = 58; y <= 62; y++) for (let x = x0 + 2; x < x0 + 18; x++) {
+    piel.set([25, 20, 15, 255], (y * 200 + x) * 4);
+  }
+  const r = decodificar(pintar(codificar(200, 200, piel), c, 1)).rgba;
+  for (const x of [70, 130]) {
+    assert.ok(r[(60 * 200 + x) * 4]! > 150, 'el centro del iris queda cubierto');
+    assert.ok(r[(62 * 200 + x) * 4]! < 70, 'queda una línea de cierre');
+    assert.deepEqual(r.slice((50 * 200 + x) * 4, (50 * 200 + x) * 4 + 4), piel.slice((50 * 200 + x) * 4, (50 * 200 + x) * 4 + 4));
+  }
+});
 test('parpadeo local: revisión explícita, persistencia, cambio de base y fallo seguro', () => {
   const v=vista(ruta,c,dir);
   assert.throws(()=>guardar(ruta,c,v.hash,false,dir));assert.throws(()=>guardar(ruta,c,'obsoleto',true,dir));

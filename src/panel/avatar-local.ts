@@ -66,13 +66,27 @@ export function pintar(png: Buffer, datos: unknown, cierre: .5 | 1): Buffer {
         if (u <= 0 || u >= largo) continue;
         const borde = radio * Math.sin(Math.PI * u / largo);
         if (Math.abs(v) >= borde) continue;
-        const t = (v + borde) / (2 * borde), idx = (y * w + x) * 4;
-        const restante = 1 - cierre;
-        // Conserva el borde inferior y comprime la abertura: no dibuja colores nuevos.
-        const desde = t < 1 - restante ? pixel(u, radio + 3) : pixel(u, -borde + (t - 1 + restante) / restante * 2 * borde);
+        const idx = (y * w + x) * 4;
+        // Ambos párpados se encuentran en una curva suave. Al cerrar por
+        // completo queda la línea de pestañas, no una almendra vacía de piel.
+        const superior = -borde + cierre * borde * 1.35;
+        const inferior = borde - cierre * borde * .65;
+        const abertura = inferior - superior;
+        const dentro = abertura > .01 && v >= superior && v <= inferior;
+        const desde = dentro ? pixel(u, -borde + (v - superior) / abertura * 2 * borde) : pixel(u, radio + 3);
         if (!src[desde + 3] || !src[idx + 3]) continue;
+        // Toma la tinta de este mismo ojo; nunca de otra imagen generada.
+        let tinta = pixel(u, 0);
+        for (let q = -borde; q <= 0; q++) {
+          const p = pixel(u, q);
+          if (src[p + 3] && src[p]! + src[p + 1]! + src[p + 2]! < src[tinta]! + src[tinta + 1]! + src[tinta + 2]!) tinta = p;
+        }
+        const linea = Math.max(0, 1 - Math.abs(v - superior) / 1.2) * Math.min(1, borde / 2);
         const peso = Math.min(1, borde - Math.abs(v), u, largo - u);
-        for (let k = 0; k < 3; k++) out[idx + k] = Math.round(src[idx + k]! * (1 - peso) + src[desde + k]! * peso);
+        for (let k = 0; k < 3; k++) {
+          const color = src[desde + k]! * (1 - linea) + src[tinta + k]! * linea;
+          out[idx + k] = Math.round(src[idx + k]! * (1 - peso) + color * peso);
+        }
       }
     }
   }

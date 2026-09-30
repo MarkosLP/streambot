@@ -632,6 +632,7 @@ const COMANDOS: Array<[RegExp, Interaction<CtxComando>]> = [
   [/^!dar\b/i, dar],
   [/^!usar\b/i, usar],
   [/^!(atacar|atk)\b/i, jefe.atacar],
+  [/^!(sentencia|auntoque)\b/i, jefe.sentencia],
   [/^!(top|ranking)\b/i, top],
   [/^!temporada\b/i, verTemporada],
   [/^!evento\b/i, evento],
@@ -661,9 +662,9 @@ export const LISTA = [
   ['!dar nombre nº', 'Regala un objeto a alguien del chat. !dar solo te enseña tus objetos numerados; !dar ana 2 le da el 2'],
   ['!usar', 'Usa un objeto con efecto en el directo: Cuerno de guerra, Frasco de agua bendita, Calavera que susurra'],
   ['!atacar', 'Pega al jefe cuando aparece. Botín para todos si cae; Cofre del tesoro para quien más daño haga'],
+  ['!sentencia', 'Solo el dueño del canal: deja al jefe con 1 de vida para rematarlo con !atacar. También !auntoque'],
   ['!top', 'El podio de la temporada del mes, y tu puesto. !top poder: los tres con más poder'],
   ['!temporada', 'Tus puntos de temporada, cómo se ganan, los premios y el último campeón'],
   ['!evento', 'El evento de la semana del Loot (cambia cada lunes)'],
   ['!purificar', 'Tras canjear una Poción de vida: limpia tu objeto maldito (ya no lo pierdes, pero sin poder doble)'],
 ] as const;
-

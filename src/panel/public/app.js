@@ -2230,7 +2230,7 @@ var miniEstado = null; // var: irA() lo usa al cargar, antes de llegar aquí
 function pintarMini(e = miniEstado) {
   miniEstado = e;
   const enMusica = !$('v-musica').hidden;
-  $('mm').hidden = !e?.pista || enMusica;
+  $('mm').hidden = !e?.pista || enMusica || (e?.ajustes?.fuente && e.ajustes.fuente !== 'local');
   if (!e?.pista) return;
   $('mm-titulo').textContent = e.pista.titulo;
   $('mm-artista').textContent = [e.pista.artista, nombreLista(e.pista.lista)].filter(Boolean).join(' · ');
@@ -2781,7 +2781,7 @@ $('r-biblioteca').addEventListener('click', cargarBiblioteca);
 // ---------------------------------------------------------------------------
 
 // Lo último que elegiste, para no tener que elegirlo cada vez.
-const tituloElegido = { juego: '', sesion: '', tono: '', canal: true, emojis: 1 };
+const tituloElegido = { juego: '', sesion: '', tono: '', canal: true, emojis: 0 };
 try { Object.assign(tituloElegido, JSON.parse(localStorage.getItem('panel-titulos') || '{}')); } catch { /* nada */ }
 let titulosCargados = false;
 
@@ -2806,7 +2806,7 @@ async function cargarTitulos() {
     $('t-tono').replaceChildren(...d.tonos.map((s) => h('option', { value: s, selected: s === tituloElegido.tono }, s)));
     $('t-juego').value = tituloElegido.juego || d.juegos[0] || '';
     $('t-canal').checked = tituloElegido.canal !== false;
-    $('t-emojis').value = String(tituloElegido.emojis ?? 1);
+    $('t-emojis').value = String(tituloElegido.emojis ?? 0);
   }
   $('t-juegos').replaceChildren(...d.juegos.map((j) => h('option', { value: j })));
   const ctx = $('t-contexto');

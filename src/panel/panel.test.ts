@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { request } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
-import { configureDatabase, truncateAll } from '../data/db.js';
+import { configureDatabase, truncateAll, getDb } from '../data/db.js';
 import * as musica from '../core/musica.js';
 import * as killswitch from '../core/killswitch.js';
 import * as ajustes from '../core/ajustes.js';
@@ -194,6 +194,30 @@ function pedir(
 
 const post = (ruta: string, cuerpo: unknown = {}) =>
   pedir('POST', ruta, { cuerpo, cabeceras: { 'x-panel': '1' } });
+
+test('música online: configura sin filtrar claves, protege escritura y rechaza proveedores eliminados', async () => {
+  assert.equal((await pedir('POST', '/api/musica/online/buscar', { cuerpo: { proveedor: 'youtube', q: 'epic' } })).status, 403);
+  assert.equal((await pedir('GET', '/api/musica/online/buscar?proveedor=youtube&q=epic')).status, 404);
+  assert.equal((await pedir('POST', '/api/musica/online/configurar', { cuerpo: { youtubeKey: 'clave_de_prueba_1234567890' } })).status, 403);
+  const r = await post('/api/musica/online/configurar', { youtubeKey: 'clave_de_prueba_1234567890' });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.youtube.configurado, true);
+  assert.doesNotMatch(JSON.stringify(r.body), /clave_de_prueba/);
+  getDb().prepare('UPDATE musica_online SET datos=? WHERE id=1').run(JSON.stringify({ youtubeKey: 'clave_de_prueba_1234567890', clientId: 'antiguo', token: { access: 'antiguo' } }));
+  const limpio = await pedir('GET', '/api/musica/online');
+  assert.equal(limpio.body.youtube.configurado, true);
+  assert.equal(limpio.body.spotify, undefined);
+  const guardado = getDb().prepare('SELECT datos FROM musica_online WHERE id=1').get() as { datos: string };
+  assert.deepEqual(Object.keys(JSON.parse(guardado.datos)), ['youtubeKey']);
+  assert.equal((await pedir('GET', '/spotify/callback?state=inventado&code=falso')).status, 404);
+  assert.equal((await post('/api/musica/online/fuente', { fuente: 'spotify' })).status, 400);
+  assert.equal((await post('/api/musica/online/spotify/conectar')).status, 400);
+  assert.equal((await post('/api/musica/online/youtube/enlace', { url: 'https://youtu.be/abcdefghijk' })).body.id, 'abcdefghijk');
+  assert.equal((await post('/api/musica/online/fuente', { fuente: 'youtube' })).body.fuente, 'youtube');
+  assert.equal(musica.paraOverlay().sonando, false);
+  await post('/api/musica/online/fuente', { fuente: 'local' });
+  await post('/api/musica/online/configurar', { youtubeKey: '' });
+});
 
 before(async () => {
   configureDatabase(':memory:');

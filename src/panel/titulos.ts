@@ -18,7 +18,7 @@ const MAX_ETIQUETA = 25;
 const MAX_ETIQUETAS = 10;
 
 export const SESIONES = ['Raid', 'Mazmorras', 'Farmeo', 'Subir de nivel', 'PvP', 'Evento del juego', 'Primera vez', 'Just Chatting'] as const;
-export const TONOS = ['Épico', 'Gracioso', 'Misterioso', 'Tranquilo', 'Competitivo'] as const;
+export const TONOS = ['Natural', 'Épico', 'Gracioso', 'Misterioso', 'Tranquilo', 'Competitivo'] as const;
 
 export interface Peticion {
   juego: string;
@@ -28,7 +28,7 @@ export interface Peticion {
   notas?: string;
   /** Usar lo que ha pasado en el minijuego del chat (jefes, legendarios…). */
   conCanal?: boolean;
-  /** Emojis por título, de 0 a 3. Por defecto, 1. */
+  /** Emojis por título, de 0 a 3. Por defecto, 0. */
   emojis?: number;
 }
 
@@ -183,12 +183,29 @@ const ESQUEMA_CHAT = {
 };
 
 const ESTILO =
-  'Escribes títulos de directo: cortos (entre 30 y 90 caracteres), con gancho, variados entre sí y sin hashtags. ' +
-  'Mayúsculas como en español: solo al principio y en nombres propios, nunca en cada palabra. ' +
-  'No inventes nombres de raids, jefes ni zonas del juego: si no te los dan en las notas, di «la raid», «el jefe», «la banda». ' +
-  'Nunca prometes algo que no va a pasar. Respondes solo con el JSON pedido.';
+  'Escribes títulos de Twitch en español de España para un público adulto. Voz natural, directa y con personalidad. ' +
+  'Prioriza qué se va a hacer hoy y los detalles de las notas. Entre 25 y 90 caracteres cuando sea posible, sin rellenar para llegar al mínimo. ' +
+  'Nada de lenguaje infantil, diminutivos forzados, chistes aleatorios, rimas ni entusiasmo de anuncio. ' +
+  'Evita clichés como «aventura épica», «leyendas», «a conquistar», «que comience la batalla», «risas aseguradas» o «no te lo pierdas». ' +
+  'El humor nace de la situación: ironía seca o autocrítica leve, sin convertir cada título en un chiste ni insultar al público. ' +
+  'Sin hashtags en los títulos, sin mayúsculas de reclamo ni exclamaciones de relleno. Mayúsculas solo al principio y en nombres propios. ' +
+  'No inventes raids, jefes, zonas, rangos, derrotas previas, logros, horarios ni objetivos que no están en los datos. ' +
+  'Si faltan detalles, usa la actividad indicada; no finjas una historia. No prometas victorias, premios ni resultados. ' +
+  'Cada propuesta debe aportar una idea o enfoque distinto, no cambiar dos palabras de la anterior. ' +
+  'Ejemplos de registro, solo si encajan con los datos: «Farmeo y charla, sin prisa», «Primera vez en Lineage 2», ' +
+  '«PvP: hoy toca afinar», «Volvemos después de una semana». No copies estos ejemplos por defecto. ' +
+  'Antes de responder, revisa y reescribe las propuestas genéricas, infantiles o basadas en hechos inventados. Responde solo con el JSON pedido.';
 
-const SISTEMA = `Eres el guionista de Crid4m, un canal de Twitch en español de España que juega a MMOs con tono épico y con humor. ${ESTILO}`;
+const MATICES: Record<string, string> = {
+  Natural: 'Como lo escribiría el streamer: claro, cercano, sin adornos ni bromas obligatorias.',
+  Épico: 'Intensidad contenida y centrada en el objetivo real; sin narrador de fantasía ni grandilocuencia.',
+  Gracioso: 'Humor seco y observacional sobre la actividad; sin chistes infantiles, memes metidos a la fuerza ni inventar desastres.',
+  Misterioso: 'Curiosidad a partir de un detalle real de las notas; sin secretos inventados ni clickbait.',
+  Tranquilo: 'Conversacional y relajado; sin cursilería ni diminutivos.',
+  Competitivo: 'Preciso y centrado en mejorar o competir; sin fanfarronería ni prometer ganar.',
+};
+
+const SISTEMA = `Escribes los títulos de Crid4m, un streamer de MMOs. ${ESTILO}`;
 
 const SISTEMA_CHAT =
   `Eres el guionista de Crid4m, un canal de Twitch en español de España que juega a MMOs. ${ESTILO} ` +
@@ -203,11 +220,11 @@ export async function sugerir(p: Peticion): Promise<Sugerencia> {
     .prepare('SELECT texto FROM titulos WHERE favorito = 1 OR usado_at IS NOT NULL ORDER BY COALESCE(usado_at, at) DESC LIMIT 12')
     .all() as Array<{ texto: string }>).map((t) => t.texto);
 
-  const emojis = Math.max(0, Math.min(3, Math.round(p.emojis ?? 1)));
+  const emojis = Math.max(0, Math.min(3, Math.round(p.emojis ?? 0)));
   const sesion = [
     `Juego: ${juego || 'sin decir'}.`,
     `Sesión: ${p.sesion}.`,
-    `Tono: ${p.tono}.`,
+    `Tono: ${p.tono}. ${MATICES[p.tono] ?? MATICES.Natural}`,
     reglaEmojis(emojis, p.tono),
     p.notas?.trim() ? `Notas de Crid4m: ${p.notas.trim()}.` : '',
     ya.length ? `Títulos que ya usó: no los repitas ni los copies: ${ya.map((t) => `«${t}»`).join(', ')}.` : '',
@@ -221,6 +238,7 @@ export async function sugerir(p: Peticion): Promise<Sugerencia> {
       '(máximo 200 caracteres, puede llevar 2-3 hashtags) y 6 etiquetas de Twitch (una palabra cada una, sin espacios ni #).',
     ].join('\n'),
     esquema: ESQUEMA_JUEGO,
+    temperatura: 0.75,
   })) as { titulos?: unknown; anuncio?: unknown; etiquetas?: unknown };
 
   // 2. Los del chat, aparte y solo si hay algo que contar.
@@ -233,6 +251,7 @@ export async function sugerir(p: Peticion): Promise<Sugerencia> {
         'Dame 3 títulos que mezclen la sesión en el juego con algo de lo que ha pasado en el minijuego del chat.',
       ].join('\n'),
       esquema: ESQUEMA_CHAT,
+      temperatura: 0.75,
     })) as { titulos?: unknown };
     delChat = c.titulos;
   }

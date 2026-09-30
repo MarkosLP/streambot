@@ -33,6 +33,7 @@ import * as escenas from './escenas.js';
 import * as estilos from './estilos.js';
 import * as rotulos from './rotulos.js';
 import * as musica from '../core/musica.js';
+import { musicaOnline, enlaceYoutube } from './musica-online.js';
 import * as temas from './temas.js';
 import * as alertas from '../core/alertas.js';
 import * as fondos from './fondos.js';
@@ -88,6 +89,7 @@ const PUBLICOS: Record<string, { archivo: string; tipo: string }> = {
   '/red.js': { archivo: 'red.js', tipo: 'text/javascript; charset=utf-8' },
   '/app.js': { archivo: 'app.js', tipo: 'text/javascript; charset=utf-8' },
   '/avatar-local.js': { archivo: 'avatar-local.js', tipo: 'text/javascript; charset=utf-8' },
+  '/musica-online.js': { archivo: 'musica-online.js', tipo: 'text/javascript; charset=utf-8' },
   '/styles.css': { archivo: 'styles.css', tipo: 'text/css; charset=utf-8' },
 };
 
@@ -252,6 +254,25 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   }
 
   const ruta = `${metodo} ${url.pathname}`;
+
+  if (url.pathname.startsWith('/api/musica/online')) {
+    try {
+      if (ruta === 'GET /api/musica/online') return json(res, 200, { ...musicaOnline.estado(), fuente: musica.leerAjustes().fuente });
+      if (metodo === 'POST') {
+        const b = await cuerpo(req);
+        if (ruta === 'POST /api/musica/online/buscar') {
+          if (b.proveedor !== 'youtube') throw Error('Proveedor no válido.');
+          return json(res, 200, await musicaOnline.buscarYoutube(b.q));
+        } else if (ruta === 'POST /api/musica/online/configurar') musicaOnline.configurar(b);
+        else if (ruta === 'POST /api/musica/online/youtube/enlace') return json(res, 200, { id: enlaceYoutube(b.url) });
+        else if (ruta === 'POST /api/musica/online/fuente') {
+          if (!['local', 'youtube'].includes(String(b.fuente))) throw Error('Fuente no válida.');
+          musica.pausar(); musica.cambiarAjustes({ fuente: b.fuente });
+        } else throw Error('Acción de música online no válida.');
+        return json(res, 200, { ...musicaOnline.estado(), fuente: musica.leerAjustes().fuente });
+      }
+    } catch (e) { throw new ErrorHttp(400, e instanceof Error ? e.message : 'No se pudo completar la petición.'); }
+  }
 
   if (ruta === 'GET /api/overlay/avatar-local') {
     try {

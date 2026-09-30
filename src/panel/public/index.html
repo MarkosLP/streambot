@@ -616,10 +616,52 @@
         <div>
           <p class="antetitulo">De fondo, cuando tú quieras</p>
           <h1>Música</h1>
-          <p class="nota">Elige una canción (o al azar de una carpeta) y dale al play. Suena solo en las escenas que marques.</p>
+          <p class="nota">Busca música en YouTube, pega un enlace o reproduce tus archivos.</p>
         </div>
       </header>
 
+      <div class="escena-botones" id="mo-fuentes" role="group" aria-label="Origen de la música">
+        <button class="boton" type="button" data-fuente="youtube" aria-pressed="false">YouTube</button>
+        <button class="boton" type="button" data-fuente="local" aria-pressed="true">Mis archivos</button>
+      </div>
+      <p id="mo-estado" class="nota" role="status" aria-live="polite">Cargando los controles de música. Si este mensaje no desaparece, reinicia el bot y recarga el panel.</p>
+      <article class="tarjeta" id="mo-online" hidden>
+        <div id="mo-youtube" hidden>
+          <header><h2>YouTube</h2></header>
+          <p class="nota">Se reproduce aquí, sin descargar. Mantén abierto el panel y captura el audio del navegador en OBS. El vídeo sigue sonando si cambias de sección; pulsa Parar cuando quieras detenerlo.</p>
+          <div id="mo-video" class="mo-video"></div>
+          <button class="boton" id="mo-parar-video" type="button">Parar YouTube</button>
+        </div>
+        <form id="mo-buscar" class="mo-buscar">
+          <label class="campo"><span>Buscar música</span><input id="mo-consulta" type="search" maxlength="200" placeholder="Música épica, electrónica, ambiente…" required></label>
+          <button class="boton primario" type="submit">Buscar</button>
+        </form>
+        <div class="escena-botones">
+          <button class="boton" type="button" data-busqueda="epic music no copyright">Épica</button>
+          <button class="boton" type="button" data-busqueda="electronic music no copyright">Electrónica</button>
+          <button class="boton" type="button" data-busqueda="ambient gaming music no copyright">Ambiente</button>
+        </div>
+        <form id="mo-enlace" class="mo-buscar">
+          <label class="campo"><span>O pega un enlace</span><input id="mo-url" type="url" placeholder="https://…" required></label>
+          <button class="boton" type="submit">Reproducir enlace</button>
+        </form>
+        <p class="nota" id="mo-resultados-nota" role="status"></p>
+        <div id="mo-resultados" class="mo-resultados"></div>
+      </article>
+      <details class="tarjeta" id="mo-configuracion">
+        <summary>Configurar YouTube</summary>
+        <form id="mo-config-form">
+          <fieldset id="mo-config-campos" disabled>
+          <legend>Búsqueda de YouTube</legend>
+          <p class="nota">YouTube: activa <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">YouTube Data API v3</a> y crea una clave de API. Solo hace falta para buscar; pegar vídeos funciona sin clave.</p>
+          <label class="campo"><span>Clave de YouTube</span><input id="mo-youtube-key" type="password" autocomplete="new-password" placeholder="Pega la clave; vacío conserva la guardada"></label>
+          <label><input id="mo-borrar-key" type="checkbox"> Borrar la clave guardada de YouTube</label>
+          <div class="escena-botones"><button class="boton primario" type="submit">Guardar conexión</button></div>
+          </fieldset>
+          <p id="mo-config-estado" class="nota" role="status" aria-live="polite">Esperando al servidor. Si no se habilita Guardar, reinicia el bot y recarga esta página.</p>
+        </form>
+      </details>
+      <div id="mo-local">
       <div class="dos-col musica-arriba">
         <article class="tarjeta musica-ahora">
           <header><h2>🎵 Música</h2><span class="nota" id="m-estado"></span></header>
@@ -667,8 +709,8 @@
           <code id="m-carpeta"></code>
         </div>
         <p class="nota aviso-sueltas" id="m-sueltas" hidden></p>
-        <p class="nota">Nada de música de YouTube o Spotify: en Twitch trae avisos DMCA y te pueden silenciar los vídeos.</p>
       </details>
+      </div>
     </section>
 
     <!-- TEMAS PARA HABLAR -->
@@ -760,12 +802,12 @@
           <label class="campo">
             <span>Emojis por título</span>
             <select id="t-emojis">
-              <option value="0">Ninguno</option>
-              <option value="1" selected>1</option>
+              <option value="0" selected>Ninguno</option>
+              <option value="1">1</option>
               <option value="2">2</option>
               <option value="3">3</option>
             </select>
-            <small>Los que más destacan en Twitch, según el tono.</small>
+            <small>Opcionales. Sin emojis por defecto.</small>
           </label>
           <label class="campo titulos-notas">
             <span>Notas <small>(opcional)</small></span>
@@ -950,5 +992,6 @@
 <script src="/referencias.js"></script>
 <script src="/app.js"></script>
 <script src="/avatar-local.js"></script>
+<script src="/musica-online.js"></script>
 </body>
 </html>

@@ -37,8 +37,8 @@ const carpeta = (dir: string) => join(dir, 'imagenes', 'avatar');
 
 /**
  * Las zonas a retocar a partir de dónde dice el modelo que están ojos y boca.
- * Con margen de sobra en vertical: el modelo acierta en horizontal pero puede
- * irse unos 40 px de 1024 arriba o abajo.
+ * El parpadeo usa dos zonas pequeñas. Una localización imprecisa debe
+ * corregirse, nunca compensarse dando permiso para repintar toda la cara.
  */
 export function zonasDe(c: Cara): { ojos: Zona; cara: Zona; sueltos: Zona[] } {
   const xs = c.ojos.map((o) => o.x);
@@ -49,9 +49,7 @@ export function zonasDe(c: Cara): { ojos: Zona; cara: Zona; sueltos: Zona[] } {
   const ojos = { x: cx, y: cy, w, h: Math.max(.17, c.anchoOjo * 2.6) };
   const abajo = c.boca ? c.boca.y + .07 : cy + .16;
   const arriba = cy - .1;
-  // Un óvalo por ojo, con margen vertical por lo que falla el modelo: al
-  // entornar y cerrar, la IA no tiene dónde tocar la frente ni la nariz.
-  const sueltos = c.ojos.map((o) => ({ x: o.x, y: o.y, w: Math.max(.07, c.anchoOjo * 2.2), h: c.anchoOjo * 1.5 + .08 }));
+  const sueltos = c.ojos.map((o) => ({ x: o.x, y: o.y, w: c.anchoOjo * 1.15, h: c.anchoOjo * .65 }));
   return { ojos, cara: { x: cx, y: (arriba + abajo) / 2, w: Math.min(.7, w + .06), h: Math.max(.2, abajo - arriba) }, sueltos };
 }
 
@@ -83,7 +81,9 @@ type Zonas = ReturnType<typeof zonasDe>;
 function medir(base: Buffer, png: Buffer, v: Variante, zonas: Zonas | null): { png: Buffer; fraccion: number } | null {
   if (!zonas) return null;
   try {
-    return comparar(base, png, [v === 'contento' ? zonas.cara : zonas.ojos]);
+    // La máscara de la petición no garantiza que el modelo la respete:
+    // también se recorta el resultado a cada ojo al componer sobre la base.
+    return comparar(base, png, v === 'contento' ? [zonas.cara] : zonas.sueltos);
   } catch {
     return null;
   }

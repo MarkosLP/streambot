@@ -175,6 +175,30 @@ export function golpe(poder: number, azar: Azar): { dano: number; critico: boole
   return { dano: critico ? base * 2 : base, critico };
 }
 
+/** Poder del dueño del canal: prepara el remate sin repartir botín ni alterar el MVP. */
+export const sentencia: Interaction<CtxComando> = {
+  name: 'loot-sentencia',
+  spontaneous: false,
+  guards: [
+    () => ajustes.lootActivo() ? { ok: true } : { ok: false, motivo: 'el Loot está apagado', registrar: false },
+    ctx => ctx.viewer.login.toLowerCase() === config.broadcasterLogin
+      ? { ok: true } : { ok: false, motivo: 'solo el dueño del canal', registrar: false },
+    () => jefe && jefe.vida > 1 && jefe.hasta > Date.now()
+      ? { ok: true } : { ok: false, motivo: 'no hay un jefe al que sentenciar', registrar: false },
+  ],
+  run: (ctx): Salida | null => {
+    const j = jefe;
+    if (!ajustes.lootActivo() || ctx.viewer.login.toLowerCase() !== config.broadcasterLogin || !j || j.vida <= 1 || j.hasta <= Date.now()) return null;
+    const dano = j.vida - 1;
+    j.vida = 1;
+    j.avisoMitad = true;
+    j.especialUsado = true;
+    apuntarGolpe(j, { quien: ctx.viewer.displayName, dano, critico: true, tipo: 'golpe', icono: '⚡', texto: '¡SENTENCIA!' });
+    j.especial = { n: ++especialesTotales, icono: '⚡', titulo: 'Sentencia del canal', texto: `${ctx.viewer.displayName} deja al jefe con 1 de vida. ¡Rematadlo!`, at: Date.now() };
+    return { text: `⚡ ¡${ctx.viewer.displayName} lanza SENTENCIA! ${mayuscula(j.nombre)} queda con 1 de vida. ¡Un golpe acertado de !atacar y cae!` };
+  },
+};
+
 export const atacar: Interaction<CtxComando> = {
   name: 'loot-atacar',
   spontaneous: false,

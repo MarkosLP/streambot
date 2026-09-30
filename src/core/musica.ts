@@ -6,10 +6,9 @@ import { log } from './logger.js';
 import { DIR_BIBLIOTECA, NOMBRE_CANCION } from '../panel/biblioteca.js';
 
 /**
- * Música del directo (27 sep 2026): listas para cada momento (Empezamos,
- * Pausa, Final y de fondo mientras juegas) con música libre de derechos
- * (StreamBeats y parecidas). Nada de descargar de YouTube ni Spotify: en
- * Twitch la música con derechos trae avisos DMCA.
+ * Biblioteca local del directo: listas para Empezamos, Pausa, Final y
+ * fondo. YouTube se controla desde panel/musica-online.ts;
+ * elegir uno de esos orígenes silencia esta salida local.
  *
  * Quien suena es la fuente de OBS `MUS Música` (biblioteca/overlays/musica.html):
  * pregunta aquí cada segundo qué toca y a qué volumen, y avisa cuando acaba
@@ -169,6 +168,7 @@ export async function canciones(): Promise<Record<Lista, Pista[]>> {
 // ---------------------------------------------------------------------------
 
 export interface Ajustes {
+  fuente: 'local' | 'youtube';
   /** 'auto': la lista la decide la escena de OBS; 'manual': la eliges tú. */
   modo: 'auto' | 'manual';
   volumen: Record<Lista, number>;
@@ -191,6 +191,7 @@ export const ESCENAS_POR_DEFECTO: Record<string, Destino> = {
 };
 
 const AJUSTES_POR_DEFECTO: Ajustes = {
+  fuente: 'local',
   // 28 sep 2026: Crid4m la pone a mano («solo cuando quiera»); el panel ya no
   // ofrece el automático, que sigue aquí para quien lo tuviera guardado.
   modo: 'manual',
@@ -208,6 +209,7 @@ let ajustes: Ajustes | null = null;
 function limpiar(v: any): Ajustes {
   const a: Ajustes = { ...AJUSTES_POR_DEFECTO, volumen: { ...AJUSTES_POR_DEFECTO.volumen }, mapa: {}, escenas: [] };
   if (!v || typeof v !== 'object') return a;
+  if (['local', 'youtube'].includes(v.fuente)) a.fuente = v.fuente;
   if (Array.isArray(v.escenas)) {
     const validas = (v.escenas as unknown[]).filter((e): e is string => typeof e === 'string' && e.length > 0 && e.length <= 200);
     a.escenas = [...new Set(validas)].slice(0, 100);
@@ -419,7 +421,7 @@ export function paraOverlay() {
   const enEscenaDelPanel = escenaObs !== null && escenaObs in ESCENAS_POR_DEFECTO;
   // Fuera de las escenas marcadas, el reproductor se calla con un fundido y
   // se queda donde iba: `sonando` sigue siendo true y al volver retoma.
-  return { sonando: sonando && pista !== null && suenaEnEscena(a), pista, volumen: v, turno, aviso: a.aviso && !enEscenaDelPanel };
+  return { sonando: a.fuente === 'local' && sonando && pista !== null && suenaEnEscena(a), pista, volumen: v, turno, aviso: a.aviso && !enEscenaDelPanel };
 }
 
 /** ¿Está la fuente de OBS pidiendo? (si no, no hace falta preguntar a OBS por la escena). */
@@ -469,7 +471,7 @@ export const overlayActivo = () => Date.now() - ultimaVozOverlay < 15_000;
 export function estado() {
   const a = leerAjustes();
   return {
-    sonando: sonando && pista !== null,
+    sonando: a.fuente === 'local' && sonando && pista !== null,
     lista,
     pista,
     // Entre aviso y aviso del overlay (cada 3 s) se calcula; nunca más allá del final.

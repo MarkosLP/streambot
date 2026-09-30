@@ -32,7 +32,7 @@ function mp3(titulo: string, artista: string): Buffer {
 before(async () => {
   configureDatabase(':memory:');
   dir = await mkdtemp(join(tmpdir(), 'crid4m-musica-'));
-  const c = (l: string) => join(dir, 'musica', l);
+const c = (l: string) => join(dir, 'musica', l);
   for (const l of musica.LISTAS) await mkdir(c(l), { recursive: true });
   await writeFile(join(c('inicio'), 'uno.mp3'), mp3('Level Up', 'StreamBeats'));
   await writeFile(join(c('inicio'), 'Harris Heller - Canción número dos.mp3'), Buffer.alloc(64));
@@ -52,6 +52,18 @@ beforeEach(() => {
 });
 
 describe('las canciones', () => {
+  test('las fuentes online silencian los archivos incluso con cambios automáticos de escena', async () => {
+    await musica.ponerLista('inicio');
+    assert.equal(musica.paraOverlay().sonando, true);
+    musica.cambiarAjustes({ fuente: 'youtube' });
+    assert.equal(musica.paraOverlay().sonando, false);
+    assert.equal(musica.estado().sonando, false);
+    await musica.ponerModo('auto');
+    await musica.alCambiarEscena('✦ Pausa');
+    assert.equal(musica.paraOverlay().sonando, false);
+    await musica.reanudar();
+    assert.equal(musica.paraOverlay().sonando, false);
+  });
   test('título y artista: de las etiquetas del mp3, o del nombre del archivo', async () => {
     const l = (await musica.escanear(dir)).inicio;
     assert.equal(l.length, 3, 'el .txt no cuenta');

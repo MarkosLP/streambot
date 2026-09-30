@@ -591,18 +591,32 @@
   .aviso-texto strong { max-width: 680px; font-size: 53px; line-height: 1.12; background: none; color: #fff0d3; filter: none; text-shadow: 0 4px 14px #000; }
   .aviso-destello { inset: 0; }
 
-  .final { width: 1200px; min-height: 340px; padding: 48px 110px 38px;
-    transform: translate(-50%, -50%) scale(.75);
-    background: url('../imagenes/combate/jefe-marco.png') center / 100% 100% no-repeat;
+  /* El marco conserva su proporci?n; cada texto ocupa su propia placa. */
+  .final { width: 1200px; height: 530px; min-height: 0; padding: 0;
+    top: 50%; transform: translate(-50%, -50%);
+    background: url('../imagenes/combate/jefe-marco.png') center top / 1200px auto no-repeat;
     filter: drop-shadow(0 9px 24px rgba(var(--tb), .5)); }
-  @keyframes final-entra { from { opacity: 0; transform: translate(-50%, -50%) scale(.25); } }
-  @keyframes final-sale { to { opacity: 0; transform: translate(-50%, -58%) scale(.79); } }
-  .final .rayos { opacity: .35; }
-  .final-retrato { width: 125px; height: 125px; margin-bottom: 0; }
-  .final .titular { font-size: 88px; filter: none; text-shadow: 0 4px 14px #000; }
+  @keyframes final-entra { from { opacity: 0; transform: translate(-50%, -50%) scale(.85); } }
+  @keyframes final-sale { to { opacity: 0; transform: translate(-50%, -54%) scale(1.03); } }
+  .final .rayos { opacity: .35; pointer-events: none; }
+  .final-retrato { position: absolute; left: 77px; top: 40px; width: 230px; height: 230px; margin: 0; }
+  .final:not(.escapa) .final-retrato { animation: retrato-derrotado 1.6s ease-in .2s forwards; }
+  .final.escapa .final-retrato { animation: retrato-escapado 2.4s ease-in 1.2s forwards; }
+  @keyframes retrato-derrotado { to { filter: grayscale(1) brightness(.55); } }
+  @keyframes retrato-escapado { to { opacity: .2; filter: grayscale(.7); } }
+  .final .titular { position: absolute; left: 362px; top: 83px; width: 478px; height: 43px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 40px; white-space: nowrap; filter: none; }
   .final.escapa .titular { filter: none; }
-  .final .subtitulo { font-size: 29px; }
-  .final .podio { margin-top: 12px; }
+  .final .subtitulo { position: absolute; left: 325px; top: 157px; width: 750px; height: 48px;
+    display: flex; align-items: center; justify-content: center; margin: 0; padding: 0 12px;
+    font-size: 24px; line-height: 1.05; overflow-wrap: anywhere; overflow: hidden; }
+  .final .podio { position: absolute; left: 150px; right: 90px; top: 350px; margin: 0; gap: 20px; }
+  .final .puesto { flex: 1 1 0; min-width: 0; max-width: 310px; padding: 12px 18px;
+    animation-name: puesto-entra; }
+  @keyframes puesto-entra { from { opacity: 0; transform: translateY(20px) scale(.95); } }
+  .final .puesto .quien { max-width: 100%; font-size: 26px; }
+  .final .puesto .cuanto { font-size: 21px; overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
@@ -1147,6 +1161,7 @@
     if (PINTADOS[tipo]) foto.src = urlPintado(tipo);
     $('emblema').classList.toggle('reserva', !PINTADOS[tipo]);
     $('aviso-retrato').innerHTML = copiaEmblema('aviso');
+    $('final-retrato').innerHTML = copiaEmblema('final');
   }
 
   /** El medallón para el aviso o el final, con sus ids renombrados: si no, sus
@@ -1448,13 +1463,17 @@
     const derrotado = f.resultado === 'derrotado';
     const caja = $('final');
     caja.className = `final ${derrotado ? '' : 'escapa'}`;
+    const tema = TEMAS[f.tipo] || TEMA_BASE;
+    ['--t1', '--t2', '--t3', '--tb', '--m1', '--m2'].forEach((v, i) => document.body.style.setProperty(v, tema.c[i]));
+    document.body.dataset.jefe = f.tipo || '';
+    ponerRetrato(f.tipo);
     $('final-retrato').innerHTML = copiaEmblema('final');
     $('titular').textContent = derrotado ? '¡Derrotado!' : '¡Se escapa!';
     $('subtitulo').textContent = derrotado
       ? `${mayuscula(f.nombre)} ha caído`
       : `${mayuscula(f.nombre)} huye con ${f.vida} de vida`;
     const medallas = ['🥇', '🥈', '🥉'];
-    $('podio').replaceChildren(...f.podio.map((p, i) => {
+    $('podio').replaceChildren(...f.podio.slice(0, 3).map((p, i) => {
       const d = document.createElement('div');
       d.className = 'puesto';
       const m = document.createElement('div'); m.className = 'medalla'; m.textContent = medallas[i];
