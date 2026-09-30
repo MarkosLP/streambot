@@ -721,6 +721,18 @@
 
 <script src="/red.js"></script>
 <script>
+const SONIDOS_JEFES = Object.freeze({
+  dragon: { entrada: 'jefe-dragon-entrada.ogg', especial: 'jefe-dragon-especial.ogg' },
+  esqueleto: { entrada: 'jefe-esqueleto-entrada.ogg', especial: 'jefe-esqueleto-especial.ogg' },
+  hidra: { entrada: 'jefe-hidra-entrada.ogg', especial: 'jefe-hidra-especial.ogg' },
+  golem: { entrada: 'jefe-golem-entrada.ogg', especial: 'jefe-golem-especial.ogg' },
+  liche: { entrada: 'jefe-liche-entrada.ogg', especial: 'jefe-liche-especial.ogg' },
+  arana: { entrada: 'jefe-arana-entrada.ogg', especial: 'jefe-arana-especial.ogg' },
+  kraken: { entrada: 'jefe-kraken-entrada.ogg', especial: 'jefe-kraken-especial.ogg' },
+  minotauro: { entrada: 'jefe-minotauro-entrada.ogg', especial: 'jefe-minotauro-especial.ogg' },
+  tanque: { entrada: 'jefe-tanque-entrada.ogg', especial: 'jefe-tanque-especial.ogg' },
+  lag: { entrada: 'jefe-lag-entrada.ogg', especial: 'lag.wav' },
+});
   // Todo como texto, nunca como HTML: los nombres los elige cada espectador.
   const $ = (id) => document.getElementById(id);
   const RETRATO_BASE = `<!-- Cuernos -->
@@ -756,6 +768,7 @@
     return q.has('volumen') && Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.35;
   })();
   const sonar = (archivo, factor = 1) => { const a = new Audio(`../sonidos/${archivo}`); a.volume = Math.min(1, VOLUMEN * factor); a.play().catch(() => {}); };
+  const sonarJefe = (tipo, momento) => sonar(SONIDOS_JEFES[tipo]?.[momento] || (momento === 'entrada' ? 'terremoto.wav' : 'maldicion.wav'), momento === 'especial' ? 0.9 : 1);
 
   // ---------- Los jefes: retrato, colores y ambiente ----------
   //
@@ -1249,7 +1262,7 @@
       contador.classList.toggle('con-golpes', golpesAcertados > 0);
       contador.title = `${golpesAcertados} golpes acertados`;
       if (golpeNuevo) { contador.classList.remove('pulso'); void contador.offsetWidth; contador.classList.add('pulso'); }
-      if (j.especial && j.especial.n > especialVisto) especial(j.especial);
+      if (j.especial && j.especial.n > especialVisto) especial(j.especial, j.tipo);
       else if (!j.especial && !$('cartel-especial').hidden) quitarCartel();
       pintarAfectados(j.afectados || []);
     } else if (actual !== null) {
@@ -1353,7 +1366,7 @@
     // La propia barra pintada anuncia al jefe sin duplicar el marco en medio de la pantalla.
     if (j.vida === j.vidaMax && j.golpes.length === 0) {
       $('jefe').classList.add('intro');
-      sonar('terremoto.wav');
+      sonarJefe(j.tipo, 'entrada');
       const ciclo = cicloJefe;
       avisoReloj = setTimeout(() => { if (ciclo === cicloJefe) $('jefe').classList.remove('intro'); }, 3400);
     } else $('jefe').classList.remove('intro');
@@ -1417,7 +1430,7 @@
 
   let cartelReloj = null;
 
-  function especial(e) {
+  function especial(e, tipo) {
     clearTimeout(salidaCartel);
     especialVisto = e.n;
     $('ce-icono').textContent = e.icono;
@@ -1430,7 +1443,7 @@
     d.className = 'destello-jefe';
     document.body.append(d);
     setTimeout(() => d.remove(), 1200);
-    sonar('maldicion.wav', 0.9);
+    sonarJefe(tipo, 'especial');
     clearTimeout(cartelReloj);
     cartelReloj = setTimeout(quitarCartel, 5500);
   }
