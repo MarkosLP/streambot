@@ -566,14 +566,15 @@
   .duelo .luchador .titulo { font-size: 19px; }
   .duelo .luchador .poder { font-size: 24px; }
   .duelo .luchador .sello { top: -50px; font-size: 26px; border-width: 2px; }
-  .duelo .vs { top: 102px; font-size: 76px; }
+  .duelo .vs { top: 218px; font-size: 62px; line-height: 1; z-index: 2; }
   .duelo .destello { opacity: .5; }
   .duelo .ruleta { top: 329px; width: 1120px; }
   .duelo .ruleta-barra { height: 27px; border-radius: 3px; box-shadow: 0 0 0 2px #090612; }
   .duelo .ruleta-a { background: linear-gradient(180deg, #9e66ff, #4b1e9b); }
   .duelo .ruleta-b { background: linear-gradient(180deg, #ffba79, #9b371c); }
-  .duelo .ruleta-pct { font-size: 19px; }
-  .duelo .extra { top: 389px; font-size: 22px; }
+  .duelo .ruleta-pct { position: absolute; inset: 2px 12px auto; margin: 0; font-size: 19px; line-height: 23px; pointer-events: none; }
+  .duelo .ruleta-pct .a, .duelo .ruleta-pct .b { color: #fff4df; text-shadow: 0 1px 3px #000, 0 0 6px #000; }
+  .duelo .extra { top: 389px; max-width: 1080px; overflow: hidden; text-overflow: ellipsis; font-size: 22px; }
   .duelo .luchador .quien, .duelo .vs, .duelo .luchador .sello { font-family: 'Cinzel Decorative Local', Georgia, serif; }
   .duelo .luchador .quien { font-size: 45px; }
   .duelo .luchador .titulo, .duelo .luchador .poder, .duelo .ruleta-pct, .duelo .extra { font-family: 'Rajdhani Local', sans-serif; }
