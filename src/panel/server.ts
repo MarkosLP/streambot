@@ -23,6 +23,9 @@ import * as loot from '../interactions/loot/index.js';
 import * as lootDb from '../data/loot.js';
 import * as lootComandos from '../interactions/loot/comandos.js';
 import * as jefe from '../interactions/loot/jefe.js';
+import * as misiones from '../interactions/loot/misiones.js';
+import * as novedadesLoot from '../interactions/loot/novedades.js';
+import * as progresion from '../interactions/loot/progresion.js';
 import * as users from '../data/users.js';
 import * as directo from '../core/directo.js';
 import { handleEvent } from '../core/handler.js';
@@ -381,12 +384,15 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       pantalla: loot.estadoPantalla(),
       // Para el regalo: todo el que está en el chat, haya escrito o no.
       jefe: jefe.estado(),
+      mision: misiones.estado(),
       vigilante: directo.estado(),
       jefes: jefe.JEFES,
       enElChat: (await loot.enElChat()).map((v) => ({ login: v.login, nombre: v.displayName })),
       probabilidades: PROBABILIDADES,
       recientes: lootDb.recientes(25),
       mochilas: lootDb.mochilas(10),
+      duelosRecientes: arena.paraPanel(),
+      progresion: progresion.estado(),
       comandos: lootComandos.LISTA,
       mochilaMax: MOCHILA_MAX,
       evento: eventos.estado(),
@@ -422,6 +428,14 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       obs,
       iaLocal: iaLocal.estado,
     }));
+  }
+
+  if (ruta === 'POST /api/loot/mision') {
+    const { accion, tipo } = await cuerpo(req);
+    if (accion === 'preparar' && (tipo === 'jefes' || tipo === 'cofres')) return json(res, 200, misiones.preparar(tipo));
+    if (accion === 'activar') return json(res, 200, misiones.activar());
+    if (accion === 'pausar') return json(res, 200, misiones.pausar());
+    throw new ErrorHttp(400, 'Acción de misión no válida');
   }
 
   if (ruta === 'POST /api/loot/ajustes') {
@@ -812,6 +826,8 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       : {
         ...alertas.paraRotativo(), ...comun,
         top: { nombre: temporadas.nombre(temporadas.deFecha()), podio: temporada.rankingActual(3).map((p) => ({ nombre: p.display_name, puntos: p.puntos })) },
+        cofre: (() => { const l = loot.estado(); return { activo: l.activo && l.directo, quedanSeg: l.proximoEnSeg, participantes: l.aventureros.length, deGuerra: l.cofreDeGuerra }; })(),
+        novedades: novedadesLoot.recientes(),
       };
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify(datos));

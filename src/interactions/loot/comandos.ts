@@ -13,6 +13,7 @@ import * as users from '../../data/users.js';
 import type { Viewer } from '../../core/events.js';
 import {
   ESTILO,
+  PODER,
   FORJA_CANTIDAD,
   MOCHILA_MAX,
   OBJETOS,
@@ -49,7 +50,7 @@ const sinTildes = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').trim(
  * Para qué sirve el botín (decidido el 25 sep 2026: los cuatro usos).
  *
  *   !poder             tu poder, tu puesto y tus duelos
- *   !duelo nombre      gana quien más poder tenga, con algo de azar (vale con o sin @)
+ *   !duelo nombre      el poder fija la probabilidad; una tirada decide (vale con o sin @)
  *   !forjar [rareza]   3 de una rareza → 1 de la siguiente
  *   !presumir          tu mejor pieza, en la pantalla del directo
  *   !coleccion         cuántos objetos distintos has conseguido; títulos
@@ -93,7 +94,10 @@ export const poder: Interaction<CtxComando> = {
     const duelos = d.ganados + d.perdidos > 0 ? ` · duelos ${d.ganados}-${d.perdidos}` : '';
     const meses = suscriptores.meses(ctx.viewer.id);
     const sub = suscriptores.esSub(ctx.viewer.id) ? ` · 💜 suscriptor${meses > 1 ? ` · ${meses} meses` : ''}` : '';
-    return { text: `@${conTitulo(ctx.viewer)} ⚔️ Poder ${inv.poder}${puesto}${duelos}${sub}`, allowedMentions: [ctx.viewer.login] };
+    const piezas = RAREZAS.filter((r) => inv.porRareza[r] > 0)
+      .map((r) => `${inv.porRareza[r]}${ESTILO[r].emoji}×${PODER[r]}`).join(' + ');
+    const malditos = inv.malditos ? `; ${inv.malditos} maldito${inv.malditos === 1 ? ' cuenta' : 's cuentan'} doble` : '';
+    return { text: `@${conTitulo(ctx.viewer)} ⚔️ Poder ${inv.poder} (${piezas}${malditos})${puesto}${duelos}${sub}. En duelo da probabilidad, no victoria segura.`, allowedMentions: [ctx.viewer.login] };
   },
 };
 
@@ -139,7 +143,8 @@ export const duelo: Interaction<CtxComando> = {
     }
 
     const prob = probabilidad(pa, pb);
-    const ganaYo = (ctx.azar ?? Math.random)() < prob;
+    const tirada = (ctx.azar ?? Math.random)();
+    const ganaYo = tirada < prob;
     const [ganador, perdedor] = ganaYo ? [yo, rival] : [rival, yo];
     lootDb.apuntarDuelo(ganador.id, perdedor.id);
     const puntos = temporada.puntosDuelo();
@@ -152,15 +157,16 @@ export const duelo: Interaction<CtxComando> = {
       retador: { nombre: yo.displayName, titulo: lootDb.titulo(yo.id), poder: pa },
       rival: { nombre: rival.displayName, titulo: lootDb.titulo(rival.id), poder: pb },
       prob,
+      tirada,
       ganaRetador: ganaYo,
       maldito: maldito ? maldito.objeto : null,
-    });
+    }, Date.now(), { retadorId: yo.id, rivalId: rival.id });
     const sorpresa = (ganaYo ? prob : 1 - prob) < 0.4 ? ' ¡Sorpresa!' : '';
     const traspaso = maldito ? ` ☠️ ${etiqueta(maldito)} pasa a ${ganador.displayName}.` : '';
     return {
       text:
-        `⚔️ @${yo.displayName} (poder ${pa}) reta a @${rival.displayName} (poder ${pb})… ` +
-        `¡Gana ${conTitulo(ganador)}!${sorpresa} (${Math.round(prob * 100)} % para quien retaba) +${puntos} de temporada${traspaso}`,
+        `⚔️ @${yo.displayName} (poder ${pa}, ${Math.round(prob * 100)} %) reta a @${rival.displayName} (poder ${pb}, ${Math.round((1 - prob) * 100)} %). ` +
+        `La suerte decide: ¡Gana ${conTitulo(ganador)}!${sorpresa} +${puntos} de temporada${traspaso}`,
       allowedMentions: [yo.login, rival.login],
     };
   },
@@ -613,7 +619,7 @@ export const ayuda: Interaction<CtxComando> = {
     text:
       `🎁 Loot: cada ${config.loot.minutosMin}-${config.loot.minutosMax} min cae un cofre para quien hable en el chat, ` +
       // Sin @ en el ejemplo del duelo: policy bloquea mencionar a quien no participa.
-      `y con Oros está el ${config.loot.cofreRewardTitle}. Comandos: !pj !inventario !poder !duelo nombre !dar nombre !usar !forjar !presumir !coleccion !top !temporada !evento`,
+      `y con Oros está el ${config.loot.cofreRewardTitle}. Tus objetos suman poder (⚪1 🔵3 🟣8 🟠20; malditos ×2). En !duelo el poder da probabilidad, no victoria segura (20-80 %). Comandos: !pj !inventario !poder !duelo nombre !dar nombre !usar !forjar !presumir !coleccion !top !temporada !evento`,
   }),
 };
 
@@ -654,8 +660,8 @@ export const LISTA = [
   ['!loot', 'Explica el Loot y sus comandos'],
   ['!inventario', 'Tu mochila (máx. 20), tu poder y tu mejor pieza. También !mochila e !inv'],
   ['!pj', 'Tu ficha de personaje en una línea: poder, temporada, colección, duelos, racha. !pj nombre enseña la de otro'],
-  ['!poder', 'Tu poder, tu puesto y tus duelos ganados'],
-  ['!duelo nombre', 'Reta a quien esté en el chat (con o sin @). Más poder, más posibilidades (20-80 %)'],
+  ['!poder', 'Tu poder desglosado por rareza (⚪1 🔵3 🟣8 🟠20; malditos ×2), puesto y duelos'],
+  ['!duelo nombre', 'Reta a quien esté en el chat. Poder de toda la mochila → probabilidad de ganar (20-80 %); decide una tirada aleatoria'],
   ['!forjar', `${FORJA_CANTIDAD} objetos de una rareza → 1 de la siguiente. Se puede elegir: !forjar raros. También !fundir`],
   ['!presumir', 'Tu mejor pieza, en la pantalla del directo'],
   ['!coleccion', 'Cuántos objetos distintos has conseguido. Completar una rareza da título'],

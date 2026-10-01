@@ -443,7 +443,7 @@ export function normalize(
     }
 
     case 'Twitch.Follow':
-      return { ...base, type: 'viewer.follow', viewer: { ...persona(payload), isSubscriber: false } };
+      return { ...base, type: 'viewer.follow', viewer: { ...(payload?.targetUser ? normalizeViewer(payload.targetUser) : persona(payload)), isSubscriber: false } };
 
     case 'Twitch.StreamOnline':
       return { ...base, type: 'stream.online' };

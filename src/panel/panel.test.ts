@@ -242,6 +242,14 @@ beforeEach(() => {
   });
 });
 
+test('Loot entrega los datos nuevos del panel con la misión apagada por defecto', async () => {
+  const r = await pedir('GET', '/api/loot');
+  assert.equal(r.status, 200);
+  assert.equal(r.body.mision.activa, false);
+  assert.ok(Array.isArray(r.body.duelosRecientes));
+  assert.equal(r.body.progresion.jugadores, 0);
+});
+
 describe('seguridad', () => {
   test('rechaza una cabecera Host ajena (DNS rebinding)', async () => {
     const r = await pedir('GET', '/api/estado', { cabeceras: { host: `malo.example:${puerto}` } });
@@ -887,6 +895,31 @@ test('overlays: no permite emitir pruebas de follows, subs ni regalos gestionado
     assert.equal(r.status, 400);
     assert.match(r.body.error, /Streamlabs/);
   }
+});
+
+test('overlays: al añadir un panel ya montado corrige una URL de demo sin moverlo', async () => {
+  const primero = await post('/api/overlays', { accion: 'obs', cual: 'panel', escena: 'Escena juego' });
+  assert.equal(primero.status, 200);
+  const fuente = obs.entradas.find((e) => e.inputName === 'OVL Panel')!;
+  const item = obs.items['Escena juego'].find((i) => i.sourceName === 'OVL Panel')!;
+  fuente.settings.url += '?demo=1';
+
+  const segundo = await post('/api/overlays', { accion: 'obs', cual: 'panel', escena: 'Escena juego' });
+  assert.equal(segundo.status, 200);
+  assert.match(segundo.body.hecho, /datos reales/);
+  assert.match(fuente.settings.url, /\/biblioteca\/overlays\/panel\.html$/);
+  assert.equal(obs.items['Escena juego'].find((i) => i.sourceName === 'OVL Panel')!.sceneItemId, item.sceneItemId);
+});
+
+test('overlays: el botín real llega al rotativo con sus puntos del mes', async () => {
+  loot.reset();
+  loot.enPantalla('Soichen', { objeto: 'Espada de Fuego Eterno', rareza: 'epico' }, 'cofre');
+  const r = await pedir('GET', '/api/overlay/panel');
+  assert.equal(r.status, 200);
+  assert.equal(r.body.novedades.at(-1).quien, 'Soichen');
+  assert.match(r.body.novedades.at(-1).detalle, /\+8 puntos del mes/);
+  assert.equal(r.body.cofre.activo, false);
+  loot.reset();
 });
 
 test('efectos: probar sin directo no ejecuta Actions ni manda chat', async () => {

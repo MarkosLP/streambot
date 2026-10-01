@@ -13,6 +13,9 @@ import * as engine from '../../core/engine.js';
 import * as lootDb from '../../data/loot.js';
 import * as loot from './index.js';
 import * as comandos from './comandos.js';
+import * as consent from '../../core/consent.js';
+import * as arena from './arena.js';
+import * as progresion from './progresion.js';
 import { MOCHILA_MAX, OBJETOS, type Rareza } from './objetos.js';
 
 /**
@@ -143,7 +146,7 @@ describe('!poder y !duelo', () => {
     dar('pepe', 'comun', 2);
     dar('pepe', 'legendario', 1);
     await handleEvent(mensaje('pepe', '!poder'));
-    assert.match(enviados[0]!, /^@pepe ⚔️ Poder 22 · puesto 1 de 1$/);
+    assert.match(enviados[0]!, /^@pepe ⚔️ Poder 22 \(2⚪×1 \+ 1🟠×20\) · puesto 1 de 1/);
   });
 
   test('la probabilidad es proporcional, entre el 20 y el 80 %', () => {
@@ -152,14 +155,45 @@ describe('!poder y !duelo', () => {
     assert.equal(comandos.probabilidad(100, 1), 0.8);
   });
 
+  test('el poder explica cuándo una pieza maldita cuenta doble', async () => {
+    lootDb.dar('id-pepe', 'pepe', { objeto: 'Anillo de plata encantado', rareza: 'raro', maldito: true }, 'maldicion');
+    await handleEvent(mensaje('pepe', '!poder'));
+    assert.match(enviados[0]!, /Poder 6 \(1🔵×3; 1 maldito cuenta doble\)/);
+  });
+
   test('un duelo tiene ganador y se apunta', async () => {
     dar('pepe', 'epico', 1);
     dar('ana', 'comun', 1);
     await handleEvent(mensaje('ana'));
     await engine.run(comandos.duelo, { viewer: { id: 'id-pepe', login: 'pepe', displayName: 'pepe' } as any, trigger: 'command', args: '@ana', azar: fijo(0) });
-    assert.match(enviados[0]!, /^⚔️ @pepe \(poder 8\) reta a @ana \(poder 1\)… ¡Gana pepe! \(80 % para quien retaba\) \+5 de temporada$/);
+    assert.match(enviados[0]!, /^⚔️ @pepe \(poder 8, 80 %\) reta a @ana \(poder 1, 20 %\)\. La suerte decide: ¡Gana pepe! \+5 de temporada$/);
     assert.deepEqual(lootDb.duelos('id-pepe'), { ganados: 1, perdidos: 0 });
     assert.deepEqual(lootDb.duelos('id-ana'), { ganados: 0, perdidos: 1 });
+    const registrado = arena.paraPanel()[0]!;
+    assert.equal(registrado.retador.poder, 8);
+    assert.equal(registrado.rival.poder, 1);
+    assert.equal(registrado.prob, 0.8);
+    assert.equal(registrado.tirada, 0);
+    assert.equal(registrado.ganaRetador, true);
+  });
+
+  test('el panel deja de mostrar un duelo si alguien pide el olvido', async () => {
+    dar('pepe', 'comun', 1);
+    dar('ana', 'comun', 1);
+    await handleEvent(mensaje('ana'));
+    await engine.run(comandos.duelo, { viewer: { id: 'id-pepe', login: 'pepe', displayName: 'pepe' } as any, trigger: 'command', args: 'ana', azar: fijo(0) });
+    assert.equal(arena.paraPanel().length, 1);
+    consent.olvidar('id-ana');
+    assert.equal(arena.paraPanel().length, 0);
+  });
+
+  test('la revisión de progresión enseña la opción mínima del nuevo jugador', () => {
+    dar('pepe', 'legendario', 1);
+    dar('ana', 'comun', 1);
+    const p = progresion.estado();
+    assert.equal(p.jugadores, 2);
+    assert.equal(p.mediana, 10.5);
+    assert.equal(p.nuevoContraLider, 0.2);
   });
 
   test('el débil puede ganar, y se nota', async () => {
@@ -250,6 +284,7 @@ describe('!loot y el olvido', () => {
   test('!loot explica los comandos', async () => {
     await handleEvent(mensaje('pepe', '!loot'));
     assert.match(enviados[0]!, /!inventario !poder !duelo nombre !dar nombre !usar !forjar !presumir !coleccion/);
+    assert.ok(enviados[0]!.length <= 500, 'la ayuda cabe en un mensaje de Twitch');
   });
 
   test('!olvidame borra mochila, colección y duelos', async () => {

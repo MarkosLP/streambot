@@ -201,6 +201,7 @@
           <article class="tarjeta">
             <header><h2>Acciones rápidas</h2><button class="enlace" data-ir="loot" type="button">Ir al Loot →</button></header>
             <p class="nota rapido-estado" id="i-loot">—</p>
+            <p class="nota" id="i-mision">Misión del directo apagada</p>
             <div class="rapidas">
               <button class="boton primario" type="button" id="i-jefe">🐉 Invocar jefe</button>
               <button class="boton" type="button" id="i-regalo">🎁 Cofre a todo el chat</button>
@@ -290,6 +291,16 @@
         <div class="stat" id="l-directo"><span class="stat-etiqueta">Directo</span><span class="stat-valor">—</span><span class="stat-sub"></span></div>
       </div>
 
+      <details class="plegable tarjeta" id="l-guia" data-recordar>
+        <summary><span>🧭 Cómo se juega al Loot</span><span class="nota">Guía rápida</span></summary>
+        <ol>
+          <li>Escribe en el chat: los cofres reparten objetos a quienes hayan participado hace poco.</li>
+          <li>Los objetos que conservas en la mochila suman poder: común 1, raro 3, épico 8, legendario 20. Los malditos valen el doble.</li>
+          <li>En <code>!duelo nombre</code>, el poder da una probabilidad de ganar de entre 20 % y 80 %. Una tirada decide el resultado.</li>
+          <li>Los puntos de temporada se consiguen con objetos, duelos ganados y MVP de jefes. Sirven para la clasificación mensual; no cambian los duelos.</li>
+        </ol>
+      </details>
+
       <div class="aviso" id="l-sin-directo" hidden>
         Sin directo no caen cofres automáticos. Para ver un banner, usa Pruebas: no necesitas marcar un directo. Este botón abre el estado real del juego, con cofres y recompensas:
         <button class="boton pequeno" id="l-marcar-directo" type="button">Abrir juego manualmente</button>
@@ -328,8 +339,27 @@
 
 
       <article class="tarjeta">
-        <header><h2>Jefe de raid</h2><span class="nota">El chat le pega con !atacar durante 3 min</span></header>
+        <header><h2>Jefe del chat</h2><span class="nota">El chat le pega con !atacar durante 3 min</span></header>
         <div class="jefe" id="l-jefe"></div>
+      </article>
+
+      <article class="tarjeta">
+        <header><h2>🎯 Misión del directo</h2><span class="nota" id="l-mision-estado">Apagada</span></header>
+        <p class="nota">Una misión compartida para cuando haya más gente. No se inicia sola.</p>
+        <p class="nota">Al completarla se celebra en el chat. Los cofres y jefes mantienen su botín habitual.</p>
+        <label class="campo"><span>Objetivo</span>
+          <select id="l-mision-tipo">
+            <option value="jefes">Derrotar 2 jefes</option>
+            <option value="cofres">Abrir 3 cofres del chat</option>
+          </select>
+        </label>
+        <p id="l-mision-progreso" role="status">0/2</p>
+        <progress id="l-mision-barra" value="0" max="2"></progress>
+        <div class="loot-acciones">
+          <button class="boton" id="l-mision-preparar" type="button">Preparar objetivo</button>
+          <button class="boton primario" id="l-mision-activar" type="button">Empezar misión</button>
+          <button class="boton" id="l-mision-pausar" type="button">Pausar</button>
+        </div>
       </article>
 
       <div class="dos-col">
@@ -359,6 +389,18 @@
         </article>
       </div>
 
+      <div class="dos-col">
+        <article class="tarjeta">
+          <header><h2>⚔️ Últimos duelos</h2><span class="nota">Desde que arrancó el bot</span></header>
+          <p class="nota">El porcentaje se calcula con el poder antes del duelo. Si la tirada es menor que el límite del retador, gana quien retó; si no, gana su rival. Un objeto maldito cambia de manos después.</p>
+          <ol class="botines" id="l-duelos"></ol>
+        </article>
+        <article class="tarjeta">
+          <header><h2>📈 Progresión de mochilas</h2><span class="nota">Datos actuales</span></header>
+          <div id="l-progresion"></div>
+        </article>
+      </div>
+
       <details class="plegable tarjeta" id="l-plegable-pruebas" data-recordar>
         <summary><span>🧪 Pruebas</span><span class="nota">Banners sin guardar · simulaciones de subs con efectos reales</span></summary>
         <div class="loot-acciones">
@@ -384,6 +426,12 @@
 
       <details class="plegable tarjeta" id="l-plegable-referencia" data-recordar>
         <summary><span>📖 Comandos, probabilidades y cómo montarlo</span><span class="nota">Para consultar</span></summary>
+        <section class="plegable-bloque">
+          <h2>Cómo funcionan el poder y los duelos</h2>
+          <p>La mochila suma poder: común <b>1</b>, raro <b>3</b>, épico <b>8</b> y legendario <b>20</b> por objeto. Un objeto maldito suma el doble. El nombre del objeto no añade fuerza ni habilidades en el duelo.</p>
+          <p>La probabilidad de quien reta es su poder dividido entre la suma del poder de ambos, con un mínimo del <b>20 %</b> y un máximo del <b>80 %</b>. Luego se hace una tirada: quien tenga más poder puede perder.</p>
+          <p><b>Ejemplo:</b> 8 de poder contra 2 da 80 % frente a 20 %. Los puntos de temporada son otra clasificación: no deciden el duelo.</p>
+        </section>
         <div class="plegable-rejilla">
           <section class="plegable-bloque">
             <header><h2>Comandos del chat</h2><span class="nota">Pulsa para copiar</span></header>
@@ -582,9 +630,14 @@
           </section>
           <section class="ovl-bloque">
             <h3>Panel rotativo</h3>
-            <p class="nota">Una caja pequeña para las escenas del juego que va cambiando entre lo que marques. Lo que aún no tiene datos se salta.</p>
-            <div class="ovl-panel-vista"><iframe src="/biblioteca/overlays/panel.html?demo=1" sandbox="allow-scripts" title="Ejemplo del panel rotativo" tabindex="-1"></iframe></div>
-            <p class="nota">Datos de ejemplo con el orden y ritmo elegidos. Usa las flechas para ordenar las tarjetas activas; los cambios se guardan y se aplican al overlay.</p>
+            <p class="nota">Una caja pequeña para las escenas del juego. Enseña el próximo cofre, la clasificación y lo que marques. Los cofres, canjes y jefes recientes aparecen unos segundos cuando ocurren.</p>
+            <div class="ovl-diseno">
+              <label class="campo"><span>Aspecto</span><select id="o-marco"><option value="pergamino">Pergamino real</option><option value="cristal">Cristal arcano</option><option value="estandarte">Estandarte ligero</option></select></label>
+              <label class="campo"><span>Opacidad <output id="o-opacidad-n">72 %</output></span><input type="range" id="o-opacidad" min="45" max="95" step="1" value="72" aria-label="Opacidad del panel rotativo"></label>
+            </div>
+            <div class="ovl-panel-vista"><iframe src="/biblioteca/overlays/panel.html" sandbox="allow-scripts" title="Panel rotativo con datos reales" tabindex="-1"></iframe></div>
+            <p class="nota" id="o-panel-estado" role="status">Cargando datos reales del bot…</p>
+            <p class="nota">Solo aparecen tarjetas con datos disponibles. Los puntos del mes vienen de objetos, duelos y MVP; son distintos del poder y de los Oros.</p>
             <div class="ovl-rotativo" id="o-rotativo"></div>
             <label class="campo ovl-segundos"><span>Segundos por cosa</span><input type="number" id="o-segundos" min="5" max="60" step="1"></label>
             <form class="ovl-meta" id="o-meta">

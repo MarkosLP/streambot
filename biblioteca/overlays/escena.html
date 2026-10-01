@@ -696,7 +696,7 @@ function datoTemporada(d) {
 let turno = 0;
 function datoRotativo(d) {
   if (d.jefe) {
-    return h('div', { class: 'dato' }, h('div', { class: 'etq' }, 'Jefe de raid'), h('div', { class: 'val' }, mayus(d.jefe.nombre)),
+    return h('div', { class: 'dato' }, h('div', { class: 'etq' }, 'Jefe del chat'), h('div', { class: 'val' }, mayus(d.jefe.nombre)),
       h('div', { class: 'sub' }, `${d.jefe.vida} / ${d.jefe.vidaMax}  ·  escribe !atacar`));
   }
   const b = d.botin[0];

@@ -533,7 +533,12 @@ export async function anadirOverlay(pedir: PedirObs, cual: OverlayDirecto, escen
   const ajustes = { width: o.ancho, height: o.alto, ...FPS, is_local_file: false, url: urlOverlay(cual), shutdown: false, restart_when_active: false, reroute_audio: cual === 'alertas' };
   const { inputs } = await pedir<{ inputs: { inputName: string }[] }>('GetInputList');
   const { sceneItems } = await pedir<{ sceneItems: { sourceName: string }[] }>('GetSceneItemList', { sceneName: escena });
-  if (sceneItems.some((i) => i.sourceName === o.fuente)) return `«${o.fuente}» ya estaba en «${escena}»: no la he movido.`;
+  // Una fuente existente puede conservar una URL antigua con ?demo=1.
+  // Actualizarla también cuando ya está en la escena, sin moverla.
+  if (sceneItems.some((i) => i.sourceName === o.fuente)) {
+    await pedir('SetInputSettings', { inputName: o.fuente, inputSettings: ajustes, overlay: true });
+    return `«${o.fuente}» en «${escena}» actualizado con datos reales; conserva su posición.`;
+  }
   let sceneItemId: number;
   if (!inputs.some((i) => i.inputName === o.fuente)) {
     ({ sceneItemId } = await pedir<{ sceneItemId: number }>('CreateInput', {

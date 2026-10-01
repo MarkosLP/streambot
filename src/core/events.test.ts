@@ -127,4 +127,17 @@ describe('normalize', () => {
     const event = normalize('Twitch.Announcement', { user_login: 'pepe' }, 'streamerbot');
     assert.equal(event.type, 'raw');
   });
+
+  test('follow real de Streamer.bot: el seguidor viene en targetUser', () => {
+    const event = normalize('Twitch.Follow', {
+      targetUser: { id: '975661956', login: 'h4ppyo4', name: 'h4ppyo4', type: 'twitch' },
+      broadcaster: { id: '125801906', login: 'crid4m', name: 'Crid4m', type: 'twitch' },
+      followedAt: '2026-09-28T21:47:05.5149917Z', isTest: false,
+    }, 'streamerbot');
+    assert.equal(event.type, 'viewer.follow');
+    if (event.type !== 'viewer.follow') return;
+    assert.equal(event.viewer.id, '975661956');
+    assert.equal(event.viewer.login, 'h4ppyo4');
+    assert.equal(event.viewer.displayName, 'h4ppyo4');
+  });
 });

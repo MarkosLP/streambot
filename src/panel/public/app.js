@@ -260,6 +260,7 @@ async function pintarLootInicio() {
       `${(d.enElChat || []).length} en el chat`,
     ].filter(Boolean);
     $('i-loot').textContent = partes.join(' · ');
+    $('i-mision').textContent = d.mision?.completada ? `🎯 ${d.mision.nombre}: completada` : d.mision?.activa ? `🎯 ${d.mision.nombre}: ${d.mision.progreso}/${d.mision.meta}` : '🎯 Misión del directo apagada';
     $('i-jefe').disabled = Boolean(d.jefe);
   } catch { /* sin bot: ya lo dice el aviso de arriba */ }
 }
@@ -937,7 +938,7 @@ const RAREZA_LOOT = {
   epico: { clase: 'r-epico', nombre: 'Épico' },
   legendario: { clase: 'r-legendario', nombre: 'Legendario' },
 };
-const ORIGEN = { cofre: 'cofre', oro: 'Cofre del tesoro', panel: 'desde el panel', regalo: 'regalo', jefe: 'jefe de raid', fidelidad: 'fidelidad', suscriptor: 'suscriptor', raid: 'incursión', bits: 'bits', forja: 'forjado', guerra: 'cofre de guerra', maldicion: 'Maldición', temporada: 'premio de temporada' };
+const ORIGEN = { cofre: 'cofre', oro: 'Cofre del tesoro', panel: 'desde el panel', regalo: 'regalo', jefe: 'jefe del chat', fidelidad: 'fidelidad', suscriptor: 'suscriptor', raid: 'raid de Twitch', bits: 'bits', forja: 'forjado', guerra: 'cofre de guerra', maldicion: 'Maldición', temporada: 'premio de temporada' };
 
 function mmss(seg) {
   const m = Math.floor(seg / 60);
@@ -1007,6 +1008,20 @@ async function cargarLoot() {
   if (document.activeElement !== $('loot-activo')) $('loot-activo').checked = d.activo;
   $('loot-activo-texto').textContent = d.activo ? 'Loot activo' : 'Loot apagado';
   if (document.activeElement !== $('loot-canal-juega')) $('loot-canal-juega').checked = d.canalJuega;
+  const m = d.mision;
+  if (m) {
+    if (document.activeElement !== $('l-mision-tipo')) $('l-mision-tipo').value = m.tipo;
+    $('l-mision-estado').textContent = m.completada ? 'Completada' : m.activa ? 'En marcha' : 'Apagada';
+    $('l-mision-progreso').textContent = `${m.nombre}: ${m.progreso}/${m.meta}`;
+    $('l-mision-barra').max = m.meta;
+    $('l-mision-barra').value = m.progreso;
+  } else {
+    $('l-mision-estado').textContent = 'Reinicia el bot';
+    $('l-mision-progreso').textContent = 'La versión abierta del bot aún no admite misiones.';
+  }
+  $('l-mision-preparar').disabled = !m;
+  $('l-mision-activar').disabled = !m || m.activa || m.completada;
+  $('l-mision-pausar').disabled = !m || !m.activa;
   $('l-regalo-ayuda').textContent = `Vacío: uno para cada persona del chat, haya escrito o no. Sin bots${d.canalJuega ? '; tú también participas' : ' y sin ti'}.`;
 
   const esperando = !d.activo ? 'Loot apagado' : !d.directo ? 'Esperando al directo' : null;
@@ -1063,6 +1078,27 @@ async function cargarLoot() {
       h('span', { class: 'quien' }, f.display_name),
       h('span', { class: 'dato' }, `${ORIGEN[f.origen] || f.origen} · ${hace(f.at)}`)))
     : [h('li', { class: 'vacio-lista' }, 'Todavía no ha caído nada. El primer cofre llegará en el próximo directo.')]));
+
+  $('l-duelos').replaceChildren(...(d.duelosRecientes?.length
+    ? d.duelosRecientes.slice(0, 10).map((x) => {
+      const a = Math.round(x.prob * 100);
+      const ganador = x.ganaRetador ? x.retador : x.rival;
+      const opcionGanadora = x.ganaRetador ? a : 100 - a;
+      return h('li', {},
+        h('strong', {}, `${x.retador.nombre} ${a} % · ${x.rival.nombre} ${100 - a} %`),
+        h('span', { class: 'dato' }, `Poder ${x.retador.poder} contra ${x.rival.poder} · tirada ${(x.tirada * 100).toFixed(1)} frente al límite ${(x.prob * 100).toFixed(1)}: ${x.tirada < x.prob ? 'gana quien retó' : 'gana quien defendió'} (${ganador.nombre}, ${opcionGanadora} % de opciones)${x.maldito ? ` · ☠️ cambió de manos: ${x.maldito}` : ''} · ${hace(new Date(x.at).toISOString())}`));
+    })
+    : [h('li', { class: 'vacio-lista' }, 'Todavía no hay duelos en esta sesión.')]));
+
+  const p = d.progresion;
+  $('l-progresion').replaceChildren(p?.jugadores
+    ? h('div', {},
+      h('p', {}, `${p.jugadores} mochilas · poder más alto ${p.masAlto} · mediana ${p.mediana} · más bajo ${p.masBajo}.`),
+      h('p', {}, `Alguien nuevo con un objeto común (poder 1) tendría ${Math.round(p.nuevoContraLider * 100)} % de opciones frente a la mochila líder.`),
+      h('p', { class: 'nota' }, p.jugadores < 10
+        ? 'Aún hay pocas mochilas para justificar un cambio de equilibrio. El mínimo del 20 % mantiene posibles los duelos desiguales.'
+        : 'El mínimo del 20 % mantiene posibles los duelos desiguales. Compara estos datos antes de cambiar las reglas.'))
+    : h('p', { class: 'nota' }, p ? 'Aún no hay mochilas para comparar.' : 'Reinicia el bot para ver la progresión.'));
 
   $('l-comandos').replaceChildren(...d.comandos.map(([cmd, que]) => h('li', {}, chipCopiar(cmd, cmd), h('span', {}, que))));
   pintarTemporada(d);
@@ -1137,6 +1173,16 @@ let jefeElegido = '';
 $('l-jefe').addEventListener('change', (e) => {
   if (e.target.id === 'l-jefe-tipo') jefeElegido = e.target.value;
 });
+
+for (const accion of ['preparar', 'activar', 'pausar']) {
+  $(`l-mision-${accion}`).addEventListener('click', async () => {
+    try {
+      await api('/api/loot/mision', { accion, tipo: $('l-mision-tipo').value });
+      await cargarLoot();
+      tostada(accion === 'activar' ? 'Misión en marcha' : accion === 'pausar' ? 'Misión pausada' : 'Objetivo preparado y apagado');
+    } catch (err) { tostada(err.message, true); }
+  });
+}
 
 $('l-jefe').addEventListener('click', async (e) => {
   const boton = e.target.closest('[data-jefe]');
@@ -1319,7 +1365,7 @@ const PREPARABLES = [
   { id: 'maldicion', titulo: 'Maldición', que: 'Filtro «FX Maldicion» en blanco y negro, apagado', necesita: 'fuente' },
   { id: 'lag', titulo: 'Lag', que: 'Filtro «FX Lag» que congela la imagen, apagado', necesita: 'fuente', plugin: true },
   { id: 'botin', titulo: 'Banner del Loot', que: 'Fuente «FX Botin»: el banner de cada cofre, oculta', necesita: 'escena' },
-  { id: 'jefe', titulo: 'Jefe y duelos', que: 'Fuente «FX Jefe»: la barra del jefe de raid y cada !duelo. Visible, pero cuando no pasa nada no se ve', necesita: 'escena' },
+  { id: 'jefe', titulo: 'Jefe y duelos', que: 'Fuente «FX Jefe»: la barra del jefe del chat y cada !duelo. Visible, pero cuando no pasa nada no se ve', necesita: 'escena' },
 ];
 
 // Lo que elegiste la última vez, para no tener que volver a elegirlo.
@@ -2418,22 +2464,47 @@ $('t-vaciar').addEventListener('click', () => { if (confirm('¿Vaciar el guion d
 
 let ovl = null;
 const TIPOS_ALERTA = [['bits', '◆ Bits'], ['raid', '⚔ Raids']];
-const PARTES_PANEL = [['top', '🏆 Top de la temporada'], ['follow', '❤ Último follow'], ['sub', '★ Último sub'], ['meta', '🎯 Meta']];
+const PARTES_PANEL = [['cofre', '🎁 Próximo cofre'], ['top', '🏆 Líder de Loot'], ['follow', '❤ Último follow'], ['sub', '★ Último sub'], ['meta', '🎯 Meta']];
 
 async function cargarOverlays() {
   try {
     ovl = await api('/api/overlays');
   } catch {
+    $('o-panel-estado').textContent = 'No se pueden consultar los datos del bot ahora mismo.';
     return; // Bot sin reiniciar: la tarjeta se queda sin datos.
   }
   pintarOverlays();
+  actualizarEstadoPanel();
 }
+
+async function actualizarEstadoPanel() {
+  try {
+    const d = await api('/api/overlay/panel');
+    const disponibles = [];
+    const activo = (clave) => ovl?.ajustes?.rotativo?.includes(clave);
+    if (activo('cofre') && d.cofre?.activo && d.cofre.quedanSeg !== null) disponibles.push('próximo cofre');
+    if (activo('top') && d.top?.podio?.length) disponibles.push('líder de Loot');
+    if (activo('follow') && d.ultimoFollow) disponibles.push('último follow');
+    if (activo('sub') && d.ultimoSub) disponibles.push('último sub');
+    if (activo('meta') && d.meta) disponibles.push('meta');
+    $('o-panel-estado').textContent = disponibles.length
+      ? `Datos reales del bot: ${disponibles.join(', ')}.`
+      : 'Aún no hay datos para las tarjetas activas; el panel queda transparente hasta que lleguen.';
+  } catch {
+    $('o-panel-estado').textContent = 'No se pueden consultar los datos del bot ahora mismo.';
+  }
+}
+
+setInterval(() => {
+  if (ovl && !document.hidden) actualizarEstadoPanel();
+}, 10_000);
 
 async function guardarOverlays(cuerpo, aviso) {
   try {
     ovl = { ...ovl, ...(await api('/api/overlays', cuerpo)) };
     if (aviso) tostada(aviso);
     pintarOverlays();
+    actualizarEstadoPanel();
   } catch (err) {
     tostada(err.message, true);
   }
@@ -2471,9 +2542,14 @@ function pintarOverlays() {
         h('button', { class: 'boton pequeno', type: 'button', disabled: indice < 0 || indice === a.rotativo.length - 1, 'aria-label': `Bajar ${nombre}`, onclick: () => mover(1) }, '↓')));
   }));
   const previaRotativo = document.querySelector('.ovl-panel-vista iframe');
-  const previaSrc = `/biblioteca/overlays/panel.html?demo=1&orden=${a.rotativo.join(',')}&segundos=${a.segundos}`;
+  const marco = a.marco || 'pergamino';
+  const opacidad = Number.isFinite(a.opacidad) ? a.opacidad : .72;
+  const previaSrc = `/biblioteca/overlays/panel.html?orden=${a.rotativo.join(',')}&segundos=${a.segundos}&marco=${marco}&opacidad=${Math.round(opacidad * 100)}`;
   if (previaRotativo.getAttribute('src') !== previaSrc) previaRotativo.src = previaSrc;
   if (document.activeElement !== $('o-segundos')) $('o-segundos').value = String(a.segundos);
+  $('o-marco').value = marco;
+  if (document.activeElement !== $('o-opacidad')) $('o-opacidad').value = String(Math.round(opacidad * 100));
+  $('o-opacidad-n').textContent = `${Math.round(opacidad * 100)} %`;
   for (const [id, k] of [['o-meta-tipo', 'tipo'], ['o-meta-titulo', 'titulo'], ['o-meta-objetivo', 'objetivo'], ['o-meta-base', 'base']]) {
     if (document.activeElement !== $(id)) $(id).value = String(a.meta[k]);
   }
@@ -2491,6 +2567,9 @@ new ResizeObserver(entradas => {
 $('o-volumen').addEventListener('input', () => { $('o-volumen-n').textContent = `${$('o-volumen').value} %`; });
 $('o-volumen').addEventListener('change', () => guardarOverlays({ accion: 'ajustes', ajustes: { volumen: Number($('o-volumen').value) / 100 } }));
 $('o-segundos').addEventListener('change', () => guardarOverlays({ accion: 'ajustes', ajustes: { segundos: Number($('o-segundos').value) } }));
+$('o-marco').addEventListener('change', () => guardarOverlays({ accion: 'ajustes', ajustes: { marco: $('o-marco').value } }));
+$('o-opacidad').addEventListener('input', () => { $('o-opacidad-n').textContent = `${$('o-opacidad').value} %`; });
+$('o-opacidad').addEventListener('change', () => guardarOverlays({ accion: 'ajustes', ajustes: { opacidad: Number($('o-opacidad').value) / 100 } }));
 $('o-meta').addEventListener('submit', (ev) => {
   ev.preventDefault();
   guardarOverlays({ accion: 'ajustes', ajustes: { meta: {
@@ -2557,7 +2636,7 @@ $('e-textos').addEventListener('submit', (ev) => {
  */
 const VARIANTES_OVERLAY = {
   'alertas.html': [{ nombre: 'Oscuro', q: '?demo=1' }, { nombre: 'Vibrante', q: '?demo=1&estilo=alegre' }, { nombre: 'Cálido', q: '?demo=1&estilo=acogedor' }],
-  'panel.html': [{ nombre: 'Oscuro', q: '?demo=1' }, { nombre: 'Vibrante', q: '?demo=1&estilo=alegre' }],
+  'panel.html': [{ nombre: 'Pergamino real', q: '?marco=pergamino' }, { nombre: 'Cristal arcano', q: '?marco=cristal' }, { nombre: 'Estandarte ligero', q: '?marco=estandarte' }],
   'avatar.html': [
     { nombre: 'Con fondo', q: '?demo=1&fondo=1&bocadillo=todo' },
     { nombre: 'Transparente', q: '?demo=1' },

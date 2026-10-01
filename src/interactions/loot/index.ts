@@ -16,9 +16,11 @@ import * as users from '../../data/users.js';
 import * as suscriptores from '../../data/suscriptores.js';
 import { esBot } from '../../core/bots.js';
 import * as arena from './arena.js';
-import { ESTILO, MOCHILA_MAX, NOMBRES_USABLES, RAREZAS, etiqueta, tirar, tirarMaldito, type Azar, type Botin, type TipoCofre } from './objetos.js';
+import { ESTILO, MOCHILA_MAX, NOMBRES_USABLES, PODER, RAREZAS, etiqueta, tirar, tirarMaldito, type Azar, type Botin, type TipoCofre } from './objetos.js';
 import * as eventos from './eventos.js';
+import * as novedades from './novedades.js';
 import * as temporada from './temporada.js';
+import * as misiones from './misiones.js';
 
 /**
  * Loot del chat.
@@ -170,6 +172,14 @@ export function setPantalla(fn: Pantalla | null): void {
  * qué esperarlo. Devuelve si había pantalla a la que mandarlo.
  */
 export function enPantalla(quien: string, botin: Botin, origen: OrigenPantalla): boolean {
+  if (origen !== 'prueba' && origen !== 'presumir') {
+    const titulo = origen === 'purificar' ? 'Objeto purificado' : origen === 'forja' ? 'Objeto forjado'
+      : origen === 'oro' ? 'Cofre del tesoro' : origen === 'maldicion' ? 'Maldición canjeada'
+      : origen === 'raid' ? 'Regalo por raid' : origen === 'jefe' ? 'Botín del jefe' : 'Cofre abierto';
+    const detalle = origen === 'purificar' ? `${botin.objeto} · ya no es maldito`
+      : `${botin.objeto} · +${PODER[botin.rareza] * (botin.maldito ? 2 : 1)} puntos del mes`;
+    novedades.anotar('botin', titulo, quien, detalle);
+  }
   if (!pantalla) return false;
   const mostrar = pantalla;
   const aceptado = fila.encolar(() => mostrar(quien, botin, origen));
@@ -365,7 +375,8 @@ export async function soltarCofre(
     return { viewer, botin, resultado: lootDb.dar(viewer.id, viewer.displayName, botin, origenFinal) };
   });
 
-  const texto = componerCofre(reparto);
+  const misionCompletada = !guerra && misiones.registrar('cofres');
+  const texto = componerCofre(reparto, misionCompletada ? '🎯 ¡Misión del directo completada! 🎁 ' : undefined);
   const outcome = await send({
     text: guerra ? texto.replace(/^(🎁 ¡Ha caído un cofre!|✨ ¡Cofre LEGENDARIO!)/, `⚔️ ¡Cofre de guerra (grito de ${guerra})!`) : texto,
     reason: NAME,
@@ -588,6 +599,7 @@ export function atraerCofreDeGuerra(quien: string, azar: Azar = Math.random): st
   }
   cofreDeGuerra = quien;
   programarEn((60 + azar() * 60) * 1000);
+  novedades.anotar('canje', 'Grito de guerra', quien, 'Cofre de guerra en 1–2 min · quédate en el chat');
   return `⚔️ ¡A las armas! El grito de ${quien} atrae un cofre de guerra: cae en 1-2 min para quien esté en el chat.`;
 }
 
@@ -658,6 +670,7 @@ export const pocion: Interaction<CtxEfecto> = {
   run: (ctx) => {
     const maldito = lootDb.tieneMaldito(ctx.viewer.id)!;
     purificaciones.set(ctx.viewer.id, Date.now() + VENTANA_PURIFICAR_MS);
+    novedades.anotar('canje', 'Poción de vida', ctx.viewer.displayName, 'Puede purificar su objeto maldito con !purificar');
     return {
       text:
         `🧪 @${ctx.viewer.displayName} la poción puede limpiar tu ${etiqueta(maldito)}. ` +
@@ -696,7 +709,7 @@ export function componerInventario(displayName: string, inv: lootDb.Inventario, 
     .map((r) => `${inv.porRareza[r]} ${ESTILO[r].emoji}`)
     .join(' ');
   const mejor = inv.mejor ? ` · Tu mejor pieza: ${etiqueta(inv.mejor)}` : '';
-  const malditos = inv.malditos ? ` · ☠️ ${inv.malditos} maldito${inv.malditos === 1 ? '' : 's'}` : '';
+  const malditos = inv.malditos ? ` · ☠️ ${inv.malditos} maldito${inv.malditos === 1 ? '' : 's'} (poder doble)` : '';
   return `@${displayName} 🎒 ${inv.total}/${capacidad}: ${cuenta} · ⚔️ Poder ${inv.poder}${malditos}${mejor}`;
 }
 
@@ -801,6 +814,7 @@ export function estado(now = Date.now()) {
 
 /** Solo para tests. */
 export function reset(): void {
+  novedades.reset();
   actividad.clear();
   vistos.clear();
   parar();

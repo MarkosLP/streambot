@@ -5,6 +5,7 @@ import type { ChannelRaidEvent, Viewer, ViewerCheerEvent, ViewerGiftBombEvent, V
 import { log } from '../../core/logger.js';
 import { send } from '../../core/output.js';
 import * as interactionLog from '../../data/interactions.js';
+import * as novedades from './novedades.js';
 import * as lootDb from '../../data/loot.js';
 import * as streams from '../../data/streams.js';
 import * as suscriptores from '../../data/suscriptores.js';
@@ -203,6 +204,8 @@ export async function alRecibirRaid(e: ChannelRaidEvent, azar: Azar = Math.rando
     premio = ` Cofre del tesoro para @${v.displayName} por traerla → ${etiqueta(botin)}${notaMochila(resultado)}.`;
   }
   const conJefe = e.espectadores >= JEFE_RAID_DESDE && streams.current() !== null;
+  novedades.anotar('raid', 'Raid entrante de Twitch', v.displayName,
+    `${e.espectadores} ${e.espectadores === 1 ? 'persona' : 'personas'}${conJefe ? ' · jefe en 30 s' : ''}`);
   await decir(
     `⚔️ ¡Llega una incursión de ${v.displayName} con ${e.espectadores} ${e.espectadores === 1 ? 'persona' : 'personas'}!${premio}` +
       (conJefe ? ' En 30 s aparece un jefe: escribid !atacar cuando salga.' : ''),

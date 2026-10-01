@@ -77,6 +77,22 @@ describe('alertas', () => {
 });
 
 describe('meta y ajustes', () => {
+  test('los ajustes antiguos reciben Próximo cofre una vez y luego se puede apagar', () => {
+    getDb().prepare('INSERT INTO ajustes (clave, valor, at) VALUES (?, ?, ?)')
+      .run('overlays', JSON.stringify({ ajustes: { rotativo: ['top', 'follow'] } }), new Date().toISOString());
+    alertas.reset();
+    assert.deepEqual(alertas.ajustes().rotativo, ['cofre', 'top', 'follow']);
+    alertas.cambiarAjustes({ rotativo: ['top', 'follow'] });
+    alertas.reset();
+    assert.deepEqual(alertas.ajustes().rotativo, ['top', 'follow']);
+  });
+
+  test('un follow real con targetUser aparece en el panel rotativo', () => {
+    const e = ev('Twitch.Follow', { targetUser: { id: '975661956', login: 'h4ppyo4', name: 'h4ppyo4' }, isTest: false });
+    assert.equal(alertas.alEvento(e), null);
+    assert.equal(alertas.paraRotativo().ultimoFollow?.quien, 'h4ppyo4');
+  });
+
   test('la meta suma lo que ya llevabas y lo que cuenta el bot', () => {
     alertas.cambiarAjustes({ meta: { tipo: 'follows', objetivo: 50, base: 40, titulo: 'Hacia los 50' } });
     alertas.alEvento(ev('Twitch.Follow', { user_id: '1', user_login: 'a', user_name: 'A' }));
@@ -86,11 +102,13 @@ describe('meta y ajustes', () => {
   });
 
   test('los ajustes se limpian y sobreviven a un reinicio', () => {
-    alertas.cambiarAjustes({ volumen: 9, segundos: 1, rotativo: ['meta', 'inventado', 'top', 'meta'], meta: { objetivo: -3 } });
+    alertas.cambiarAjustes({ volumen: 9, segundos: 1, rotativo: ['meta', 'inventado', 'top', 'meta'], marco: 'cristal', opacidad: 0.61, meta: { objetivo: -3 } });
     alertas.reset();
     const a = alertas.ajustes();
     assert.equal(a.volumen, 1);
     assert.equal(a.segundos, 5);
+    assert.equal(a.marco, 'cristal');
+    assert.equal(a.opacidad, 0.61);
     assert.deepEqual(a.rotativo, ['meta', 'top']);
     assert.equal(a.meta.objetivo, 1);
   });

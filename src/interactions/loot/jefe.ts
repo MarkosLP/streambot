@@ -15,6 +15,8 @@ import { tirar, type Azar } from './objetos.js';
 import { ESPECIALES, UMBRAL } from './especiales.js';
 import * as eventos from './eventos.js';
 import * as temporadas from '../../data/temporadas.js';
+import * as misiones from './misiones.js';
+import * as novedades from './novedades.js';
 import * as streams from '../../data/streams.js';
 import { PUNTOS_MVP } from './temporada.js';
 
@@ -154,6 +156,7 @@ export async function invocar(
   const vidaMax = VIDA_POR_PERSONA * Math.max(1, aventureros(now).length);
   jefe = { id: ++contador, tipo: elegido.tipo, nombre, golpes: [], golpesAcertados: 0, vidaMax, vida: vidaMax, hasta: now + DURACION_MS, danos: new Map(), avisoMitad: false,
     especialUsado: false, especial: null, bloqueos: new Map(), debiles: new Map(), fallan: new Set() };
+  novedades.anotar('jefe', 'Jefe del chat', nombre, 'Ha aparecido · escribe !atacar');
   final = null;
   reloj = setTimeout(() => void terminarPorTiempo(), DURACION_MS);
   reloj.unref?.();
@@ -416,10 +419,13 @@ function derrotado(j: Jefe, azar: Azar): { text: string; resumen: string } {
   for (const r of reparto) enPantalla(r.viewer.displayName, r.botin, 'jefe');
   // El MVP suma puntos de temporada (el botín ya suma lo suyo).
   if (reparto[0]) temporadas.sumar(reparto[0].viewer.id, reparto[0].viewer.displayName, PUNTOS_MVP);
+  const misionCompletada = reparto.length > 0 && misiones.registrar('jefes');
   const resumen = `jefe derrotado, ${j.nombre}: ${orden.map((o) => `${o.viewer.login}=${o.dano}`).join(', ')}`;
 
   const mvp = orden[0]!;
-  const inicio = `🏆 ¡${mayuscula(j.nombre)} ha caído! MVP ${mvp.viewer.displayName} (${mvp.dano} de daño). `;
+  novedades.anotar('jefe', 'Jefe derrotado', mvp.viewer.displayName,
+    reparto[0] ? `MVP contra ${j.nombre} · ${reparto[0].viewer.displayName} gana +${PUNTOS_MVP} puntos del mes` : `MVP contra ${j.nombre}`);
+  const inicio = `🏆 ¡${mayuscula(j.nombre)} ha caído!${misionCompletada ? ' ¡Misión del directo completada!' : ''} MVP ${mvp.viewer.displayName} (${mvp.dano} de daño). `;
   if (!reparto.length) return { text: `${inicio}Sin nadie más para repartir el botín… ¡a la próxima!`, resumen };
   return { text: componerCofre(reparto, inicio), resumen };
 }

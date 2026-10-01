@@ -37,8 +37,10 @@ export interface Alerta {
   at: string;
 }
 
-export const ROTATIVOS = ['top', 'follow', 'sub', 'meta'] as const;
+export const ROTATIVOS = ['cofre', 'top', 'follow', 'sub', 'meta'] as const;
 export type Rotativo = (typeof ROTATIVOS)[number];
+export const MARCOS_PANEL = ['pergamino', 'cristal', 'estandarte'] as const;
+export type MarcoPanel = (typeof MARCOS_PANEL)[number];
 
 export interface Meta {
   /** Qué se cuenta: follows o subs del mes (desde que el bot los ve), o nada. */
@@ -58,18 +60,24 @@ export interface Ajustes {
   rotativo: Rotativo[];
   /** Segundos que se queda cada cosa del panel rotativo. */
   segundos: number;
+  /** Aspecto y transparencia de la caja pequeña de OBS. */
+  marco: MarcoPanel;
+  opacidad: number;
   meta: Meta;
 }
 
 const POR_DEFECTO: Ajustes = {
   alertas: { follow: false, sub: false, regalo: false, bits: true, raid: true },
   volumen: 0.3,
-  rotativo: ['top', 'follow', 'sub', 'meta'],
+  rotativo: ['cofre', 'top', 'follow', 'sub', 'meta'],
   segundos: 12,
+  marco: 'pergamino',
+  opacidad: 0.72,
   meta: { tipo: 'subs', objetivo: 10, base: 0, titulo: 'Meta de subs del mes' },
 };
 
 interface Guardado {
+  versionRotativo: number;
   ajustes: Ajustes;
   ultimoFollow: { quien: string; at: string } | null;
   ultimoSub: { quien: string; texto: string; at: string } | null;
@@ -91,6 +99,8 @@ function limpiarAjustes(v: any): Ajustes {
   if (typeof v.volumen === 'number' && Number.isFinite(v.volumen)) a.volumen = Math.min(1, Math.max(0, v.volumen));
   if (Array.isArray(v.rotativo)) a.rotativo = [...new Set(v.rotativo.filter((r: unknown): r is Rotativo => (ROTATIVOS as readonly unknown[]).includes(r)))] as Rotativo[];
   a.segundos = entero(v.segundos, 5, 60, a.segundos);
+  if (MARCOS_PANEL.includes(v.marco)) a.marco = v.marco;
+  if (typeof v.opacidad === 'number' && Number.isFinite(v.opacidad)) a.opacidad = Math.min(0.95, Math.max(0.45, v.opacidad));
   if (v.meta && typeof v.meta === 'object') {
     if (['follows', 'subs', 'ninguna'].includes(v.meta.tipo)) a.meta.tipo = v.meta.tipo;
     a.meta.objetivo = entero(v.meta.objetivo, 1, 100_000, a.meta.objetivo);
@@ -107,8 +117,11 @@ function leer(): Guardado {
       const f = getDb().prepare('SELECT valor FROM ajustes WHERE clave = ?').get(CLAVE) as { valor: string } | undefined;
       v = f ? JSON.parse(f.valor) : null;
     } catch { /* sin guardar: lo de por defecto */ }
+    const ajustes = limpiarAjustes(v?.ajustes);
+    if (v && v.versionRotativo !== 2 && !ajustes.rotativo.includes('cofre')) ajustes.rotativo.unshift('cofre');
     guardado = {
-      ajustes: limpiarAjustes(v?.ajustes),
+      versionRotativo: 2,
+      ajustes,
       ultimoFollow: v?.ultimoFollow ?? null,
       ultimoSub: v?.ultimoSub ?? null,
       mes: v?.mes && typeof v.mes === 'object' ? { clave: String(v.mes.clave), follows: entero(v.mes.follows, 0, 1e6, 0), subs: entero(v.mes.subs, 0, 1e6, 0) } : { clave: mesDe(), follows: 0, subs: 0 },
@@ -243,6 +256,8 @@ export function paraRotativo() {
   return {
     orden: g.ajustes.rotativo,
     segundos: g.ajustes.segundos,
+    marco: g.ajustes.marco,
+    opacidad: g.ajustes.opacidad,
     ultimoFollow: g.ultimoFollow,
     ultimoSub: g.ultimoSub,
     meta: meta(),

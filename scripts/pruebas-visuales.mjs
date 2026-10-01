@@ -153,7 +153,7 @@ try {
       assert.equal(await evaluar("document.querySelector('#o-tipos').children.length"),2);
       assert.ok(await evaluar("[...document.querySelectorAll('#o-tipos label')].every(x=>!(/Follow|Sub/i.test(x.textContent)))"));
       assert.ok(await evaluar('document.documentElement.scrollWidth<=innerWidth'));
-      assert.equal(await evaluar("document.querySelector('#o-rotativo').children.length"),4);
+      assert.equal(await evaluar("document.querySelector('#o-rotativo').children.length"),5);
       if(caso==='overlays') {
         const estadoAntes=await evaluar("api('/api/overlays')");
         await evaluar("window.peticionesPrueba=[];window.apiOriginal=api;api=async(r,b)=>{if(b)window.peticionesPrueba.push({r,b});return window.apiOriginal(r,b)};document.querySelector('[data-prueba-alerta=bits]').click()");
@@ -162,17 +162,19 @@ try {
         assert.deepEqual(await evaluar('window.peticionesPrueba'),[],'la prueba local no escribe en ninguna API');
         assert.deepEqual(await evaluar("api('/api/overlays')"),estadoAntes);
         await captura(`overlays-local-${w}-despues`);
+        assert.doesNotMatch(await evaluar("document.querySelector('.ovl-panel-vista iframe').src"),/demo=1|evento=1/);
+        assert.match(await evaluar("document.querySelector('#o-panel-estado').textContent"),/Datos reales|Aún no hay datos/);
         await evaluar("document.querySelector('[data-tarjeta=follow] button').click()");await esperar(400);
-        assert.deepEqual(await evaluar("api('/api/overlays').then(d=>d.ajustes.rotativo)"),['follow','top','sub','meta']);
+        assert.deepEqual(await evaluar("api('/api/overlays').then(d=>d.ajustes.rotativo)"),['cofre','follow','top','sub','meta']);
         await evaluar("document.querySelector('[data-tarjeta=sub] input').click()");await esperar(300);
         await evaluar("document.querySelector('[data-tarjeta=sub] input').click()");await esperar(300);
-        assert.deepEqual(await evaluar("api('/api/overlays').then(d=>d.ajustes.rotativo)"),['follow','top','meta','sub']);
+        assert.deepEqual(await evaluar("api('/api/overlays').then(d=>d.ajustes.rotativo)"),['cofre','follow','top','meta','sub']);
         await evaluar('cargarOverlays()');
-        assert.equal(await evaluar("document.querySelector('#o-rotativo').firstChild.dataset.tarjeta"),'follow');
-        assert.match(await evaluar("document.querySelector('.ovl-panel-vista iframe').src"),/orden=follow,top,meta,sub/);
+        assert.equal(await evaluar("document.querySelector('#o-rotativo').firstChild.dataset.tarjeta"),'cofre');
+        assert.match(await evaluar("document.querySelector('.ovl-panel-vista iframe').src"),/orden=cofre,follow,top,meta,sub/);
         await evaluar("document.querySelector('#o-rotativo').scrollIntoView({block:'center'})");await captura(`overlays-orden-${w}-despues`);
         assert.ok(await evaluar('document.documentElement.scrollWidth<=innerWidth'));
-        await evaluar("guardarOverlays({accion:'ajustes',ajustes:{rotativo:['top','follow','sub','meta']}});api=window.apiOriginal");await esperar(300);
+        await evaluar("guardarOverlays({accion:'ajustes',ajustes:{rotativo:['cofre','top','follow','sub','meta']}});api=window.apiOriginal");await esperar(300);
       }
     }
   }
@@ -243,6 +245,21 @@ try {
     assert.ok(medidas.scroll<=w,JSON.stringify(medidas));assert.ok(Math.abs(medidas.visor-medidas.marco)<2,JSON.stringify(medidas));
     await evaluar("document.querySelector('.ovl-panel-vista').scrollIntoView({block:'center'})");await captura(`10-overlays-${w}-despues`);
     console.log('Correcto: vista proporcional sin desbordamiento',w);
+  }
+  if(caso==='panel-estilos') {
+    await abrir('/#/overlays',1366,768);await evaluar("irA('overlays')");await esperar(500);
+    for(const marco of ['pergamino','cristal','estandarte']) {
+      await evaluar(`document.querySelector('#o-marco').value='${marco}';document.querySelector('#o-marco').dispatchEvent(new Event('change',{bubbles:true}))`);
+      await esperar(1300);
+      assert.match(await evaluar("document.querySelector('.ovl-panel-vista iframe').src"),new RegExp(`marco=${marco}`));
+      await captura(`panel-${marco}-1366`);
+      await evaluar(`document.querySelector('.ovl-panel-vista iframe').src='/biblioteca/overlays/panel.html?demo=1&orden=top&segundos=60&marco=${marco}&opacidad=72'`);
+      await esperar(1200);await captura(`panel-${marco}-top-1366`);
+    }
+    await evaluar("document.querySelector('#o-opacidad').value='60';document.querySelector('#o-opacidad').dispatchEvent(new Event('change',{bubbles:true}))");
+    await esperar(400);
+    assert.equal(await evaluar("api('/api/overlays').then(d=>d.ajustes.opacidad)"),.6);
+    assert.match(await evaluar("document.querySelector('.ovl-panel-vista iframe').src"),/opacidad=60/);
   }
   if(caso==='14')for(const w of [390,1366]) {
     await abrir('/#/directo',w,w===390?844:768);
