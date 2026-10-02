@@ -17,6 +17,7 @@
   * { box-sizing: border-box; }
   html, body { width: 1920px; height: 1080px; margin: 0; overflow: hidden; background: #07060a; }
   body { font-family: 'Rajdhani Local', 'Segoe UI', sans-serif; color: var(--tinta); }
+  body[data-region="refugio"] { --acento: #ff9a52; --acento-b: 255, 154, 82; }
   body[data-region="bosque"] { --acento: #f0a24a; --acento-b: 240, 162, 74; }
   body[data-region="cantera"] { --acento: #b48cff; --acento-b: 180, 140, 255; }
   body[data-region="marisma"] { --acento: #5fe0c8; --acento-b: 95, 224, 200; }
@@ -85,6 +86,7 @@
   .aviso { padding: 34px 48px 36px; }
   .aviso .sello { font-size: 20px; letter-spacing: .4em; text-transform: uppercase; color: var(--acento); }
   .aviso h1 { margin: 10px 0 8px; font-family: 'Cinzel Decorative Local', Georgia, serif; font-size: 54px; line-height: 1.05; color: var(--oro-claro); text-shadow: 0 3px 0 #000; }
+  .aviso h1, .aviso p { text-wrap: balance; }
   .aviso p { margin: 0; font-size: 30px; font-weight: 600; color: var(--tinta); }
   .aviso .premio { margin-top: 18px; display: inline-block; padding: 8px 22px; border-radius: 999px; font-size: 28px; font-weight: 700;
     background: rgba(var(--acento-b), .16); border: 1.5px solid var(--acento); color: var(--oro-claro); }
@@ -99,11 +101,45 @@
   .acciones li { font-size: 28px; font-weight: 600; text-shadow: 0 2px 6px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .acciones li:nth-child(1) { opacity: 1; } .acciones li:nth-child(2) { opacity: .78; } .acciones li:nth-child(3) { opacity: .55; }
   .acciones b { color: var(--oro-claro); }
-  .comandos { display: flex; gap: 14px; flex: none; }
+  .comandos { display: flex; gap: 14px; flex: none; margin-left: auto; }
   .comandos span { padding: 12px 22px; font-size: 32px; font-weight: 700; letter-spacing: .02em; color: var(--oro-claro); }
   .comandos span.principal { border-color: var(--acento); box-shadow: 0 0 0 1px #000, 0 0 22px rgba(var(--acento-b), .55), inset 0 1px 0 rgba(255, 230, 170, .2); }
 
   body.sin-datos .lateral, body.sin-datos .acciones, body.sin-datos .comandos { opacity: .35; filter: grayscale(.6); }
+
+  /* Fase 3 (2 oct 2026): guía para quien llega, pausa con el tiempo detenido y mundo cerrado. */
+  .lateral [hidden] { display: none; }
+  .guia { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 16px; counter-reset: paso; }
+  .guia li { display: grid; grid-template-columns: 44px 1fr; align-items: start; gap: 14px; font-size: 26px; font-weight: 600; line-height: 1.25; }
+  .guia li::before { counter-increment: paso; content: counter(paso); display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
+    font-size: 24px; font-weight: 700; color: var(--oro-claro); background: rgba(var(--acento-b), .16); border: 1.5px solid rgba(var(--acento-b), .8); }
+  .guia b { color: var(--oro-claro); }
+  .pista { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid rgba(255, 230, 170, .18); font-size: 22px; font-weight: 600; color: var(--suave); }
+  .pista b { color: var(--oro-claro); }
+  @media (prefers-reduced-motion: no-preference) {
+    body.en-calma .comandos span.principal { animation: llama 2.6s ease-in-out infinite; }
+  }
+  @keyframes llama { 50% { box-shadow: 0 0 0 1px #000, 0 0 38px rgba(var(--acento-b), .9), inset 0 1px 0 rgba(255, 230, 170, .3); } }
+  body.pausado .fondo { filter: saturate(.5) brightness(.6); }
+  body.pausado .capas, body.pausado .ambiente i { animation-play-state: paused; }
+  body.pausado .comandos { opacity: .6; }
+  .aviso .nota { margin-top: 6px; font-size: 24px; color: var(--suave); }
+  body.cerrado .lateral, body.cerrado .acciones { display: none; }
+  body.cerrado .comandos { opacity: .45; }
+
+  /* Victoria: halo de rayos detrás del cartel y chispas del color del lugar. */
+  .aviso { position: relative; z-index: 1; }
+  .halo { position: absolute; left: 50%; top: 50%; width: 1500px; height: 1500px; margin: -750px 0 0 -750px; pointer-events: none; opacity: 0; transition: opacity 1.2s ease;
+    background: repeating-conic-gradient(rgba(var(--acento-b), .2) 0 3deg, transparent 3deg 15deg);
+    -webkit-mask-image: radial-gradient(circle, #000 16%, transparent 48%); mask-image: radial-gradient(circle, #000 16%, transparent 48%); }
+  .centro.ganada .halo { opacity: 1; }
+  .centro.ganada .aviso { border-color: var(--acento); box-shadow: 0 0 0 1px #000, 0 10px 30px rgba(0, 0, 0, .55), 0 0 46px rgba(var(--acento-b), .35), inset 0 1px 0 rgba(255, 230, 170, .25); }
+  @media (prefers-reduced-motion: no-preference) { .halo { animation: gira 120s linear infinite; } }
+  .chispas { position: absolute; left: 50%; top: 46%; width: 0; height: 0; pointer-events: none; }
+  .chispas i { position: absolute; width: var(--t); height: var(--t); margin: calc(var(--t) / -2); border-radius: 50%; opacity: 0;
+    background: #fff6e0; box-shadow: 0 0 14px 5px var(--acento); animation: chispa var(--d) cubic-bezier(.1, .7, .3, 1) var(--r) forwards; }
+  @keyframes chispa { 0% { opacity: 0; transform: none; } 10% { opacity: 1; } 70% { opacity: .9; } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.4); } }
+  @media (prefers-reduced-motion: reduce) { .chispas { display: none; } }
 
   /* Reacciones a lo que hace el chat: solo con datos nuevos, nunca en cada consulta. */
   .acciones li.nueva { animation: accion-entra 1.4s cubic-bezier(.2, .8, .2, 1); }
@@ -122,7 +158,7 @@
 
 </style>
 </head>
-<body data-region="bosque">
+<body data-region="refugio">
 <div class="capas" id="capas"><div class="fondo" id="fondo-a"></div><div class="fondo oculto" id="fondo-b"></div></div>
 <div class="ambiente" id="ambiente"></div>
 <div class="velo"></div>
@@ -136,15 +172,27 @@
 <div class="ausente placa"><img src="../imagenes/espectadores/icono.png" alt=""><div>Crid4m está ausente<small>El mundo sigue: jugad vosotros</small></div></div>
 
 <aside class="lateral placa" id="lateral">
-  <h2>Objetivo de la compañía</h2>
-  <div class="meta" id="meta"></div>
-  <div class="cuenta"><b id="actual"></b><span id="total"></span></div>
-  <div class="barra" id="barra"></div>
-  <div class="reloj" id="reloj"></div>
-  <div class="compania"><h3>La compañía</h3><ol id="compania"></ol></div>
+  <div id="bloque-objetivo">
+    <h2>Objetivo de la compañía</h2>
+    <div class="meta" id="meta"></div>
+    <div class="cuenta"><b id="actual"></b><span id="total"></span></div>
+    <div class="barra" id="barra"></div>
+    <div class="reloj" id="reloj"></div>
+    <div class="compania"><h3>La compañía</h3><ol id="compania"></ol></div>
+    <p class="pista" id="pista" hidden>¿Acabas de llegar? Escribe <b>!explorar</b> y suma un paso.</p>
+  </div>
+  <div id="bloque-guia" hidden>
+    <h2>Cómo se juega</h2>
+    <ol class="guia">
+      <li><span>Escribe <b>!explorar</b>: la compañía sale y tú sumas un paso.</span></li>
+      <li><span>Llenad la barra antes de que el Velo se cierre.</span></li>
+      <li><span>Quien ayuda gana renombre. Míralo con <b>!expedicion</b>.</span></li>
+    </ol>
+  </div>
 </aside>
 
-<section class="centro" id="centro" hidden><div class="aviso placa" id="aviso"></div></section>
+<div class="chispas" id="chispas"></div>
+<section class="centro" id="centro" hidden><div class="halo"></div><div class="aviso placa" id="aviso"></div></section>
 
 <footer class="pie">
   <ul class="acciones" id="acciones"></ul>
@@ -219,17 +267,44 @@
   // Cuántas reacciones ha habido (para las pruebas: una clase de animación dura solo hasta la siguiente consulta).
   const contar = (que) => { const ds = document.documentElement.dataset; ds[que] = String(Number(ds[que] || 0) + 1); };
   function reaccionar(clase, el) { el.classList.remove(clase); void el.offsetWidth; el.classList.add(clase); }
+  /** Una sola ráfaga de chispas desde el cartel al completar; se retiran solas. */
+  function chispas() {
+    const caja = $('chispas');
+    caja.replaceChildren(...Array.from({ length: 34 }, () => {
+      const i = document.createElement('i');
+      const angulo = Math.random() * Math.PI * 2, distancia = entre([260, 620]);
+      i.style.setProperty('--t', `${entre([6, 12]).toFixed(1)}px`);
+      i.style.setProperty('--dx', `${(Math.cos(angulo) * distancia * 1.4).toFixed(0)}px`);
+      i.style.setProperty('--dy', `${(Math.sin(angulo) * distancia).toFixed(0)}px`);
+      i.style.setProperty('--d', `${entre([1.4, 2.4]).toFixed(2)}s`);
+      i.style.setProperty('--r', `${entre([0, .25]).toFixed(2)}s`);
+      return i;
+    }));
+    contar('chispas');
+    clearTimeout(chispas.limpieza);
+    chispas.limpieza = setTimeout(() => caja.replaceChildren(), 3000);
+  }
 
   /** Pinta un estado. Los nombres van siempre como texto, nunca como HTML. */
   function pintar(d, desconectado = false) {
     const fase = d.fase;
     const region = REGIONES[d.region.id] || REGIONES.bosque;
     const antes = desconectado ? null : pintado;
-    document.body.dataset.region = d.region.id;
     document.body.classList.toggle('sin-datos', desconectado);
     document.body.classList.toggle('atenuado', desconectado);
-    ponerLugar(fase === 'calma' || d.modo !== 'activo' ? 'refugio' : (REGIONES[d.region.id] ? d.region.id : 'bosque'));
-    $('lugar').textContent = fase === 'calma' ? 'La Última Lumbre' : region.nombre;
+    const cerrado = d.modo === 'apagado';
+    document.body.classList.toggle('cerrado', !desconectado && cerrado);
+    document.body.classList.toggle('pausado', !desconectado && d.modo === 'pausado');
+    document.body.classList.toggle('en-calma', !desconectado && d.modo === 'activo' && fase === 'calma');
+    // En pausa se queda en el lugar de la expedición, con el tiempo detenido; cerrado vuelve a la Lumbre.
+    const lugar = fase === 'calma' || cerrado ? 'refugio' : (REGIONES[d.region.id] ? d.region.id : 'bosque');
+    document.body.dataset.region = lugar;   // en la Lumbre, el color es el del fuego
+    ponerLugar(lugar);
+    $('lugar').textContent = fase === 'calma' || cerrado ? 'La Última Lumbre' : region.nombre;
+    // En calma el lateral explica cómo se juega; durante la expedición, una línea para quien acaba de llegar.
+    $('bloque-guia').hidden = fase !== 'calma';
+    $('bloque-objetivo').hidden = fase === 'calma';
+    $('pista').hidden = desconectado || d.modo !== 'activo' || fase !== 'expedicion';
     $('estado').textContent = desconectado ? 'Reconectando' : d.modo === 'pausado' ? 'En pausa' : d.modo === 'apagado' ? 'Cerrado'
       : fase === 'resultado' && d.resultado?.completada === false ? 'Sin completar'
       : { calma: 'En calma', expedicion: 'Expedición', resultado: '¡Completada!' }[fase];
@@ -247,7 +322,8 @@
     if (subio) { reaccionar('sube', $('actual')); contar('segmentos'); }
     $('reloj').replaceChildren(...(d.hasta && d.modo === 'activo'
       ? [fase === 'resultado' ? 'Nueva salida en ' : 'El Velo se cierra en ', texto('b', mmss(new Date(d.hasta) - Date.now()))]
-      : d.modo !== 'activo' ? ['El mundo está ', texto('b', d.modo === 'pausado' ? 'en pausa' : 'cerrado')]
+      : d.modo === 'pausado' ? ['El tiempo está ', texto('b', 'detenido')]
+      : cerrado ? ['El mundo está ', texto('b', 'cerrado')]
       : ['Esperando a la primera persona que escriba ', texto('b', '!explorar')]));
     const resto = d.participantes.length - 5;
     $('compania').replaceChildren(...(d.participantes.length
@@ -271,17 +347,23 @@
     if (desconectado) {
       $('centro').hidden = false;
       aviso.replaceChildren(texto('span', '', 'gira'), texto('h1', 'Reconectando con el mundo'), texto('p', 'El progreso está a salvo: vuelve en cuanto el bot responda.'));
+    } else if (d.modo === 'pausado' && fase === 'expedicion') {
+      $('centro').hidden = false;
+      aviso.replaceChildren(texto('div', 'Pausa', 'sello'), texto('h1', 'El tiempo se detiene'),
+        texto('p', `La expedición a ${region.nombre} sigue en ${d.objetivo.actual}/${d.objetivo.meta}.`), texto('p', 'Continuará donde la dejasteis.', 'nota'));
     } else if (d.modo !== 'activo') {
       $('centro').hidden = false;
-      aviso.replaceChildren(texto('div', 'La Lumbre espera', 'sello'), texto('h1', d.modo === 'pausado' ? 'El mundo está en pausa' : 'El Velo está cerrado'),
-        texto('p', 'Crid4m abrirá el mundo cuando llegue el momento.'));
+      aviso.replaceChildren(texto('div', 'La Lumbre espera', 'sello'), texto('h1', cerrado ? 'El Velo está cerrado' : 'El mundo está en pausa'),
+        texto('p', cerrado ? 'Crid4m abrirá el mundo cuando llegue el momento.' : 'Volverá tal como lo dejasteis.'));
     } else if (fase === 'calma') {
       $('centro').hidden = false;
-      aviso.replaceChildren(texto('div', 'La Lumbre arde tranquila', 'sello'), texto('h1', 'Escribe !explorar'), texto('p', `y la compañía saldrá hacia ${region.nombre}.`));
+      aviso.replaceChildren(texto('div', 'La Lumbre arde tranquila', 'sello'), texto('h1', 'Escribe !explorar'),
+        texto('p', `y la compañía saldrá hacia ${region.nombre}.`), texto('p', 'Basta con una persona.', 'nota'));
     } else if (fase === 'resultado') {
       $('centro').hidden = false;
       const resultado = d.resultado;
       if (resultado?.completada) {
+        $('centro').classList.add('ganada');
         const nombres = resultado.premios.map((p) => p.nombre);
         const puntos = resultado.premios.map((p) => p.renombre);
         const minimo = Math.min(...puntos);
@@ -289,12 +371,13 @@
         const premio = puntos.length === 0 ? 'Hallazgo registrado'
           : puntos.length === 1 ? `+${puntos[0]} de renombre`
           : `+${minimo}${maximo === minimo ? '' : `–${maximo}`} de renombre por aventurero`;
+        const hallazgo = resultado.hallazgo || region.hallazgo;
         aviso.replaceChildren(texto('div', '¡Expedición completada!', 'sello'),
-          texto('h1', `Hallazgo: ${resultado.hallazgo || region.hallazgo}`),
-          texto('p', `${resumenNombres(nombres)} ${nombres.length === 1 ? 'lo ha conseguido' : 'lo han conseguido'}.`),
+          texto('h1', hallazgo.charAt(0).toUpperCase() + hallazgo.slice(1)),
+          texto('p', `${resumenNombres(nombres)} ${nombres.length <= 1 ? 'lo ha encontrado' : 'lo han encontrado'}.`),
           texto('div', premio, 'premio'));
       } else {
-        aviso.replaceChildren(texto('div', 'El Velo se cierra', 'sello'), texto('h1', 'La compañía vuelve a la Lumbre'),
+        aviso.replaceChildren(texto('div', 'El Velo se cierra', 'sello'), texto('h1', 'De vuelta a la Lumbre'),
           texto('p', `La expedición terminó con ${d.objetivo.actual}/${d.objetivo.meta}. Nadie pierde nada.`));
       }
     } else {
@@ -306,7 +389,7 @@
     if (antes && clave && clave !== claveResultado(antes)) {
       reaccionar('revela', $('centro'));
       contar(d.resultado?.completada ? 'victorias' : 'cierres');
-      if (d.resultado?.completada) reaccionar('vivo', $('destello'));
+      if (d.resultado?.completada) { reaccionar('vivo', $('destello')); chispas(); }
       else $('destello').classList.remove('vivo');
     }
     if (!desconectado) pintado = d;

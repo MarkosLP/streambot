@@ -104,3 +104,18 @@ Definitivas para la fase 2 y siguientes: no volver a proponerlas salvo que él l
 2. **Base del mundo: La Última Lumbre y las tres regiones** (Fronda Ámbar, Canteras del Eco, Marisma de los Faroles), **con los fondos de `biblioteca/imagenes/mmo/`.** Nuevas regiones o variantes, en la fase 5 y sobre esta base.
 3. **La placa dice «Crid4m está ausente»**: explica por qué el chat puede seguir jugando solo. No cambiarla por «Vuelvo pronto» ni similares.
 4. **El tono de los textos del chat se mantiene, sin acortarlos** por ahora. Si en la prueba con gente real algo sobra, se revisará con los datos delante.
+
+## Fase 3, parte de Claude: calma, victoria, pausa y quien llega nuevo (2 oct 2026)
+
+Solo en `mmo.html`; el motor y el contrato siguen igual.
+
+- **Calma:** el lateral deja de enseñar un 0/4 vacío y explica **cómo se juega** en tres pasos (`!explorar`, llenar la barra antes de que se cierre el Velo, renombre visible con `!expedicion`). `!explorar` late despacio en la franja de comandos. En la Lumbre el acento es el del fuego, no el de la próxima región.
+- **Quien llega a mitad de expedición:** una línea al pie del lateral, «¿Acabas de llegar? Escribe !explorar y suma un paso».
+- **Pausa:** si la expedición iba a medias, la escena se queda en su lugar con el **tiempo detenido** (fondo apagado, partículas y fondo quietos) y dice en qué punto sigue. En calma o en resultado, «El mundo está en pausa».
+- **Cerrado:** solo la Lumbre y el cartel; sin barra ni acciones, y comandos atenuados.
+- **Victoria:** el hallazgo es el título («Un altar de savia antigua»), con halo de rayos lento detrás del cartel y una ráfaga de chispas del color del lugar que sale desde detrás. Un cierre sin completar sigue sin destello y ahora dice «De vuelta a la Lumbre».
+- Corregido: con todos los nombres retirados por `!olvidame`, el cartel decía «La compañía lo han…».
+
+Capturas `vivo-*` en [previews/mmo/](previews/mmo/), con `vivo-pausa`, `vivo-cerrado` y `vivo-chispas` nuevas. Edge sin ventana no avanza el reloj de las animaciones, así que la prueba congela las chispas a 0,7 s para comprobar que se ven.
+
+**Pendiente para cerrar las fases 2 y 3 (Codex o quien Crid4m diga):** controles del mundo en el panel, la fuente en OBS (no tocada: hay que preguntar antes) y la prueba de varias horas con el canal ausente. Detalle para el contrato: si el mundo está activo pero no hay directo, el motor rechaza `!explorar` y la escena sigue invitando a jugar; solo importa si la escena se ve fuera de directo.

@@ -64,6 +64,9 @@ try {
     // Ambiente del lugar: brasas en la Lumbre, sin animar lo que ya estaba al cargar.
     assert.equal(await evaluar("document.querySelector('#ambiente').className"),'ambiente refugio');
     assert.ok(await evaluar("document.querySelectorAll('#ambiente i').length")>10);
+    // En calma, el lateral explica cómo se juega en lugar de una barra vacía.
+    assert.equal(await evaluar("document.querySelector('#bloque-guia').hidden"),false);
+    assert.equal(await evaluar("document.querySelector('#bloque-objetivo').hidden"),true);
     await captura('mmo-vivo-calma');
     const ana={id:'mmo-ana',login:'ana',displayName:'Ana',isBroadcaster:false,isModerator:false,isVip:false,isSubscriber:false,rawRole:null};
     for(let i=0;i<3;i++)mmo.explorar(ana,`mmo-visual-${i}`,inicio+i*mmo.ACCION_MS);
@@ -74,14 +77,33 @@ try {
     assert.ok(Number(await evaluar('document.documentElement.dataset.acciones'))>=1,'las acciones nuevas se animan');
     assert.ok(Number(await evaluar('document.documentElement.dataset.segmentos'))>=1,'la barra reacciona al subir');
     assert.equal(await evaluar("document.querySelector('#ambiente').className"),'ambiente bosque');
+    assert.equal(await evaluar("document.querySelector('#pista').hidden"),false,'pista para quien acaba de llegar');
     await esperar(1600);
     await captura('mmo-vivo-expedicion');
+    // Pausa a mitad: sigue en el lugar, con el tiempo detenido y el progreso a la vista.
+    mmo.pausar();
+    await hasta("document.querySelector('#estado').textContent==='En pausa'");
+    assert.equal(await evaluar("document.body.classList.contains('pausado')"),true);
+    assert.equal(await evaluar("document.querySelector('#aviso').textContent.includes('3/4')"),true);
+    assert.match(await evaluar("[...document.querySelectorAll('.fondo')].find(f=>!f.classList.contains('oculto')).style.backgroundImage"),/bosque\.png/);
+    assert.match(await evaluar("getComputedStyle(document.querySelector('#fondo-a')).filter"),/saturate/);
+    await esperar(1600);
+    await captura('mmo-vivo-pausa');
+    mmo.activar();
+    await hasta("document.querySelector('#estado').textContent==='Expedición'");
     mmo.explorar(ana,'mmo-visual-3',inicio+3*mmo.ACCION_MS);
     await hasta("document.querySelector('#aviso').textContent.includes('altar de savia antigua')");
     assert.equal(await evaluar("document.querySelector('#aviso').textContent.includes('altar de savia antigua')"),true);
     assert.equal(await evaluar("document.querySelector('#aviso').textContent.includes('+8 de renombre')"),true);
     assert.equal(await evaluar('document.documentElement.dataset.victorias'),'1');
-    await esperar(1600);
+    assert.equal(await evaluar('document.documentElement.dataset.chispas'),'1');
+    assert.equal(await evaluar("document.querySelector('#centro').classList.contains('ganada')"),true);
+    await esperar(450);
+    // Edge sin ventana no avanza el reloj de las animaciones: se congelan las chispas a 0,7 s para mirarlas.
+    await evaluar("document.querySelectorAll('#chispas i').forEach(i=>i.getAnimations().forEach(a=>{a.pause();a.currentTime=700}))");
+    assert.ok(await evaluar("[...document.querySelectorAll('#chispas i')].filter(i=>Number(getComputedStyle(i).opacity)>.5).length")>10,'las chispas se ven');
+    await captura('mmo-vivo-chispas',{x:360,y:160,width:1200,height:760});
+    await esperar(1000);
     await captura('mmo-vivo-resultado');
     const salidaFallida = Date.now()+mmo.DESCANSO_MS+2000;
     mmo.avanzar(salidaFallida);
@@ -95,10 +117,17 @@ try {
     await esperar(1600);
     assert.match(await evaluar("[...document.querySelectorAll('.fondo')].find(f=>!f.classList.contains('oculto')).style.backgroundImage"),/cantera\.png/);
     await captura('mmo-vivo-fallo');
-    await evaluar("window.fetch=async()=>{throw Error('corte simulado')}");
+    await evaluar("window.fetchReal=window.fetch;window.fetch=async()=>{throw Error('corte simulado')}");
     await hasta("document.querySelector('#estado').textContent==='Reconectando'");
     assert.equal(await evaluar("document.querySelector('#estado').textContent"),'Reconectando');
     await captura('mmo-vivo-desconexion');
+    // Cerrado: solo el cartel; sin barra ni acciones que inviten a jugar.
+    await evaluar("window.fetch=window.fetchReal");
+    mmo.apagar();
+    await hasta("document.querySelector('#estado').textContent==='Cerrado'");
+    assert.equal(await evaluar("getComputedStyle(document.querySelector('#lateral')).display"),'none');
+    await esperar(1600);
+    await captura('mmo-vivo-cerrado');
   }
   if(caso==='charla-compartida') {
     await abrir('/biblioteca/overlays/charla-compartida.html?demo=1',1920,1080);
