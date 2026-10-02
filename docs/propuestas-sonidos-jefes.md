@@ -19,14 +19,8 @@ Los botones reproducen audio solo en el navegador; no envían eventos a OBS ni a
 
 Las versiones OGG son recortes de hasta cuatro segundos de los originales para facilitar su reproducción en el overlay. La selección final debe conservar las atribuciones indicadas.
 
-## Victoria (2 oct 2026, pendiente de elegir)
+## Victoria (2 oct 2026)
 
-A Crid4m no le gusta el sonido de cuando cae el jefe (`legendario.wav`, que también suena en el botín legendario). La victoria tendrá su propio archivo, `victoria-jefe.wav`; el del botín no se toca. Candidatos en la página de prueba, sección «Victoria», todos **CC0** de Freesound (sin atribución), pasados por `scripts/poner-sonido.mjs` con 5 s como máximo:
+Cuando cae el jefe suena `victoria-jefe.wav`: **Cinematic Hit With Horns**, de DeVern (https://freesound.org/people/DeVern/sounds/427803/), CC0, sin atribución. Antes sonaba `legendario.wav`, que se queda para el botín legendario y la alerta de raid.
 
-| Muestra | Original | Autor | Enlace |
-|---|---|---|---|
-| `propuesta-victoria-1.wav` | Fanfare 3 - Rpg | colorsCrimsonTears | https://freesound.org/people/colorsCrimsonTears/sounds/607407/ |
-| `propuesta-victoria-2.wav` | Inception Horn Victory | Kubatko | https://freesound.org/people/Kubatko/sounds/336725/ |
-| `propuesta-victoria-3.wav` | Trumpet Fanfare (recortado a 5 s) | bevibeldesign | https://freesound.org/people/bevibeldesign/sounds/350428/ |
-| `propuesta-victoria-4.wav` | Angelic Fanfare 2 | qubodup | https://freesound.org/people/qubodup/sounds/812468/ |
-| `propuesta-victoria-5.wav` | Triumph - C (recortado a 5 s) | James_KuKu | https://freesound.org/people/James_KuKu/sounds/747989/ |
+Crid4m lo eligió tras dos tandas. Descartadas: cinco fanfarrias de trompetas y orquesta («no me gusta ninguno») y, de la segunda, muere el dragón, golpe dramático de cine, gong, se desvanece en magia y el público celebra.

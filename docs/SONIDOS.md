@@ -14,6 +14,7 @@ El 28 sep 2026 Crid4m pidió cambiar los sintetizados («muy cutres o básicos»
 | `lag.wav` | Glitch | AmicaSys | https://freesound.org/people/AmicaSys/sounds/332711/ |
 | `cofre.wav` | Treasure Chest Open | steprock | https://freesound.org/people/steprock/sounds/771164/ |
 | `legendario.wav` | Success Fanfare Trumpets | FunWithSound | https://freesound.org/people/FunWithSound/sounds/456966/ |
+| `victoria-jefe.wav` | Cinematic Hit With Horns (cuando cae el jefe, 2 oct 2026) | DeVern | https://freesound.org/people/DeVern/sounds/427803/ |
 | `pocion.wav` | Sintetizado (`npm run sonidos`) | — | `src/cli/generar-sonidos.ts` |
 
 Todos llevan el volumen de la poción (la que gusta), salvo el cofre y el lag, que quedan unos 5-7 dB más bajos: son golpes muy cortos y subirlos más pediría comprimirlos. Si en directo se oyen flojos, se suben.

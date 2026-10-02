@@ -1656,7 +1656,8 @@
       return d;
     }));
     caja.hidden = true; void caja.offsetWidth; caja.hidden = false;
-    sonar(derrotado ? 'legendario.wav' : 'maldicion.wav');
+    // La victoria tiene su sonido (2 oct 2026, elegido por Crid4m); legendario.wav es del botín.
+    sonar(derrotado ? 'victoria-jefe.wav' : 'maldicion.wav');
     setTimeout(() => { if (finalVisto === f.id) caja.hidden = true; }, 9000);
   }
 
