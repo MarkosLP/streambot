@@ -330,12 +330,13 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       'Cache-Control': 'no-store',
       'Access-Control-Allow-Origin': '*',
     });
-    res.end(JSON.stringify(mmo.estado()));
+    // Sin Streamer.bot, los !explorar no llegan: la escena lo dice en vez de invitar a jugar.
+    res.end(JSON.stringify({ ...mmo.estado(), chatConectado: sb.estado().conectado }));
     return;
   }
 
   // El panel: estado del mundo y por qué podría no avanzar (sin directo o con el bot apagado).
-  if (ruta === 'GET /api/mmo') return json(res, 200, mundoPanel());
+  if (ruta === 'GET /api/mmo') return json(res, 200, mundoPanel(sb));
   if (ruta === 'POST /api/mmo') {
     const { accion } = await cuerpo(req);
     if (accion === 'activar') mmo.activar();
@@ -343,7 +344,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     else if (accion === 'apagar') mmo.apagar();
     else throw new ErrorHttp(400, 'accion tiene que ser activar, pausar o apagar');
     log.info(`Panel → El Linde del Velo: ${accion}`);
-    return json(res, 200, mundoPanel());
+    return json(res, 200, mundoPanel(sb));
   }
 
   // Lo que pintan las escenas (Empezamos, Charla, Pausa, Final). Como la del
@@ -1054,11 +1055,12 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
 }
 
 /** Lo que enseña la pestaña Mundo. El mundo solo avanza con directo y con el bot encendido. */
-function mundoPanel() {
+function mundoPanel(sb: PuertoStreamerbot) {
   return {
     estado: mmo.estado(),
     directo: streams.current() !== null,
     interruptor: killswitch.isEnabled(),
+    chat: sb.estado().conectado,
     escena: obsSetup.ESCENA_MUNDO.escena,
   };
 }

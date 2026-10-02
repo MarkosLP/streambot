@@ -3262,6 +3262,7 @@ function pintarMundo(d) {
   const avisos = [];
   if (e.modo === 'activo' && !d.directo) avisos.push('No hay directo: el mundo espera y !explorar no cuenta hasta que empiece.');
   if (e.modo === 'activo' && !d.interruptor) avisos.push('El bot está apagado (interruptor de abajo a la izquierda): el mundo no avanza.');
+  if (e.modo !== 'apagado' && !d.chat) avisos.push('Streamer.bot no está conectado: los !explorar del chat no llegan al mundo.');
   $('m-avisos').replaceChildren(...avisos.map((a) => h('li', {}, a)));
   const filas = [
     ['Ahora', e.modo === 'apagado' ? 'Cerrado' : MUNDO_FASES[e.fase] ?? e.fase],
@@ -3269,7 +3270,8 @@ function pintarMundo(d) {
   ];
   if (e.fase !== 'calma') {
     filas.push(['Progreso', `${e.objetivo.actual} / ${e.objetivo.meta}`]);
-    if (e.hasta) filas.push([e.fase === 'resultado' ? 'Nueva salida' : 'El Velo se cierra', `en ${Math.max(0, Math.ceil((new Date(e.hasta) - Date.now()) / 60000))} min`]);
+    if (e.detenido) filas.push(['Tiempo', 'Congelado hasta que vuelvan el directo y el bot']);
+    else if (e.hasta) filas.push([e.fase === 'resultado' ? 'Nueva salida' : 'El Velo se cierra', `en ${Math.max(0, Math.ceil((new Date(e.hasta) - Date.now()) / 60000))} min`]);
     filas.push(['Compañía', e.participantes.length ? e.participantes.map((p) => `${p.nombre} (${p.aporte})`).join(', ') : '—']);
   }
   if (e.ultimoSuceso) filas.push(['Último suceso', e.ultimoSuceso]);

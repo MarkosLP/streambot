@@ -989,6 +989,8 @@ describe('El Linde del Velo desde el panel', () => {
     assert.equal((await pedir('GET', '/api/mmo')).body.directo, true);
     assert.equal((await post('/api/mmo', { accion: 'pausar' })).body.estado.modo, 'pausado');
     assert.equal((await post('/api/mmo', { accion: 'apagar' })).body.estado.modo, 'apagado');
+    assert.equal((await pedir('GET', '/api/mmo')).body.chat, true);
+    assert.equal((await pedir('GET', '/api/mmo/estado')).body.chatConectado, true, 'la escena sabe si el chat llega');
   });
 
   test('Crear en OBS: escena del mundo con el overlay y las alertas encima, sin duplicar', async () => {
@@ -1002,8 +1004,10 @@ describe('El Linde del Velo desde el panel', () => {
     const item = obs.items['✦ El Linde del Velo']![0]!;
     assert.equal(obs.transformes[item.sceneItemId].scaleX, 2560 / 1920);
 
+    // Si alguien sube el mundo por encima de las alertas, al volver a pulsar quedan otra vez encima.
+    obs.items['✦ El Linde del Velo']!.reverse();
     const otra = await post('/api/escenas/obs', { tipo: 'mundo' });
-    assert.equal(obs.items['✦ El Linde del Velo']!.length, 2);
+    assert.deepEqual(obs.items['✦ El Linde del Velo']!.map((i) => i.sourceName), ['ESC Linde del Velo', 'OVL Alertas']);
     assert.ok(otra.body.hecho.some((x: string) => /ya existía/.test(x)));
     assert.ok(!obs.items['Escena juego']!.some((i) => i.sourceName === 'ESC Linde del Velo'), 'no toca la escena del juego');
   });

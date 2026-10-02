@@ -13,7 +13,8 @@ const prohibido = async () => { throw new Error('IA de pago bloqueada en pruebas
 setMotor({generar:prohibido, editar:prohibido, localizarCara:prohibido, comprobarVariante:prohibido});
 const { crearServidor } = await import('../src/panel/server.ts');
 const dirReferencias = await mkdtemp(join(tmpdir(), 'crid4m-referencias-visuales-'));
-const server = crearServidor({estado:()=>({conectado:false,destino:'Prueba aislada',intentosFallidos:0}),acciones:async()=>[],ejecutarAccion:async()=>{throw Error('Streamer.bot bloqueado');}},async()=>{throw Error('OBS bloqueado');},dirReferencias);
+let sbConectado=false;
+const server = crearServidor({estado:()=>({conectado:sbConectado,destino:'Prueba aislada',intentosFallidos:0}),acciones:async()=>[],ejecutarAccion:async()=>{throw Error('Streamer.bot bloqueado');}},async()=>{throw Error('OBS bloqueado');},dirReferencias);
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const raiz=`http://127.0.0.1:${server.address().port}`;
 const perfil=await mkdtemp(join(tmpdir(),'crid4m-navegador-'));
@@ -57,6 +58,7 @@ try {
     const streams = await import('../src/data/streams.ts');
     const inicio = Date.now() - 3*mmo.ACCION_MS;
     streams.openAt(new Date(inicio).toISOString());mmo.activar(inicio);
+    sbConectado=true;
     await abrir('/biblioteca/overlays/mmo.html',1920,1080);
     // La escena consulta cada 3 s más lo que tarde el bot: se espera a lo que se busca, no un tiempo fijo.
     const hasta=async(expr)=>{for(let i=0;i<60&&!(await evaluar(expr));i++)await esperar(100);};
@@ -91,6 +93,21 @@ try {
     await captura('mmo-vivo-pausa');
     mmo.activar();
     await hasta("document.querySelector('#estado').textContent==='Expedición'");
+    // Se corta el directo: tiempo detenido y la escena lo dice, sin cuenta atrás.
+    const corte=streams.close();mmo.avanzar();
+    await hasta("document.querySelector('#aviso').textContent.includes('espera al directo')");
+    assert.equal(await evaluar("document.querySelector('#reloj').textContent"),'El tiempo está detenido');
+    await esperar(1600);
+    await captura('mmo-vivo-espera-directo');
+    streams.open();mmo.avanzar();
+    // Streamer.bot se desconecta: el chat no llega y la escena no invita a jugar.
+    sbConectado=false;
+    await hasta("document.querySelector('#aviso').textContent.includes('Reconectando con el chat')");
+    assert.equal(await evaluar("document.querySelector('#pista').hidden"),true);
+    await captura('mmo-vivo-sin-chat');
+    sbConectado=true;
+    await hasta("document.querySelector('#estado').textContent==='Expedición'");
+    void corte;
     mmo.explorar(ana,'mmo-visual-3',inicio+3*mmo.ACCION_MS);
     await hasta("document.querySelector('#aviso').textContent.includes('altar de savia antigua')");
     assert.equal(await evaluar("document.querySelector('#aviso').textContent.includes('altar de savia antigua')"),true);

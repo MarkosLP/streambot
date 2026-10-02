@@ -570,6 +570,13 @@ export async function crearEscenaMundo(pedir: PedirObs): Promise<string[]> {
     await pantallaCompleta(pedir, escena, sceneItemId);
     hecho.push(`Alertas «${alertas}» añadidas encima.`);
   }
+  // Las alertas, siempre encima del mundo, aunque la escena ya existiera con otro orden.
+  const lista = await items();
+  const deAlertas = lista.find((i) => i.sourceName === alertas);
+  if (deAlertas && lista.at(-1) !== deAlertas) {
+    await pedir('SetSceneItemIndex', { sceneName: escena, sceneItemId: deAlertas.sceneItemId, sceneItemIndex: lista.length - 1 });
+    hecho.push('Alertas colocadas encima del mundo.');
+  }
   hecho.push('No cambia la escena que emites. Para que suene música aquí, márcala en Música.');
   return hecho;
 }

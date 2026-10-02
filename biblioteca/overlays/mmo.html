@@ -293,8 +293,12 @@
     document.body.classList.toggle('sin-datos', desconectado);
     document.body.classList.toggle('atenuado', desconectado);
     const cerrado = d.modo === 'apagado';
+    // Activo pero en espera: el tiempo congelado (sin directo, bot apagado) o el chat sin llegar.
+    const espera = desconectado || d.modo !== 'activo' ? null
+      : d.detenido === 'sin-directo' ? 'directo' : d.detenido === 'bot-apagado' ? 'bot' : d.chatConectado === false ? 'chat' : null;
+    const congelado = d.modo === 'pausado' || espera === 'directo' || espera === 'bot';
     document.body.classList.toggle('cerrado', !desconectado && cerrado);
-    document.body.classList.toggle('pausado', !desconectado && d.modo === 'pausado');
+    document.body.classList.toggle('pausado', !desconectado && congelado);
     document.body.classList.toggle('en-calma', !desconectado && d.modo === 'activo' && fase === 'calma');
     // En pausa se queda en el lugar de la expedición, con el tiempo detenido; cerrado vuelve a la Lumbre.
     const lugar = fase === 'calma' || cerrado ? 'refugio' : (REGIONES[d.region.id] ? d.region.id : 'bosque');
@@ -304,8 +308,9 @@
     // En calma el lateral explica cómo se juega; durante la expedición, una línea para quien acaba de llegar.
     $('bloque-guia').hidden = fase !== 'calma';
     $('bloque-objetivo').hidden = fase === 'calma';
-    $('pista').hidden = desconectado || d.modo !== 'activo' || fase !== 'expedicion';
+    $('pista').hidden = desconectado || d.modo !== 'activo' || fase !== 'expedicion' || Boolean(espera);
     $('estado').textContent = desconectado ? 'Reconectando' : d.modo === 'pausado' ? 'En pausa' : d.modo === 'apagado' ? 'Cerrado'
+      : espera ? 'En espera'
       : fase === 'resultado' && d.resultado?.completada === false ? 'Sin completar'
       : { calma: 'En calma', expedicion: 'Expedición', resultado: '¡Completada!' }[fase];
 
@@ -322,7 +327,7 @@
     if (subio) { reaccionar('sube', $('actual')); contar('segmentos'); }
     $('reloj').replaceChildren(...(d.hasta && d.modo === 'activo'
       ? [fase === 'resultado' ? 'Nueva salida en ' : 'El Velo se cierra en ', texto('b', mmss(new Date(d.hasta) - Date.now()))]
-      : d.modo === 'pausado' ? ['El tiempo está ', texto('b', 'detenido')]
+      : congelado ? ['El tiempo está ', texto('b', 'detenido')]
       : cerrado ? ['El mundo está ', texto('b', 'cerrado')]
       : ['Esperando a la primera persona que escriba ', texto('b', '!explorar')]));
     const resto = d.participantes.length - 5;
@@ -347,6 +352,15 @@
     if (desconectado) {
       $('centro').hidden = false;
       aviso.replaceChildren(texto('span', '', 'gira'), texto('h1', 'Reconectando con el mundo'), texto('p', 'El progreso está a salvo: vuelve en cuanto el bot responda.'));
+    } else if (espera && fase !== 'resultado') {
+      $('centro').hidden = false;
+      const [sello, titulo, linea] = {
+        directo: ['Un momento', 'El Velo espera al directo', fase === 'expedicion' ? `La expedición a ${region.nombre} sigue en ${d.objetivo.actual}/${d.objetivo.meta}.` : 'La Lumbre sigue encendida.'],
+        bot: ['Pausa', 'El tiempo se detiene', fase === 'expedicion' ? `La expedición a ${region.nombre} sigue en ${d.objetivo.actual}/${d.objetivo.meta}.` : 'La Lumbre sigue encendida.'],
+        chat: ['Un momento', 'Reconectando con el chat', 'Vuestros !explorar llegarán en cuanto vuelva la conexión.'],
+      }[espera];
+      aviso.replaceChildren(texto('div', sello, 'sello'), texto('h1', titulo), texto('p', linea),
+        ...(espera === 'chat' ? [] : [texto('p', 'Continuará donde la dejasteis.', 'nota')]));
     } else if (d.modo === 'pausado' && fase === 'expedicion') {
       $('centro').hidden = false;
       aviso.replaceChildren(texto('div', 'Pausa', 'sello'), texto('h1', 'El tiempo se detiene'),

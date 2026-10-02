@@ -10,6 +10,7 @@ import { normalize } from '../../core/events.js';
 import { handleEvent } from '../../core/handler.js';
 import { setSender } from '../../core/output.js';
 import * as policy from '../../core/policy.js';
+import * as killswitch from '../../core/killswitch.js';
 import * as mmo from './index.js';
 import type { Viewer } from '../../core/events.js';
 
@@ -104,6 +105,41 @@ describe('El Linde del Velo', () => {
     assert.equal(Date.parse(mmo.estado().hasta!), Date.parse(antes) + 60_000);
     streams.close();
     assert.deepEqual(mmo.explorar(ana, 'dos', ahora + mmo.ACCION_MS), { tipo: 'sin-directo' });
+  });
+
+  test('sin directo, con el bot apagado o cerrado, el plazo se congela y luego se desplaza', () => {
+    mmo.explorar(persona('ana'), 'uno', ahora);
+    const plazo = Date.parse(mmo.estado().hasta!);
+    // Se corta el directo a los 5 min y vuelve a la hora: la expedición no se ha perdido.
+    streams.close(new Date(ahora + 5 * 60_000).toISOString());
+    mmo.avanzar(ahora + 5 * 60_000);
+    assert.equal(mmo.estado().detenido, 'sin-directo');
+    assert.equal(mmo.estado().hasta, null, 'sin cuenta atrás mientras está congelado');
+    mmo.avanzar(ahora + mmo.DURACION_MS + 1);
+    assert.equal(mmo.estado().fase, 'expedicion');
+    streams.open(new Date(ahora + 65 * 60_000).toISOString());
+    mmo.avanzar(ahora + 65 * 60_000);
+    assert.equal(mmo.estado().detenido, null);
+    assert.equal(Date.parse(mmo.estado().hasta!), plazo + 60 * 60_000);
+    // Bot apagado desde el interruptor: lo mismo.
+    killswitch.disable('prueba');
+    mmo.avanzar(ahora + 70 * 60_000);
+    assert.equal(mmo.estado().detenido, 'bot-apagado');
+    killswitch.enable('prueba');
+    mmo.avanzar(ahora + 80 * 60_000);
+    assert.equal(Date.parse(mmo.estado().hasta!), plazo + 70 * 60_000);
+    // Cerrar el bot congela; al arrancar, el tiempo cerrado no cuenta.
+    mmo.parar(ahora + 81 * 60_000);
+    mmo.avanzar(ahora + 200 * 60_000);
+    assert.equal(mmo.estado().fase, 'expedicion');
+    assert.equal(Date.parse(mmo.estado().hasta!), plazo + 189 * 60_000);
+    // Una pausa encima de un plazo congelado cuenta desde que se congeló.
+    streams.close(new Date(ahora + 201 * 60_000).toISOString());
+    mmo.avanzar(ahora + 201 * 60_000);
+    mmo.pausar(ahora + 210 * 60_000);
+    streams.open(new Date(ahora + 220 * 60_000).toISOString());
+    mmo.activar(ahora + 221 * 60_000);
+    assert.equal(Date.parse(mmo.estado().hasta!), plazo + 209 * 60_000);
   });
 
   test('el olvido borra el progreso personal y lo retira de la expedición', () => {

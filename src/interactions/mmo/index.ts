@@ -1,6 +1,7 @@
 import { getDb } from '../../data/db.js';
 import * as streams from '../../data/streams.js';
 import * as killswitch from '../../core/killswitch.js';
+import { log } from '../../core/logger.js';
 import type { Viewer } from '../../core/events.js';
 
 /** Primer ciclo jugable de El Linde del Velo. El navegador de OBS solo leerá estado(). */
@@ -49,6 +50,15 @@ export interface EstadoPublico {
   acciones: Array<{ quien: string; texto: string; at: string }>;
   resultado: null | { completada: boolean; hallazgo: string | null; premios: Array<{ nombre: string; renombre: number }> };
   ultimoSuceso: string;
+  /** Activo pero con el tiempo congelado: sin directo o con el bot apagado. */
+  detenido: null | 'sin-directo' | 'bot-apagado';
+}
+
+/** El mundo solo corre con directo y con el bot encendido. */
+function detenido(): EstadoPublico['detenido'] {
+  if (!streams.current()) return 'sin-directo';
+  if (!killswitch.isEnabled()) return 'bot-apagado';
+  return null;
 }
 
 function mundo(): Mundo {
@@ -89,7 +99,8 @@ export function estado(): EstadoPublico {
     fase: w.fase,
     region: { id: region.id, nombre: region.nombre, objetivo: region.objetivo },
     objetivo: { actual: w.progreso, meta: w.meta },
-    hasta: w.modo !== 'activo' || w.hasta_ms === null ? null : new Date(w.hasta_ms).toISOString(),
+    // Congelado (pausa, sin directo, bot cerrado): sin cuenta atrás que no se cumple.
+    hasta: w.modo !== 'activo' || w.hasta_ms === null || w.pausado_ms !== null ? null : new Date(w.hasta_ms).toISOString(),
     participantes: gente.map(({ nombre, aporte }) => ({ nombre, aporte })),
     acciones: acciones.map(({ nombre, texto, at_ms }) => ({ quien: nombre, texto, at: new Date(at_ms).toISOString() })),
     resultado: final ? {
@@ -98,6 +109,7 @@ export function estado(): EstadoPublico {
       premios: premios.map(({ nombre, renombre }) => ({ nombre, renombre })),
     } : null,
     ultimoSuceso: w.ultimo_suceso,
+    detenido: w.modo === 'activo' ? detenido() : null,
   };
 }
 
@@ -107,15 +119,28 @@ export function arrancar(): void {
   reloj.unref();
 }
 
-export function parar(): void {
+/** Al cerrar el bot, el plazo se congela: el tiempo que esté cerrado no cuenta. */
+export function parar(now = Date.now()): void {
   if (reloj) clearInterval(reloj);
   reloj = null;
+  try {
+    congelar(now);
+  } catch {
+    // Sin base de datos abierta no hay nada que congelar.
+  }
 }
 
-/** Reactivar desde pausa conserva el tiempo que quedaba en la expedición. */
+/** pausado_ms con modo activo = plazo congelado hasta que el mundo pueda correr otra vez. */
+function congelar(now: number): void {
+  const r = getDb().prepare("UPDATE mmo_world SET pausado_ms = ? WHERE id = 1 AND modo = 'activo' AND hasta_ms IS NOT NULL AND pausado_ms IS NULL").run(now);
+  if (r.changes) log.info('El Linde del Velo: tiempo congelado (sin directo, bot apagado o cerrándose).');
+}
+
+/** Reactivar desde pausa (o desde un plazo congelado) conserva el tiempo que quedaba. */
 export function activar(now = Date.now()): EstadoPublico {
   const w = mundo();
-  const diferencia = w.modo === 'pausado' && w.pausado_ms !== null ? Math.max(0, now - w.pausado_ms) : 0;
+  const diferencia = w.pausado_ms !== null ? Math.max(0, now - w.pausado_ms) : 0;
+  log.info(`El Linde del Velo: activado${diferencia ? ` (plazo desplazado ${Math.round(diferencia / 60_000)} min)` : ''}.`);
   getDb().prepare(`UPDATE mmo_world SET modo = 'activo', pausado_ms = NULL,
     hasta_ms = CASE WHEN hasta_ms IS NULL THEN NULL ELSE hasta_ms + ? END WHERE id = 1`)
     .run(diferencia);
@@ -124,7 +149,9 @@ export function activar(now = Date.now()): EstadoPublico {
 
 export function pausar(now = Date.now()): EstadoPublico {
   const w = mundo();
-  if (w.modo === 'activo') getDb().prepare("UPDATE mmo_world SET modo = 'pausado', pausado_ms = ? WHERE id = 1").run(now);
+  // Si ya estaba congelado, la pausa cuenta desde entonces.
+  if (w.modo === 'activo') getDb().prepare("UPDATE mmo_world SET modo = 'pausado', pausado_ms = COALESCE(pausado_ms, ?) WHERE id = 1").run(now);
+  if (w.modo === 'activo') log.info('El Linde del Velo: en pausa.');
   return estado();
 }
 
@@ -132,13 +159,25 @@ export function pausar(now = Date.now()): EstadoPublico {
 export function apagar(): EstadoPublico {
   mundo();
   getDb().prepare("UPDATE mmo_world SET modo = 'apagado', fase = 'calma', progreso = 0, meta = 4, hasta_ms = NULL, pausado_ms = NULL WHERE id = 1").run();
+  log.info('El Linde del Velo: apagado.');
   return estado();
 }
 
 /** Se llama periódicamente y al recibir un comando. Nunca genera eventos atrasados en cadena. */
 export function avanzar(now = Date.now()): EstadoPublico {
-  const w = mundo();
-  if (w.modo !== 'activo' || !streams.current() || !killswitch.isEnabled()) return estado();
+  let w = mundo();
+  if (w.modo !== 'activo') return estado();
+  // Sin directo o con el bot apagado, el plazo se congela; al volver, se desplaza lo que estuvo parado.
+  if (detenido()) {
+    congelar(now);
+    return estado();
+  }
+  if (w.pausado_ms !== null) {
+    const parado = Math.max(0, now - w.pausado_ms);
+    getDb().prepare('UPDATE mmo_world SET hasta_ms = hasta_ms + ?, pausado_ms = NULL WHERE id = 1').run(parado);
+    log.info(`El Linde del Velo: el tiempo vuelve a correr (${Math.round(parado / 60_000)} min congelado).`);
+    w = mundo();
+  }
   if (w.hasta_ms === null || now < w.hasta_ms) return estado();
   if (w.fase === 'expedicion') {
     const db = getDb();
@@ -149,6 +188,7 @@ export function avanzar(now = Date.now()): EstadoPublico {
       db.prepare("UPDATE mmo_world SET fase = 'resultado', hasta_ms = ?, ultimo_suceso = 'La compañía volvió al refugio sin completar la expedición.' WHERE id = 1")
         .run(now + DESCANSO_MS);
       db.exec('COMMIT');
+      log.info(`El Linde del Velo: el Velo se cerró sin completar la expedición ${w.expedicion_id} (${w.progreso}/${w.meta}).`);
     } catch (err) {
       db.exec('ROLLBACK');
       throw err;
@@ -232,6 +272,8 @@ export function explorar(viewer: Viewer, mensajeId: string, now = Date.now()): R
       .run(progreso, meta, completada ? 'resultado' : 'expedicion', completada ? now + DESCANSO_MS : actual.hasta_ms,
         completada ? `La compañía completó la expedición en ${region.nombre}.` : 'La compañía sigue explorando.');
     db.exec('COMMIT');
+    if (inicio) log.info(`El Linde del Velo: ${viewer.displayName} abre la expedición ${actual.expedicion_id} a ${region.nombre}.`);
+    if (completada) log.info(`El Linde del Velo: expedición ${actual.expedicion_id} completada por ${gente.length} aventurero(s).`);
     const aporte = gente.find((p) => p.twitch_id === viewer.id)?.aporte ?? 1;
     return { tipo: 'ok', progreso, meta, completada, renombre, inicio, region: region.nombre, hallazgo: region.hallazgo, texto, aporte, participantes: gente.length };
   } catch (err) {
