@@ -1284,3 +1284,57 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
 .referencia-fila select { min-width:0; width:100%; }
 .referencia-elegida { width:70px; height:64px; object-fit:contain; }
 @media(max-width:700px) { .referencia-form,.referencia-fila { grid-template-columns:minmax(0,1fr); } }
+
+/* ---------- Biblioteca: un apartado a la vez ---------- */
+
+.subpestanas { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--borde); }
+.subpestanas button {
+  font: inherit; font-weight: 600; font-size: 0.92rem; color: var(--texto-2); background: none; cursor: pointer;
+  border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: 9px 14px;
+}
+.subpestanas button:hover { color: var(--texto); }
+.subpestanas button[aria-selected="true"] { color: var(--oro-claro); border-bottom-color: var(--oro); }
+.subpestanas button:focus-visible { outline: 2px solid var(--oro); outline-offset: -2px; border-radius: 6px; }
+.subpestanas .cuenta { opacity: .6; margin-left: 4px; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+
+/* Los filtros se quedan arriba al bajar: cambiar de carpeta sin volver al principio. */
+.galeria-filtros {
+  position: sticky; top: 0; z-index: 3; margin: 0 -8px 16px; padding: 10px 8px;
+  background: color-mix(in srgb, var(--fondo) 92%, transparent); backdrop-filter: blur(6px);
+}
+#g-plegar { margin-left: auto; }
+
+/* Grupos plegables. */
+.grupo-galeria > summary { list-style: none; cursor: pointer; }
+.grupo-galeria > summary::-webkit-details-marker { display: none; }
+.grupo-galeria > summary > h3 {
+  display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px;
+  font-family: var(--titulos); font-size: 0.95rem; letter-spacing: .04em; color: var(--texto-2);
+}
+.grupo-galeria > summary > h3::before { content: "▸"; color: var(--texto-3); transition: transform .15s ease; display: inline-block; }
+.grupo-galeria[open] > summary > h3::before { transform: rotate(90deg); }
+.grupo-galeria > summary:hover > h3 { color: var(--texto); }
+.grupo-galeria > summary:focus-visible { outline: 2px solid var(--oro); outline-offset: 2px; border-radius: 6px; }
+.grupo-galeria > summary > h3 .cuenta { font-family: inherit; font-size: 0.78rem; color: var(--texto-3); font-variant-numeric: tabular-nums; }
+.grupo-galeria > summary > h3 code { font-size: 0.78rem; color: var(--texto-3); margin-left: auto; }
+.grupo-galeria:not([open]) > summary > h3 { margin-bottom: 0; }
+#b-imagenes > * + * { margin-top: 18px; }
+.grupo-galeria + .grupo-galeria { margin-top: 18px; }
+
+/* Miniaturas más compactas: caben más por fila. */
+.grupo-galeria .lista-imagenes { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.grupo-galeria.anchos .lista-imagenes { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+.grupo-galeria.iconos .lista-imagenes { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+
+/* Personajes de dos en dos. */
+.grupos-personajes { display: grid; gap: 18px 24px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr)); }
+.grupos-personajes .grupo-galeria + .grupo-galeria { margin-top: 0; }
+.grupo-galeria.personaje .lista-imagenes { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.grupo-galeria.personaje .overlay-pie { padding: 6px 8px; }
+.grupo-galeria.personaje .sonido-meta { display: none; }
+.grupo-galeria.personaje .sonido-info strong { font-size: 0.78rem; }
+@media (max-width: 480px) { .grupo-galeria.personaje .lista-imagenes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.grupo-galeria.panoramicas .imagen-vista { aspect-ratio: 16 / 9; padding: 0; }
+.grupo-galeria.panoramicas .imagen-vista > img { inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.grupo-galeria > summary > h3 code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grupo-galeria.personaje > summary > h3 code { display: none; }

@@ -453,7 +453,7 @@
     <section class="vista" id="v-escenas" hidden>
       <header class="cabecera-vista">
         <div>
-          <p class="antetitulo">Empezamos · Charla · Pausa · Final</p>
+          <p class="antetitulo">Empezamos · Charla · Compartir · Pausa · Final</p>
           <h1>Escenas</h1>
           <p class="nota">Los textos, la cuenta atrás y el avatar se cambian aquí y salen en directo, sin tocar OBS. «Crear en OBS» solo añade: nunca cambia la escena que estás emitiendo.</p>
         </div>
@@ -464,7 +464,7 @@
       <div class="lista-escenas" id="e-lista"></div>
 
       <article class="tarjeta">
-        <header><h2>🎨 Estilo común de las cuatro escenas</h2><span class="nota" id="e-estilo-nota"></span></header>
+        <header><h2>🎨 Estilo de las escenas con fondo</h2><span class="nota" id="e-estilo-nota"></span></header>
         <div class="estilos" id="e-estilos" role="radiogroup" aria-label="Estilo de las escenas"></div>
         <details class="escena-avanzado"><summary>Crear o editar estilos y generar imágenes</summary>
         <div class="estilo-acciones">
@@ -903,7 +903,14 @@
         </div>
       </header>
 
-      <section class="bloque tarjeta" id="b-referencias">
+      <div class="subpestanas" id="b-apartados" role="tablist" aria-label="Apartados de la biblioteca">
+        <button type="button" role="tab" data-apartado="imagenes">Imágenes <span class="cuenta" id="c-imagenes"></span></button>
+        <button type="button" role="tab" data-apartado="sonidos">Sonidos <span class="cuenta" id="c-sonidos"></span></button>
+        <button type="button" role="tab" data-apartado="overlays">Overlays <span class="cuenta" id="c-overlays"></span></button>
+        <button type="button" role="tab" data-apartado="referencias">Referencias IA <span class="cuenta" id="c-referencias"></span></button>
+      </div>
+
+      <section class="bloque tarjeta" id="b-referencias" data-apartado="referencias">
         <h2>Referencias para la IA</h2>
         <p class="nota">Capturas del juego, lugares o personajes. Guardarlas es local y gratuito. Se enviarán al proveedor solo cuando las selecciones y autorices una generación.</p>
         <form id="ref-subir" class="referencia-form">
@@ -916,17 +923,17 @@
         <div id="ref-lista" class="referencias-lista"></div>
       </section>
 
-      <section class="bloque">
+      <section class="bloque" data-apartado="sonidos">
         <header class="bloque-cabecera"><h2>Sonidos</h2><span class="nota" id="n-sonidos"></span></header>
         <div class="lista-sonidos" id="b-sonidos"></div>
       </section>
 
-      <section class="bloque">
+      <section class="bloque" data-apartado="overlays">
         <header class="bloque-cabecera"><h2>Overlays</h2><span class="nota">En OBS: Fuente → Navegador → Archivo local, 1920×1080</span></header>
         <div class="lista-overlays" id="b-overlays"></div>
       </section>
 
-      <section class="bloque">
+      <section class="bloque" data-apartado="imagenes">
         <header class="bloque-cabecera"><h2>Imágenes</h2><span class="nota" id="n-imagenes">PNG, GIF, WebP o JPG</span></header>
         <div class="galeria-filtros">
           <input type="search" id="g-buscar" placeholder="Buscar por nombre…" autocomplete="off" spellcheck="false" aria-label="Buscar imágenes">
@@ -936,6 +943,7 @@
             <button type="button" class="chip" data-fondo="twitch">Twitch</button>
             <button type="button" class="chip" data-fondo="claro">Claro</button>
           </div>
+          <button type="button" class="boton pequeno" id="g-plegar">Plegar todo</button>
         </div>
         <div id="b-imagenes"></div>
       </section>

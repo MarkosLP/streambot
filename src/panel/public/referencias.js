@@ -26,7 +26,7 @@ function pintarReferencias(el) {
   referenciasElegidas.set(clave, elegidas);
   el.replaceChildren(h('summary', {}, 'Referencias visuales · hasta 3'),
     h('p', { class: 'nota' }, 'Súbelas en Biblioteca. Solo se enviarán las que elijas aquí al generar. Las imágenes de entrada también cuentan para el coste.'),
-    h('button', { type: 'button', class: 'boton pequeno', onclick: () => irA('biblioteca') }, 'Gestionar referencias'),
+    h('button', { type: 'button', class: 'boton pequeno', onclick: () => { verApartado('referencias'); irA('biblioteca'); } }, 'Gestionar referencias'),
     ...elegidas.map((r, i) => {
       const mini = h('img', { class: 'referencia-elegida', alt: `Referencia ${i + 1}`, hidden: !r.ruta, ...(r.ruta && { src: urlReferencia(r.ruta) }) });
       const sel = h('select', { 'aria-label': `Referencia ${i + 1}`, onchange: ev => {

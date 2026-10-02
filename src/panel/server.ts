@@ -737,7 +737,7 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   // Crea o completa la escena en OBS. Solo cuando lo pulsas; nunca cambia la
   // escena en emisión.
   if (ruta === 'POST /api/escenas/obs') {
-    const { tipo, escena } = await cuerpo(req);
+    const { tipo, escena, fuenteCompartida, opacidad } = await cuerpo(req);
     // El avatar suelto va a la escena que elijas (la del juego, por ejemplo).
     if (tipo === 'avatar') {
       if (typeof escena !== 'string' || !escena.trim()) throw new ErrorHttp(400, 'elige la escena');
@@ -746,6 +746,15 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       });
       log.info(`Panel → OBS: ${hecho}`);
       return json(res, 200, { hecho: [hecho] });
+    }
+    if (tipo === 'compartir') {
+      if (fuenteCompartida !== undefined && (typeof fuenteCompartida !== 'string' || fuenteCompartida.length > 200)) throw new ErrorHttp(400, 'captura no válida');
+      if (opacidad !== undefined && (typeof opacidad !== 'number' || !Number.isFinite(opacidad) || opacidad < .65 || opacidad > .95)) throw new ErrorHttp(400, 'opacidad no válida');
+      const hecho = await obs((pedir) => obsSetup.crearCharlaCompartida(pedir, fuenteCompartida || undefined, opacidad ?? .84)).catch((err) => {
+        throw new ErrorHttp(502, err instanceof Error ? err.message : String(err));
+      });
+      for (const h of hecho) log.info(`Panel → OBS: ${h}`);
+      return json(res, 200, { hecho });
     }
     if (!escenas.TIPOS.includes(tipo as escenas.Tipo)) throw new ErrorHttp(400, 'escena no válida');
     const hecho = await obs((pedir) => obsSetup.crearEscena(pedir, tipo as escenas.Tipo)).catch((err) => {

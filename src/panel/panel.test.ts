@@ -76,7 +76,7 @@ function reiniciarObs() {
 
 const obsFalso: ConObs = async (trabajo) => {
   if (obsCaido) throw new ErrorObs('No se pudo conectar con OBS');
-  let id = 100;
+  let id = Math.max(100, ...Object.values(obs.items).flat().map((i) => i.sceneItemId));
   const yaExiste = () => new ErrorObs('ya existe', 601);
   return trabajo(async (tipo: string, d: any = {}): Promise<any> => {
     switch (tipo) {
@@ -91,8 +91,11 @@ const obsFalso: ConObs = async (trabajo) => {
       case 'CreateInput':
         if (obs.entradas.some((e) => e.inputName === d.inputName)) throw yaExiste();
         obs.entradas.push({ inputName: d.inputName, inputKind: d.inputKind, settings: d.inputSettings });
+        obs.filtros[d.inputName] = [];
         obs.items[d.sceneName].push({ sourceName: d.inputName, sceneItemId: ++id, enabled: d.sceneItemEnabled });
         return { sceneItemId: id };
+      case 'GetInputSettings':
+        return { inputSettings: obs.entradas.find((e) => e.inputName === d.inputName)!.settings };
       case 'SetInputName': {
         const e = obs.entradas.find((x) => x.inputName === d.inputName)!;
         e.inputName = d.newInputName;
@@ -823,6 +826,25 @@ describe('Escenas', () => {
     assert.equal(obs.items['✦ Charla']!.length, 3);
     assert.ok(otra.body.hecho.some((x: string) => /ya existía/.test(x)));
     assert.equal((await post('/api/escenas/obs', { tipo: 'otra' })).status, 400);
+  });
+
+  test('Charla + compartir copia la captura con opacidad sin alterar la original', async () => {
+    obs.entradas.push({ inputName: 'Cámara', inputKind: 'dshow_input', settings: {} });
+    obs.entradas.find((e) => e.inputName === 'Juego')!.settings = { capture_mode: 'window' };
+    const r = await post('/api/escenas/obs', { tipo: 'compartir', fuenteCompartida: 'Juego' });
+    assert.equal(r.status, 200);
+    assert.deepEqual(obs.items['✦ Charla + compartir']!.map((i) => i.sourceName), ['Cámara', 'ESC Compartir contenido', 'ESC Charla compartir']);
+    assert.deepEqual(obs.entradas.find((e) => e.inputName === 'Juego')!.settings, { capture_mode: 'window' });
+    assert.equal(obs.filtros['Juego']!.length, 0);
+    assert.equal(obs.filtros['ESC Compartir contenido']![0]!.settings.opacity, .84);
+    const copia = obs.items['✦ Charla + compartir']!.find((i) => i.sourceName === 'ESC Compartir contenido')!;
+    assert.equal(obs.transformes[copia.sceneItemId].boundsWidth, 850 * (2560 / 1920));
+    assert.equal(obs.transformes[copia.sceneItemId].positionX, 1010 * (2560 / 1920));
+    assert.equal((await post('/api/escenas/obs', { tipo: 'compartir', fuenteCompartida: 'Juego', opacidad: .72 })).status, 200);
+    assert.equal(obs.items['✦ Charla + compartir']!.length, 3);
+    assert.equal(obs.filtros['ESC Compartir contenido']!.length, 1);
+    assert.equal(obs.filtros['ESC Compartir contenido']![0]!.settings.opacity, .72);
+    assert.equal((await post('/api/escenas/obs', { tipo: 'compartir', fuenteCompartida: 'Juego', opacidad: .2 })).status, 400);
   });
 });
 

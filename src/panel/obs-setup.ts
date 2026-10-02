@@ -417,6 +417,92 @@ export async function crearEscena(pedir: PedirObs, tipo: TipoEscena): Promise<st
   return hecho;
 }
 
+/** Charla con cámara a pantalla completa y una captura independiente semitransparente. */
+export const ESCENA_COMPARTIDA = { escena: '✦ Charla + compartir', fuente: 'ESC Charla compartir', captura: 'ESC Compartir contenido' } as const;
+export const urlCharlaCompartida = () =>
+  `http://127.0.0.1:${config.panel.port}/biblioteca/overlays/charla-compartida.html`;
+export const HUECO_COMPARTIDO = { x: 1010, y: 150, ancho: 850, alto: 478 };
+const KINDS_COMPARTIR = ['monitor_capture', 'window_capture', 'game_capture', 'screen_capture', 'xcomposite_input', 'pipewire'];
+const FILTRO_COMPARTIR = 'ESC Transparencia de compartir';
+
+export async function crearCharlaCompartida(pedir: PedirObs, origen?: string, opacidad = .84): Promise<string[]> {
+  const { escena, fuente, captura } = ESCENA_COMPARTIDA;
+  const { inputs } = await pedir<{ inputs: { inputName: string; inputKind: string }[] }>('GetInputList');
+  const origenInput = origen ? inputs.find((i) => i.inputName === origen && KINDS_COMPARTIR.some((k) => i.inputKind.startsWith(k))) : null;
+  if (origen && !origenInput) throw new ErrorObs('Elige una captura de pantalla, ventana o juego que exista en OBS.');
+  if (origen === captura || origen === fuente) throw new ErrorObs('Elige la captura original, no una fuente de esta escena.');
+  const copiaActual = inputs.find((i) => i.inputName === captura);
+  if (origenInput && copiaActual && copiaActual.inputKind !== origenInput.inputKind) {
+    throw new ErrorObs('La captura anterior era de otro tipo. Elimina «ESC Compartir contenido» en OBS y vuelve a crear esta escena.');
+  }
+
+  const hecho: string[] = [];
+  try {
+    await pedir('CreateScene', { sceneName: escena });
+    hecho.push(`Escena «${escena}» creada.`);
+  } catch (err) {
+    if (!(err instanceof ErrorObs) || err.codigo !== YA_EXISTE) throw err;
+    hecho.push(`La escena «${escena}» ya existía: se completa sin mover tus fuentes.`);
+  }
+  const items = async () => (await pedir<{ sceneItems: { sourceName: string; sceneItemId: number }[] }>('GetSceneItemList', { sceneName: escena })).sceneItems;
+  const ajustes = { width: 1920, height: 1080, ...FPS, is_local_file: false, url: urlCharlaCompartida(), shutdown: true, restart_when_active: false, reroute_audio: false };
+  let overlayId = (await items()).find((i) => i.sourceName === fuente)?.sceneItemId;
+  if (inputs.some((i) => i.inputName === fuente)) {
+    await pedir('SetInputSettings', { inputName: fuente, inputSettings: ajustes, overlay: true });
+    if (overlayId === undefined) ({ sceneItemId: overlayId } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: fuente, sceneItemEnabled: true }));
+  } else {
+    ({ sceneItemId: overlayId } = await pedir<{ sceneItemId: number }>('CreateInput', { sceneName: escena, inputName: fuente, inputKind: 'browser_source', inputSettings: ajustes, sceneItemEnabled: true }));
+  }
+  await pantallaCompleta(pedir, escena, overlayId);
+  hecho.push('Rótulos y marco añadidos.');
+
+  const cam = inputs.find((i) => KINDS_CAMARA.some((k) => i.inputKind.startsWith(k)));
+  if (!cam) hecho.push('No encuentro una webcam en OBS: añádela a pantalla completa, debajo de las demás fuentes.');
+  else if ((await items()).some((i) => i.sourceName === cam.inputName)) hecho.push(`Webcam «${cam.inputName}» ya presente: conservo su posición.`);
+  else {
+    const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: cam.inputName, sceneItemEnabled: true });
+    await pedir('SetSceneItemIndex', { sceneName: escena, sceneItemId, sceneItemIndex: 0 });
+    const { baseWidth, baseHeight } = await pedir<{ baseWidth: number; baseHeight: number }>('GetVideoSettings');
+    await pedir('SetSceneItemTransform', { sceneName: escena, sceneItemId, sceneItemTransform: {
+      positionX: 0, positionY: 0, alignment: 5, rotation: 0,
+      boundsType: 'OBS_BOUNDS_SCALE_OUTER', boundsAlignment: 0, boundsWidth: baseWidth, boundsHeight: baseHeight, cropToBounds: true,
+    } });
+    hecho.push(`Webcam «${cam.inputName}» a pantalla completa.`);
+  }
+
+  if (!origenInput) hecho.push('Selecciona una captura de OBS para mostrarla a la derecha.');
+  else {
+    const { inputSettings } = await pedir<{ inputSettings: Record<string, unknown> }>('GetInputSettings', { inputName: origenInput.inputName });
+    const copiaExiste = inputs.some((i) => i.inputName === captura);
+    let id = (await items()).find((i) => i.sourceName === captura)?.sceneItemId;
+    if (copiaExiste) {
+      await pedir('SetInputSettings', { inputName: captura, inputSettings, overlay: false });
+      if (id === undefined) ({ sceneItemId: id } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: captura, sceneItemEnabled: true }));
+    } else {
+      ({ sceneItemId: id } = await pedir<{ sceneItemId: number }>('CreateInput', { sceneName: escena, inputName: captura, inputKind: origenInput.inputKind, inputSettings, sceneItemEnabled: true }));
+    }
+    // Una captura que traiga audio no debe duplicar el sonido de la fuente original.
+    await pedir('SetInputMute', { inputName: captura, inputMuted: true }).catch(() => {});
+    const { filters } = await pedir<{ filters: { filterName: string }[] }>('GetSourceFilterList', { sourceName: captura });
+    if (filters.some((f) => f.filterName === FILTRO_COMPARTIR)) {
+      await pedir('SetSourceFilterSettings', { sourceName: captura, filterName: FILTRO_COMPARTIR, filterSettings: { opacity: opacidad }, overlay: true });
+    } else {
+      await pedir('CreateSourceFilter', { sourceName: captura, filterName: FILTRO_COMPARTIR, filterKind: KIND_COLOR, filterSettings: { opacity: opacidad } });
+    }
+    const { baseWidth, baseHeight } = await pedir<{ baseWidth: number; baseHeight: number }>('GetVideoSettings');
+    const sx = baseWidth / 1920, sy = baseHeight / 1080;
+    const r = HUECO_COMPARTIDO;
+    await pedir('SetSceneItemTransform', { sceneName: escena, sceneItemId: id, sceneItemTransform: {
+      positionX: r.x * sx, positionY: r.y * sy, alignment: 5, rotation: 0,
+      boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsAlignment: 0, boundsWidth: r.ancho * sx, boundsHeight: r.alto * sy,
+    } });
+    await pedir('SetSceneItemIndex', { sceneName: escena, sceneItemId: id, sceneItemIndex: cam ? 1 : 0 });
+    hecho.push(`Copia independiente de «${origenInput.inputName}» colocada a la derecha con ${Math.round(opacidad * 100)} % de opacidad.`);
+  }
+  await pedir('SetSceneItemIndex', { sceneName: escena, sceneItemId: overlayId, sceneItemIndex: (await items()).length - 1 });
+  return hecho;
+}
+
 /** Coloca la cámara en el hueco del marco, llenándolo (lo que sobre se recorta). */
 async function encajarEnHueco(pedir: PedirObs, escena: string, sceneItemId: number): Promise<void> {
   const v = await pedir<{ baseWidth: number; baseHeight: number }>('GetVideoSettings');

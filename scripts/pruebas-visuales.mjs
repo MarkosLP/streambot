@@ -17,14 +17,14 @@ const server = crearServidor({estado:()=>({conectado:false,destino:'Prueba aisla
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const raiz=`http://127.0.0.1:${server.address().port}`;
 const perfil=await mkdtemp(join(tmpdir(),'crid4m-navegador-'));
-const destino=resolve('../StreamerBotApi-fase2-capturas');await mkdir(destino,{recursive:true});
+const destino=resolve(process.env.CRID4M_CAPTURAS_DIR || '../StreamerBotApi-fase2-capturas');await mkdir(destino,{recursive:true});
 const edge=spawn(process.env.EDGE_BIN || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',['--headless=new','--disable-gpu','--remote-debugging-port=0',`--user-data-dir=${perfil}`,'--no-first-run','--mute-audio','about:blank'],{windowsHide:true,stdio:'ignore'});
 const esperar=ms=>new Promise(r=>setTimeout(r,ms));
 let socket, siguiente=0;const pendientes=new Map();
 function pedir(method,params={}) { return new Promise((ok,ko)=>{const id=++siguiente;const t=setTimeout(()=>{pendientes.delete(id);ko(Error(`CDP agotado: ${method}`));},15000);pendientes.set(id,{ok,ko,t});socket.send(JSON.stringify({id,method,params}));}); }
 async function evaluar(expression) { const r=await pedir('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value; }
 async function abrir(ruta,w=1366,h=768) {await pedir('Emulation.setDeviceMetricsOverride',{width:w,height:h,deviceScaleFactor:1,mobile:false});await pedir('Page.navigate',{url:raiz+ruta});await esperar(1800);}
-async function captura(nombre){const r=await pedir('Page.captureScreenshot',{format:'png'});await writeFile(join(destino,`${nombre}.png`),Buffer.from(r.data,'base64'));}
+async function captura(nombre,clip){const r=await pedir('Page.captureScreenshot',{format:'png',...(clip?{clip:{...clip,scale:1}}:{})});await writeFile(join(destino,`${nombre}.png`),Buffer.from(r.data,'base64'));}
 try {
   let puerto;
   for(let i=0;i<100;i++){try{puerto=Number((await readFile(join(perfil,'DevToolsActivePort'),'utf8')).split('\n')[0]);break;}catch{await esperar(100);}}
@@ -34,6 +34,41 @@ try {
   socket.onmessage=async e=>{const m=JSON.parse(e.data);if(m.id){const p=pendientes.get(m.id);if(p){clearTimeout(p.t);pendientes.delete(m.id);m.error?p.ko(Error(JSON.stringify(m.error))):p.ok(m.result);}}else if(m.method==='Fetch.requestPaused'){const {requestId,request}=m.params;await pedir(request.url.startsWith(raiz+'/')||request.url.startsWith('data:')?'Fetch.continueRequest':'Fetch.failRequest',{requestId,...(!request.url.startsWith(raiz+'/')&&!request.url.startsWith('data:')?{errorReason:'BlockedByClient'}:{})}).catch(e=>{if(!e.message.includes('Invalid InterceptionId'))console.error('Interceptación:',e.message);});}};
   await pedir('Page.enable');await pedir('Fetch.enable',{patterns:[{urlPattern:'*'}]});
   const caso=process.argv[2]||'10';
+  if(caso==='charla-compartida') {
+    await abrir('/biblioteca/overlays/charla-compartida.html?demo=1',1920,1080);
+    assert.equal(await evaluar("document.querySelector('.demo-muestra').getBoundingClientRect().width"),850);
+    await captura('charla-compartida-concepto');
+    await abrir('/#/escenas',1366,950);
+    await evaluar("irA('escenas');elegirEscena('compartir')");
+    await esperar(600);
+    assert.equal(await evaluar("document.querySelector('[data-tipo=compartir].escena').hidden"),false);
+    assert.equal(await evaluar("document.documentElement.scrollWidth<=innerWidth"),true);
+    await captura('charla-compartida-panel');
+    await evaluar("(()=>{const x=document.querySelector('#e-compartir-opacidad');x.value='70';x.dispatchEvent(new Event('input',{bubbles:true}));})()");
+    await esperar(400);
+    assert.match(await evaluar("document.querySelector('[data-tipo=compartir].escena iframe').src"),/opacidad=0\.7/);
+    await abrir('/#/escenas',390,844);
+    await evaluar("irA('escenas');elegirEscena('compartir')");
+    await esperar(500);
+    assert.equal(await evaluar("document.documentElement.scrollWidth<=innerWidth"),true);
+    await captura('charla-compartida-panel-movil');
+  }
+  if(caso==='avatar-templario') {
+    const ruta='imagenes/avatar/oscuro-templario-elyo-aion1';
+    const zonas=JSON.parse(await readFile('biblioteca/imagenes/avatar/oscuro-templario-elyo-aion1/info.json','utf8'));
+    await abrir(`/biblioteca/overlays/avatar.html?demo=1&imagen=${ruta}&bocadillo=0`,1000,1000);
+    await evaluar("pintar=()=>{}");
+    await evaluar(`ponerRetrato(${JSON.stringify(ruta)},${JSON.stringify(zonas)},'prueba-visual')`);
+    assert.equal(await evaluar("!document.querySelector('#retrato').hidden"),true);
+    assert.equal(await evaluar("['r-base','r-medio','r-cerrados','r-contento'].every(id=>document.getElementById(id).naturalWidth===1254)"),true);
+    assert.equal(await evaluar("!document.querySelector('#r-cerrados').classList.contains('entera')"),true);
+    assert.equal(await evaluar("!document.querySelector('#r-contento').classList.contains('entera')"),true);
+    await captura('avatar-templario-elyo');
+    await evaluar("document.querySelector('#escena').classList.add('parpadeo')");
+    await esperar(150);await captura('avatar-templario-elyo-cerrados');
+    await evaluar("document.querySelector('#escena').classList.remove('parpadeo');document.querySelector('#escena').classList.add('feliz')");
+    await esperar(180);await captura('avatar-templario-elyo-contento');
+  }
   if(caso==='referencias') {
     const { codificar } = await import('../src/services/png.ts');
     const px = new Uint8Array(320*180*4);
@@ -104,7 +139,7 @@ try {
   if(caso==='efectos-antes')for(const w of [390,1366]) {
     await abrir(`/?efectos=${w}#/efectos`,w,w===390?844:1000);await evaluar("irA('efectos')");await esperar(600);await captura(`efectos-pruebas-${w}-antes`);
   }
-  if(caso.startsWith('combate')&&caso!=='combate-medallon')for(const [nombre,ruta,ms] of [['duelo','jefe.html?demo=duelo&volumen=0',3800],['jefe','jefe.html?demo=1&jefe=liche&volumen=0',2000]]) {
+  if(caso.startsWith('combate')&&!['combate-medallon','combate-especial'].includes(caso))for(const [nombre,ruta,ms] of [['duelo','jefe.html?demo=duelo&volumen=0',3800],['jefe','jefe.html?demo=1&jefe=liche&volumen=0',2000]]) {
     await abrir('/biblioteca/overlays/'+ruta,1920,1080);await esperar(ms);await captura(`combate-${nombre}-${caso.endsWith('antes')?'antes':caso==='combate-real'?'tipografia-final':caso==='combate-compacto'?'compacto':'despues'}`);
     if(caso==='combate-compacto') {
       const ancho=await evaluar(`document.querySelector('#${nombre}').getBoundingClientRect().width`);
@@ -125,17 +160,60 @@ try {
   }
   if(caso==='combate-real'||caso==='combate-compacto') {
     const sufijo=caso==='combate-compacto'?'compacto':'tipografia-final';
-    const colores=new Set();
+    const colores=new Set(), animaciones=new Set();
     for(const tipo of ['dragon','esqueleto','hidra','golem','liche','arana','kraken','minotauro','tanque','lag']) {
       await abrir(`/biblioteca/overlays/jefe.html?demo=1&jefe=${tipo}&quieto=1&volumen=0`,1920,1080);
+      for(let i=0;i<40;i++){if(await evaluar("(()=>{const f=document.querySelector('#foto-combate');return !f.hidden&&f.naturalWidth>0})()"))break;await esperar(200);}
       if(tipo==='liche') await captura(`combate-jefe-entrada-${sufijo}`);
-      const datos=await evaluar(`(()=>{const j=document.querySelector('#jefe'),intro=j.classList.contains('intro');j.classList.remove('intro');const n=document.querySelector('#nombre'),p=document.querySelector('.jefe .pista'),r=document.createRange();r.selectNodeContents(p);const pb=p.getBoundingClientRect(),tr=r.getBoundingClientRect();return {tipo:document.body.dataset.jefe,color:document.body.style.getPropertyValue('--t2'),foto:document.querySelector('#foto-combate').naturalWidth,visible:!document.querySelector('#foto-combate').hidden,marco:getComputedStyle(j).backgroundImage,fuente:document.fonts.check('700 32px "Cinzel Decorative Local"'),fuentes:[...document.fonts].map(f=>[f.family,f.status]),estilo:getComputedStyle(n).fontFamily,nombreCabe:n.scrollWidth<=n.clientWidth+1,pistaDesvio:Math.abs((tr.left+tr.right-pb.left-pb.right)/2),avisoOculto:document.querySelector('#aviso').hidden,intro};})()`);
+      const datos=await evaluar(`(()=>{const j=document.querySelector('#jefe'),intro=j.classList.contains('intro'),foto=document.querySelector('#foto-combate'),animacionEntrada=getComputedStyle(foto).animationName;j.classList.remove('intro');const n=document.querySelector('#nombre'),p=document.querySelector('.jefe .pista'),r=document.createRange();r.selectNodeContents(p);const pb=p.getBoundingClientRect(),tr=r.getBoundingClientRect();return {tipo:document.body.dataset.jefe,color:document.body.style.getPropertyValue('--t2'),foto:foto.naturalWidth,visible:!foto.hidden,animacionEntrada,animacionFoto:getComputedStyle(foto).animationName,marco:getComputedStyle(j).backgroundImage,fuente:document.fonts.check('700 32px "Cinzel Decorative Local"'),fuentes:[...document.fonts].map(f=>[f.family,f.status]),estilo:getComputedStyle(n).fontFamily,nombreCabe:n.scrollWidth<=n.clientWidth+1,pistaDesvio:Math.abs((tr.left+tr.right-pb.left-pb.right)/2),avisoOculto:document.querySelector('#aviso').hidden,intro};})()`);
       assert.equal(datos.tipo,tipo);assert.ok(datos.foto>0 && datos.visible,JSON.stringify(datos));
+      assert.match(datos.animacionEntrada,/retrato-invocar/,JSON.stringify(datos));
+      assert.match(datos.animacionFoto,/^retrato-/,JSON.stringify(datos));animaciones.add(datos.animacionFoto);
       assert.match(datos.marco,/jefe-marco\.png/);assert.ok(datos.fuente && datos.nombreCabe && datos.avisoOculto && datos.intro,JSON.stringify(datos));
       assert.ok(datos.pistaDesvio<12,JSON.stringify(datos));colores.add(datos.color);
       if(['dragon','hidra','liche','lag'].includes(tipo))await captura(`combate-jefe-${tipo}-${sufijo}`);
     }
     assert.ok(colores.size>=8,'los jefes mantienen paletas distintas');
+    assert.ok(animaciones.size>=6,'los PNG de los jefes tienen movimientos propios');
+    await evaluar("numero({tipo:'golpe',dano:24,critico:true,quien:'Prueba'})");
+    assert.equal(await evaluar("getComputedStyle(document.querySelector('#foto-combate')).animationName"),'retrato-golpe-critico');
+    await esperar(1400);
+    assert.equal(await evaluar("getComputedStyle(document.querySelector('#foto-combate')).animationName"),'retrato-glitch');
+    await evaluar("especial({n:99,icono:'!',titulo:'Prueba',texto:'Animación',at:Date.now()},'lag')");
+    assert.equal(await evaluar("getComputedStyle(document.querySelector('#foto-combate')).animationName"),'retrato-especial');
+  }
+  if(caso==='combate-especial')for(const [tipo,icono,titulo,texto] of [
+    ['dragon','❄','Aliento helado','¡El frío alcanza al grupo!'],['golem','◆','Terremoto','¡Tiembla el suelo!'],
+    ['liche','✦','Drenar alma','¡Absorbe la energía del grupo!'],['lag','⚡','Desconexión','¡La señal se corta!'],
+    ['esqueleto','💀','Alzar a los muertos','+60 de vida'],['hidra','🐍','Mordisco venenoso','La mitad de daño durante 20 s'],
+    ['arana','🕸️','Telaraña','¡Atrapado durante 15 s!'],['kraken','🐙','Tentáculo','¡Arrastrado al fondo durante 15 s!'],
+    ['minotauro','🤢','Vomitona','Todos fallan el siguiente golpe'],['tanque','🛡️','Provocación fallida','Se pega solo: −48'],
+  ]) {
+    await abrir(`/biblioteca/overlays/jefe.html?demo=1&jefe=${tipo}&quieto=1&volumen=0`,1920,1080);
+    for(let i=0;i<40;i++){if(await evaluar("document.querySelector('#foto-combate').naturalWidth>0"))break;await esperar(200);}
+    await evaluar(`pintar({jefe:{id:2,tipo:${JSON.stringify(tipo)},nombre:document.querySelector('#nombre').textContent,vida:240,vidaMax:400,quedanSeg:120,golpes:[],afectados:[]},final:null});document.querySelector('#rastro').style.transition='none';document.querySelector('#rastro').style.width='60%';if(${JSON.stringify(tipo)}==='lag'){clearInterval(glitchReloj);document.body.classList.remove('glitch')}`);
+    await esperar(1000);
+    await evaluar(`especial({n:99,icono:${JSON.stringify(icono)},titulo:${JSON.stringify(titulo)},texto:${JSON.stringify(texto)},at:Date.now()},${JSON.stringify(tipo)})`);
+    assert.equal(await evaluar("document.querySelector('#efecto-jefe').classList.contains('"+tipo+"')"),true);
+    if(!['dragon','golem','liche','lag'].includes(tipo)) {
+      assert.equal(await evaluar("document.querySelector('#efecto-jefe').classList.contains('con-motivo')"),true);
+      assert.equal(await evaluar(`getComputedStyle(document.querySelector('#efecto-jefe .motivos .${tipo}')).display`),'inline');
+    }
+    assert.equal(await evaluar("document.querySelector('#foto-combate').naturalWidth>0"),true);
+    await esperar(600);
+    await captura(`combate-especial-${tipo}`,{x:360,y:0,width:1200,height:520});
+    assert.equal(await evaluar("!document.querySelector('#cartel-especial').hidden"),true);
+  }
+  if(caso==='combate-especial') {
+    await abrir('/biblioteca/overlays/jefe.html?demo=especial&jefe=dragon&volumen=0',1920,1080);
+    for(let i=0;i<60;i++){if(await evaluar("!document.querySelector('#efecto-jefe').hidden"))break;await esperar(100);}
+    assert.equal(await evaluar("!document.querySelector('#efecto-jefe').hidden"),true);
+    await abrir('/biblioteca/overlays/jefe.html?demo=especial&jefe=kraken&volumen=0',1920,1080);
+    for(let i=0;i<60;i++){if(await evaluar("document.querySelector('#efecto-jefe').classList.contains('kraken')"))break;await esperar(100);}
+    assert.equal(await evaluar("document.querySelector('#efecto-jefe').classList.contains('con-motivo')"),true);
+    await abrir('/#/biblioteca',1366,900);await evaluar("irA('biblioteca')");await esperar(600);
+    assert.equal(await evaluar("[...document.querySelectorAll('#b-overlays strong')].some(x=>x.textContent==='Ataques especiales')"),true);
+    assert.equal(await evaluar("[...document.querySelectorAll('#b-overlays article')].find(x=>x.querySelector('strong')?.textContent==='Ataques especiales').querySelectorAll('.variantes button').length"),10);
   }
   if(caso==='combate-medallon') {
     await abrir('/biblioteca/overlays/jefe.html?demo=1&jefe=liche&quieto=1&volumen=0',1920,1080);

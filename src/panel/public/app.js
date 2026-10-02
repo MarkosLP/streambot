@@ -1613,7 +1613,7 @@ async function cargarBiblioteca() {
     })
     : [vacioBiblioteca('sonidos', 'No hay sonidos. Genera los de los efectos con npm run sonidos, o mete los tuyos.')]));
 
-  const overlaysBiblioteca = lib.overlays.flatMap(o => o.nombre === 'jefe.html' ? [o, { ...o, vista: 'duelo' }] : [o]);
+  const overlaysBiblioteca = lib.overlays.flatMap(o => o.nombre === 'jefe.html' ? [o, { ...o, vista: 'especiales' }, { ...o, vista: 'duelo' }] : [o]);
   $('b-overlays').replaceChildren(...(overlaysBiblioteca.length
     ? overlaysBiblioteca.map((o) => {
       const vars = VARIANTES_OVERLAY[o.vista || o.nombre] || [];
@@ -1634,13 +1634,17 @@ async function cargarBiblioteca() {
         vista,
         chips,
         h('div', { class: 'overlay-pie' },
-          h('div', { class: 'sonido-info' }, h('strong', {}, o.vista === 'duelo' ? 'Duelo · !duelo' : o.nombre === 'jefe.html' ? 'Jefes de raid' : o.nombre === 'escena.html' ? 'Escenas actuales' : o.nombre), h('span', { class: 'sonido-meta' }, o.vista === 'duelo' ? 'La misma fuente «FX Jefe», con cada duelo del chat' : o.nombre === 'escena.html' ? 'Fondos y textos configurados en Escenas' : usadoEn(o.usadoPor))),
+          h('div', { class: 'sonido-info' }, h('strong', {}, o.vista === 'duelo' ? 'Duelo · !duelo' : o.vista === 'especiales' ? 'Ataques especiales' : o.nombre === 'jefe.html' ? 'Jefes de raid' : o.nombre === 'escena.html' ? 'Escenas actuales' : o.nombre), h('span', { class: 'sonido-meta' }, o.vista === 'duelo' ? 'La misma fuente «FX Jefe», con cada duelo del chat' : o.vista === 'especiales' ? 'Elige un jefe para ver su ataque en bucle' : o.nombre === 'escena.html' ? 'Fondos y textos configurados en Escenas' : usadoEn(o.usadoPor))),
           // Misma dirección no recarga: se pasa por about:blank para repetir la animación.
           h('button', { class: 'boton pequeno', type: 'button', onclick: () => { marco.src = 'about:blank'; setTimeout(() => { marco.src = sinSonido(o.url + actual); }, 30); } }, '↻ Repetir'),
           botonCopiar(o.ruta)));
     })
     : [vacioBiblioteca('overlays', 'No hay overlays todavía.')]));
 
+  $('c-imagenes').textContent = String(lib.imagenes.length);
+  $('c-sonidos').textContent = String(lib.sonidos.length);
+  $('c-overlays').textContent = String(overlaysBiblioteca.length);
+  $('c-referencias').textContent = String(catalogoReferencias.length);
   galeria.imagenes = lib.imagenes;
   pintarGaleria();
 }
@@ -1653,6 +1657,7 @@ async function cargarBiblioteca() {
 const ESCENAS_INFO = {
   inicio: { icono: '🌅', nombre: 'Empezamos', que: 'Antes de empezar: título, cuenta atrás, evento de la semana, podio y últimos botines.' },
   charla: { icono: '💬', nombre: 'Charla', que: 'Just Chatting: marco para tu cámara, chat en pantalla con emotes, evento, podio y próximo cofre. Con el avatar, sin cámara.' },
+  compartir: { icono: '📺', nombre: 'Charla + compartir', que: 'Webcam a pantalla completa y una captura a la derecha con transparencia suave. Es una escena independiente de Charla.' },
   pausa: { icono: '⏳', nombre: 'Pausa', que: 'Vuelvo enseguida: reloj de arena y cuenta atrás si la pones.' },
   final: { icono: '🌙', nombre: 'Final', que: 'Gracias por venir: resumen del directo y los nombres de quien ha pasado, en créditos.' },
 };
@@ -1667,9 +1672,10 @@ function elegirEscena(tipo) {
   for (const tarjeta of $('e-lista').children) tarjeta.hidden = tarjeta.dataset.tipo !== tipo;
   const mandos = document.querySelector(`#e-lista [data-tipo="${tipo}"] .escena-controles`);
   if (!mandos) return;
-  mandos.append($('e-control-textos'), $('e-control-cuenta'));
   const vista = mandos.parentElement.querySelector('.escena-vista');
   vista.style.setProperty('--escala', String(vista.clientWidth / 1920));
+  if (tipo === 'compartir') return;
+  mandos.append($('e-control-textos'), $('e-control-cuenta'));
   $('e-control-cuenta').hidden = !['inicio', 'pausa'].includes(tipo);
   const claves = { inicio: ['titulo', 'subtitulo'], charla: ['charla'], pausa: ['pausa'], final: ['final'] }[tipo];
   for (const input of document.querySelectorAll('#e-textos [data-clave]')) input.closest('label').hidden = !claves.includes(input.dataset.clave);
@@ -1755,7 +1761,6 @@ async function cargarEscenas() {
   escenasPintadas = true;
   $('e-avatar-vista').src = '/biblioteca/overlays/avatar.html?siempre=1&fondo=1&bocadillo=reacciones';
   $('e-avatar-generar').disabled = !escenas.imagenIa;
-  cargarEscenasObs();
   $('e-selector').replaceChildren(...Object.entries(ESCENAS_INFO).map(([tipo, info]) => h('button', {
     type: 'button', class: 'boton', 'data-tipo': tipo, 'aria-pressed': String(tipo === escenaElegida),
     onclick: () => elegirEscena(tipo),
@@ -1832,6 +1837,57 @@ async function cargarEscenas() {
         h('details', { class: 'escena-avanzado escena-obs' }, h('summary', {}, 'Configurar esta escena en OBS'), crear, resultado)),
       h('div', { class: 'escena-controles' }, bloqueFondo));
   }));
+  const rutaCompartir = '/biblioteca/overlays/charla-compartida.html';
+  let opacidadInicial = 84;
+  try {
+    const guardada = Number(localStorage.getItem('charla-compartida-opacidad'));
+    if (guardada >= 65 && guardada <= 95) opacidadInicial = guardada;
+  } catch { /* sin almacenamiento, se usa el valor por defecto */ }
+  const rutaDemoCompartir = (n) => `${rutaCompartir}?demo=1&opacidad=${n / 100}`;
+  const vistaCompartir = h('div', { class: 'overlay-vista escena-vista' },
+    h('iframe', { src: rutaDemoCompartir(opacidadInicial), sandbox: 'allow-scripts', title: 'Vista previa de Charla + compartir', tabindex: '-1' }));
+  escalarOverlay.observe(vistaCompartir);
+  const elegirCaptura = h('select', { id: 'e-compartir-fuente', 'aria-label': 'Captura que vas a compartir' },
+    h('option', { value: '' }, 'Sin captura todavía'));
+  const valorOpacidad = h('output', {}, `${opacidadInicial} %`);
+  const elegirOpacidad = h('input', { id: 'e-compartir-opacidad', type: 'range', min: '65', max: '95', step: '1', value: String(opacidadInicial), 'aria-label': 'Opacidad del contenido compartido' });
+  const verCompartirGrande = h('a', { class: 'boton', href: rutaDemoCompartir(opacidadInicial), target: '_blank', rel: 'noopener' }, '↗ Ver en grande');
+  let esperaOpacidad;
+  elegirOpacidad.addEventListener('input', () => {
+    valorOpacidad.textContent = `${elegirOpacidad.value} %`;
+    clearTimeout(esperaOpacidad);
+    esperaOpacidad = setTimeout(() => {
+      const ruta = rutaDemoCompartir(Number(elegirOpacidad.value));
+      vistaCompartir.querySelector('iframe').src = ruta;
+      verCompartirGrande.href = ruta;
+      try { localStorage.setItem('charla-compartida-opacidad', elegirOpacidad.value); } catch { /* sin almacenamiento */ }
+    }, 180);
+  });
+  const resultadoCompartir = h('ul', { class: 'escena-resultado', hidden: true });
+  const crearCompartir = h('button', { class: 'boton primario', type: 'button' }, '🎬 Crear en OBS');
+  crearCompartir.addEventListener('click', async () => {
+    if (!confirm('Se creará la escena «✦ Charla + compartir» en OBS con tu webcam, la captura elegida y el overlay. No cambia la escena en emisión. ¿Sigo?')) return;
+    crearCompartir.disabled = true;
+    try {
+      const r = await api('/api/escenas/obs', { tipo: 'compartir', fuenteCompartida: elegirCaptura.value, opacidad: Number(elegirOpacidad.value) / 100 });
+      resultadoCompartir.hidden = false;
+      resultadoCompartir.replaceChildren(...r.hecho.map((x) => h('li', {}, x)));
+      tostada('Charla + compartir lista en OBS');
+    } catch (err) { tostada(err.message, true); }
+    finally { crearCompartir.disabled = false; }
+  });
+  $('e-lista').append(h('article', { class: 'tarjeta escena', 'data-tipo': 'compartir', hidden: escenaElegida !== 'compartir' },
+    h('div', { class: 'escena-presentacion' }, vistaCompartir,
+      h('div', { class: 'escena-pie' },
+        h('div', {}, h('h2', {}, '📺 Charla + compartir'), h('p', { class: 'nota' }, ESCENAS_INFO.compartir.que),
+          h('p', { class: 'nota' }, 'La vista previa usa imágenes de ejemplo. En OBS se verá tu webcam y la fuente que elijas.')),
+        h('div', { class: 'escena-botones' }, verCompartirGrande, botonCopiar(`${location.origin}${rutaCompartir}`, 'Copiar dirección'))),
+      h('div', { class: 'escena-controles' },
+        h('label', { class: 'campo' }, h('span', {}, 'Qué compartes'), elegirCaptura),
+        h('label', { class: 'campo' }, h('span', {}, 'Opacidad del contenido · ', valorOpacidad), elegirOpacidad),
+        h('p', { class: 'nota' }, 'La webcam llena el fondo. La captura flota a la derecha y deja verla a través. El ajuste se aplica en OBS al pulsar «Crear en OBS».'),
+        h('div', { class: 'escena-botones' }, crearCompartir), resultadoCompartir))));
+  cargarEscenasObs();
   pintarSelectoresFondo();
   pintarEstilos();
   elegirEscena(escenaElegida);
@@ -2595,13 +2651,24 @@ $('o-obs').addEventListener('click', async (ev) => {
 /** Las escenas de OBS, para elegir dónde va el avatar. Por defecto, la que está en emisión. */
 async function cargarEscenasObs() {
   const sel = $('e-avatar-escena');
+  const compartir = $('e-compartir-fuente');
   try {
     const o = await api('/api/obs');
-    if (!o.conectado) { sel.replaceChildren(h('option', { value: '' }, 'OBS no está conectado')); return; }
+    if (!o.conectado) {
+      sel.replaceChildren(h('option', { value: '' }, 'OBS no está conectado'));
+      if (compartir) compartir.replaceChildren(h('option', { value: '' }, 'OBS no está conectado'));
+      return;
+    }
     sel.replaceChildren(...o.escenas.map((e) => h('option', { value: e, selected: e === o.escenaActual }, e === o.escenaActual ? `${e} (en emisión)` : e)));
     $('o-escena').replaceChildren(...o.escenas.map((e) => h('option', { value: e, selected: e === o.escenaActual }, e === o.escenaActual ? `${e} (en emisión)` : e)));
+    if (compartir) {
+      const anterior = compartir.value;
+      const fuentes = o.fuentes.filter((f) => /^(monitor_capture|window_capture|game_capture|screen_capture|xcomposite_input|pipewire)/.test(f.tipo) && f.nombre !== 'ESC Compartir contenido');
+      compartir.replaceChildren(h('option', { value: '' }, 'Sin captura todavía'), ...fuentes.map((f) => h('option', { value: f.nombre, selected: f.nombre === anterior }, `${f.nombre} · ${f.tipo}`)));
+    }
   } catch {
     sel.replaceChildren(h('option', { value: '' }, 'OBS no está conectado'));
+    if (compartir) compartir.replaceChildren(h('option', { value: '' }, 'OBS no está conectado'));
   }
 }
 
@@ -2635,6 +2702,7 @@ $('e-textos').addEventListener('submit', (ev) => {
  * sale vacía (sin jefe es transparente) y el banner, siempre Legendario.
  */
 const VARIANTES_OVERLAY = {
+  'charla-compartida.html': [{ nombre: 'Webcam + contenido', q: '?demo=1' }],
   'alertas.html': [{ nombre: 'Oscuro', q: '?demo=1' }, { nombre: 'Vibrante', q: '?demo=1&estilo=alegre' }, { nombre: 'Cálido', q: '?demo=1&estilo=acogedor' }],
   'panel.html': [{ nombre: 'Pergamino real', q: '?marco=pergamino' }, { nombre: 'Cristal arcano', q: '?marco=cristal' }, { nombre: 'Estandarte ligero', q: '?marco=estandarte' }],
   'avatar.html': [
@@ -2649,6 +2717,18 @@ const VARIANTES_OVERLAY = {
     ...[['dragon', '🐉 Dragón'], ['esqueleto', '💀 Esqueleto'], ['hidra', '🐍 Hidra'], ['golem', '🗿 Gólem'], ['liche', '☠️ Liche'],
       ['arana', '🕷️ Araña'], ['kraken', '🐙 Kraken'], ['minotauro', '🐂 Minotauro'], ['tanque', '🛡️ Tanque'], ['lag', '📶 Lag']]
       .map(([tipo, nombre]) => ({ nombre, q: `?demo=1&jefe=${tipo}` })),
+  ],
+  especiales: [
+    { nombre: '❄ Dragón', q: '?demo=especial&jefe=dragon' },
+    { nombre: '💀 Esqueleto', q: '?demo=especial&jefe=esqueleto' },
+    { nombre: '🐍 Hidra', q: '?demo=especial&jefe=hidra' },
+    { nombre: '◆ Gólem', q: '?demo=especial&jefe=golem' },
+    { nombre: '✦ Liche', q: '?demo=especial&jefe=liche' },
+    { nombre: '🕸️ Araña', q: '?demo=especial&jefe=arana' },
+    { nombre: '🐙 Kraken', q: '?demo=especial&jefe=kraken' },
+    { nombre: '🤢 Minotauro', q: '?demo=especial&jefe=minotauro' },
+    { nombre: '🛡️ Tanque', q: '?demo=especial&jefe=tanque' },
+    { nombre: '⚡ Lag', q: '?demo=especial&jefe=lag' },
   ],
   duelo: [{ nombre: 'Duelo', q: '?demo=duelo' }],
   'botin.html': [
@@ -2665,7 +2745,7 @@ const CARPETAS = {
   '': { titulo: 'Iconos', ancho: false },
   twitch: { titulo: 'Twitch · moneda y recompensas', ancho: false },
   'twitch/paneles': { titulo: 'Twitch · paneles', ancho: true },
-  fondos: { titulo: 'Fondos de las escenas', ancho: true },
+  fondos: { titulo: 'Fondos de las escenas', ancho: true, panoramica: true },
   jefes: { titulo: 'Jefes', ancho: false },
   objetos: { titulo: 'Objetos del botín', ancho: false },
 };
@@ -2683,8 +2763,38 @@ function tituloCarpeta(c) {
 }
 const rutaCarpeta = (c) => `imagenes/${c ? `${c}/` : ''}`;
 
-const galeria = { imagenes: [], carpeta: null, texto: '', fondo: 'cuadros', visibles: [] };
+// ---------- Apartados de la Biblioteca: uno a la vez, para no bajar por todo ----------
+
+const APARTADOS = ['imagenes', 'sonidos', 'overlays', 'referencias'];
+
+function verApartado(apartado) {
+  if (!APARTADOS.includes(apartado)) apartado = 'imagenes';
+  try { localStorage.setItem('panel-biblioteca-apartado', apartado); } catch { /* nada */ }
+  for (const b of $('b-apartados').children) {
+    b.setAttribute('aria-selected', String(b.dataset.apartado === apartado));
+    b.tabIndex = b.dataset.apartado === apartado ? 0 : -1;
+  }
+  for (const s of document.querySelectorAll('#v-biblioteca > section[data-apartado]')) s.hidden = s.dataset.apartado !== apartado;
+}
+$('b-apartados').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-apartado]');
+  if (b) verApartado(b.dataset.apartado);
+});
+try { verApartado(localStorage.getItem('panel-biblioteca-apartado')); } catch { verApartado('imagenes'); }
+
+// La carpeta elegida y los grupos plegados se recuerdan entre visitas.
+const galeria = { imagenes: [], carpeta: null, texto: '', fondo: 'cuadros', visibles: [], plegadas: new Set() };
 try { galeria.fondo = localStorage.getItem('panel-galeria-fondo') || 'cuadros'; } catch { /* nada */ }
+try { galeria.carpeta = localStorage.getItem('panel-galeria-carpeta') || null; } catch { /* nada */ }
+try { galeria.plegadas = new Set(JSON.parse(localStorage.getItem('panel-galeria-plegadas') || '[]')); } catch { /* nada */ }
+
+function guardarGaleria() {
+  try {
+    if (galeria.carpeta === null) localStorage.removeItem('panel-galeria-carpeta');
+    else localStorage.setItem('panel-galeria-carpeta', galeria.carpeta);
+    localStorage.setItem('panel-galeria-plegadas', JSON.stringify([...galeria.plegadas]));
+  } catch { /* nada */ }
+}
 
 function guardarFondo(fondo) {
   galeria.fondo = fondo;
@@ -2727,7 +2837,7 @@ function pintarGaleria() {
   $('n-imagenes').textContent = `${todas.length} imágenes · PNG, GIF, WebP o JPG`;
   const chip = (carpeta, texto, cuenta) => h('button', {
     type: 'button', class: 'chip', 'aria-pressed': String(galeria.carpeta === carpeta),
-    onclick: () => { galeria.carpeta = carpeta; pintarGaleria(); },
+    onclick: () => { galeria.carpeta = carpeta; guardarGaleria(); pintarGaleria(); },
   }, texto, h('span', { class: 'cuenta' }, String(cuenta)));
   $('g-carpetas').replaceChildren(
     chip(null, 'Todas', todas.length),
@@ -2741,19 +2851,54 @@ function pintarGaleria() {
   // El orden en que el visor pasa de una a otra: el de la pantalla.
   galeria.visibles = [];
 
-  const grupos = carpetas
-    .filter((c) => filtradas.some((i) => i.carpeta === c))
+  // Buscando, todo abierto: que un resultado no quede escondido en un grupo plegado.
+  const plegada = (c) => !texto && galeria.plegadas.has(c);
+  const conImagenes = carpetas.filter((c) => filtradas.some((i) => i.carpeta === c));
+  const grupos = conImagenes
     .map((c) => ({ c, tarjetas: agrupar(filtradas.filter((i) => i.carpeta === c)) }))
-    .map(({ c, tarjetas }) => h('section', {
+    .map(({ c, tarjetas }) => h('details', {
       // Con juegos de tamaños, tarjetas más anchas: 28 + 56 + 112 px no caben en una estrecha.
-      class: `grupo-galeria${CARPETAS[c]?.ancho ? ' anchos' : ''}${tarjetas.some((t) => t.tipo === 'juego') ? ' iconos' : ''}`,
+      class: `grupo-galeria${CARPETAS[c]?.ancho ? ' anchos' : ''}${CARPETAS[c]?.panoramica ? ' panoramicas' : ''}${tarjetas.some((t) => t.tipo === 'juego') ? ' iconos' : ''}${esPersonaje(c) ? ' personaje' : ''}`,
+      open: !plegada(c),
+      ontoggle: (e) => {
+        if (texto) return;
+        if (e.target.open) galeria.plegadas.delete(c); else galeria.plegadas.add(c);
+        guardarGaleria();
+        pintarBotonPlegar(conImagenes);
+      },
     },
-      h('h3', {}, tituloCarpeta(c), h('code', {}, rutaCarpeta(c))),
+      h('summary', {}, h('h3', {}, tituloCarpeta(c),
+        h('span', { class: 'cuenta' }, String(filtradas.filter((i) => i.carpeta === c).length)),
+        h('code', {}, rutaCarpeta(c)))),
       h('div', { class: 'lista-imagenes' }, tarjetas.map(tarjetaImagen))));
 
+  pintarBotonPlegar(texto ? [] : conImagenes);
+
   $('b-imagenes').replaceChildren(...(grupos.length
-    ? grupos
+    ? [...agruparPersonajes(grupos)]
     : [h('p', { class: 'vacio-lista' }, `Nada coincide con «${galeria.texto}».`)]));
+}
+
+/** Los personajes son pocos y pequeños: los seguidos van en rejilla, de dos en dos. */
+function* agruparPersonajes(grupos) {
+  let caja = null;
+  for (const g of grupos) {
+    if (!g.classList.contains('personaje')) { caja = null; yield g; continue; }
+    if (!caja) { caja = h('div', { class: 'grupos-personajes' }); yield caja; }
+    caja.append(g);
+  }
+}
+
+function pintarBotonPlegar(carpetas) {
+  const b = $('g-plegar');
+  b.hidden = carpetas.length < 2;
+  const todas = carpetas.every((c) => galeria.plegadas.has(c));
+  b.textContent = todas ? 'Desplegar todo' : 'Plegar todo';
+  b.onclick = () => {
+    for (const c of carpetas) { if (todas) galeria.plegadas.delete(c); else galeria.plegadas.add(c); }
+    guardarGaleria();
+    pintarGaleria();
+  };
 }
 
 function tarjetaImagen(t) {
@@ -2780,9 +2925,15 @@ function tarjetaImagen(t) {
   return h('article', { class: 'imagen' },
     h('button', { class: `imagen-vista ${fondo}`, type: 'button', 'aria-label': `Ver ${i.nombre} en grande`, onclick: () => abrirVisor(indice) }, img),
     h('div', { class: 'overlay-pie' },
-      h('div', { class: 'sonido-info' }, h('strong', { title: i.nombre }, i.titulo ?? i.nombre),
+      h('div', { class: 'sonido-info' }, h('strong', { title: i.titulo ?? i.nombre }, nombreTarjeta(i)),
         h('span', { class: 'sonido-meta' }, dims, h('span', { class: 'dato' }, tamano(i.bytes)))),
       botonCopiar(i.ruta)));
+}
+
+// Dentro del grupo de un personaje el nombre ya está en la cabecera: basta con el gesto.
+function nombreTarjeta(i) {
+  if (!esPersonaje(i.carpeta) || !i.titulo) return i.titulo ?? i.nombre;
+  return i.titulo.split(' · ').slice(1).join(' · ') || 'normal';
 }
 
 $('g-buscar').addEventListener('input', (e) => { galeria.texto = e.target.value; pintarGaleria(); });

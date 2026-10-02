@@ -451,6 +451,83 @@
   }
   @keyframes destello-jefe { 0% { opacity: 0; } 12% { opacity: 1; } 100% { opacity: 0; } }
 
+  /* El especial nace en el retrato, cruza la barra y deja una marca breve. */
+  .efecto-jefe { position: absolute; inset: 0; z-index: 5; overflow: hidden; pointer-events: none; }
+  .efecto-jefe i, .efecto-jefe span { position: absolute; display: block; font-style: normal; }
+  .efecto-jefe .halo { left: 103px; top: 71px; width: 280px; height: 280px; border: 5px solid var(--t1); border-radius: 50%;
+    box-shadow: 0 0 24px var(--t1), inset 0 0 24px var(--t1); animation: especial-halo 1.65s ease-out both; }
+  @keyframes especial-halo { 0% { opacity: 0; transform: scale(.72); } 22% { opacity: .9; transform: scale(1.03); } 60% { opacity: .5; } 100% { opacity: 0; transform: scale(1.28); } }
+  .efecto-jefe .onda { left: 385px; top: 151px; width: 890px; height: 138px; transform-origin: left center;
+    background: linear-gradient(90deg, var(--t1), color-mix(in srgb, var(--t2) 55%, white), transparent);
+    clip-path: polygon(0 36%, 90% 17%, 100% 50%, 90% 83%, 0 64%);
+    filter: drop-shadow(0 0 22px var(--t2)); animation: especial-onda 1.65s cubic-bezier(.18, .65, .3, 1) both; }
+  @keyframes especial-onda { 0%, 20% { opacity: 0; transform: scaleX(.02); } 40% { opacity: .7; transform: scaleX(.35); } 68% { opacity: .8; transform: scaleX(1); } 100% { opacity: 0; transform: scaleX(1.08); } }
+  .efecto-jefe .marca { left: 590px; top: 178px; width: 595px; height: 86px; border: 3px solid var(--t1); border-radius: 50%;
+    box-shadow: 0 0 24px var(--t2), inset 0 0 18px var(--t2); animation: especial-marca 1.65s ease-out both; }
+  @keyframes especial-marca { 0%, 45% { opacity: 0; transform: scale(.65); } 70% { opacity: .9; transform: scale(1); } 100% { opacity: 0; transform: scale(1.16); } }
+  .efecto-jefe .simbolo { left: 1065px; top: 126px; width: 140px; height: 140px; display: grid; place-items: center;
+    font-size: 74px; color: #fff; text-shadow: 0 0 18px var(--t1), 0 4px 10px #000; animation: especial-simbolo 1.65s ease-out both; }
+  @keyframes especial-simbolo { 0%, 40% { opacity: 0; transform: translateX(-110px) rotate(-35deg) scale(.4); } 67% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateX(35px) scale(1.15); } }
+  /* Los cuatro primeros gestos conservan su composición original. */
+  .efecto-jefe.dragon .onda { background: repeating-linear-gradient(135deg, rgba(230, 255, 255, .92) 0 10px, rgba(94, 207, 255, .7) 10px 28px, transparent 28px 42px); clip-path: polygon(0 40%, 14% 8%, 27% 37%, 41% 2%, 55% 38%, 71% 7%, 84% 37%, 100% 50%, 83% 64%, 69% 98%, 54% 65%, 39% 94%, 26% 65%, 12% 91%, 0 60%); }
+  .efecto-jefe.dragon .marca { border-radius: 4px; transform: rotate(-4deg); border-color: #d8f9ff; box-shadow: 0 0 24px #7bdfff, inset 0 0 24px #7bdfff; }
+  .efecto-jefe.golem .onda { background: repeating-linear-gradient(110deg, rgba(255, 227, 166, .9) 0 18px, rgba(115, 65, 34, .85) 18px 25px, transparent 25px 44px); clip-path: polygon(0 30%, 14% 24%, 22% 51%, 36% 16%, 51% 43%, 65% 12%, 79% 42%, 100% 35%, 96% 72%, 75% 64%, 61% 90%, 44% 61%, 29% 92%, 17% 60%, 0 72%); }
+  .efecto-jefe.golem .marca { border-radius: 0; border-style: dashed; transform: rotate(3deg); }
+  .efecto-jefe.liche .onda { display: none; }
+  .efecto-jefe .almas { display: none; }
+  .efecto-jefe.liche .almas { display: block; position: absolute; inset: 0; width: 1540px; height: 445px; filter: drop-shadow(0 0 11px #b96dff); }
+  .efecto-jefe.liche .almas path { fill: none; stroke: #f8dfff; stroke-width: 8; stroke-linecap: round;
+    stroke-dasharray: 180 1300; opacity: 0; animation: alma-viaja 1.55s ease-in-out both; }
+  .efecto-jefe.liche .almas path:nth-child(2) { stroke: #bb73ff; stroke-width: 6; animation-delay: .12s; }
+  .efecto-jefe.liche .almas path:nth-child(3) { stroke: #fff; stroke-width: 4; animation-delay: .22s; }
+  @keyframes alma-viaja { 0% { opacity: 0; stroke-dashoffset: 0; } 18%, 75% { opacity: .95; } 100% { opacity: 0; stroke-dashoffset: -1100; } }
+  .efecto-jefe.liche .almas circle { opacity: 0; filter: drop-shadow(0 0 10px #fff) drop-shadow(0 0 18px #a357ff); animation: alma-orbe 1.5s ease-in-out both; }
+  .efecto-jefe.liche .almas circle:nth-of-type(2) { animation-delay: .12s; }
+  .efecto-jefe.liche .almas circle:nth-of-type(3) { animation-delay: .22s; }
+  @keyframes alma-orbe { 0%, 100% { opacity: 0; } 20%, 80% { opacity: 1; } }
+  .efecto-jefe.liche .marca { left: 1060px; top: 132px; width: 164px; height: 164px; border: 3px solid #e9c4ff; border-radius: 50%;
+    background: repeating-conic-gradient(from 0deg, rgba(246, 222, 255, .9) 0 3deg, transparent 3deg 24deg);
+    box-shadow: 0 0 28px #a357ff, inset 0 0 28px #a357ff; animation: liche-sello 1.65s ease-out both; }
+  .efecto-jefe.liche .marca::after { content: ""; position: absolute; inset: 24px; border: 2px solid #eed1ff; border-radius: 50%; box-shadow: 0 0 18px #b96dff; }
+  .efecto-jefe.liche .simbolo { left: 1075px; top: 145px; }
+  @keyframes liche-sello { 0% { opacity: 0; transform: scale(.35) rotate(-80deg); } 25%, 68% { opacity: .85; } 80% { transform: scale(1) rotate(75deg); } 100% { opacity: 0; transform: scale(1.25) rotate(110deg); } }
+  /* Los otros seis especiales dibujan su efecto, sin el barrido genérico. */
+  .efecto-jefe.con-motivo .onda, .efecto-jefe.con-motivo .marca, .efecto-jefe.con-motivo .simbolo { display: none; }
+  .efecto-jefe .motivos { display: none; }
+  .efecto-jefe.con-motivo .motivos { display: block; position: absolute; inset: 0; width: 1540px; height: 445px; overflow: visible; filter: drop-shadow(0 0 10px var(--t2)); }
+  .efecto-jefe .motivos g { display: none; }
+  .efecto-jefe.esqueleto .motivos .esqueleto, .efecto-jefe.hidra .motivos .hidra,
+  .efecto-jefe.arana .motivos .arana, .efecto-jefe.kraken .motivos .kraken,
+  .efecto-jefe.minotauro .motivos .minotauro, .efecto-jefe.tanque .motivos .tanque { display: inline; }
+  .motivos .trazo { fill: none; stroke: var(--t1); stroke-width: 8; stroke-linecap: round; stroke-linejoin: round;
+    opacity: .95; transform-box: fill-box; transform-origin: center; animation: motivo-traza 2.4s ease-out both; }
+  .motivos .trazo:nth-child(2) { animation-delay: .08s; }
+  .motivos .trazo:nth-child(3) { animation-delay: .16s; }
+  .motivos .masa { fill: var(--t1); opacity: .9; transform-box: fill-box; transform-origin: center; animation: motivo-aparece 2.4s ease-out both; }
+  @keyframes motivo-traza { 0%, 8% { transform: scale(.78); } 28%, 82% { transform: scale(1); } 100% { transform: scale(1.08); } }
+  @keyframes motivo-aparece { 0%, 10% { transform: translateY(24px) scale(.5); } 38%, 84% { transform: none; } 100% { transform: translateY(-12px) scale(1.08); } }
+  @keyframes motivo-surge { 0%, 8% { transform: translateY(65px) scaleY(.5); } 32%, 82% { transform: none; } 100% { transform: translateY(-12px); } }
+  @keyframes motivo-dispara { 0%, 8% { transform: translateX(-95px) scaleX(.55); } 30% { transform: translateX(12px) scaleX(1.02); } 42%, 82% { transform: none; } 100% { transform: translateX(25px); } }
+  @keyframes motivo-red { 0%, 8% { transform: rotate(-24deg) scale(.45); } 38% { transform: rotate(4deg) scale(1.04); } 50%, 82% { transform: none; } 100% { transform: scale(1.1); } }
+  @keyframes motivo-salpicadura { 0%, 8% { transform: translate(-85px, -28px) scale(.45); } 32% { transform: translate(8px, 5px) scale(1.04); } 45%, 82% { transform: none; } 100% { transform: translate(18px, 18px); } }
+  @keyframes motivo-rebote { 0%, 8% { transform: translateX(-80px) rotate(-15deg); } 38% { transform: translateX(14px) rotate(6deg); } 56% { transform: translateX(-30px) rotate(-8deg); } 82% { transform: none; } 100% { transform: translateX(-60px) rotate(-15deg); } }
+  .motivos .esqueleto .trazo { stroke: #e9ffe0; stroke-width: 14; animation-name: motivo-surge; }
+  .motivos .esqueleto .masa { fill: #d9ffd9; }
+  .motivos .hidra .trazo { stroke: #b8ff57; stroke-width: 13; animation-name: motivo-dispara; }
+  .motivos .hidra .masa { fill: #b8ff57; }
+  .motivos .arana .trazo { stroke: #ffe0e0; stroke-width: 5; animation-name: motivo-red; }
+  .motivos .arana .masa { fill: #ff5265; }
+  .motivos .kraken .trazo { stroke: #47e4d2; stroke-width: 23; animation-name: motivo-surge; }
+  .motivos .kraken .trazo.fino { stroke: #d0fff8; stroke-width: 5; }
+  .motivos .kraken .masa { fill: #a8fff5; }
+  .motivos .minotauro .trazo { stroke: #c9f06a; stroke-width: 19; animation-name: motivo-salpicadura; }
+  .motivos .minotauro .masa { fill: #b9e858; }
+  .motivos .tanque .trazo { stroke: #f1f6ff; stroke-width: 13; animation-name: motivo-rebote; }
+  .motivos .tanque .masa { fill: #bed1eb; }
+  .efecto-jefe.lag .onda { background: repeating-linear-gradient(0deg, rgba(0, 229, 255, .85) 0 8px, transparent 8px 15px, rgba(255, 0, 200, .72) 15px 20px, transparent 20px 32px); animation-timing-function: steps(5, end); }
+  .efecto-jefe.lag .marca { border-style: dashed; border-color: #00e5ff; border-radius: 2px; box-shadow: 8px 0 #f0c, -8px 0 #00e5ff; animation-timing-function: steps(4, end); }
+  @media (prefers-reduced-motion: reduce) { .efecto-jefe { display: none !important; } }
+
   /* Quién está afectado: debajo de la barra, donde va la pista. */
   .afectados { position: absolute; left: 176px; top: 122px; display: flex; gap: 10px; flex-wrap: wrap; }
   .afectado {
@@ -521,8 +598,36 @@
   .foto-combate {
     position: absolute; left: 96px; top: 62px; width: 300px; height: 300px;
     object-fit: cover; clip-path: circle(46%); z-index: 2;
-    box-shadow: none;
+    box-shadow: none; transform-origin: center;
+    animation: retrato-respira 4.8s ease-in-out infinite;
   }
+  /* Los PNG son los retratos visibles. Cada jefe se mueve con su propio ritmo. */
+  @keyframes retrato-respira { 0%, 100% { transform: translateY(2px) scale(1.015); } 50% { transform: translateY(-3px) scale(1.045); } }
+  @keyframes retrato-aliento { 0%, 100% { transform: translate(-2px, 2px) scale(1.02); } 50% { transform: translate(2px, -5px) scale(1.055); } }
+  @keyframes retrato-acecha { 0%, 100% { transform: rotate(-1.5deg) scale(1.025); } 50% { transform: rotate(1.5deg) scale(1.05); } }
+  @keyframes retrato-flota { 0%, 100% { transform: translateY(4px) scale(1.02); } 50% { transform: translateY(-7px) scale(1.045); } }
+  @keyframes retrato-pesado { 0%, 100% { transform: translateY(2px) scale(1.02); } 46% { transform: translateY(-2px) scale(1.04); } 52% { transform: translateY(3px) scale(1.025); } }
+  @keyframes retrato-espasmo { 0%, 28%, 32%, 76%, 80%, 100% { transform: translateX(0) scale(1.025); } 30% { transform: translateX(-3px) scale(1.045); } 78% { transform: translateX(3px) scale(1.035); } }
+  @keyframes retrato-glitch { 0%, 89%, 94%, 100% { transform: translateX(0) scale(1.025); } 90%, 92% { transform: translateX(-5px) scale(1.05); } 91%, 93% { transform: translateX(5px) scale(1.05); } }
+  body[data-jefe="dragon"] .foto-combate { animation-name: retrato-aliento; animation-duration: 4.2s; }
+  body[data-jefe="hidra"] .foto-combate, body[data-jefe="kraken"] .foto-combate { animation-name: retrato-acecha; animation-duration: 5.4s; }
+  body[data-jefe="liche"] .foto-combate { animation-name: retrato-flota; animation-duration: 5.2s; }
+  body[data-jefe="golem"] .foto-combate, body[data-jefe="tanque"] .foto-combate { animation-name: retrato-pesado; animation-duration: 5.8s; }
+  body[data-jefe="esqueleto"] .foto-combate, body[data-jefe="arana"] .foto-combate { animation-name: retrato-espasmo; animation-duration: 5s; }
+  body[data-jefe="lag"] .foto-combate { animation-name: retrato-glitch; animation-duration: 3.6s; }
+  .jefe.intro .foto-combate { animation: retrato-invocar 1.15s cubic-bezier(.2, 1.25, .3, 1), retrato-respira 4.8s ease-in-out infinite; }
+  @keyframes retrato-invocar { 0% { opacity: 0; transform: translateY(-28px) scale(.75); filter: brightness(2); } 55% { opacity: 1; transform: translateY(3px) scale(1.09); } 100% { transform: scale(1.025); filter: brightness(1); } }
+  .jefe.critica .foto-combate { filter: saturate(1.2) drop-shadow(0 0 18px rgba(255, 45, 35, .7)); }
+  .jefe.critica::after { content: ""; position: absolute; left: 106px; top: 72px; width: 280px; height: 280px; z-index: 3; border-radius: 50%; pointer-events: none;
+    box-shadow: inset 0 0 22px rgba(255, 45, 35, .65), 0 0 24px rgba(255, 45, 35, .35); animation: retrato-furia 1.2s ease-in-out infinite; }
+  @keyframes retrato-furia { 50% { opacity: .4; } }
+  body .jefe .foto-combate.golpe, body .jefe .foto-combate.golpe-critico { animation: retrato-golpe .36s ease-out both; }
+  body .jefe .foto-combate.golpe-critico { animation-name: retrato-golpe-critico; }
+  @keyframes retrato-golpe { 0% { transform: translateX(0) scale(1.025); filter: brightness(2.2); } 35% { transform: translateX(-7px) rotate(-2deg) scale(1.055); } 70% { transform: translateX(4px) rotate(1deg); } 100% { transform: none; filter: brightness(1); } }
+  @keyframes retrato-golpe-critico { 0% { transform: scale(1.02); filter: brightness(2.8); } 35% { transform: translateX(-11px) rotate(-3deg) scale(1.09); } 70% { transform: translateX(7px) rotate(2deg); } 100% { transform: none; filter: brightness(1); } }
+  body .jefe .foto-combate.especial { animation: retrato-especial .95s ease-out both; }
+  @keyframes retrato-especial { 0% { transform: scale(1.025); filter: brightness(1); } 25% { transform: translateY(-8px) scale(1.085); filter: brightness(1.9) saturate(1.4); } 100% { transform: scale(1.025); filter: brightness(1); } }
+  @media (prefers-reduced-motion: reduce) { .foto-combate { animation: none !important; } }
   .jefe .emblema { left: 95px; top: 64px; width: 302px; height: 302px; filter: none; }
   .jefe .emblema:not(.reserva) { display: none; }
   .jefe .insignia { display: none; }
@@ -536,6 +641,7 @@
   .jefe .rastro { background: color-mix(in srgb, var(--t1) 70%, white); }
   .jefe .vida { background: linear-gradient(180deg, var(--t1), var(--t2) 46%, var(--t3)); }
   .jefe .cifra { font-family: 'Rajdhani Local', sans-serif; font-size: 28px; }
+  .jefe .cifra, .jefe .cartel, .jefe .reloj, .jefe .pista, .jefe .afectados, .jefe .contador-golpes { z-index: 6; }
   .jefe .marcas { opacity: .35; }
   .jefe .pista { left: 515px; top: 304px; width: 705px; height: 53px; display: flex; justify-content: center; align-items: center; gap: 7px; box-sizing: border-box; font-family: 'Rajdhani Local', sans-serif; font-size: 27px; font-weight: 700; letter-spacing: .025em; text-align: center; white-space: nowrap; }
   .jefe .afectados { left: 505px; top: 313px; right: 100px; }
@@ -601,9 +707,10 @@
   @keyframes final-sale { to { opacity: 0; transform: translate(-50%, -54%) scale(1.03); } }
   .final .rayos { opacity: .35; pointer-events: none; }
   .final-retrato { position: absolute; left: 77px; top: 40px; width: 230px; height: 230px; margin: 0; }
+  .final-retrato .pintado { animation: none; }
   .final:not(.escapa) .final-retrato { animation: retrato-derrotado 1.6s ease-in .2s forwards; }
   .final.escapa .final-retrato { animation: retrato-escapado 2.4s ease-in 1.2s forwards; }
-  @keyframes retrato-derrotado { to { filter: grayscale(1) brightness(.55); } }
+  @keyframes retrato-derrotado { 35% { filter: brightness(1.8); transform: translateY(-5px) scale(1.04); } 100% { filter: grayscale(1) brightness(.55); transform: translateY(12px) scale(.94); } }
   @keyframes retrato-escapado { to { opacity: .2; filter: grayscale(.7); } }
   .final .titular { position: absolute; left: 362px; top: 83px; width: 478px; height: 43px;
     display: flex; align-items: center; justify-content: center;
@@ -628,6 +735,60 @@
 <!-- La barra del jefe -->
 <div class="jefe" id="jefe" hidden>
   <img class="foto-combate" id="foto-combate" alt="" hidden>
+  <div class="efecto-jefe" id="efecto-jefe" aria-hidden="true" hidden>
+    <i class="halo"></i><i class="onda"></i><i class="marca"></i>
+    <svg class="almas" viewBox="0 0 1540 445" aria-hidden="true">
+      <path d="M1145 197 C1000 100 870 270 690 165 S390 108 255 194"/>
+      <path d="M1170 239 C1010 325 865 132 685 246 S390 300 255 211"/>
+      <path d="M1090 274 C930 205 780 325 585 224 S375 134 255 207"/>
+      <circle r="12" fill="#fff"><animateMotion begin="indefinite" dur="1.45s" path="M1145 197 C1000 100 870 270 690 165 S390 108 255 194"/></circle>
+      <circle r="9" fill="#e2b7ff"><animateMotion begin="indefinite" dur="1.45s" path="M1170 239 C1010 325 865 132 685 246 S390 300 255 211"/></circle>
+      <circle r="7" fill="#fff"><animateMotion begin="indefinite" dur="1.45s" path="M1090 274 C930 205 780 325 585 224 S375 134 255 207"/></circle>
+    </svg>
+    <svg class="motivos" viewBox="0 0 1540 445" aria-hidden="true">
+      <g class="esqueleto">
+        <path class="trazo" pathLength="100" d="M515 350 Q565 270 555 175 M545 177 Q555 146 571 178 M545 177 Q528 151 518 182"/>
+        <path class="trazo" pathLength="100" d="M710 365 Q760 285 755 151 M746 155 Q755 125 771 156 M746 155 Q731 127 720 160"/>
+        <path class="trazo" pathLength="100" d="M925 365 Q963 277 950 175 M942 177 Q951 149 969 180 M942 177 Q927 153 917 187"/>
+        <path class="trazo" pathLength="100" d="M488 355 Q731 295 1015 355"/>
+        <circle class="masa" cx="755" cy="151" r="13"/><circle class="masa" cx="950" cy="175" r="12"/>
+      </g>
+      <g class="hidra">
+        <path class="trazo" pathLength="100" d="M350 210 C505 87 630 143 766 145 S1000 76 1170 132"/>
+        <path class="trazo" pathLength="100" d="M350 210 C520 183 615 217 765 220 S1015 180 1170 214"/>
+        <path class="trazo" pathLength="100" d="M350 210 C486 306 628 267 770 296 S1008 349 1170 286"/>
+        <path class="trazo" pathLength="100" d="M1140 132 l37 -18 -16 39 M1140 214 l37 -18 -16 39 M1140 286 l37 -18 -16 39"/>
+        <circle class="masa" cx="1008" cy="169" r="9"/><circle class="masa" cx="1060" cy="252" r="13"/><circle class="masa" cx="955" cy="317" r="8"/>
+      </g>
+      <g class="arana">
+        <path class="trazo" pathLength="100" d="M385 209 L1215 209 M800 72 L800 355 M515 85 L1090 338 M1082 80 L510 340"/>
+        <path class="trazo" pathLength="100" d="M680 149 Q800 128 915 150 Q950 212 913 270 Q800 292 686 266 Q650 208 680 149 Z"/>
+        <path class="trazo" pathLength="100" d="M585 108 Q800 71 1018 111 Q1081 210 1015 312 Q800 359 589 309 Q519 209 585 108 Z"/>
+        <path class="trazo" pathLength="100" d="M465 80 Q800 25 1135 78 Q1240 208 1138 343 Q800 412 468 343 Q365 208 465 80 Z"/>
+        <circle class="masa" cx="800" cy="209" r="16"/>
+      </g>
+      <g class="kraken">
+        <path class="trazo" pathLength="100" d="M475 415 C442 312 510 287 562 330 C660 411 734 281 670 210 C638 174 576 199 596 247"/>
+        <path class="trazo" pathLength="100" d="M740 429 C693 340 752 277 833 309 C936 348 971 236 909 172 C865 126 814 172 838 217"/>
+        <path class="trazo" pathLength="100" d="M1015 420 C949 337 1030 297 1088 319 C1174 353 1253 250 1194 188 C1167 159 1125 180 1136 216"/>
+        <path class="trazo fino" pathLength="100" d="M524 357 C578 386 656 333 660 268 M807 347 C903 369 970 285 926 212 M1060 358 C1158 379 1226 303 1208 244"/>
+        <circle class="masa" cx="616" cy="339" r="8"/><circle class="masa" cx="883" cy="309" r="8"/><circle class="masa" cx="1151" cy="303" r="8"/>
+      </g>
+      <g class="minotauro">
+        <path class="trazo" pathLength="100" d="M343 222 C505 105 633 136 790 204 S1015 288 1185 210"/>
+        <path class="trazo" pathLength="100" d="M381 258 C559 189 650 215 758 275 S1002 335 1135 290"/>
+        <path class="trazo" pathLength="100" d="M626 175 Q638 210 616 235 M866 251 Q873 291 850 318 M1040 274 Q1060 310 1034 337"/>
+        <circle class="masa" cx="700" cy="247" r="17"/><circle class="masa" cx="946" cy="299" r="12"/><circle class="masa" cx="1147" cy="223" r="22"/>
+      </g>
+      <g class="tanque">
+        <path class="trazo" pathLength="100" d="M350 212 C535 75 748 91 1028 189 C1090 213 1080 274 1025 283 C814 312 580 277 384 235"/>
+        <path class="trazo" pathLength="100" d="M1062 181 l65 -75 M1080 215 l106 0 M1062 252 l67 67"/>
+        <path class="trazo" pathLength="100" d="M347 159 l-32 -45 M332 208 l-64 -3 M349 255 l-37 45"/>
+        <path class="masa" d="M1050 167 l54 19 v55 q-18 45 -54 64 q-39 -20 -55 -64 v-55 Z"/>
+      </g>
+    </svg>
+    <span class="simbolo" id="efecto-simbolo"></span>
+  </div>
   <div class="contador-golpes" id="contador-golpes" title="Golpes acertados"><span class="espadas">⚔︎</span><b id="golpes-numero" hidden>0</b></div>
   <svg class="emblema" id="emblema" viewBox="0 0 200 200" aria-hidden="true">
     <defs>
@@ -1188,10 +1349,13 @@
   let glitchReloj = null;
   let cicloJefe = 0;
   let salidaJefe = null, salidaAmbiente = null, avisoReloj = null, salidaCartel = null;
+  let retratoGolpeReloj = null, retratoEspecialReloj = null, efectoEspecialReloj = null;
   // 27 sep 2026: un callback del jefe anterior no puede retirar al nuevo.
   function cancelarRetirada() {
-    for (const reloj of [salidaJefe, salidaAmbiente, avisoReloj, cartelReloj, salidaCartel]) clearTimeout(reloj);
+    for (const reloj of [salidaJefe, salidaAmbiente, avisoReloj, cartelReloj, salidaCartel, retratoGolpeReloj, retratoEspecialReloj, efectoEspecialReloj]) clearTimeout(reloj);
     $('jefe').classList.remove('sale');
+    $('foto-combate').classList.remove('golpe', 'golpe-critico', 'especial');
+    $('efecto-jefe').hidden = true;
     $('ambiente').classList.remove('apagando');
     $('aviso').hidden = true;
     $('cartel-especial').hidden = true;
@@ -1223,6 +1387,8 @@
   function desvestir() {
     clearInterval(glitchReloj);
     document.body.classList.remove('glitch');
+    clearTimeout(efectoEspecialReloj);
+    $('efecto-jefe').hidden = true;
     const capa = $('ambiente');
     capa.classList.add('apagando');
     const ciclo = cicloJefe;
@@ -1421,6 +1587,13 @@
     if (tipo !== 'golpe' && tipo !== 'propio') return;
     const emblema = $('emblema');
     emblema.classList.remove('golpe'); void emblema.getBoundingClientRect(); emblema.classList.add('golpe');
+    const foto = $('foto-combate');
+    if (!foto.hidden) {
+      clearTimeout(retratoGolpeReloj);
+      foto.classList.remove('golpe', 'golpe-critico'); void foto.offsetWidth;
+      foto.classList.add(g.critico ? 'golpe-critico' : 'golpe');
+      retratoGolpeReloj = setTimeout(() => foto.classList.remove('golpe', 'golpe-critico'), 380);
+    }
     if (tipo !== 'golpe') return;
     if (g.critico && (TEMAS[document.body.dataset.jefe] || {}).temblor) {
       document.body.classList.remove('temblor'); void document.body.offsetWidth; document.body.classList.add('temblor');
@@ -1438,6 +1611,27 @@
     const cartel = $('cartel-especial');
     cartel.classList.remove('sale');
     cartel.hidden = true; void cartel.offsetWidth; cartel.hidden = false;
+    const efecto = $('efecto-jefe');
+    clearTimeout(efectoEspecialReloj);
+    const conMotivo = ['esqueleto', 'hidra', 'arana', 'kraken', 'minotauro', 'tanque'].includes(tipo);
+    efecto.className = `efecto-jefe ${Object.hasOwn(TEMAS, tipo) ? tipo : ''}${conMotivo ? ' con-motivo' : ''}`;
+    $('efecto-simbolo').textContent = e.icono || '✦';
+    efecto.hidden = true; void efecto.offsetWidth; efecto.hidden = false;
+    if (conMotivo) {
+      const piezas = efecto.querySelectorAll('.motivos .trazo, .motivos .masa');
+      for (const pieza of piezas) pieza.style.animation = 'none';
+      void efecto.offsetWidth;
+      for (const pieza of piezas) pieza.style.removeProperty('animation');
+    }
+    if (tipo === 'liche') for (const alma of efecto.querySelectorAll('animateMotion')) alma.beginElement?.();
+    const ciclo = cicloJefe;
+    efectoEspecialReloj = setTimeout(() => { if (ciclo === cicloJefe) efecto.hidden = true; }, conMotivo ? 2450 : 1700);
+    const foto = $('foto-combate');
+    if (!foto.hidden) {
+      clearTimeout(retratoEspecialReloj);
+      foto.classList.remove('especial'); void foto.offsetWidth; foto.classList.add('especial');
+      retratoEspecialReloj = setTimeout(() => foto.classList.remove('especial'), 1000);
+    }
     const d = document.createElement('div');
     d.className = 'destello-jefe';
     document.body.append(d);
@@ -1505,10 +1699,35 @@
 
   const params = new URLSearchParams(location.search);
   if (params.get('demo') === '1') demo();
+  else if (params.get('demo') === 'especial') demoEspecial();
   else if (params.get('demo') === 'duelo') demoDuelos();
   else {
     const api = new URL('/api/overlay/jefe', location.href);
     DirectoRed.overlay(api, pintar, 500);
+  }
+
+  /** Muestra repetible de los ataques especiales de todos los jefes. */
+  function demoEspecial() {
+    const muestras = {
+      dragon: { nombre: 'el Dragón de Escarcha', icono: '❄', titulo: 'Aliento helado', texto: '¡El frío alcanza al grupo!' },
+      esqueleto: { nombre: 'el Rey Esqueleto', icono: '💀', titulo: 'Alzar a los muertos', texto: '+60 de vida' },
+      hidra: { nombre: 'la Hidra del Pantano', icono: '🐍', titulo: 'Mordisco venenoso', texto: 'La mitad de daño durante 20 s' },
+      golem: { nombre: 'el Gólem de Obsidiana', icono: '◆', titulo: 'Terremoto', texto: '¡Tiembla el suelo!' },
+      liche: { nombre: 'el Liche sin Nombre', icono: '✦', titulo: 'Drenar alma', texto: '¡Absorbe la energía del grupo!' },
+      arana: { nombre: 'la Araña Reina', icono: '🕸️', titulo: 'Telaraña', texto: '¡Atrapado durante 15 s!' },
+      kraken: { nombre: 'el Kraken del Foso', icono: '🐙', titulo: 'Tentáculo', texto: '¡Arrastrado al fondo durante 15 s!' },
+      minotauro: { nombre: 'el Minotauro con Resaca', icono: '🤢', titulo: 'Vomitona', texto: 'Todos fallan el siguiente golpe' },
+      tanque: { nombre: 'el Tanque que no sabe tanquear', icono: '🛡️', titulo: 'Provocación fallida', texto: 'Se pega solo: −48' },
+      lag: { nombre: 'el Lag Primigenio', icono: '⚡', titulo: 'Desconexión', texto: '¡La señal se corta!' },
+    };
+    const tipo = Object.hasOwn(muestras, params.get('jefe')) ? params.get('jefe') : 'dragon';
+    const muestra = muestras[tipo];
+    const jefe = { id: 1, tipo, nombre: muestra.nombre, vida: 240, vidaMax: 400, quedanSeg: 120, golpes: [], golpesAcertados: 0, afectados: [] };
+    pintar({ jefe, final: null });
+    let n = 0;
+    const lanzar = () => pintar({ jefe: { ...jefe, especial: { n: ++n, icono: muestra.icono, titulo: muestra.titulo, texto: muestra.texto, at: Date.now() } }, final: null });
+    setTimeout(lanzar, 3000);
+    setInterval(lanzar, 8000);
   }
 
   /** Unos duelos de mentira, uno detrás de otro. */
