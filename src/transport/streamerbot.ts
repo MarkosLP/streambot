@@ -37,6 +37,8 @@ const SUBSCRIPTIONS: StreamerbotEventsSubscription = {
     'Raid',
     'StreamOnline',
     'StreamOffline',
+    // Cuántos miran, para el contador de OBS (core/espectadores.ts).
+    'ViewerCountUpdate',
     // Para que el chat en pantalla (escenas) quite lo que borra un moderador.
     'ChatMessageDeleted',
     'UserTimedOut',

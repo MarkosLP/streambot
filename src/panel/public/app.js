@@ -1634,7 +1634,7 @@ async function cargarBiblioteca() {
         vista,
         chips,
         h('div', { class: 'overlay-pie' },
-          h('div', { class: 'sonido-info' }, h('strong', {}, o.vista === 'duelo' ? 'Duelo · !duelo' : o.vista === 'especiales' ? 'Ataques especiales' : o.vista === 'aliados' ? 'Ataques del chat' : o.nombre === 'jefe.html' ? 'Jefes de raid' : o.nombre === 'escena.html' ? 'Escenas actuales' : o.nombre), h('span', { class: 'sonido-meta' }, o.vista === 'duelo' ? 'La misma fuente «FX Jefe», con cada duelo del chat' : o.vista === 'especiales' ? 'Elige un jefe para ver su ataque en bucle' : o.vista === 'aliados' ? 'Subs, regalos y bits contra el jefe, en bucle' : o.nombre === 'escena.html' ? 'Fondos y textos configurados en Escenas' : usadoEn(o.usadoPor))),
+          h('div', { class: 'sonido-info' }, h('strong', {}, o.vista === 'duelo' ? 'Duelo · !duelo' : o.vista === 'especiales' ? 'Ataques especiales' : o.vista === 'aliados' ? 'Ataques del chat' : o.nombre === 'jefe.html' ? 'Jefes de raid' : o.nombre === 'escena.html' ? 'Escenas actuales' : o.nombre === 'espectadores.html' ? 'Contador de espectadores' : o.nombre), h('span', { class: 'sonido-meta' }, o.vista === 'duelo' ? 'La misma fuente «FX Jefe», con cada duelo del chat' : o.vista === 'especiales' ? 'Elige un jefe para ver su ataque en bucle' : o.vista === 'aliados' ? 'Subs, regalos y bits contra el jefe, en bucle' : o.nombre === 'escena.html' ? 'Fondos y textos configurados en Escenas' : o.nombre === 'espectadores.html' ? 'El número de Twitch · se oculta sin directo' : usadoEn(o.usadoPor))),
           // Misma dirección no recarga: se pasa por about:blank para repetir la animación.
           h('button', { class: 'boton pequeno', type: 'button', onclick: () => { marco.src = 'about:blank'; setTimeout(() => { marco.src = sinSonido(o.url + actual); }, 30); } }, '↻ Repetir'),
           botonCopiar(o.ruta)));
@@ -2703,6 +2703,7 @@ $('e-textos').addEventListener('submit', (ev) => {
  */
 const VARIANTES_OVERLAY = {
   'charla-compartida.html': [{ nombre: 'Webcam + contenido', q: '?demo=1' }],
+  'espectadores.html': [{ nombre: 'Con etiqueta', q: '?demo=1' }, { nombre: 'Solo el número', q: '?demo=1&etiqueta=0' }],
   'alertas.html': [{ nombre: 'Oscuro', q: '?demo=1' }, { nombre: 'Vibrante', q: '?demo=1&estilo=alegre' }, { nombre: 'Cálido', q: '?demo=1&estilo=acogedor' }],
   'panel.html': [{ nombre: 'Pergamino real', q: '?marco=pergamino' }, { nombre: 'Cristal arcano', q: '?marco=cristal' }, { nombre: 'Estandarte ligero', q: '?marco=estandarte' }],
   'avatar.html': [

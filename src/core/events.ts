@@ -106,6 +106,12 @@ export interface StreamStateEvent extends BaseEvent {
   type: 'stream.online' | 'stream.offline';
 }
 
+/** Cuántos miran según Twitch (`Twitch.ViewerCountUpdate`, más o menos cada minuto en directo). 2 oct 2026. */
+export interface StreamViewersEvent extends BaseEvent {
+  type: 'stream.viewers';
+  espectadores: number;
+}
+
 /**
  * Suscripciones, regalos, bits y raids (26 sep 2026, propuestas S1-S7).
  *
@@ -171,6 +177,7 @@ export type DomainEvent =
   | ChatModeracionEvent
   | ViewerRedeemEvent
   | StreamStateEvent
+  | StreamViewersEvent
   | ViewerSubEvent
   | ViewerGiftSubEvent
   | ViewerGiftBombEvent
@@ -451,6 +458,9 @@ export function normalize(
     case 'Twitch.StreamOffline':
       return { ...base, type: 'stream.offline' };
 
+    case 'Twitch.ViewerCountUpdate':
+      return { ...base, type: 'stream.viewers', espectadores: Math.max(0, num(payload?.viewers, num(payload?.viewerCount))) };
+
     default:
       return { ...base, type: 'raw', eventName, payload };
   }
@@ -490,6 +500,8 @@ export function describe(event: DomainEvent): string {
       return 'el directo ha empezado';
     case 'stream.offline':
       return 'el directo ha terminado';
+    case 'stream.viewers':
+      return `${event.espectadores} espectadores`;
     case 'raw':
       return `evento sin normalizar: ${event.eventName}`;
   }

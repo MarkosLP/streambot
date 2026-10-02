@@ -1,0 +1,103 @@
+<!doctype html>
+<!-- Contador de espectadores (2 oct 2026): el ojo arcano pintado y el número de Twitch.
+     ?etiqueta=0 quita «espectadores»; ?demo=1 enseña una muestra. Sin directo, se oculta. -->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Espectadores</title>
+<style>
+  @font-face { font-family: 'Rajdhani Local'; src: url('../imagenes/combate/fuentes/Rajdhani-Bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+  @font-face { font-family: 'Rajdhani Local'; src: url('../imagenes/combate/fuentes/Rajdhani-SemiBold.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+  :root { --oro: #e9c891; --oro-claro: #fff1cc; --oro-viejo: #a9824a; --violeta: #a970ff; }
+  html, body { margin: 0; background: transparent; overflow: hidden; }
+  body { font-family: 'Rajdhani Local', 'Segoe UI', sans-serif; color: #fff; }
+
+  .contador { position: absolute; left: 24px; top: 24px; display: flex; align-items: center; height: 92px; padding: 0 30px 0 98px; box-sizing: border-box;
+    transition: opacity .6s ease, transform .6s cubic-bezier(.2, .8, .2, 1); }
+  .contador[hidden] { display: flex; opacity: 0; transform: translateY(-14px); }
+  /* La placa: cristal oscuro con canto de oro viejo, como la barra del jefe. */
+  .contador::before { content: ''; position: absolute; inset: 14px 0 14px 46px; border-radius: 10px;
+    background: linear-gradient(180deg, rgba(20, 16, 28, .93), rgba(8, 7, 13, .9));
+    border: 1.5px solid var(--oro-viejo);
+    box-shadow: 0 0 0 1px #000, 0 6px 18px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 230, 170, .22), inset 0 0 18px rgba(169, 112, 255, .12); }
+  .contador::after { content: ''; position: absolute; left: 92px; right: 18px; top: 14px; height: 1.5px;
+    background: linear-gradient(90deg, transparent, var(--oro), transparent); opacity: .8; }
+  .icono { position: absolute; left: 0; top: 0; width: 92px; height: 92px; object-fit: contain; z-index: 2;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .7)) drop-shadow(0 0 10px rgba(233, 200, 145, .35)); }
+  .contador.sube .icono { animation: icono-sube 1.1s ease-out; }
+  @keyframes icono-sube { 30% { transform: scale(1.12); filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .7)) drop-shadow(0 0 22px rgba(255, 220, 140, .95)) brightness(1.25); } }
+
+  .texto { position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: center; line-height: 1; }
+  .cifra { display: flex; font-size: 44px; font-weight: 700; letter-spacing: .02em; height: 44px; overflow: hidden;
+    filter: drop-shadow(0 2px 0 #000) drop-shadow(0 0 8px rgba(233, 200, 145, .35)); }
+  /* Cada cifra es una columna 0-9 que rueda hasta su valor. */
+  .rueda { display: block; height: 44px; overflow: hidden; }
+  .rueda span { display: flex; flex-direction: column; transition: transform .9s cubic-bezier(.2, .8, .2, 1); }
+  .rueda i { display: block; height: 44px; font-style: normal; text-align: center; font-variant-numeric: tabular-nums;
+    background: linear-gradient(180deg, var(--oro-claro), var(--oro) 55%, #c79a52); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .etiqueta { margin-top: 3px; font-size: 12.5px; font-weight: 600; letter-spacing: .3em; text-transform: uppercase; color: #cdb98f; text-shadow: 0 1px 0 #000; }
+  .etiqueta[hidden] { display: none; }
+  /* Si sube: una chispa dorada recorre el canto. */
+  .chispa { position: absolute; top: 12px; left: 92px; width: 60px; height: 5px; border-radius: 50%; z-index: 2; opacity: 0; pointer-events: none;
+    background: radial-gradient(ellipse, #fff7dc, rgba(233, 200, 145, .8) 40%, transparent 70%); }
+  .contador.sube .chispa { animation: chispa 1.1s ease-out; }
+  @keyframes chispa { 0% { opacity: 0; transform: translateX(0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateX(var(--recorrido, 120px)); } }
+  @media (prefers-reduced-motion: reduce) { .rueda span { transition: none; } .contador.sube .icono, .contador.sube .chispa { animation: none; } }
+</style>
+</head>
+<body>
+<div class="contador" id="contador" hidden>
+  <img class="icono" id="icono" src="../imagenes/espectadores/icono.png" alt="">
+  <i class="chispa"></i>
+  <div class="texto">
+    <div class="cifra" id="cifra" aria-live="polite"></div>
+    <div class="etiqueta" id="etiqueta">espectadores</div>
+  </div>
+</div>
+<script src="/red.js"></script>
+<script>
+  const params = new URLSearchParams(location.search);
+  const $ = (id) => document.getElementById(id);
+  $('etiqueta').hidden = params.get('etiqueta') === '0';
+
+  let actual = null;
+  function pintarCifra(n) {
+    const caja = $('cifra');
+    const cifras = String(n).split('');
+    // Las columnas que ya hay se reutilizan para que rueden; las que sobran se quitan.
+    while (caja.children.length > cifras.length) caja.firstChild.remove();
+    while (caja.children.length < cifras.length) {
+      const rueda = document.createElement('b');
+      rueda.className = 'rueda';
+      const col = document.createElement('span');
+      for (let d = 0; d <= 9; d++) { const i = document.createElement('i'); i.textContent = String(d); col.append(i); }
+      rueda.append(col);
+      caja.prepend(rueda);
+    }
+    [...caja.children].forEach((rueda, k) => { rueda.firstChild.style.transform = `translateY(${-Number(cifras[k]) * 44}px)`; });
+  }
+
+  function poner(n) {
+    const contador = $('contador');
+    if (n === null || !Number.isFinite(n)) { contador.hidden = true; actual = null; return; }
+    if (actual !== null && n > actual) {
+      contador.style.setProperty('--recorrido', `${Math.max(60, contador.offsetWidth - 150)}px`);
+      contador.classList.remove('sube'); void contador.offsetWidth; contador.classList.add('sube');
+    }
+    actual = n;
+    pintarCifra(n);
+    contador.hidden = false;
+  }
+
+  if (params.get('demo') === '1') {
+    const serie = [7, 9, 12, 11, 15, 14, 18];
+    let i = 0;
+    poner(serie[0]);
+    setInterval(() => poner(serie[++i % serie.length]), 3000);
+  } else {
+    // Sin directo, null: la placa se oculta.
+    DirectoRed.overlay(new URL('/api/overlay/espectadores', location.href), (d) => poner(d.espectadores ?? null), 5000);
+  }
+</script>
+</body>
+</html>

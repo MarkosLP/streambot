@@ -34,6 +34,24 @@ try {
   socket.onmessage=async e=>{const m=JSON.parse(e.data);if(m.id){const p=pendientes.get(m.id);if(p){clearTimeout(p.t);pendientes.delete(m.id);m.error?p.ko(Error(JSON.stringify(m.error))):p.ok(m.result);}}else if(m.method==='Fetch.requestPaused'){const {requestId,request}=m.params;await pedir(request.url.startsWith(raiz+'/')||request.url.startsWith('data:')?'Fetch.continueRequest':'Fetch.failRequest',{requestId,...(!request.url.startsWith(raiz+'/')&&!request.url.startsWith('data:')?{errorReason:'BlockedByClient'}:{})}).catch(e=>{if(!e.message.includes('Invalid InterceptionId'))console.error('Interceptación:',e.message);});}};
   await pedir('Page.enable');await pedir('Fetch.enable',{patterns:[{urlPattern:'*'}]});
   const caso=process.argv[2]||'10';
+  if(caso==='espectadores')for(const etiqueta of ['1','0']) {
+    // Encima de un fondo del canal, para ver la placa como sobre el juego.
+    await abrir(`/biblioteca/overlays/espectadores.html?demo=1&etiqueta=${etiqueta}`,640,200);
+    for(let i=0;i<30;i++){if(await evaluar("document.querySelector('#icono').naturalWidth>0"))break;await esperar(100);}
+    await evaluar("document.body.style.background=\"#111 url('../imagenes/fondos/oscuro-charla-2026-09-28T21-05-48.png') 30% 20% / 1920px auto\"");
+    assert.equal(await evaluar("document.querySelector('#contador').hidden"),false);
+    assert.equal(await evaluar("document.querySelector('#cifra').textContent.replace(/\\D/g,'').length>0"),true);
+    // Un número fijo, sin el giro de las cifras a medias.
+    await evaluar("poner(12);document.querySelectorAll('.rueda span').forEach(s=>{s.style.transition='none'});document.querySelector('#contador').classList.remove('sube')");
+    await esperar(150);
+    assert.equal(await evaluar("document.querySelector('#etiqueta').hidden"),etiqueta==='0');
+    await captura(etiqueta==='1'?'espectadores':'espectadores-solo-numero',{x:0,y:0,width:360,height:140});
+  }
+  if(caso==='espectadores') {
+    // Sin directo, la ruta da null y la placa se oculta.
+    await abrir('/biblioteca/overlays/espectadores.html',640,200);await esperar(800);
+    assert.equal(await evaluar("document.querySelector('#contador').hidden"),true);
+  }
   if(caso==='charla-compartida') {
     await abrir('/biblioteca/overlays/charla-compartida.html?demo=1',1920,1080);
     assert.equal(await evaluar("document.querySelector('.demo-muestra').getBoundingClientRect().width"),850);

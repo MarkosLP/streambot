@@ -32,6 +32,7 @@ import * as mecenas from '../interactions/loot/mecenas.js';
 import * as temporada from '../interactions/loot/temporada.js';
 import * as suscriptores from '../data/suscriptores.js';
 import * as chatReciente from './chat-reciente.js';
+import * as espectadores from './espectadores.js';
 import * as registry from '../interactions/index.js';
 import { budget } from '../services/ai/index.js';
 
@@ -58,6 +59,13 @@ function isIgnored(viewer: Viewer): boolean {
 }
 
 export async function handleEvent(event: DomainEvent): Promise<void> {
+  // Llega cada minuto: al contador de OBS y nada más, sin una línea por aviso en el registro.
+  if (event.type === 'stream.viewers') {
+    espectadores.apuntar(event.espectadores);
+    log.debug(`<${event.type}> ${describe(event)}`);
+    return;
+  }
+
   log.evento(`<${event.type}> ${describe(event)}`, `<${event.type}> ${describePrivado(event)}`);
   log.debug('evento normalizado', event);
 
@@ -118,6 +126,7 @@ export async function handleEvent(event: DomainEvent): Promise<void> {
     const abierto = streams.current();
     if (abierto) await continuara.alCerrar(abierto);
     streams.close();
+    espectadores.reset();
   }
 }
 
