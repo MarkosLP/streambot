@@ -6,6 +6,8 @@
  * - Cada misión guarda dos reliquias: la Lumbre las colecciona (60 en total).
  * - A mitad de expedición ocurre un suceso de la región (solo narrativo).
  * - La Crónica del Velo avanza un capítulo cada CAPITULO_CADA expediciones completadas.
+ * - A veces, en vez del suceso, una encrucijada: el chat vota con !explorar 1 o 2.
+ *   Lo que elija la compañía decide el final de la crónica.
  *
  * Solo texto: las imágenes son los cuatro fondos de biblioteca/imagenes/mmo y
  * el clima se pinta con CSS. Las acciones van en tercera persona tras el
@@ -19,11 +21,19 @@ export interface Mision {
   reliquias: readonly [string, string];
 }
 
+/** Una decisión del chat a mitad de camino. La opción 1 es la prudente; la 2, la arriesgada. */
+export interface Encrucijada {
+  id: string;
+  pregunta: string;
+  opciones: readonly [string, string];
+}
+
 export interface Region {
   id: 'bosque' | 'cantera' | 'marisma';
   nombre: string;
   misiones: readonly Mision[];
   sucesos: readonly string[];
+  encrucijadas: readonly Encrucijada[];
 }
 
 export const REGIONES: readonly Region[] = [
@@ -72,6 +82,12 @@ export const REGIONES: readonly Region[] = [
       'La resina de los troncos brilla como si respirara.',
       'Un cuervo sigue a la compañía, siempre tres árboles por detrás.',
     ],
+    encrucijadas: [
+      { id: 'brasas', pregunta: 'A la izquierda se abre un sendero de brasas; a la derecha sigue el camino conocido.', opciones: ['Seguir el camino conocido', 'Tomar el sendero de brasas'] },
+      { id: 'ciervo-luz', pregunta: 'Un ciervo de luz se detiene y mira a la compañía.', opciones: ['Dejarlo marchar', 'Seguirlo entre los helechos'] },
+      { id: 'panales', pregunta: 'Una colmena de cobre zumba sobre el único puente.', opciones: ['Rodear el claro', 'Cruzar bajo los panales'] },
+      { id: 'tronco-voz', pregunta: 'Una voz pide ayuda desde dentro de un tronco hueco.', opciones: ['Seguir adelante', 'Entrar en el tronco'] },
+    ],
   },
   {
     id: 'cantera',
@@ -117,6 +133,12 @@ export const REGIONES: readonly Region[] = [
       'Una cadena se rompe a lo lejos y retumba durante un minuto entero.',
       'Los ojos de un rey tallado parecen seguir a la compañía.',
       'Un viento helado sopla desde una galería sin salida.',
+    ],
+    encrucijadas: [
+      { id: 'galeria-violeta', pregunta: 'Una galería baja hacia un resplandor violeta.', opciones: ['Quedarse en la superficie', 'Bajar a la galería'] },
+      { id: 'ojo-coloso', pregunta: 'Un coloso abre un ojo de piedra.', opciones: ['Retroceder en silencio', 'Hablarle'] },
+      { id: 'cadenas', pregunta: 'Una pasarela de cadenas cruza el abismo; la otra ruta da un largo rodeo.', opciones: ['Dar el rodeo', 'Cruzar por las cadenas'] },
+      { id: 'tumba-ithra', pregunta: 'Una tumba sellada lleva un nombre grabado: Ithra.', opciones: ['Dejarla cerrada', 'Romper el sello'] },
     ],
   },
   {
@@ -164,6 +186,12 @@ export const REGIONES: readonly Region[] = [
       'Una barca vacía cruza la marisma sin remero.',
       'Un farol se enciende solo al paso de la compañía.',
     ],
+    encrucijadas: [
+      { id: 'barca', pregunta: 'Una barca sin remero se acerca a la orilla.', opciones: ['Seguir a pie', 'Subir a la barca'] },
+      { id: 'dos-caminos', pregunta: 'Los faroles marcan dos caminos: uno con luz y otro a oscuras.', opciones: ['Seguir la luz', 'Entrar en la oscuridad'] },
+      { id: 'respira', pregunta: 'Algo grande respira bajo la pasarela.', opciones: ['Esperar a que se aleje', 'Pasar corriendo'] },
+      { id: 'nombre-agua', pregunta: 'Una voz bajo el agua dice el nombre de alguien de la compañía.', opciones: ['No responder', 'Responder'] },
+    ],
   },
 ];
 
@@ -182,7 +210,19 @@ export type Clima = (typeof CLIMAS)[number]['id'];
 export const CAPITULO_CADA = 6;
 
 /** El prólogo se ve desde el principio; cada capítulo, al completar CAPITULO_CADA expediciones más. */
-export const CRONICA: readonly { titulo: string; texto: string }[] = [
+/** Probabilidad de que el momento del suceso sea una encrucijada. */
+export const PROB_ENCRUCIJADA = 0.4;
+/** Cuánto dura la votación. Sin votos, o con empate, gana la opción prudente. */
+export const VOTO_MS = 3 * 60_000;
+/** El camino arriesgado alarga la expedición y da más renombre a cada participante. */
+export const META_ARRIESGADA = 2;
+export const BONO_ARRIESGADO = 3;
+
+/**
+ * Los capítulos con `audaz` tienen dos versiones: si en las encrucijadas la
+ * compañía eligió más veces el camino arriesgado que el prudente, la audaz.
+ */
+export const CRONICA: readonly { titulo: string; texto: string; audaz?: { titulo: string; texto: string } }[] = [
   { titulo: 'La Última Lumbre', texto: 'Nadie sabe quién encendió la Lumbre. Solo que, mientras arda, el Velo se abre de vez en cuando y deja pasar a quien se atreva.' },
   { titulo: 'Las primeras huellas', texto: 'Las expediciones vuelven con barro de tres tierras distintas. En la Lumbre empiezan a colgar mapas que nadie había dibujado.' },
   { titulo: 'El ciervo de ámbar', texto: 'Un vigía jura haber visto un ciervo de luz en la Fronda. Desde esa noche, las brasas del refugio arden de color miel.' },
@@ -196,12 +236,18 @@ export const CRONICA: readonly { titulo: string; texto: string }[] = [
   { titulo: 'La grieta', texto: 'El Velo ya no se cierra del todo. Por la grieta asoma una cuarta tierra que todavía no tiene nombre.' },
   { titulo: 'Lo que guardaba el Velo', texto: 'Al otro lado no hay un monstruo. Hay otra Lumbre, mucho más antigua, apagada hace siglos.' },
   { titulo: 'Los que vinieron antes', texto: 'Los mineros perdidos, el ermitaño, el capitán varado: todos fueron compañías como esta, y dejaron su reliquia para quien llegara después.' },
-  { titulo: 'La pregunta de Ithra', texto: 'En el santuario lunar queda una pregunta grabada: ¿abrir el Velo para siempre, o mantener viva la Lumbre?' },
-  { titulo: 'La Lumbre responde', texto: 'La compañía elige seguir explorando. El fuego crece y, por primera vez en siglos, suena música en el refugio.' },
-  { titulo: 'El Linde sigue abierto', texto: 'La crónica no termina: cada expedición añade una línea. El Velo espera a la próxima compañía.' },
+  { titulo: 'La pregunta de Ithra', texto: 'En el santuario lunar queda una pregunta grabada: ¿mantener viva la Lumbre, o abrir el Velo para siempre? Cada encrucijada que elegís es una respuesta.' },
+  { titulo: 'La Lumbre responde', texto: 'La compañía ha elegido con prudencia. El fuego crece y, por primera vez en siglos, suena música en el refugio.',
+    audaz: { titulo: 'El Velo se rasga', texto: 'La compañía ha elegido sin miedo. El Velo se rasga de lado a lado y, al otro lado, la vieja Lumbre vuelve a encenderse.' } },
+  { titulo: 'El Linde sigue abierto', texto: 'La crónica no termina: cada expedición añade una línea. El Velo espera a la próxima compañía.',
+    audaz: { titulo: 'Dos Lumbres', texto: 'Ahora arden dos fuegos, uno a cada lado del Velo. La crónica no termina: la próxima compañía decidirá qué hay más allá.' } },
 ];
 
 export const TOTAL_RELIQUIAS = REGIONES.reduce((n, r) => n + r.misiones.length * 2, 0);
+
+export function buscarEncrucijada(regionId: string, id: string | null | undefined): Encrucijada | undefined {
+  return REGIONES.find((r) => r.id === regionId)?.encrucijadas.find((e) => e.id === id);
+}
 
 export function buscarMision(regionId: string, misionId: string | null | undefined): Mision | undefined {
   return REGIONES.find((r) => r.id === regionId)?.misiones.find((m) => m.id === misionId);

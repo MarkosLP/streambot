@@ -3273,6 +3273,12 @@ function pintarMundo(d) {
     filas.push(['Progreso', `${e.objetivo.actual} / ${e.objetivo.meta}`]);
     if (e.detenido) filas.push(['Tiempo', { 'sin-directo': 'Congelado hasta que vuelva el directo', 'bot-apagado': 'Congelado hasta que enciendas el bot', 'sin-chat': 'Congelado hasta que vuelva Streamer.bot' }[e.detenido] ?? 'Congelado']);
     else if (e.hasta) filas.push([e.fase === 'resultado' ? 'Nueva salida' : 'El Velo se cierra', `en ${Math.max(0, Math.ceil((new Date(e.hasta) - Date.now()) / 60000))} min`]);
+    if (e.encrucijada) {
+      const [a, b] = e.encrucijada.opciones;
+      filas.push(['Encrucijada', e.encrucijada.decision
+        ? `${e.encrucijada.pregunta} Decidido: ${e.encrucijada.decision === 2 ? b.texto : a.texto}.`
+        : `${e.encrucijada.pregunta} 1: ${a.texto} (${a.votos}) · 2: ${b.texto} (${b.votos})`]);
+    }
     filas.push(['Compañía', e.participantes.length ? e.participantes.map((p) => `${p.nombre} (${p.aporte})`).join(', ') : '—']);
   }
   if (e.ultimoSuceso) filas.push(['Último suceso', e.ultimoSuceso]);

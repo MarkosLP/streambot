@@ -77,8 +77,8 @@ test('200 expediciones: misiones sin repetir antes de tiempo, colección complet
   mmo.setAzar(() => (semilla = (semilla * 16807) % 2147483647) / 2147483647);
   const mensajes = jugar(200);
 
-  const filas = getDb().prepare('SELECT expedicion_id, region_id, mision_id, clima, suceso FROM mmo_expediciones ORDER BY expedicion_id')
-    .all() as Array<{ expedicion_id: number; region_id: string; mision_id: string; clima: string; suceso: string | null }>;
+  const filas = getDb().prepare('SELECT expedicion_id, region_id, mision_id, clima, suceso, encrucijada, decision FROM mmo_expediciones ORDER BY expedicion_id')
+    .all() as Array<{ expedicion_id: number; region_id: string; mision_id: string; clima: string; suceso: string | null; encrucijada: string | null; decision: number | null }>;
   assert.equal(filas.length, 200);
   for (const region of REGIONES) {
     const suyas = filas.filter((f) => f.region_id === region.id).map((f) => f.mision_id);
@@ -91,11 +91,17 @@ test('200 expediciones: misiones sin repetir antes de tiempo, colección complet
   // Nunca el mismo cielo dos veces seguidas, y salen todos.
   for (let i = 1; i < filas.length; i++) assert.notEqual(filas[i]!.clima, filas[i - 1]!.clima);
   assert.equal(new Set(filas.map((f) => f.clima)).size, CLIMAS.length);
-  // Hay suceso en todas (Ana sola: meta 4, el suceso cae en el segundo paso) y salen todos los de cada región.
-  assert.ok(filas.every((f) => f.suceso));
+  // Todas tienen su momento a mitad de camino: un suceso o una encrucijada (Ana sola: en el segundo paso).
+  assert.ok(filas.every((f) => (f.suceso === null) !== (f.encrucijada === null)));
+  const conEncrucijada = filas.filter((f) => f.encrucijada).length;
+  assert.ok(conEncrucijada > 40 && conEncrucijada < 120, `${conEncrucijada} encrucijadas de 200`);
   for (const region of REGIONES) {
-    assert.equal(new Set(filas.filter((f) => f.region_id === region.id).map((f) => f.suceso)).size, region.sucesos.length, region.id);
+    const suyas = filas.filter((f) => f.region_id === region.id);
+    assert.equal(new Set(suyas.filter((f) => f.suceso).map((f) => f.suceso)).size, region.sucesos.length, `${region.id}: sucesos`);
+    assert.equal(new Set(suyas.filter((f) => f.encrucijada).map((f) => f.encrucijada)).size, region.encrucijadas.length, `${region.id}: encrucijadas`);
   }
+  // Ana no vota nunca: todas se deciden por el camino prudente y el final de la crónica es el prudente.
+  assert.ok(filas.filter((f) => f.encrucijada).every((f) => f.decision === 1));
 
   const e = mmo.estado();
   assert.deepEqual(e.reliquias, { halladas: TOTAL_RELIQUIAS, total: TOTAL_RELIQUIAS }, 'con 200 expediciones se completa la colección');
@@ -104,6 +110,7 @@ test('200 expediciones: misiones sin repetir antes de tiempo, colección complet
   assert.equal(nuevas.length, TOTAL_RELIQUIAS);
   assert.equal(nuevas.at(-1)!.expedicion_id, TOTAL_RELIQUIAS, 'las 60 primeras expediciones traen las 60 reliquias');
   assert.equal(e.cronica.capitulo, CRONICA.length - 1);
+  assert.equal(e.cronica.titulo, CRONICA.at(-1)!.titulo, 'final prudente');
   assert.equal(e.cronica.siguienteEn, null);
 
   // Un anuncio por capítulo, en la expedición que lo desbloquea, y todos caben en un mensaje.
@@ -111,7 +118,7 @@ test('200 expediciones: misiones sin repetir antes de tiempo, colección complet
   assert.equal(capitulos.length, CRONICA.length - 1);
   assert.match(capitulos[0]!, new RegExp(`«${CRONICA[1]!.titulo}»`));
   assert.ok(mensajes.every((m) => m.length <= MAX_MESSAGE_LENGTH));
-  assert.ok(Math.max(...mensajes.map((m) => m.length)) < 300, 'margen de sobra');
+  assert.ok(Math.max(...mensajes.map((m) => m.length)) < 330, 'margen de sobra');
   assert.equal(CAPITULO_CADA * (CRONICA.length - 1), 90);
 });
 

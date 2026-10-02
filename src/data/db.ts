@@ -333,6 +333,15 @@ function migrate(database: DatabaseSync): void {
       inicio_ms      INTEGER NOT NULL
     );
 
+    -- Encrucijadas: un voto por persona y expedición (se puede cambiar mientras dure la votación).
+    CREATE TABLE IF NOT EXISTS mmo_votos (
+      expedicion_id INTEGER NOT NULL,
+      twitch_id     TEXT NOT NULL,
+      opcion        INTEGER NOT NULL,
+      at_ms         INTEGER NOT NULL,
+      PRIMARY KEY (expedicion_id, twitch_id)
+    );
+
     -- La colección de la Lumbre: cada reliquia, una vez, con la expedición que la trajo.
     CREATE TABLE IF NOT EXISTS mmo_reliquias (
       reliquia_id   TEXT PRIMARY KEY,
@@ -349,6 +358,11 @@ function migrate(database: DatabaseSync): void {
   addColumnIfMissing(database, 'loot', 'maldito', 'INTEGER NOT NULL DEFAULT 0');
   // El Linde del Velo: último momento en que el bot estaba vivo, para recuperar tras un cierre brusco.
   addColumnIfMissing(database, 'mmo_world', 'latido_ms', 'INTEGER');
+  // Encrucijadas: cuál salió, qué decidió la compañía, hasta cuándo se vota y cuánto alargó la meta.
+  addColumnIfMissing(database, 'mmo_expediciones', 'encrucijada', 'TEXT');
+  addColumnIfMissing(database, 'mmo_expediciones', 'decision', 'INTEGER');
+  addColumnIfMissing(database, 'mmo_expediciones', 'voto_hasta', 'INTEGER');
+  addColumnIfMissing(database, 'mmo_expediciones', 'meta_extra', 'INTEGER NOT NULL DEFAULT 0');
 }
 
 /**
@@ -379,7 +393,7 @@ export function truncateAll(): void {
       'DELETE FROM ai_usage; DELETE FROM interactions; DELETE FROM users; DELETE FROM titulos; DELETE FROM ajustes; DELETE FROM suscriptores; ' +
       'DELETE FROM temporada_puntos; DELETE FROM salon_fama; DELETE FROM temporadas_cerradas;',
   );
-  database.exec('DELETE FROM mmo_world; DELETE FROM mmo_participantes; DELETE FROM mmo_jugadores; DELETE FROM mmo_acciones; DELETE FROM mmo_historial; DELETE FROM mmo_resultados; DELETE FROM mmo_premios; DELETE FROM mmo_expediciones; DELETE FROM mmo_reliquias;');
+  database.exec('DELETE FROM mmo_world; DELETE FROM mmo_participantes; DELETE FROM mmo_jugadores; DELETE FROM mmo_acciones; DELETE FROM mmo_historial; DELETE FROM mmo_resultados; DELETE FROM mmo_premios; DELETE FROM mmo_expediciones; DELETE FROM mmo_reliquias; DELETE FROM mmo_votos;');
 }
 
 export function nowIso(): string {

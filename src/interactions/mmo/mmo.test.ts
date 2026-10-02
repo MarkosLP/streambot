@@ -44,11 +44,12 @@ describe('El Linde del Velo', () => {
     const final = mmo.explorar(ana, 'a-3', ahora + 3 * mmo.ACCION_MS);
     assert.deepEqual(final, { tipo: 'ok', progreso: 4, meta: 4, completada: true, renombre: 8,
       inicio: false, region: 'Fronda Ámbar', hallazgo: 'un altar de savia antigua', texto: 'aparta una cortina de raíces', aporte: 4, participantes: 1,
-      objetivo: 'Abrir camino entre las raíces', suceso: null, nueva: true, reliquias: 1, capitulo: null });
+      objetivo: 'Abrir camino entre las raíces', suceso: null, nueva: true, reliquias: 1, capitulo: null,
+      encrucijada: null, voto: null, arriesgado: false });
     assert.equal(mmo.estado().fase, 'resultado');
     assert.deepEqual(mmo.estado().resultado, {
       completada: true, hallazgo: 'un altar de savia antigua',
-      premios: [{ nombre: 'ana', renombre: 8 }], nueva: true, capitulo: null,
+      premios: [{ nombre: 'ana', renombre: 8 }], nueva: true, capitulo: null, arriesgado: false,
     });
     assert.equal(mmo.renombre('ana'), 8);
     assert.deepEqual(mmo.explorar(ana, 'a-3', ahora + 3 * mmo.ACCION_MS), { tipo: 'repetido' });
@@ -62,7 +63,7 @@ describe('El Linde del Velo', () => {
     mmo.explorar(persona('ana'), 'una-salida', ahora);
     mmo.avanzar(ahora + mmo.DURACION_MS);
     assert.equal(mmo.estado().fase, 'resultado');
-    assert.deepEqual(mmo.estado().resultado, { completada: false, hallazgo: null, premios: [], nueva: false, capitulo: null });
+    assert.deepEqual(mmo.estado().resultado, { completada: false, hallazgo: null, premios: [], nueva: false, capitulo: null, arriesgado: false });
     assert.equal(mmo.renombre('ana'), 0);
   });
 

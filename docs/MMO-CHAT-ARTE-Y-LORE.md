@@ -165,3 +165,16 @@ Los dos casos que encontró Codex, con sus pruebas:
 - En las 8 h simuladas hay ahora un corte de Streamer.bot y la caída larga se recupera sin cerrar nada: 0 expediciones perdidas.
 
 Prueba con chat real preparada en [MMO-PRUEBA-SUPERVISADA.md](MMO-PRUEBA-SUPERVISADA.md), con `npm run mmo:informe` para revisar la base de datos real en solo lectura antes y después.
+
+## Encrucijadas: el chat decide (3 oct 2026)
+
+Primera votación del mundo, sin comandos nuevos y sin gasto. Pensada para que funcione con una sola persona.
+
+- **Cuándo:** en el momento del suceso de mitad de camino, un 40 % de las veces sale una encrucijada en su lugar. Hay 4 por región (12 en total), y se reparten como los sucesos: primero las que menos han salido.
+- **Cómo se vota:** `!explorar 1` (prudente) o `!explorar 2` (arriesgado). El voto cuenta aunque te toque esperar para explorar; uno por persona, y se puede cambiar. Dura 3 minutos, y se congela con el resto del mundo. Sin votos o con empate, gana la prudente.
+- **Qué cambia:** el camino arriesgado alarga la meta en 2 pasos y da **+3 de renombre** a cada participante al completar. Si la barra se llena con la votación abierta y va ganando el riesgo, se decide en ese momento y la expedición sigue.
+- **La crónica escucha:** el capítulo XIII plantea la pregunta de Ithra; el XIV y el epílogo tienen **dos versiones**, «La Lumbre responde» / «El Linde sigue abierto» (prudente) y «El Velo se rasga» / «Dos Lumbres» (audaz), según qué camino eligió más veces la compañía hasta ese capítulo. Una vez desbloqueado, no cambia.
+- **En el chat:** la encrucijada se anuncia siempre, aunque haya 3 o más personas (es la única forma de saber que se puede votar). El voto se confirma una vez por opción. `!mundo` recuerda la votación abierta.
+- **En la escena:** tarjeta central con la pregunta, `!explorar 1` / `!explorar 2`, votos de cada opción y cuenta atrás; el resultado entra en la franja de acciones y el cartel final dice si hubo camino arriesgado. Capturas `encrucijada` y `arriesgado`.
+
+Pruebas en [encrucijadas.test.ts](../src/interactions/mmo/encrucijadas.test.ts): votar esperando, cambiar el voto, empate, barra llena con la votación abierta, reloj congelado, `!olvidame` y 90 expediciones audaces que cambian el final. La simulación de 8 h vota al azar.

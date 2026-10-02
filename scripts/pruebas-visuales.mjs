@@ -58,7 +58,7 @@ try {
     const streams = await import('../src/data/streams.ts');
     const inicio = Date.now() - 3*mmo.ACCION_MS;
     streams.openAt(new Date(inicio).toISOString());mmo.activar(inicio);
-    sbConectado=true;mmo.setChatConectado(()=>sbConectado);
+    sbConectado=true;mmo.setChatConectado(()=>sbConectado);mmo.setAzar(()=>0.99); // sucesos, sin encrucijadas
     await abrir('/biblioteca/overlays/mmo.html',1920,1080);
     // La escena consulta cada 3 s más lo que tarde el bot: se espera a lo que se busca, no un tiempo fijo.
     const hasta=async(expr)=>{for(let i=0;i<60&&!(await evaluar(expr));i++)await esperar(100);};
@@ -172,6 +172,29 @@ try {
     assert.equal(await evaluar("document.querySelector('#reliquias').textContent"),'6 / 60');
     await esperar(1600);
     await captura('mmo-cronica');
+    // Una encrucijada: dos personas, la votación abierta y luego el camino arriesgado completado.
+    mmo.setAzar(()=>0);
+    const bea={...ana,id:'mmo-bea',login:'bea',displayName:'Bea'};
+    t=Date.now()-2*mmo.ACCION_MS-3000;
+    mmo.explorar(ana,'e-1',t);mmo.explorar(bea,'e-2',t+500);mmo.explorar(ana,'e-3',t+mmo.ACCION_MS);
+    mmo.comando('!explorar 2',bea,'e-4',t+mmo.ACCION_MS+500);mmo.comando('!explorar 1',ana,'e-5',t+mmo.ACCION_MS+1000);
+    mmo.comando('!explorar 2',{...ana,id:'mmo-cai',login:'cai',displayName:'Cai'},'e-6',t+mmo.ACCION_MS+1500);
+    await hasta("!document.querySelector('#encrucijada').hidden");
+    assert.ok(await evaluar("document.querySelector('#encrucijada').textContent.includes('!explorar 2')"));
+    // Edge sin ventana deja la entrada a medias: se quita para ver la tarjeta tal como queda.
+    await evaluar("document.querySelector('#encrucijada').style.animation='none';document.querySelectorAll('.fondo,.capas,.clima').forEach(e=>e.style.transition='none');document.querySelectorAll('.nuevo').forEach(e=>e.classList.remove('nuevo'))");
+    await esperar(300);
+    await captura('mmo-encrucijada');
+    // Vence la votación (gana la 2) y se completa el camino largo.
+    const { VOTO_MS } = await import('../src/interactions/mmo/contenido.ts');
+    let te=Date.now()+VOTO_MS;mmo.avanzar(te);
+    assert.equal(mmo.estado().encrucijada.decision,2);
+    for(let k=0;mmo.estado().fase==='expedicion'&&k<20;k++){te+=mmo.ACCION_MS;mmo.explorar(ana,`f-a${k}`,te);mmo.explorar(bea,`f-b${k}`,te+1);}
+    await hasta("document.querySelector('#aviso').textContent.includes('Camino arriesgado')");
+    await esperar(1600);
+    await captura('mmo-arriesgado');
+    mmo.avanzar(te+mmo.DESCANSO_MS+1000);
+    await hasta("!document.querySelector('#cronica').hidden");
     // La séptima: se fuerza cada cielo en la base para mirarlos todos.
     t=Date.now()-2*mmo.ACCION_MS-5000;mmo.explorar(ana,'s-1',t);mmo.explorar(ana,'s-2',t+mmo.ACCION_MS);
     const id=mmo.estado().acciones.length&&getDb().prepare('SELECT expedicion_id FROM mmo_world').get().expedicion_id;

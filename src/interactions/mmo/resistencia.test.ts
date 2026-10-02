@@ -8,6 +8,7 @@ import * as streams from '../../data/streams.js';
 import * as killswitch from '../../core/killswitch.js';
 import * as mmo from './index.js';
 import { MAX_MESSAGE_LENGTH } from '../../config.js';
+import { META_ARRIESGADA } from './contenido.js';
 import type { Viewer } from '../../core/events.js';
 
 /**
@@ -129,7 +130,8 @@ test('ocho horas de mundo sin dueño: sin premios duplicados, sin bloqueos y sin
       if (!chat) break; // sin Streamer.bot, el chat no llega al bot
       if (min < desde || min >= hasta || (v.id === 'carla' && min >= 400)) continue;
       if (r() >= ganas) continue;
-      const texto = r() < .15 ? '!mundo' : r() < .1 ? '!expedicion' : '!explorar';
+      // Algunos votan en las encrucijadas con !explorar 1 o 2.
+      const texto = r() < .15 ? '!mundo' : r() < .1 ? '!expedicion' : r() < .3 ? `!explorar ${r() < .5 ? 1 : 2}` : '!explorar';
       const id = `m-${t}-${v.id}`;
       comandos++;
       const respuesta = mmo.comando(texto, v, id, t);
@@ -143,7 +145,7 @@ test('ocho horas de mundo sin dueño: sin premios duplicados, sin bloqueos y sin
         if (respuesta.length > MAX_MESSAGE_LENGTH) largas.push(respuesta);
       }
       // A veces Streamer.bot entrega dos veces el mismo mensaje, justo detrás.
-      if (texto === '!explorar' && r() < .1) {
+      if (texto.startsWith('!explorar') && r() < .1) {
         const antes = mundo();
         assert.notEqual(mmo.explorar(v, id, t).tipo, 'ok', 'un mensaje repetido no vuelve a contar');
         assert.equal(mundo().progreso, antes.progreso);
@@ -159,12 +161,16 @@ test('ocho horas de mundo sin dueño: sin premios duplicados, sin bloqueos y sin
     if (w.modo === 'activo' && w.pausado_ms === null && streams.current() && w.fase !== 'calma') {
       assert.ok(w.hasta_ms !== null && t <= w.hasta_ms + PASO, `fase ${w.fase} pasada de plazo en el minuto ${min}`);
     }
-    if (w.fase === 'expedicion') assert.ok(w.progreso < w.meta && w.meta >= 4 && w.meta <= 12);
+    if (w.fase === 'expedicion') assert.ok(w.progreso < w.meta && w.meta >= 4 && w.meta <= 12 + META_ARRIESGADA);
   }
 
   // Apagar a mitad de una expedición: termina sin premios para ella.
-  const t = INICIO + 480 * MIN;
-  mmo.explorar(JUGADORES[0]!.v, 'ultimo', t);
+  // Se deja terminar lo que hubiera en curso y alguien nuevo abre otra: así queda a medias seguro.
+  const t = INICIO + 480 * MIN + mmo.DURACION_MS + 2 * mmo.DESCANSO_MS;
+  mmo.avanzar(t - mmo.DESCANSO_MS - 1000);
+  mmo.avanzar(t);
+  assert.equal(mmo.explorar(persona('zoe'), 'ultimo', t).tipo, 'ok');
+  assert.equal(mundo().fase, 'expedicion');
   const ultima = mundo().expedicion_id;
   mmo.apagar();
   assert.equal(contar('SELECT COUNT(*) AS n FROM mmo_premios WHERE expedicion_id = ?', ultima), 0);

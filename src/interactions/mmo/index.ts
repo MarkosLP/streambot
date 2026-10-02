@@ -4,7 +4,10 @@ import * as killswitch from '../../core/killswitch.js';
 import { log } from '../../core/logger.js';
 import type { Viewer } from '../../core/events.js';
 
-import { REGIONES, CLIMAS, CRONICA, CAPITULO_CADA, TOTAL_RELIQUIAS, buscarMision, type Clima, type Mision, type Region } from './contenido.js';
+import {
+  REGIONES, CLIMAS, CRONICA, CAPITULO_CADA, TOTAL_RELIQUIAS, PROB_ENCRUCIJADA, VOTO_MS, META_ARRIESGADA, BONO_ARRIESGADO,
+  buscarMision, buscarEncrucijada, type Clima, type Encrucijada, type Mision, type Region,
+} from './contenido.js';
 
 /** El Linde del Velo. El contenido (misiones, reliquias, crónica) está en contenido.ts; el navegador de OBS solo lee estado(). */
 export { REGIONES, TOTAL_RELIQUIAS };
@@ -64,6 +67,15 @@ export interface EstadoPublico {
     nueva: boolean;
     /** Capítulo de la crónica que desbloqueó esta expedición, si alguno. */
     capitulo: null | { numero: number; titulo: string };
+    /** La compañía eligió el camino arriesgado en la encrucijada (más renombre). */
+    arriesgado: boolean;
+  };
+  /** La encrucijada de la expedición en curso. hasta = fin de la votación (null si ya se decidió o el tiempo está congelado). */
+  encrucijada: null | {
+    pregunta: string;
+    opciones: [{ texto: string; votos: number }, { texto: string; votos: number }];
+    hasta: string | null;
+    decision: 1 | 2 | null;
   };
   clima: Clima;
   reliquias: { halladas: number; total: number };
@@ -110,10 +122,15 @@ interface Expedicion {
   reliquia_id: string | null;
   reliquia_nueva: number;
   capitulo: number | null;
+  encrucijada: string | null;
+  decision: number | null;
+  voto_hasta: number | null;
+  meta_extra: number;
 }
 
 function expedicion(id: number): Expedicion | undefined {
-  return getDb().prepare('SELECT region_id, mision_id, clima, suceso, reliquia_id, reliquia_nueva, capitulo FROM mmo_expediciones WHERE expedicion_id = ?')
+  return getDb().prepare(`SELECT region_id, mision_id, clima, suceso, reliquia_id, reliquia_nueva, capitulo,
+      encrucijada, decision, voto_hasta, meta_extra FROM mmo_expediciones WHERE expedicion_id = ?`)
     .get(id) as unknown as Expedicion | undefined;
 }
 
@@ -126,11 +143,71 @@ const contar = (sql: string, ...args: Array<string | number>) => (getDb().prepar
 const completadas = () => contar('SELECT COUNT(*) AS n FROM mmo_resultados WHERE completada = 1');
 const reliquiasHalladas = () => contar('SELECT COUNT(*) AS n FROM mmo_reliquias');
 
+/** Meta por número de personas; el camino arriesgado de una encrucijada suma meta_extra. */
+const metaBase = (personas: number) => Math.min(12, 4 + 2 * Math.max(0, personas - 1));
+
+/**
+ * El título y el texto de un capítulo. Los que tienen versión audaz la usan si,
+ * hasta la expedición que lo desbloqueó, la compañía eligió más veces el camino
+ * arriesgado que el prudente. Una vez desbloqueado, ya no cambia.
+ */
+function capituloDe(numero: number): { titulo: string; texto: string } {
+  const c = CRONICA[numero]!;
+  if (!c.audaz) return c;
+  const hasta = (getDb().prepare('SELECT expedicion_id FROM mmo_expediciones WHERE capitulo = ?').get(numero) as { expedicion_id: number } | undefined)?.expedicion_id;
+  const t = getDb().prepare(`SELECT COALESCE(SUM(decision = 2), 0) AS audaz, COALESCE(SUM(decision = 1), 0) AS prudente
+    FROM mmo_expediciones WHERE decision IS NOT NULL AND expedicion_id <= ?`).get(hasta ?? Number.MAX_SAFE_INTEGER) as { audaz: number; prudente: number };
+  return t.audaz > t.prudente ? c.audaz : { titulo: c.titulo, texto: c.texto };
+}
+
 function cronica(): EstadoPublico['cronica'] {
   const total = CRONICA.length - 1;
   const hechas = completadas();
   const capitulo = Math.min(total, Math.floor(hechas / CAPITULO_CADA));
-  return { capitulo, total, ...CRONICA[capitulo]!, siguienteEn: capitulo < total ? (capitulo + 1) * CAPITULO_CADA - hechas : null };
+  return { capitulo, total, ...capituloDe(capitulo), siguienteEn: capitulo < total ? (capitulo + 1) * CAPITULO_CADA - hechas : null };
+}
+
+function votos(expedicionId: number): [number, number] {
+  const filas = getDb().prepare('SELECT opcion, COUNT(*) AS n FROM mmo_votos WHERE expedicion_id = ? GROUP BY opcion').all(expedicionId) as Array<{ opcion: number; n: number }>;
+  return [filas.find((f) => f.opcion === 1)?.n ?? 0, filas.find((f) => f.opcion === 2)?.n ?? 0];
+}
+
+/** La encrucijada que menos ha salido en la región. */
+function elegirEncrucijada(region: Region): Encrucijada {
+  const filas = getDb().prepare('SELECT encrucijada, COUNT(*) AS n FROM mmo_expediciones WHERE region_id = ? AND encrucijada IS NOT NULL GROUP BY encrucijada')
+    .all(region.id) as Array<{ encrucijada: string; n: number }>;
+  const usos = new Map(filas.map((f) => [f.encrucijada, f.n]));
+  const minimo = Math.min(...region.encrucijadas.map((e) => usos.get(e.id) ?? 0));
+  return elegir(region.encrucijadas.filter((e) => (usos.get(e.id) ?? 0) === minimo));
+}
+
+/**
+ * Cierra la votación cuando vence (o antes, si `forzar`: la barra se llenó con
+ * la votación abierta). Gana la opción con más votos; con empate o sin votos,
+ * la prudente. El camino arriesgado alarga la expedición: la meta sube.
+ */
+function resolverEncrucijada(expedicionId: number, now: number, forzar = false): boolean {
+  const datos = expedicion(expedicionId);
+  if (!datos?.encrucijada || datos.decision !== null) return false;
+  if (!forzar && (datos.voto_hasta ?? 0) > now) return false;
+  const enc = buscarEncrucijada(datos.region_id, datos.encrucijada);
+  const [a, b] = votos(expedicionId);
+  const decision = b > a ? 2 : 1;
+  const extra = decision === 2 ? META_ARRIESGADA : 0;
+  const db = getDb();
+  if (!db.prepare('UPDATE mmo_expediciones SET decision = ?, meta_extra = ? WHERE expedicion_id = ? AND decision IS NULL').run(decision, extra, expedicionId).changes) return false;
+  const texto = `La compañía elige: ${enc?.opciones[decision - 1] ?? (decision === 2 ? 'el camino arriesgado' : 'el camino prudente')}.`
+    + (extra ? ' El camino será más largo, y la recompensa, mayor.' : '');
+  if (extra) db.prepare('UPDATE mmo_world SET meta = meta + ? WHERE id = 1 AND expedicion_id = ?').run(extra, expedicionId);
+  db.prepare("INSERT INTO mmo_historial (expedicion_id, twitch_id, nombre, texto, at_ms) VALUES (?, '', '', ?, ?)").run(expedicionId, texto, now);
+  db.prepare('UPDATE mmo_world SET ultimo_suceso = ? WHERE id = 1 AND expedicion_id = ?').run(texto, expedicionId);
+  log.info(`El Linde del Velo: encrucijada de la expedición ${expedicionId} decidida (${a} a ${b}): ${decision === 2 ? 'arriesgada' : 'prudente'}.`);
+  return true;
+}
+
+/** Con el tiempo congelado, la votación tampoco corre. */
+function desplazarVotacion(expedicionId: number, ms: number): void {
+  if (ms > 0) getDb().prepare('UPDATE mmo_expediciones SET voto_hasta = voto_hasta + ? WHERE expedicion_id = ? AND decision IS NULL AND voto_hasta IS NOT NULL').run(ms, expedicionId);
 }
 
 /**
@@ -216,8 +293,21 @@ export function estado(): EstadoPublico {
       hallazgo: final.hallazgo,
       premios: premios.map(({ nombre, renombre }) => ({ nombre, renombre })),
       nueva: final.completada === 1 && datos?.reliquia_nueva === 1,
-      capitulo: datos?.capitulo ? { numero: datos.capitulo, titulo: CRONICA[datos.capitulo]!.titulo } : null,
+      capitulo: datos?.capitulo ? { numero: datos.capitulo, titulo: capituloDe(datos.capitulo).titulo } : null,
+      arriesgado: final.completada === 1 && datos?.decision === 2,
     } : null,
+    encrucijada: (() => {
+      const enc = datos?.encrucijada ? buscarEncrucijada(datos.region_id, datos.encrucijada) : undefined;
+      if (!datos || !enc) return null;
+      const [a, b] = votos(w.expedicion_id);
+      const abierta = datos.decision === null && datos.voto_hasta !== null && w.modo === 'activo' && w.pausado_ms === null;
+      return {
+        pregunta: enc.pregunta,
+        opciones: [{ texto: enc.opciones[0], votos: a }, { texto: enc.opciones[1], votos: b }],
+        hasta: abierta ? new Date(datos.voto_hasta!).toISOString() : null,
+        decision: datos.decision === 1 || datos.decision === 2 ? datos.decision : null,
+      };
+    })(),
     clima: CLIMAS.find((c) => c.id === datos?.clima)?.id ?? 'dia',
     reliquias: { halladas: reliquiasHalladas(), total: TOTAL_RELIQUIAS },
     cronica: cronica(),
@@ -271,6 +361,7 @@ export function activar(now = Date.now()): EstadoPublico {
   getDb().prepare(`UPDATE mmo_world SET modo = 'activo', pausado_ms = NULL,
     hasta_ms = CASE WHEN hasta_ms IS NULL THEN NULL ELSE hasta_ms + ? END WHERE id = 1`)
     .run(diferencia);
+  desplazarVotacion(w.expedicion_id, diferencia);
   return estado();
 }
 
@@ -304,9 +395,12 @@ export function avanzar(now = Date.now()): EstadoPublico {
   if (w.pausado_ms !== null) {
     const parado = Math.max(0, now - w.pausado_ms);
     getDb().prepare('UPDATE mmo_world SET hasta_ms = hasta_ms + ?, pausado_ms = NULL WHERE id = 1').run(parado);
+    desplazarVotacion(w.expedicion_id, parado);
     log.info(`El Linde del Velo: el tiempo vuelve a correr (${Math.round(parado / 60_000)} min congelado).`);
     w = mundo();
   }
+  // Una votación que ha vencido se decide aunque nadie escriba.
+  if (w.fase === 'expedicion' && resolverEncrucijada(w.expedicion_id, now)) w = mundo();
   if (w.hasta_ms === null || now < w.hasta_ms) return estado();
   if (w.fase === 'expedicion') {
     const db = getDb();
@@ -336,12 +430,19 @@ export type ResultadoExplorar =
     suceso: string | null;
     /** Al completar: la reliquia, si es nueva, cuántas tiene la Lumbre y el capítulo desbloqueado. */
     hallazgo: string; nueva: boolean; reliquias: number; capitulo: string | null;
+    /** La encrucijada que abrió esta acción, si la abrió. */
+    encrucijada: null | { pregunta: string; opciones: readonly [string, string] };
+    voto: Voto | null;
+    arriesgado: boolean;
   }
   | { tipo: 'apagado' | 'sin-directo' | 'bloqueado' | 'olvidado' | 'repetido' | 'descanso' }
-  | { tipo: 'espera'; segundos: number };
+  | { tipo: 'espera'; segundos: number; voto?: Voto | null };
+
+/** Un voto anotado en una encrucijada: qué eligió, cómo va y hasta cuándo se vota. */
+export interface Voto { opcion: 1 | 2; texto: string; votos: [number, number]; hasta: number }
 
 /** Una acción de chat equivale a un aporte. Mensaje y premios se deduplican en SQLite. */
-export function explorar(viewer: Viewer, mensajeId: string, now = Date.now()): ResultadoExplorar {
+export function explorar(viewer: Viewer, mensajeId: string, now = Date.now(), opcion?: 1 | 2): ResultadoExplorar {
   if (!viewer.id || !viewer.login || !mensajeId) return { tipo: 'bloqueado' };
   if (getDb().prepare('SELECT 1 FROM mmo_acciones WHERE mensaje_id = ?').get(mensajeId)) return { tipo: 'repetido' };
   avanzar(now);
@@ -372,11 +473,20 @@ export function explorar(viewer: Viewer, mensajeId: string, now = Date.now()): R
         .run(siguiente, regionIndex, now + DURACION_MS);
       actual = { ...actual, fase: 'expedicion', expedicion_id: siguiente, region_index: regionIndex, progreso: 0, meta: 4, hasta_ms: now + DURACION_MS };
     }
+    // Votar en una encrucijada abierta vale aunque toque esperar para explorar.
+    let voto: Voto | null = null;
+    const abierta = expedicion(actual.expedicion_id);
+    const enc = abierta?.encrucijada && abierta.decision === null ? buscarEncrucijada(abierta.region_id, abierta.encrucijada) : undefined;
+    if (opcion && enc && abierta) {
+      db.prepare(`INSERT INTO mmo_votos (expedicion_id, twitch_id, opcion, at_ms) VALUES (?, ?, ?, ?)
+        ON CONFLICT(expedicion_id, twitch_id) DO UPDATE SET opcion = excluded.opcion, at_ms = excluded.at_ms`).run(actual.expedicion_id, viewer.id, opcion, now);
+      voto = { opcion, texto: enc.opciones[opcion - 1], votos: votos(actual.expedicion_id), hasta: abierta.voto_hasta ?? now };
+    }
     const anterior = db.prepare('SELECT ultimo_ms FROM mmo_participantes WHERE expedicion_id = ? AND twitch_id = ?')
       .get(actual.expedicion_id, viewer.id) as { ultimo_ms: number } | undefined;
     if (anterior && now - anterior.ultimo_ms < ACCION_MS) {
       db.exec('COMMIT');
-      return { tipo: 'espera', segundos: Math.ceil((ACCION_MS - (now - anterior.ultimo_ms)) / 1000) };
+      return { tipo: 'espera', segundos: Math.ceil((ACCION_MS - (now - anterior.ultimo_ms)) / 1000), ...(voto && { voto }) };
     }
     db.prepare('INSERT INTO mmo_acciones (mensaje_id, twitch_id, at_ms) VALUES (?, ?, ?)').run(mensajeId, viewer.id, now);
     db.prepare(`INSERT INTO mmo_participantes (expedicion_id, twitch_id, nombre, aporte, ultimo_ms)
@@ -384,30 +494,45 @@ export function explorar(viewer: Viewer, mensajeId: string, now = Date.now()): R
       DO UPDATE SET nombre = excluded.nombre, aporte = aporte + 1, ultimo_ms = excluded.ultimo_ms`)
       .run(actual.expedicion_id, viewer.id, viewer.displayName, now);
     const gente = participantes(actual.expedicion_id);
-    const meta = Math.min(12, 4 + 2 * (gente.length - 1));
+    let meta = metaBase(gente.length) + (expedicion(actual.expedicion_id)?.meta_extra ?? 0);
     const progreso = actual.progreso + 1;
+    // Si la barra se llena con la votación abierta, se decide ya: el camino arriesgado aún la alarga.
+    if (progreso >= meta && resolverEncrucijada(actual.expedicion_id, now, true)) {
+      meta = metaBase(gente.length) + (expedicion(actual.expedicion_id)?.meta_extra ?? 0);
+    }
     const completada = progreso >= meta;
     const region = REGIONES[actual.region_index % REGIONES.length]!;
     const mision = misionDe(region, expedicion(actual.expedicion_id));
     const texto = mision.acciones[(progreso - 1) % mision.acciones.length]!;
     db.prepare('INSERT INTO mmo_historial (expedicion_id, twitch_id, nombre, texto, at_ms) VALUES (?, ?, ?, ?, ?)')
       .run(actual.expedicion_id, viewer.id, viewer.displayName, texto, now);
-    // A mitad de camino, una vez por expedición, el mundo cuenta algo.
+    // A mitad de camino, una vez por expedición, el mundo cuenta algo… o pone a la compañía ante una encrucijada.
     let suceso: string | null = null;
-    if (!completada && progreso >= Math.ceil(meta / 2)) {
-      const elegido = elegirSuceso(region);
-      if (db.prepare('UPDATE mmo_expediciones SET suceso = ? WHERE expedicion_id = ? AND suceso IS NULL').run(elegido, actual.expedicion_id).changes) {
-        db.prepare("INSERT INTO mmo_historial (expedicion_id, twitch_id, nombre, texto, at_ms) VALUES (?, '', '', ?, ?)")
-          .run(actual.expedicion_id, elegido, now);
-        suceso = elegido;
+    let nuevaEncrucijada: Encrucijada | null = null;
+    const yaPaso = expedicion(actual.expedicion_id);
+    if (!completada && progreso >= Math.ceil(meta / 2) && yaPaso && yaPaso.suceso === null && yaPaso.encrucijada === null) {
+      if (region.encrucijadas.length && azar() < PROB_ENCRUCIJADA) {
+        const elegida = elegirEncrucijada(region);
+        if (db.prepare('UPDATE mmo_expediciones SET encrucijada = ?, voto_hasta = ? WHERE expedicion_id = ? AND suceso IS NULL AND encrucijada IS NULL')
+          .run(elegida.id, now + VOTO_MS, actual.expedicion_id).changes) {
+          suceso = `Encrucijada: ${elegida.pregunta}`;
+          nuevaEncrucijada = elegida;
+        }
+      } else {
+        const elegido = elegirSuceso(region);
+        if (db.prepare('UPDATE mmo_expediciones SET suceso = ? WHERE expedicion_id = ? AND suceso IS NULL AND encrucijada IS NULL').run(elegido, actual.expedicion_id).changes) {
+          suceso = elegido;
+        }
       }
+      if (suceso) db.prepare("INSERT INTO mmo_historial (expedicion_id, twitch_id, nombre, texto, at_ms) VALUES (?, '', '', ?, ?)").run(actual.expedicion_id, suceso, now);
     }
+    const arriesgado = expedicion(actual.expedicion_id)?.decision === 2;
     let renombre = 0;
     let reliquia = { id: '', nombre: '', nueva: false };
     let capitulo: number | null = null;
     if (completada) {
       for (const p of gente) {
-        const puntos = 5 + Math.min(p.aporte, 3);
+        const puntos = 5 + Math.min(p.aporte, 3) + (arriesgado ? BONO_ARRIESGADO : 0);
         const nuevo = db.prepare('INSERT OR IGNORE INTO mmo_premios (expedicion_id, twitch_id, renombre) VALUES (?, ?, ?)')
           .run(actual.expedicion_id, p.twitch_id, puntos);
         if (nuevo.changes) {
@@ -432,12 +557,14 @@ export function explorar(viewer: Viewer, mensajeId: string, now = Date.now()): R
     db.exec('COMMIT');
     if (inicio) log.info(`El Linde del Velo: ${viewer.displayName} abre la expedición ${actual.expedicion_id} a ${region.nombre}.`);
     if (completada) log.info(`El Linde del Velo: expedición ${actual.expedicion_id} completada por ${gente.length} aventurero(s); ${reliquia.nombre}${reliquia.nueva ? ' (nueva)' : ''}.`);
-    if (capitulo !== null) log.info(`El Linde del Velo: nuevo capítulo de la crónica, ${capitulo}: «${CRONICA[capitulo]!.titulo}».`);
+    if (capitulo !== null) log.info(`El Linde del Velo: nuevo capítulo de la crónica, ${capitulo}: «${capituloDe(capitulo).titulo}».`);
     const aporte = gente.find((p) => p.twitch_id === viewer.id)?.aporte ?? 1;
     return {
       tipo: 'ok', progreso, meta, completada, renombre, inicio, region: region.nombre, objetivo: mision.objetivo, texto, aporte,
       participantes: gente.length, suceso, hallazgo: reliquia.nombre, nueva: reliquia.nueva,
-      reliquias: reliquiasHalladas(), capitulo: capitulo === null ? null : CRONICA[capitulo]!.titulo,
+      reliquias: reliquiasHalladas(), capitulo: capitulo === null ? null : capituloDe(capitulo).titulo,
+      encrucijada: nuevaEncrucijada ? { pregunta: nuevaEncrucijada.pregunta, opciones: nuevaEncrucijada.opciones } : null,
+      voto, arriesgado,
     };
   } catch (err) {
     db.exec('ROLLBACK');
@@ -458,11 +585,12 @@ export function olvidar(twitchId: string): void {
   db.prepare('DELETE FROM mmo_acciones WHERE twitch_id = ?').run(twitchId);
   db.prepare('DELETE FROM mmo_historial WHERE twitch_id = ?').run(twitchId);
   db.prepare('DELETE FROM mmo_premios WHERE twitch_id = ?').run(twitchId);
+  db.prepare('DELETE FROM mmo_votos WHERE twitch_id = ?').run(twitchId);
   const w = mundo();
   if (w.fase !== 'expedicion') return;
   const gente = participantes(w.expedicion_id);
   const progreso = gente.reduce((n, p) => n + p.aporte, 0);
-  const meta = Math.min(12, 4 + 2 * Math.max(0, gente.length - 1));
+  const meta = metaBase(gente.length) + (expedicion(w.expedicion_id)?.meta_extra ?? 0);
   db.prepare('UPDATE mmo_world SET progreso = ?, meta = ? WHERE id = 1').run(progreso, meta);
 }
 
@@ -501,19 +629,34 @@ export function comando(texto: string, viewer: Viewer, mensajeId: string, now = 
       ? `La compañía vuelve de ${e.region.nombre} con ${e.resultado.hallazgo}. Nueva salida en breve.`
       : `El Velo se cerró en ${e.region.nombre} con ${e.objetivo.actual}/${e.objetivo.meta}. Nadie pierde nada.`;
     const minutos = e.hasta ? Math.max(0, Math.ceil((Date.parse(e.hasta) - now) / 60_000)) : 0;
-    return `El Linde del Velo · ${e.region.nombre}, «${e.region.objetivo}»: ${e.objetivo.actual}/${e.objetivo.meta}. El Velo se cierra en ${minutos} min. !explorar para ayudar.`;
+    const votacion = e.encrucijada?.decision === null && e.encrucijada.hasta
+      ? ` Encrucijada abierta: !explorar 1 (${e.encrucijada.opciones[0].texto}) o !explorar 2 (${e.encrucijada.opciones[1].texto}).` : '';
+    return `El Linde del Velo · ${e.region.nombre}, «${e.region.objetivo}»: ${e.objetivo.actual}/${e.objetivo.meta}. El Velo se cierra en ${minutos} min. !explorar para ayudar.${votacion}`;
   }
   if (t === '!expedicion') return `${viewer.displayName}: ${renombre(viewer.id)} de renombre en El Linde del Velo. Usa !mundo para ver la expedición.`;
-  if (t !== '!explorar') return null;
-  const r = explorar(viewer, mensajeId, now);
+  // !explorar 1 / !explorar 2: explorar y, si hay encrucijada abierta, votar.
+  const pedido = /^!explorar(?:\s+([12]))?$/.exec(t);
+  if (!pedido) return null;
+  const opcion = pedido[1] ? (Number(pedido[1]) as 1 | 2) : undefined;
+  const r = explorar(viewer, mensajeId, now, opcion);
+  const voto = r.tipo === 'ok' || r.tipo === 'espera' ? r.voto ?? null : null;
+  const resumenVoto = voto ? ` Vota «${voto.texto}» (${voto.votos[0]} a ${voto.votos[1]}).` : '';
+  // Una encrucijada nueva se anuncia siempre: el chat tiene que saber que puede votar.
+  if (r.tipo === 'ok' && r.encrucijada) {
+    return `${viewer.displayName} ${r.texto} (${r.progreso}/${r.meta}). ⚔ Encrucijada: ${r.encrucijada.pregunta} `
+      + `Votad !explorar 1 (${r.encrucijada.opciones[0]}) o !explorar 2 (${r.encrucijada.opciones[1]}).`;
+  }
   // Con tres o más en la compañía, el chat solo confirma la primera aportación de cada
   // persona, la salida y el final; las demás se ven en la escena (techo de respuestas por hora).
-  if (r.tipo === 'ok' && !r.completada && !r.inicio && r.aporte > 1 && r.participantes > 2) return null;
+  if (r.tipo === 'ok' && !r.completada && !r.inicio && r.aporte > 1 && r.participantes > 2 && !voto) return null;
   if (r.tipo === 'ok') return r.completada
-    ? `¡Expedición completada en ${r.region}! La compañía encuentra ${r.hallazgo}${r.nueva ? ` (reliquia ${r.reliquias}/${TOTAL_RELIQUIAS} para la Lumbre)` : ''}. Todos ganan renombre; tú +${r.renombre}.`
+    ? `¡Expedición completada en ${r.region}! La compañía encuentra ${r.hallazgo}${r.nueva ? ` (reliquia ${r.reliquias}/${TOTAL_RELIQUIAS} para la Lumbre)` : ''}. Todos ganan renombre; tú +${r.renombre}${r.arriesgado ? ' por el camino arriesgado' : ''}.`
       + (r.capitulo ? ` 📜 Nuevo capítulo de la crónica: «${r.capitulo}».` : '')
     : r.inicio ? `${viewer.displayName} cruza el Velo hacia ${r.region}. Misión: ${r.objetivo}. La compañía sale: ${r.progreso}/${r.meta}.`
-    : `${viewer.displayName} ${r.texto} (${r.progreso}/${r.meta}).${r.suceso ? ` ${r.suceso}` : ''}`;
+    : `${viewer.displayName} ${r.texto} (${r.progreso}/${r.meta}).${r.suceso ? ` ${r.suceso}` : ''}${resumenVoto}`;
+  // Votar mientras esperas: se confirma una vez por opción, sin repetir el aviso de espera.
+  if (r.tipo === 'espera' && voto) return avisarUnaVez(`voto|${viewer.id}|${voto.opcion}`, voto.hasta, now)
+    ? `${viewer.displayName} vota «${voto.texto}» (${voto.votos[0]} a ${voto.votos[1]}). Podrás explorar en ${r.segundos} s.` : null;
   if (r.tipo === 'espera') return avisarUnaVez(`espera|${viewer.id}`, now + r.segundos * 1000, now)
     ? `Aún te recuperas de la última salida. Podrás explorar en ${r.segundos} s.` : null;
   if (r.tipo === 'apagado') return 'El Linde del Velo está cerrado o en pausa. Usa !mundo para ver su estado.';
