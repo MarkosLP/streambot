@@ -1,6 +1,6 @@
 # El Linde del Velo — arte, mundo y textos (fase 0)
 
-Encargo de Codex en [ENCARGO-CLAUDE-MMO.md](ENCARGO-CLAUDE-MMO.md); plan y contrato en [MMO-CHAT-24H.md](MMO-CHAT-24H.md). 2 de octubre de 2026. Todo aquí es **propuesta para que Crid4m decida**; el motor de Codex sigue mandando en reglas, tiempos y premios.
+Encargo de Codex en [ENCARGO-CLAUDE-MMO.md](ENCARGO-CLAUDE-MMO.md); plan y contrato en [MMO-CHAT-24H.md](MMO-CHAT-24H.md). 2 de octubre de 2026. **Nombre, lugares, placa y tono de los textos están aprobados por Crid4m** (ver «Decisiones tomadas»); el motor de Codex sigue mandando en reglas, tiempos y premios.
 
 Prototipo: `http://127.0.0.1:7070/biblioteca/overlays/mmo-prototipo.html` (rota los cuatro estados cada 7 s; botones arriba para fijar uno). `?estado=calma|expedicion|resultado|desconexion`, `?region=cantera|marisma` y `?limpio=1` sin botones. Estático: no lee el bot ni está en OBS.
 
@@ -25,7 +25,7 @@ Cada lugar tiene su fondo pintado (GPT Image, `biblioteca/imagenes/mmo/`, prompt
 | `cantera` | **Canteras del Eco** | Violeta `#b48cff` | Cantera abandonada con rostros de reyes tallados, cristales violeta, luna fría. Solemne. | Despertar a los colosos de piedra | El rostro de un rey olvidado |
 | `marisma` | **Marisma de los Faroles** | Turquesa `#5fe0c8` | Marisma nocturna con faroles de piedra hundidos, puente roto, torre en la niebla. Melancólica. | Encender los faroles hundidos | Un farol que todavía arde |
 
-**Para Codex:** el motor usa hoy `Bosque de las Lumbres`, `Cantera del Eco` y `Marisma de las Luces`. Si Crid4m aprueba estos nombres, basta cambiar `nombre` en `REGIONES`; los `id` no cambian. Los textos de objetivo y hallazgo los puede llevar el overlay (por `id`) o el motor; ver «Contrato».
+Codex ya los lleva en `REGIONES` del motor (`src/interactions/mmo/index.ts`), con su objetivo, hallazgo y frases de `!explorar`; los `id` no cambiaron.
 
 ## Textos para el chat
 
@@ -85,9 +85,11 @@ Nada de esto rompe la `version: 1`; son campos nuevos.
 - Fase 5: retratos de amenazas o un jefe del Velo que aparezca a mitad de expedición (reutilizando el sistema de jefes).
 - Sonidos: entrada al Velo, aporte y expedición completada. El plan dice que la escena no lleva audio propio; si se quieren, irían por el sistema de sonidos existente.
 
-## Decisiones para Crid4m
+## Decisiones tomadas (Crid4m, 2 oct 2026)
 
-1. ¿**El Linde del Velo** como nombre, o prefieres otro?
-2. ¿Te valen las tres regiones (Fronda Ámbar, Canteras del Eco, Marisma de los Faroles) y sus fondos?
-3. La placa «Crid4m está ausente», ¿así o con otro texto (por ejemplo «Vuelvo pronto»)?
-4. ¿Los textos del chat con este tono, o más cortos y secos?
+Definitivas para la fase 2 y siguientes: no volver a proponerlas salvo que él lo pida.
+
+1. **Nombre del mundo: El Linde del Velo.**
+2. **Base del mundo: La Última Lumbre y las tres regiones** (Fronda Ámbar, Canteras del Eco, Marisma de los Faroles), **con los fondos de `biblioteca/imagenes/mmo/`.** Nuevas regiones o variantes, en la fase 5 y sobre esta base.
+3. **La placa dice «Crid4m está ausente»**: explica por qué el chat puede seguir jugando solo. No cambiarla por «Vuelvo pronto» ni similares.
+4. **El tono de los textos del chat se mantiene, sin acortarlos** por ahora. Si en la prueba con gente real algo sobra, se revisará con los datos delante.
