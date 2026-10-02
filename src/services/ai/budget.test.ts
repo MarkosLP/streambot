@@ -80,8 +80,11 @@ describe('topes de gasto', () => {
       // diario y no sabríamos si el mensual funciona, así que se coloca en
       // otros días del mes en curso: hoy queda a cero y aun así no se puede
       // llamar, que es justo lo que tiene que demostrar este test.
+      // Fijar la consulta después de estos días evita depender de la fecha
+      // real: el día 1 o 2 algunos registros quedarían en el futuro.
       const hoy = new Date();
-      const diasDelMes = [1, 2, 3, 4, 5, 6].filter((d) => d !== hoy.getDate()).slice(0, 5);
+      const referencia = new Date(hoy.getFullYear(), hoy.getMonth(), 10, 12, 0, 0);
+      const diasDelMes = [1, 2, 3, 4, 5, 6];
       const trozo = config.ai.budgetPerMonthUsd / diasDelMes.length + 0.01;
 
       // Cada día por separado se queda por debajo del tope diario.
@@ -92,9 +95,9 @@ describe('topes de gasto', () => {
         gastoRegistrado(trozo, at);
       }
 
-      assert.equal(budget.since(budget.startOfLocalDay()).spentUsd, 0);
+      assert.equal(budget.since(budget.startOfLocalDay(referencia)).spentUsd, 0);
 
-      const verdict = budget.check();
+      const verdict = budget.check(referencia);
       assert.equal(verdict.ok, false);
       assert.match(verdict.ok === false ? verdict.reason : '', /tope del mes/);
     });

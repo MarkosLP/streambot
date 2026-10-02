@@ -1,0 +1,128 @@
+import { after, before, beforeEach, describe, test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { closeDatabase, configureDatabase, getDb, truncateAll } from '../../data/db.js';
+import * as streams from '../../data/streams.js';
+import * as consent from '../../core/consent.js';
+import { normalize } from '../../core/events.js';
+import { handleEvent } from '../../core/handler.js';
+import { setSender } from '../../core/output.js';
+import * as policy from '../../core/policy.js';
+import * as mmo from './index.js';
+import type { Viewer } from '../../core/events.js';
+
+const carpeta = mkdtempSync(join(tmpdir(), 'crid4m-mmo-'));
+const ahora = Date.UTC(2026, 9, 2, 12, 0, 0);
+const persona = (id: string): Viewer => ({
+  id, login: id, displayName: id, isBroadcaster: false, isModerator: false,
+  isVip: false, isSubscriber: false, rawRole: null,
+});
+
+before(() => configureDatabase(join(carpeta, 'mmo.sqlite')));
+beforeEach(() => {
+  truncateAll();
+  streams.openAt(new Date(ahora).toISOString());
+  mmo.activar(ahora);
+});
+after(() => {
+  mmo.parar();
+  closeDatabase();
+  rmSync(carpeta, { recursive: true, force: true });
+});
+
+describe('El Linde del Velo', () => {
+  test('una persona completa la expedición y cada premio se entrega una vez', () => {
+    const ana = persona('ana');
+    for (let i = 0; i < 3; i++) {
+      const r = mmo.explorar(ana, `a-${i}`, ahora + i * mmo.ACCION_MS);
+      assert.equal(r.tipo, 'ok');
+      assert.equal(mmo.estado().objetivo.meta, 4);
+    }
+    const final = mmo.explorar(ana, 'a-3', ahora + 3 * mmo.ACCION_MS);
+    assert.deepEqual(final, { tipo: 'ok', progreso: 4, meta: 4, completada: true, renombre: 8,
+      inicio: false, region: 'Fronda Ámbar', hallazgo: 'un altar de savia antigua', texto: 'aparta una cortina de raíces' });
+    assert.equal(mmo.estado().fase, 'resultado');
+    assert.deepEqual(mmo.estado().resultado, {
+      completada: true, hallazgo: 'un altar de savia antigua',
+      premios: [{ nombre: 'ana', renombre: 8 }],
+    });
+    assert.equal(mmo.renombre('ana'), 8);
+    assert.deepEqual(mmo.explorar(ana, 'a-3', ahora + 3 * mmo.ACCION_MS), { tipo: 'repetido' });
+    assert.equal(mmo.renombre('ana'), 8);
+    const premios = getDb().prepare('SELECT COUNT(*) AS n FROM mmo_premios').get() as { n: number };
+    assert.equal(premios.n, 1);
+    assert.equal(mmo.estado().acciones.length, 3);
+  });
+
+  test('al cerrarse el Velo sin completar no se inventa victoria ni premio', () => {
+    mmo.explorar(persona('ana'), 'una-salida', ahora);
+    mmo.avanzar(ahora + mmo.DURACION_MS);
+    assert.equal(mmo.estado().fase, 'resultado');
+    assert.deepEqual(mmo.estado().resultado, { completada: false, hallazgo: null, premios: [] });
+    assert.equal(mmo.renombre('ana'), 0);
+  });
+
+  test('la meta crece según participantes y el tiempo de cada acción se guarda', () => {
+    const ana = persona('ana');
+    const berto = persona('berto');
+    mmo.explorar(ana, 'uno', ahora);
+    assert.deepEqual(mmo.explorar(ana, 'dos', ahora + 1), { tipo: 'espera', segundos: 120 });
+    const b = mmo.explorar(berto, 'tres', ahora + 1);
+    assert.equal(b.tipo, 'ok');
+    assert.deepEqual(mmo.estado().objetivo, { actual: 2, meta: 6 });
+    closeDatabase(); // simula reiniciar el proceso: el estado y el cooldown siguen en SQLite
+    assert.deepEqual(mmo.explorar(ana, 'cuatro', ahora + 2), { tipo: 'espera', segundos: 120 });
+    assert.deepEqual(mmo.estado().objetivo, { actual: 2, meta: 6 });
+  });
+
+  test('pausar congela el plazo y no se progresa sin directo', () => {
+    const ana = persona('ana');
+    mmo.explorar(ana, 'uno', ahora);
+    const antes = mmo.estado().hasta!;
+    mmo.pausar(ahora + 60_000);
+    assert.equal(mmo.estado().hasta, null, 'la escena no muestra una cuenta atrás en pausa');
+    mmo.avanzar(ahora + mmo.DURACION_MS + 1);
+    assert.equal(mmo.estado().fase, 'expedicion');
+    mmo.activar(ahora + 120_000);
+    assert.equal(Date.parse(mmo.estado().hasta!), Date.parse(antes) + 60_000);
+    streams.close();
+    assert.deepEqual(mmo.explorar(ana, 'dos', ahora + mmo.ACCION_MS), { tipo: 'sin-directo' });
+  });
+
+  test('el olvido borra el progreso personal y lo retira de la expedición', () => {
+    const ana = persona('ana');
+    mmo.explorar(ana, 'uno', ahora);
+    consent.olvidar(ana.id);
+    assert.deepEqual(mmo.estado().participantes, []);
+    assert.deepEqual(mmo.estado().objetivo, { actual: 0, meta: 4 });
+    assert.deepEqual(mmo.estado().acciones, []);
+    assert.deepEqual(mmo.explorar(ana, 'dos', ahora + mmo.ACCION_MS), { tipo: 'olvidado' });
+  });
+
+  test('el comando del chat usa el manejador y la salida habitual', async () => {
+    const enviados: string[] = [];
+    policy.reset();
+    setSender(async (texto) => { enviados.push(texto); });
+    const evento = normalize('Twitch.ChatMessage', {
+      messageId: 'mmo-chat-1',
+      user: { id: 'id-ana', login: 'ana', name: 'ana', role: 1, badges: [], subscribed: false },
+      text: '!explorar',
+      meta: { firstMessage: false, returningChatter: false },
+    }, 'simulator');
+    await handleEvent(evento);
+    assert.equal(mmo.estado().objetivo.actual, 1);
+    assert.equal(enviados.length, 1);
+    assert.match(enviados[0]!, /cruza el Velo hacia Fronda Ámbar/);
+    setSender(null);
+  });
+
+  test('el estado para OBS contiene nombres, pero no identificadores de Twitch', () => {
+    const ana = { ...persona('id-secreto-42'), login: 'ana', displayName: 'Aventurera' };
+    mmo.explorar(ana, 'mensaje-privado', ahora);
+    const publico = JSON.stringify(mmo.estado());
+    assert.match(publico, /Aventurera/);
+    assert.doesNotMatch(publico, /id-secreto-42|mensaje-privado|twitch_id/);
+  });
+});

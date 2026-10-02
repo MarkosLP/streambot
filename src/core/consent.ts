@@ -1,5 +1,6 @@
 import { getDb, nowIso } from '../data/db.js';
 import * as suscriptores from '../data/suscriptores.js';
+import * as mmo from '../interactions/mmo/index.js';
 import { log } from './logger.js';
 
 /**
@@ -66,6 +67,7 @@ export function olvidar(twitchId: string): Borrado {
   db.prepare('DELETE FROM suscriptores WHERE twitch_id = ?').run(twitchId);
   db.prepare('DELETE FROM temporada_puntos WHERE twitch_id = ?').run(twitchId);
   db.prepare('DELETE FROM salon_fama WHERE twitch_id = ?').run(twitchId);
+  mmo.olvidar(twitchId);
   suscriptores.reset();
 
   const borrado: Borrado = {

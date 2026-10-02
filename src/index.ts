@@ -15,6 +15,7 @@ import { connect, disconnect, sendChat } from './transport/streamerbot.js';
 import * as panel from './panel/server.js';
 import { aprobadorPanel } from './panel/revision.js';
 import * as loot from './interactions/loot/index.js';
+import * as mmo from './interactions/mmo/index.js';
 import { mostrarBotin, temblar } from './panel/obs-setup.js';
 import * as terremoto from './interactions/terremoto.js';
 import * as directo from './core/directo.js';
@@ -107,6 +108,7 @@ async function main(): Promise<void> {
   });
   terremoto.setTemblor(() => conObs((pedir) => temblar(pedir, { fuente: config.obs.fuenteJuego })));
   loot.arrancar();
+  mmo.arrancar();
 
   // ¿Estás en directo? Se lo pregunta a OBS cada minuto: si un aviso de
   // Twitch no llega, el directo ya no se queda abierto (o cerrado) para siempre.
@@ -124,6 +126,7 @@ async function shutdown(signal: string): Promise<void> {
   log.info(`Recibido ${signal}. Cerrando...`);
   try {
     loot.parar();
+    mmo.parar();
     directo.parar();
     panelServer?.close();
     await disconnect();

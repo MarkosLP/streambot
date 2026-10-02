@@ -52,6 +52,36 @@ try {
     await abrir('/biblioteca/overlays/espectadores.html',640,200);await esperar(800);
     assert.equal(await evaluar("document.querySelector('#contador').hidden"),true);
   }
+  if(caso==='mmo') {
+    const mmo = await import('../src/interactions/mmo/index.ts');
+    const streams = await import('../src/data/streams.ts');
+    const inicio = Date.now() - 3*mmo.ACCION_MS;
+    streams.openAt(new Date(inicio).toISOString());mmo.activar(inicio);
+    await abrir('/biblioteca/overlays/mmo.html',1920,1080);
+    assert.equal(await evaluar("document.querySelector('#estado').textContent"),'En calma');
+    await captura('mmo-vivo-calma');
+    const ana={id:'mmo-ana',login:'ana',displayName:'Ana',isBroadcaster:false,isModerator:false,isVip:false,isSubscriber:false,rawRole:null};
+    for(let i=0;i<3;i++)mmo.explorar(ana,`mmo-visual-${i}`,inicio+i*mmo.ACCION_MS);
+    await esperar(3200);
+    assert.equal(await evaluar("document.querySelector('#actual').textContent"),'3');
+    assert.equal(await evaluar("document.querySelector('#acciones').textContent.includes('Ana')"),true);
+    await captura('mmo-vivo-expedicion');
+    mmo.explorar(ana,'mmo-visual-3',inicio+3*mmo.ACCION_MS);
+    await esperar(3200);
+    assert.equal(await evaluar("document.querySelector('#aviso').textContent.includes('altar de savia antigua')"),true);
+    assert.equal(await evaluar("document.querySelector('#aviso').textContent.includes('+8 de renombre')"),true);
+    await captura('mmo-vivo-resultado');
+    const salidaFallida = Date.now()+mmo.DESCANSO_MS+2000;
+    mmo.avanzar(salidaFallida);
+    mmo.explorar(ana,'mmo-visual-fallo',salidaFallida);
+    mmo.avanzar(salidaFallida+mmo.DURACION_MS);
+    await esperar(3200);
+    assert.equal(await evaluar("document.querySelector('#aviso').textContent.includes('Nadie pierde nada')"),true);
+    await captura('mmo-vivo-fallo');
+    await evaluar("window.fetch=async()=>{throw Error('corte simulado')}");await esperar(3200);
+    assert.equal(await evaluar("document.querySelector('#estado').textContent"),'Reconectando');
+    await captura('mmo-vivo-desconexion');
+  }
   if(caso==='charla-compartida') {
     await abrir('/biblioteca/overlays/charla-compartida.html?demo=1',1920,1080);
     assert.equal(await evaluar("document.querySelector('.demo-muestra').getBoundingClientRect().width"),850);

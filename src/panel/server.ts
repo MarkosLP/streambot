@@ -29,6 +29,7 @@ import * as progresion from '../interactions/loot/progresion.js';
 import * as users from '../data/users.js';
 import * as directo from '../core/directo.js';
 import * as espectadores from '../core/espectadores.js';
+import * as mmo from '../interactions/mmo/index.js';
 import { handleEvent } from '../core/handler.js';
 import { normalize } from '../core/events.js';
 import * as titulos from './titulos.js';
@@ -318,6 +319,18 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       'Access-Control-Allow-Origin': '*',
     });
     res.end(JSON.stringify({ espectadores: espectadores.actual() }));
+    return;
+  }
+
+  // La Frontera: OBS solo lee el estado que decide el motor. Sin comandos ni
+  // escritura desde la fuente de navegador.
+  if (ruta === 'GET /api/mmo/estado') {
+    res.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'Access-Control-Allow-Origin': '*',
+    });
+    res.end(JSON.stringify(mmo.estado()));
     return;
   }
 

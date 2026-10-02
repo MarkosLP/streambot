@@ -161,14 +161,14 @@ export type Verdict = { ok: true } | { ok: false; reason: string };
  * El mensaje dice CUÁL y con qué cifras, para no tener que abrir la base de
  * datos a mano para entender por qué el bot ha dejado de responder.
  */
-export function check(): Verdict {
+export function check(now = new Date()): Verdict {
   const { budgetPerStreamUsd, budgetPerDayUsd, budgetPerMonthUsd, maxCallsPerDay } = config.ai;
 
   if (spentUsd >= budgetPerStreamUsd) {
     return { ok: false, reason: `tope de sesión: $${spentUsd.toFixed(4)} de $${budgetPerStreamUsd}` };
   }
 
-  const hoy = since(startOfLocalDay());
+  const hoy = since(startOfLocalDay(now));
 
   if (hoy.calls >= maxCallsPerDay) {
     return { ok: false, reason: `tope de llamadas de hoy: ${hoy.calls} de ${maxCallsPerDay}` };
@@ -178,7 +178,7 @@ export function check(): Verdict {
     return { ok: false, reason: `tope de hoy: $${hoy.spentUsd.toFixed(4)} de $${budgetPerDayUsd}` };
   }
 
-  const mes = since(startOfLocalMonth());
+  const mes = since(startOfLocalMonth(now));
 
   if (mes.spentUsd >= budgetPerMonthUsd) {
     return { ok: false, reason: `tope del mes: $${mes.spentUsd.toFixed(4)} de $${budgetPerMonthUsd}` };

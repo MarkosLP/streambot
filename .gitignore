@@ -7,7 +7,7 @@
 node_modules/
 
 # Datos locales: la base de datos del canal no se comparte
-data/
+/data/
 *.sqlite
 *.sqlite3
 *.db

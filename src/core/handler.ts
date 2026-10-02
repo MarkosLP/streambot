@@ -26,6 +26,7 @@ import * as preguntaIa from '../interactions/pregunta-ia.js';
 import * as preguntaIncomoda from '../interactions/pregunta-incomoda.js';
 import * as loot from '../interactions/loot/index.js';
 import * as lootComandos from '../interactions/loot/comandos.js';
+import * as mmo from '../interactions/mmo/index.js';
 import * as musicaComando from '../interactions/musica.js';
 import * as alertas from './alertas.js';
 import * as mecenas from '../interactions/loot/mecenas.js';
@@ -232,6 +233,21 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
     if (esBot(viewer.login)) return;
     if (!isIgnored(viewer)) users.touch(viewer);
     await engine.run(musicaComando.cancion, { viewer, trigger: 'command', args: '' });
+    return;
+  }
+
+  // La Frontera: los comandos propios se atienden antes de las interacciones
+  // espontáneas y sin depender del interruptor del Loot.
+  if (/^!(mundo|explorar|expedicion)\b/i.test(text)) {
+    if (esBot(viewer.login) || consent.haPedidoOlvido(viewer.id)) return;
+    if (!isIgnored(viewer)) users.touch(viewer);
+    const respuesta = mmo.comando(text, viewer, event.messageId ?? event.id);
+    if (respuesta) await send({
+      text: respuesta,
+      reason: 'mmo-comando',
+      solicitado: true,
+      consulta: /^!(mundo|expedicion)\b/i.test(text) && !/^!mundo\s+(activar|pausar|apagar)\b/i.test(text),
+    });
     return;
   }
 
