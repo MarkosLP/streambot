@@ -42,7 +42,7 @@ describe('El Linde del Velo', () => {
     }
     const final = mmo.explorar(ana, 'a-3', ahora + 3 * mmo.ACCION_MS);
     assert.deepEqual(final, { tipo: 'ok', progreso: 4, meta: 4, completada: true, renombre: 8,
-      inicio: false, region: 'Fronda Ámbar', hallazgo: 'un altar de savia antigua', texto: 'aparta una cortina de raíces' });
+      inicio: false, region: 'Fronda Ámbar', hallazgo: 'un altar de savia antigua', texto: 'aparta una cortina de raíces', aporte: 4, participantes: 1 });
     assert.equal(mmo.estado().fase, 'resultado');
     assert.deepEqual(mmo.estado().resultado, {
       completada: true, hallazgo: 'un altar de savia antigua',
@@ -75,6 +75,21 @@ describe('El Linde del Velo', () => {
     closeDatabase(); // simula reiniciar el proceso: el estado y el cooldown siguen en SQLite
     assert.deepEqual(mmo.explorar(ana, 'cuatro', ahora + 2), { tipo: 'espera', segundos: 120 });
     assert.deepEqual(mmo.estado().objetivo, { actual: 2, meta: 6 });
+  });
+
+  test('con tres o más, el chat confirma la primera aportación de cada uno y el final; el resto va a la escena', () => {
+    const [ana, berto, carla] = ['ana', 'berto', 'carla'].map(persona);
+    const dice = (v: Viewer, id: string, t: number) => mmo.comando('!explorar', v, id, t);
+    assert.match(dice(ana, 'c1', ahora)!, /cruza el Velo/);
+    assert.match(dice(berto, 'c2', ahora + 1)!, /\(2\/6\)/);
+    // Con dos, todavía se contesta a todo.
+    assert.match(dice(ana, 'c3', ahora + mmo.ACCION_MS)!, /\(3\/6\)/);
+    assert.match(dice(carla, 'c4', ahora + mmo.ACCION_MS + 1)!, /\(4\/8\)/, 'la primera de Carla sí');
+    assert.equal(dice(berto, 'c5', ahora + mmo.ACCION_MS + 2), null, 'la segunda de Berto ya no');
+    assert.equal(mmo.estado().objetivo.actual, 5, 'pero cuenta igual');
+    assert.equal(dice(carla, 'c6', ahora + 2 * mmo.ACCION_MS + 1), null);
+    assert.equal(dice(ana, 'c7', ahora + 2 * mmo.ACCION_MS + 2), null);
+    assert.match(dice(berto, 'c8', ahora + 2 * mmo.ACCION_MS + 3)!, /Expedición completada/, 'el final siempre se anuncia');
   });
 
   test('pausar congela el plazo y no se progresa sin directo', () => {

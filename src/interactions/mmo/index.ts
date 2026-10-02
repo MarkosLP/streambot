@@ -160,7 +160,7 @@ export function avanzar(now = Date.now()): EstadoPublico {
 }
 
 export type ResultadoExplorar =
-  | { tipo: 'ok'; progreso: number; meta: number; completada: boolean; renombre: number; inicio: boolean; region: string; hallazgo: string; texto: string }
+  | { tipo: 'ok'; progreso: number; meta: number; completada: boolean; renombre: number; inicio: boolean; region: string; hallazgo: string; texto: string; aporte: number; participantes: number }
   | { tipo: 'apagado' | 'sin-directo' | 'bloqueado' | 'olvidado' | 'repetido' | 'descanso' }
   | { tipo: 'espera'; segundos: number };
 
@@ -232,7 +232,8 @@ export function explorar(viewer: Viewer, mensajeId: string, now = Date.now()): R
       .run(progreso, meta, completada ? 'resultado' : 'expedicion', completada ? now + DESCANSO_MS : actual.hasta_ms,
         completada ? `La compañía completó la expedición en ${region.nombre}.` : 'La compañía sigue explorando.');
     db.exec('COMMIT');
-    return { tipo: 'ok', progreso, meta, completada, renombre, inicio, region: region.nombre, hallazgo: region.hallazgo, texto };
+    const aporte = gente.find((p) => p.twitch_id === viewer.id)?.aporte ?? 1;
+    return { tipo: 'ok', progreso, meta, completada, renombre, inicio, region: region.nombre, hallazgo: region.hallazgo, texto, aporte, participantes: gente.length };
   } catch (err) {
     db.exec('ROLLBACK');
     throw err;
@@ -299,6 +300,9 @@ export function comando(texto: string, viewer: Viewer, mensajeId: string, now = 
   if (t === '!expedicion') return `${viewer.displayName}: ${renombre(viewer.id)} de renombre en El Linde del Velo. Usa !mundo para ver la expedición.`;
   if (t !== '!explorar') return null;
   const r = explorar(viewer, mensajeId, now);
+  // Con tres o más en la compañía, el chat solo confirma la primera aportación de cada
+  // persona, la salida y el final; las demás se ven en la escena (techo de respuestas por hora).
+  if (r.tipo === 'ok' && !r.completada && !r.inicio && r.aporte > 1 && r.participantes > 2) return null;
   if (r.tipo === 'ok') return r.completada
     ? `¡Expedición completada en ${r.region}! La compañía encuentra ${r.hallazgo}. Todos ganan renombre; tú +${r.renombre}.`
     : r.inicio ? `${viewer.displayName} cruza el Velo hacia ${r.region}. La compañía sale: ${r.progreso}/${r.meta}.`
