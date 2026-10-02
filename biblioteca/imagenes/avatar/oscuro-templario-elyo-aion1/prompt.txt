@@ -1,0 +1,11 @@
+Use case: stylized-concept
+Asset type: transparent square character portrait for the Twitch talking-avatar overlay.
+Primary request: an original male Elyos Templar Daeva inspired by the original 2009 Aion: The Tower of Eternity, without copying a specific illustration.
+Subject: calm, battle-hardened guardian with visible expressive eyes and mouth, pale silver-blond hair, polished ivory-silver plate armour, aged gold filigree, restrained sapphire-blue details, a round sun-and-wing shield, one straight sword and white feathered wings.
+Composition: frontal waist-up portrait; face high and unobstructed so expression variants work; strong silhouette at small size.
+Style and lighting: hand-painted classic Korean MMORPG fantasy concept art, warm daylight and subtle cool rim light.
+Constraints: genuine transparent background; no scenery, frame, lettering, logo, watermark, helmet, dual swords or futuristic neon armour.
+
+The files medio.png, cerrados.png and contento.png were generated from base.png with precise expression edits for a half blink, closed eyes and a restrained smile. The overlay masks these variants to the eyes or face.
+
+Visual research: https://about.ncsoft.com/artbook/en/aion/ and https://www.creativeuncut.com/gallery-11/aion-elyos-male-templar.html

@@ -1,0 +1,16 @@
+{
+  "titulo": "Templario elyo de Aion 1",
+  "descripcion": "Avatar original inspirado en el templario elyo de Aion: The Tower of Eternity (2009). Guardián de alas blancas, armadura de placas plateada y dorada, escudo solar y espada de acero azul. Retrato transparente con variantes de parpadeo y sonrisa.",
+  "ojos": {
+    "x": 0.5,
+    "y": 0.165,
+    "w": 0.15,
+    "h": 0.025
+  },
+  "cara": {
+    "x": 0.5,
+    "y": 0.19,
+    "w": 0.19,
+    "h": 0.14
+  }
+}
