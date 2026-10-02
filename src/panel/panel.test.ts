@@ -118,6 +118,15 @@ const obsFalso: ConObs = async (trabajo) => {
       case 'CreateScene':
         if (obs.items[d.sceneName]) throw yaExiste();
         obs.items[d.sceneName] = [];
+        obs.filtros[d.sceneName] = [];
+        return {};
+      case 'RemoveSceneItem':
+        obs.items[d.sceneName] = obs.items[d.sceneName]!.filter((i) => i.sceneItemId !== d.sceneItemId);
+        return {};
+      case 'RemoveInput':
+        obs.entradas = obs.entradas.filter((e) => e.inputName !== d.inputName);
+        for (const [escena, lista] of Object.entries(obs.items)) obs.items[escena] = lista.filter((i) => i.sourceName !== d.inputName);
+        delete obs.filtros[d.inputName];
         return {};
       case 'SetSceneItemIndex': {
         const lista = obs.items[d.sceneName];
@@ -828,23 +837,37 @@ describe('Escenas', () => {
     assert.equal((await post('/api/escenas/obs', { tipo: 'otra' })).status, 400);
   });
 
-  test('Charla + compartir copia la captura con opacidad sin alterar la original', async () => {
+  test('Charla + compartir usa la captura original dentro de una capa, sin copiarla ni filtrarla', async () => {
+    const escena = '✦ Charla + compartir', capa = 'ESC Compartir (capa)';
     obs.entradas.push({ inputName: 'Cámara', inputKind: 'dshow_input', settings: {} });
+    obs.entradas.push({ inputName: 'Navegador', inputKind: 'window_capture', settings: {} });
+    // Una copia de la versión anterior: se retira.
+    obs.entradas.push({ inputName: 'ESC Compartir contenido', inputKind: 'game_capture', settings: {} });
     obs.entradas.find((e) => e.inputName === 'Juego')!.settings = { capture_mode: 'window' };
     const r = await post('/api/escenas/obs', { tipo: 'compartir', fuenteCompartida: 'Juego' });
     assert.equal(r.status, 200);
-    assert.deepEqual(obs.items['✦ Charla + compartir']!.map((i) => i.sourceName), ['Cámara', 'ESC Compartir contenido', 'ESC Charla compartir']);
+    assert.deepEqual(obs.items[escena]!.map((i) => i.sourceName), ['Cámara', capa, 'ESC Charla compartir']);
+    assert.deepEqual(obs.items[capa]!.map((i) => i.sourceName), ['Juego']);
+    assert.ok(!obs.entradas.some((e) => e.inputName === 'ESC Compartir contenido'));
     assert.deepEqual(obs.entradas.find((e) => e.inputName === 'Juego')!.settings, { capture_mode: 'window' });
     assert.equal(obs.filtros['Juego']!.length, 0);
-    assert.equal(obs.filtros['ESC Compartir contenido']![0]!.settings.opacity, .84);
-    const copia = obs.items['✦ Charla + compartir']!.find((i) => i.sourceName === 'ESC Compartir contenido')!;
-    assert.equal(obs.transformes[copia.sceneItemId].boundsWidth, 850 * (2560 / 1920));
-    assert.equal(obs.transformes[copia.sceneItemId].positionX, 1010 * (2560 / 1920));
-    assert.equal((await post('/api/escenas/obs', { tipo: 'compartir', fuenteCompartida: 'Juego', opacidad: .72 })).status, 200);
-    assert.equal(obs.items['✦ Charla + compartir']!.length, 3);
-    assert.equal(obs.filtros['ESC Compartir contenido']!.length, 1);
-    assert.equal(obs.filtros['ESC Compartir contenido']![0]!.settings.opacity, .72);
+    // Opaca por defecto: ni siquiera hace falta el filtro.
+    assert.equal(obs.filtros[capa]!.length, 0);
+    const enEscena = obs.items[escena]!.find((i) => i.sourceName === capa)!;
+    assert.equal(obs.transformes[enEscena.sceneItemId].boundsWidth, 850 * (2560 / 1920));
+    assert.equal(obs.transformes[enEscena.sceneItemId].positionX, 1010 * (2560 / 1920));
+
+    // Cambiar de captura y bajar la opacidad: la capa solo lleva la nueva, y el filtro va en la capa.
+    assert.equal((await post('/api/escenas/obs', { tipo: 'compartir', fuenteCompartida: 'Navegador', opacidad: .72 })).status, 200);
+    assert.equal(obs.items[escena]!.length, 3);
+    assert.deepEqual(obs.items[capa]!.map((i) => i.sourceName), ['Navegador']);
+    assert.ok(obs.items['Escena juego']!.some((i) => i.sourceName === 'Juego'), 'la captura sigue en su escena');
+    assert.equal(obs.filtros[capa]![0]!.settings.opacity, .72);
+    assert.equal(obs.filtros['Navegador'], undefined);
+    assert.equal((await post('/api/escenas/obs', { tipo: 'compartir', fuenteCompartida: 'Navegador', opacidad: 1 })).status, 200);
+    assert.equal(obs.filtros[capa]![0]!.settings.opacity, 1);
     assert.equal((await post('/api/escenas/obs', { tipo: 'compartir', fuenteCompartida: 'Juego', opacidad: .2 })).status, 400);
+    assert.equal((await post('/api/escenas/obs', { tipo: 'compartir', fuenteCompartida: 'ESC Compartir contenido' })).status, 502);
   });
 });
 

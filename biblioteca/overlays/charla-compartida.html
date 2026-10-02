@@ -13,7 +13,7 @@
   .demo-camara { display: none; position: absolute; inset: 0; background: radial-gradient(ellipse at 34% 35%, #725d63 0%, #27202e 40%, #09090e 88%); }
   .demo-camara::before { content: ''; position: absolute; left: 390px; top: 210px; width: 305px; height: 365px; border-radius: 48% 48% 44% 44%; background: linear-gradient(120deg, #5c5261, #302a38 52%, #17141d); box-shadow: 0 0 85px rgba(185, 157, 153, .16); }
   .demo-camara::after { content: ''; position: absolute; left: 145px; top: 555px; width: 820px; height: 630px; border-radius: 50% 50% 0 0; background: linear-gradient(125deg, #302a36, #514657 43%, #17141d); opacity: .9; }
-  .demo-muestra { display: none; position: absolute; left: 1010px; top: 150px; width: 850px; height: 478px; overflow: hidden; border-radius: 15px; background: #d7dce4; opacity: var(--opacidad-compartida, .84); color: #242d42; font: 18px 'Segoe UI', sans-serif; }
+  .demo-muestra { display: none; position: absolute; left: 1010px; top: 150px; width: 850px; height: 478px; overflow: hidden; border-radius: 15px; background: #d7dce4; opacity: var(--opacidad-compartida, 1); color: #242d42; font: 18px 'Segoe UI', sans-serif; }
   .demo-muestra .barra { height: 48px; padding: 11px 19px; background: #f3f5f8; font-size: 18px; }
   .demo-muestra .barra::before { content: '● ● ●'; color: #b5beca; margin-right: 21px; letter-spacing: 4px; }
   .demo-muestra .contenido { display: flex; gap: 24px; padding: 36px; }
@@ -37,8 +37,6 @@
   .pie .kicker { color: var(--oro); font-size: 15px; letter-spacing: .3em; font-weight: 700; text-transform: uppercase; }
   .pie h1 { margin: 10px 0 0; font-family: Georgia, serif; font-size: 69px; font-weight: 400; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pie .tema { margin-top: 13px; font-size: 23px; color: #eee5d7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pie .detalle { display: flex; gap: 13px; align-items: center; color: #ddc9a9; font-size: 15px; letter-spacing: .2em; text-transform: uppercase; }
-  .pie .detalle::before { content: ''; width: 46px; height: 1px; background: var(--oro); }
   @media (prefers-reduced-motion: no-preference) { .marca { animation: pulso 2.2s ease-in-out infinite; } @keyframes pulso { 50% { opacity: .5; box-shadow: 0 0 8px #e65f5a; } } }
 </style>
 </head>
@@ -49,12 +47,12 @@
   <header class="cabecera"><i class="marca"></i><strong id="canal">Crid4m</strong><span>Charla en directo</span></header>
   <div class="muestra-marco"></div>
   <div class="muestra-etiqueta">En pantalla</div>
-  <footer class="pie"><div class="texto"><div class="kicker">Hablemos de esto</div><h1 id="rotulo">Just Chatting</h1><div class="tema" id="tema"></div></div><div class="detalle">Webcam + contenido</div></footer>
+  <footer class="pie"><div class="texto"><div class="kicker">Hablemos de esto</div><h1 id="rotulo">Just Chatting</h1><div class="tema" id="tema"></div></div></footer>
 <script>
   const q = new URLSearchParams(location.search);
   if (q.get('demo') === '1') document.body.classList.add('demo');
   const opacidad = Number(q.get('opacidad'));
-  if (Number.isFinite(opacidad) && opacidad >= .65 && opacidad <= .95) document.documentElement.style.setProperty('--opacidad-compartida', opacidad);
+  if (Number.isFinite(opacidad) && opacidad >= .65 && opacidad <= 1) document.documentElement.style.setProperty('--opacidad-compartida', opacidad);
   async function actualizar() {
     if (document.body.classList.contains('demo')) return;
     try {

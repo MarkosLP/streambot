@@ -417,34 +417,41 @@ export async function crearEscena(pedir: PedirObs, tipo: TipoEscena): Promise<st
   return hecho;
 }
 
-/** Charla con cámara a pantalla completa y una captura independiente semitransparente. */
-export const ESCENA_COMPARTIDA = { escena: '✦ Charla + compartir', fuente: 'ESC Charla compartir', captura: 'ESC Compartir contenido' } as const;
+/**
+ * Charla con la cámara a pantalla completa y tu captura a la derecha.
+ * La captura no se copia: va dentro de una escena auxiliar («capa») y el
+ * filtro de opacidad se pone a esa escena. Así, si cambias de ventana en la
+ * captura original, aquí se ve lo mismo, y la original no lleva filtros nuevos.
+ */
+export const ESCENA_COMPARTIDA = { escena: '✦ Charla + compartir', fuente: 'ESC Charla compartir', capa: 'ESC Compartir (capa)' } as const;
+/** La copia que se hacía antes (2 oct 2026); si queda, se retira. */
+const COPIA_ANTIGUA = 'ESC Compartir contenido';
 export const urlCharlaCompartida = () =>
   `http://127.0.0.1:${config.panel.port}/biblioteca/overlays/charla-compartida.html`;
 export const HUECO_COMPARTIDO = { x: 1010, y: 150, ancho: 850, alto: 478 };
 const KINDS_COMPARTIR = ['monitor_capture', 'window_capture', 'game_capture', 'screen_capture', 'xcomposite_input', 'pipewire'];
 const FILTRO_COMPARTIR = 'ESC Transparencia de compartir';
 
-export async function crearCharlaCompartida(pedir: PedirObs, origen?: string, opacidad = .84): Promise<string[]> {
-  const { escena, fuente, captura } = ESCENA_COMPARTIDA;
+export async function crearCharlaCompartida(pedir: PedirObs, origen?: string, opacidad = 1): Promise<string[]> {
+  const { escena, fuente, capa } = ESCENA_COMPARTIDA;
   const { inputs } = await pedir<{ inputs: { inputName: string; inputKind: string }[] }>('GetInputList');
+  if (origen === COPIA_ANTIGUA || origen === fuente) throw new ErrorObs('Elige la captura original, no una fuente de esta escena.');
   const origenInput = origen ? inputs.find((i) => i.inputName === origen && KINDS_COMPARTIR.some((k) => i.inputKind.startsWith(k))) : null;
   if (origen && !origenInput) throw new ErrorObs('Elige una captura de pantalla, ventana o juego que exista en OBS.');
-  if (origen === captura || origen === fuente) throw new ErrorObs('Elige la captura original, no una fuente de esta escena.');
-  const copiaActual = inputs.find((i) => i.inputName === captura);
-  if (origenInput && copiaActual && copiaActual.inputKind !== origenInput.inputKind) {
-    throw new ErrorObs('La captura anterior era de otro tipo. Elimina «ESC Compartir contenido» en OBS y vuelve a crear esta escena.');
-  }
 
   const hecho: string[] = [];
-  try {
-    await pedir('CreateScene', { sceneName: escena });
-    hecho.push(`Escena «${escena}» creada.`);
-  } catch (err) {
-    if (!(err instanceof ErrorObs) || err.codigo !== YA_EXISTE) throw err;
-    hecho.push(`La escena «${escena}» ya existía: se completa sin mover tus fuentes.`);
-  }
-  const items = async () => (await pedir<{ sceneItems: { sourceName: string; sceneItemId: number }[] }>('GetSceneItemList', { sceneName: escena })).sceneItems;
+  const crearEscenaSiFalta = async (nombre: string) => {
+    try {
+      await pedir('CreateScene', { sceneName: nombre });
+      return true;
+    } catch (err) {
+      if (!(err instanceof ErrorObs) || err.codigo !== YA_EXISTE) throw err;
+      return false;
+    }
+  };
+  hecho.push(await crearEscenaSiFalta(escena) ? `Escena «${escena}» creada.` : `La escena «${escena}» ya existía: se completa sin mover tus fuentes.`);
+  const itemsDe = async (nombre: string) => (await pedir<{ sceneItems: { sourceName: string; sceneItemId: number }[] }>('GetSceneItemList', { sceneName: nombre })).sceneItems;
+  const items = () => itemsDe(escena);
   const ajustes = { width: 1920, height: 1080, ...FPS, is_local_file: false, url: urlCharlaCompartida(), shutdown: true, restart_when_active: false, reroute_audio: false };
   let overlayId = (await items()).find((i) => i.sourceName === fuente)?.sceneItemId;
   if (inputs.some((i) => i.inputName === fuente)) {
@@ -470,26 +477,36 @@ export async function crearCharlaCompartida(pedir: PedirObs, origen?: string, op
     hecho.push(`Webcam «${cam.inputName}» a pantalla completa.`);
   }
 
+  // La copia de antes la creaba este panel y no la usa nada más: fuera, para no capturar dos veces.
+  if (inputs.some((i) => i.inputName === COPIA_ANTIGUA)) {
+    await pedir('RemoveInput', { inputName: COPIA_ANTIGUA });
+    hecho.push(`Quitada la copia antigua «${COPIA_ANTIGUA}»: ahora se usa tu captura original.`);
+  }
+
   if (!origenInput) hecho.push('Selecciona una captura de OBS para mostrarla a la derecha.');
   else {
-    const { inputSettings } = await pedir<{ inputSettings: Record<string, unknown> }>('GetInputSettings', { inputName: origenInput.inputName });
-    const copiaExiste = inputs.some((i) => i.inputName === captura);
-    let id = (await items()).find((i) => i.sourceName === captura)?.sceneItemId;
-    if (copiaExiste) {
-      await pedir('SetInputSettings', { inputName: captura, inputSettings, overlay: false });
-      if (id === undefined) ({ sceneItemId: id } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: captura, sceneItemEnabled: true }));
-    } else {
-      ({ sceneItemId: id } = await pedir<{ sceneItemId: number }>('CreateInput', { sceneName: escena, inputName: captura, inputKind: origenInput.inputKind, inputSettings, sceneItemEnabled: true }));
-    }
-    // Una captura que traiga audio no debe duplicar el sonido de la fuente original.
-    await pedir('SetInputMute', { inputName: captura, inputMuted: true }).catch(() => {});
-    const { filters } = await pedir<{ filters: { filterName: string }[] }>('GetSourceFilterList', { sourceName: captura });
-    if (filters.some((f) => f.filterName === FILTRO_COMPARTIR)) {
-      await pedir('SetSourceFilterSettings', { sourceName: captura, filterName: FILTRO_COMPARTIR, filterSettings: { opacity: opacidad }, overlay: true });
-    } else {
-      await pedir('CreateSourceFilter', { sourceName: captura, filterName: FILTRO_COMPARTIR, filterKind: KIND_COLOR, filterSettings: { opacity: opacidad } });
-    }
     const { baseWidth, baseHeight } = await pedir<{ baseWidth: number; baseHeight: number }>('GetVideoSettings');
+    // En la capa solo va la captura elegida, llenando el lienzo.
+    await crearEscenaSiFalta(capa);
+    let idEnCapa: number | undefined;
+    for (const i of await itemsDe(capa)) {
+      if (i.sourceName === origenInput.inputName && idEnCapa === undefined) idEnCapa = i.sceneItemId;
+      else await pedir('RemoveSceneItem', { sceneName: capa, sceneItemId: i.sceneItemId });
+    }
+    if (idEnCapa === undefined) ({ sceneItemId: idEnCapa } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: capa, sourceName: origenInput.inputName, sceneItemEnabled: true }));
+    await pedir('SetSceneItemTransform', { sceneName: capa, sceneItemId: idEnCapa, sceneItemTransform: {
+      positionX: 0, positionY: 0, alignment: 5, rotation: 0,
+      boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsAlignment: 0, boundsWidth: baseWidth, boundsHeight: baseHeight,
+    } });
+    const { filters } = await pedir<{ filters: { filterName: string }[] }>('GetSourceFilterList', { sourceName: capa });
+    if (filters.some((f) => f.filterName === FILTRO_COMPARTIR)) {
+      await pedir('SetSourceFilterSettings', { sourceName: capa, filterName: FILTRO_COMPARTIR, filterSettings: { opacity: opacidad }, overlay: true });
+    } else if (opacidad < 1) {
+      await pedir('CreateSourceFilter', { sourceName: capa, filterName: FILTRO_COMPARTIR, filterKind: KIND_COLOR, filterSettings: { opacity: opacidad } });
+    }
+
+    let id = (await items()).find((i) => i.sourceName === capa)?.sceneItemId;
+    if (id === undefined) ({ sceneItemId: id } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: capa, sceneItemEnabled: true }));
     const sx = baseWidth / 1920, sy = baseHeight / 1080;
     const r = HUECO_COMPARTIDO;
     await pedir('SetSceneItemTransform', { sceneName: escena, sceneItemId: id, sceneItemTransform: {
@@ -497,7 +514,9 @@ export async function crearCharlaCompartida(pedir: PedirObs, origen?: string, op
       boundsType: 'OBS_BOUNDS_SCALE_INNER', boundsAlignment: 0, boundsWidth: r.ancho * sx, boundsHeight: r.alto * sy,
     } });
     await pedir('SetSceneItemIndex', { sceneName: escena, sceneItemId: id, sceneItemIndex: cam ? 1 : 0 });
-    hecho.push(`Copia independiente de «${origenInput.inputName}» colocada a la derecha con ${Math.round(opacidad * 100)} % de opacidad.`);
+    hecho.push(opacidad < 1
+      ? `«${origenInput.inputName}» a la derecha con ${Math.round(opacidad * 100)} % de opacidad. Sigue a tu captura original.`
+      : `«${origenInput.inputName}» a la derecha, opaca. Sigue a tu captura original.`);
   }
   await pedir('SetSceneItemIndex', { sceneName: escena, sceneItemId: overlayId, sceneItemIndex: (await items()).length - 1 });
   return hecho;

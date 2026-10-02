@@ -749,8 +749,8 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     }
     if (tipo === 'compartir') {
       if (fuenteCompartida !== undefined && (typeof fuenteCompartida !== 'string' || fuenteCompartida.length > 200)) throw new ErrorHttp(400, 'captura no válida');
-      if (opacidad !== undefined && (typeof opacidad !== 'number' || !Number.isFinite(opacidad) || opacidad < .65 || opacidad > .95)) throw new ErrorHttp(400, 'opacidad no válida');
-      const hecho = await obs((pedir) => obsSetup.crearCharlaCompartida(pedir, fuenteCompartida || undefined, opacidad ?? .84)).catch((err) => {
+      if (opacidad !== undefined && (typeof opacidad !== 'number' || !Number.isFinite(opacidad) || opacidad < .65 || opacidad > 1)) throw new ErrorHttp(400, 'opacidad no válida');
+      const hecho = await obs((pedir) => obsSetup.crearCharlaCompartida(pedir, fuenteCompartida || undefined, opacidad ?? 1)).catch((err) => {
         throw new ErrorHttp(502, err instanceof Error ? err.message : String(err));
       });
       for (const h of hecho) log.info(`Panel → OBS: ${h}`);
