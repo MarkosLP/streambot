@@ -118,4 +118,16 @@ Solo en `mmo.html`; el motor y el contrato siguen igual.
 
 Capturas `vivo-*` en [previews/mmo/](previews/mmo/), con `vivo-pausa`, `vivo-cerrado` y `vivo-chispas` nuevas. Edge sin ventana no avanza el reloj de las animaciones, así que la prueba congela las chispas a 0,7 s para comprobar que se ven.
 
-**Pendiente para cerrar las fases 2 y 3 (Codex o quien Crid4m diga):** controles del mundo en el panel, la fuente en OBS (no tocada: hay que preguntar antes) y la prueba de varias horas con el canal ausente. Detalle para el contrato: si el mundo está activo pero no hay directo, el motor rechaza `!explorar` y la escena sigue invitando a jugar; solo importa si la escena se ve fuera de directo.
+**Pendiente para cerrar las fases 2 y 3:** hecho el mismo día, ver la sección siguiente.
+
+## Fases 2 y 3, parte de Codex hecha por Claude (2 oct 2026)
+
+Crid4m pidió que Claude lo hiciera todo por ahora y que Codex lo revise después.
+
+- **Panel → Mundo** (`index.html`, `app.js`, `styles.css`): estado en vivo cada 3 s, Activar / Pausar / Apagar (apagar pide confirmación porque termina la expedición sin premios), avisos si está activo sin directo o con el bot apagado, vista previa de la escena y «Crear escena en OBS». Capturas `panel-mundo*.png` en [previews/mmo/](previews/mmo/).
+- **Rutas** (`server.ts`): `GET /api/mmo` y `POST /api/mmo {accion}` (con `X-Panel`, como todo lo que escribe) y `tipo: 'mundo'` en `POST /api/escenas/obs`.
+- **OBS** (`obs-setup.ts`, `crearEscenaMundo`): escena `✦ El Linde del Velo`, fuente `ESC Linde del Velo` a pantalla completa a 30 fps, apagada mientras no se ve, y `OVL Alertas` encima si existe. Solo añade; no se ha tocado el OBS real: lo pulsa Crid4m.
+- **Motor, un cambio** (`index.ts`): el aviso «Aún te recuperas…» y el de descanso salen **una vez por persona y espera**; insistir no hace hablar más al bot. En la simulación, 819 comandos daban 819 respuestas, y el techo es de 200 por hora para todo el bot.
+- **Resistencia** (`resistencia.test.ts`): 8 h simuladas con seis personas que entran y salen, mensajes duplicados, pausa, corte de directo, dos reinicios, una caída de hora y media, `!olvidame` y apagado a mitad. Resultado: 35 expediciones completadas, ningún premio duplicado ni fuera de una expedición completada, ninguna fase pasada de plazo y, al volver de la caída, como mucho un paso de golpe.
+
+**Decisión para Crid4m tras la primera prueba real:** cada `!explorar` aceptado contesta en el chat. Con 5-6 personas activas son unas 150 respuestas por hora, cerca del techo de 200 que comparte con el Loot. Si se queda corto, la opción es contestar solo a la salida y al final y dejar el resto en la escena.

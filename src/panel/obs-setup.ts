@@ -522,6 +522,58 @@ export async function crearCharlaCompartida(pedir: PedirObs, origen?: string, op
   return hecho;
 }
 
+/**
+ * El Linde del Velo (interactions/mmo): la escena para cuando Crid4m está
+ * ausente. Solo el overlay del mundo a pantalla completa y, si ya existen, las
+ * alertas encima. La música no se añade sola: se marca la escena en Música.
+ */
+export const ESCENA_MUNDO = { escena: '✦ El Linde del Velo', fuente: 'ESC Linde del Velo' } as const;
+export const urlMundo = () => `http://127.0.0.1:${config.panel.port}/biblioteca/overlays/mmo.html`;
+
+/** Crea o completa la escena del mundo. Nunca cambia la escena en emisión ni mueve lo que ya había. */
+export async function crearEscenaMundo(pedir: PedirObs): Promise<string[]> {
+  const { escena, fuente } = ESCENA_MUNDO;
+  const hecho: string[] = [];
+  try {
+    await pedir('CreateScene', { sceneName: escena });
+    hecho.push(`Escena «${escena}» creada.`);
+  } catch (err) {
+    if (!(err instanceof ErrorObs) || err.codigo !== YA_EXISTE) throw err;
+    hecho.push(`La escena «${escena}» ya existía: se completa sin quitar nada.`);
+  }
+  const items = async () =>
+    (await pedir<{ sceneItems: { sourceName: string; sceneItemId: number }[] }>('GetSceneItemList', { sceneName: escena })).sceneItems;
+  const { inputs } = await pedir<{ inputs: { inputName: string }[] }>('GetInputList');
+
+  // Apagada mientras la escena no está en pantalla: no gasta mientras juegas.
+  const ajustes = { width: 1920, height: 1080, ...FPS, is_local_file: false, url: urlMundo(), shutdown: true, restart_when_active: false, reroute_audio: false };
+  if (!inputs.some((i) => i.inputName === fuente)) {
+    const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateInput', {
+      sceneName: escena, inputName: fuente, inputKind: 'browser_source', inputSettings: ajustes, sceneItemEnabled: true,
+    });
+    await pantallaCompleta(pedir, escena, sceneItemId);
+    hecho.push(`Overlay «${fuente}» creado a pantalla completa.`);
+  } else {
+    await pedir('SetInputSettings', { inputName: fuente, inputSettings: ajustes, overlay: true });
+    if ((await items()).some((i) => i.sourceName === fuente)) hecho.push(`Overlay «${fuente}» actualizado; conserva su posición.`);
+    else {
+      const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: fuente, sceneItemEnabled: true });
+      await pantallaCompleta(pedir, escena, sceneItemId);
+      hecho.push(`Overlay «${fuente}» añadido a pantalla completa.`);
+    }
+  }
+
+  // Subs, bits y raids también se ven mientras estás ausente.
+  const alertas = OVERLAYS_DIRECTO.alertas.fuente;
+  if (inputs.some((i) => i.inputName === alertas) && !(await items()).some((i) => i.sourceName === alertas)) {
+    const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: alertas, sceneItemEnabled: true });
+    await pantallaCompleta(pedir, escena, sceneItemId);
+    hecho.push(`Alertas «${alertas}» añadidas encima.`);
+  }
+  hecho.push('No cambia la escena que emites. Para que suene música aquí, márcala en Música.');
+  return hecho;
+}
+
 /** Coloca la cámara en el hueco del marco, llenándolo (lo que sobre se recorta). */
 async function encajarEnHueco(pedir: PedirObs, escena: string, sceneItemId: number): Promise<void> {
   const v = await pedir<{ baseWidth: number; baseHeight: number }>('GetVideoSettings');

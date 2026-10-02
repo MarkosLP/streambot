@@ -334,6 +334,18 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     return;
   }
 
+  // El panel: estado del mundo y por qué podría no avanzar (sin directo o con el bot apagado).
+  if (ruta === 'GET /api/mmo') return json(res, 200, mundoPanel());
+  if (ruta === 'POST /api/mmo') {
+    const { accion } = await cuerpo(req);
+    if (accion === 'activar') mmo.activar();
+    else if (accion === 'pausar') mmo.pausar();
+    else if (accion === 'apagar') mmo.apagar();
+    else throw new ErrorHttp(400, 'accion tiene que ser activar, pausar o apagar');
+    log.info(`Panel → El Linde del Velo: ${accion}`);
+    return json(res, 200, mundoPanel());
+  }
+
   // Lo que pintan las escenas (Empezamos, Charla, Pausa, Final). Como la del
   // jefe: CORS abierto porque el overlay corre en su sandbox, solo lectura y
   // solo lo que ya se ve en el chat.
@@ -773,6 +785,13 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       log.info(`Panel → OBS: ${hecho}`);
       return json(res, 200, { hecho: [hecho] });
     }
+    if (tipo === 'mundo') {
+      const hecho = await obs((pedir) => obsSetup.crearEscenaMundo(pedir)).catch((err) => {
+        throw new ErrorHttp(502, err instanceof Error ? err.message : String(err));
+      });
+      for (const h of hecho) log.info(`Panel → OBS: ${h}`);
+      return json(res, 200, { hecho });
+    }
     if (tipo === 'compartir') {
       if (fuenteCompartida !== undefined && (typeof fuenteCompartida !== 'string' || fuenteCompartida.length > 200)) throw new ErrorHttp(400, 'captura no válida');
       if (opacidad !== undefined && (typeof opacidad !== 'number' || !Number.isFinite(opacidad) || opacidad < .65 || opacidad > 1)) throw new ErrorHttp(400, 'opacidad no válida');
@@ -1032,6 +1051,16 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   }
 
   throw new ErrorHttp(404, 'no existe');
+}
+
+/** Lo que enseña la pestaña Mundo. El mundo solo avanza con directo y con el bot encendido. */
+function mundoPanel() {
+  return {
+    estado: mmo.estado(),
+    directo: streams.current() !== null,
+    interruptor: killswitch.isEnabled(),
+    escena: obsSetup.ESCENA_MUNDO.escena,
+  };
 }
 
 function estado(sb: PuertoStreamerbot, desdeLog: number) {

@@ -129,6 +129,30 @@ try {
     await esperar(1600);
     await captura('mmo-vivo-cerrado');
   }
+  if(caso==='mundo-panel') {
+    // La pestaña Mundo del panel con una expedición en marcha, en escritorio y en móvil.
+    const mmo = await import('../src/interactions/mmo/index.ts');
+    const streams = await import('../src/data/streams.ts');
+    const inicio = Date.now() - 2*mmo.ACCION_MS;
+    streams.openAt(new Date(inicio).toISOString());mmo.activar(inicio);
+    const gente=['Ana','Bruno'].map(n=>({id:`mmo-${n}`,login:n.toLowerCase(),displayName:n,isBroadcaster:false,isModerator:false,isVip:false,isSubscriber:false,rawRole:null}));
+    mmo.explorar(gente[0],'panel-1',inicio);mmo.explorar(gente[1],'panel-2',inicio+1000);mmo.explorar(gente[0],'panel-3',inicio+mmo.ACCION_MS+1000);
+    for(const [w,alto] of [[1366,900],[390,844]]){
+      await abrir('/#/mundo',w,alto);await evaluar("irA('mundo')");
+      for(let i=0;i<40&&!(await evaluar("document.querySelector('#m-datos').textContent.includes('3 / 6')"));i++)await esperar(100);
+      assert.equal(await evaluar("document.querySelector('#m-modo').textContent"),'Activo');
+      assert.equal(await evaluar("document.querySelector('#m-activar').disabled"),true);
+      assert.ok(await evaluar("document.querySelector('#m-datos').textContent.includes('Ana (2), Bruno (1)')"));
+      assert.equal(await evaluar("document.documentElement.scrollWidth<=innerWidth"),true,'sin desbordar en horizontal');
+      await esperar(1500);
+      await captura(`mundo-panel-${w}`);
+    }
+    // Sin directo: lo avisa en vez de quedarse callado.
+    streams.close();
+    await evaluar("cargarMundo()");
+    assert.ok(await evaluar("document.querySelector('#m-avisos').textContent.includes('No hay directo')"));
+    await captura('mundo-panel-sin-directo');
+  }
   if(caso==='charla-compartida') {
     await abrir('/biblioteca/overlays/charla-compartida.html?demo=1',1920,1080);
     assert.equal(await evaluar("document.querySelector('.demo-muestra').getBoundingClientRect().width"),850);

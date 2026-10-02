@@ -260,6 +260,19 @@ export function olvidar(twitchId: string): void {
   db.prepare('UPDATE mmo_world SET progreso = ?, meta = ? WHERE id = 1').run(progreso, meta);
 }
 
+/**
+ * A quién ya se avisó de que espere, y hasta cuándo. Insistir durante la espera
+ * no gasta más mensajes del bot: la escena ya enseña el progreso. Se pierde al
+ * reiniciar, y no pasa nada: como mucho se repite un aviso.
+ */
+const avisados = new Map<string, number>();
+function avisarUnaVez(clave: string, hasta: number, now: number): boolean {
+  if ((avisados.get(clave) ?? 0) > now) return false;
+  if (avisados.size > 500) for (const [k, fin] of avisados) if (fin <= now) avisados.delete(k);
+  avisados.set(clave, hasta);
+  return true;
+}
+
 /** Respuestas del MVP. Los controles requieren propietario o moderador. */
 export function comando(texto: string, viewer: Viewer, mensajeId: string, now = Date.now()): string | null {
   const t = texto.trim().toLowerCase();
@@ -290,9 +303,11 @@ export function comando(texto: string, viewer: Viewer, mensajeId: string, now = 
     ? `¡Expedición completada en ${r.region}! La compañía encuentra ${r.hallazgo}. Todos ganan renombre; tú +${r.renombre}.`
     : r.inicio ? `${viewer.displayName} cruza el Velo hacia ${r.region}. La compañía sale: ${r.progreso}/${r.meta}.`
     : `${viewer.displayName} ${r.texto} (${r.progreso}/${r.meta}).`;
-  if (r.tipo === 'espera') return `Aún te recuperas de la última salida. Podrás explorar en ${r.segundos} s.`;
+  if (r.tipo === 'espera') return avisarUnaVez(`espera|${viewer.id}`, now + r.segundos * 1000, now)
+    ? `Aún te recuperas de la última salida. Podrás explorar en ${r.segundos} s.` : null;
   if (r.tipo === 'apagado') return 'El Linde del Velo está cerrado o en pausa. Usa !mundo para ver su estado.';
   if (r.tipo === 'sin-directo') return 'El Linde del Velo espera a que empiece el directo.';
-  if (r.tipo === 'descanso') return 'La compañía descansa tras la expedición. Vuelve en un minuto.';
+  if (r.tipo === 'descanso') return avisarUnaVez(`descanso|${viewer.id}`, mundo().hasta_ms ?? now + DESCANSO_MS, now)
+    ? 'La compañía descansa tras la expedición. Vuelve en un minuto.' : null;
   return null;
 }

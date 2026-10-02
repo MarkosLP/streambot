@@ -1,8 +1,8 @@
 # MMO de chat de Crid4m — diseño por fases
 
-Estado: fases 0 y 1 desarrolladas; escena conectada en local, 2 de octubre de 2026. Decisión de Crid4m: **universo propio**, jugable en una escena de OBS mientras él está ausente. El nombre y los textos finales siguen a elección de Crid4m.
+Estado: fases 0 a 3 desarrolladas en local, 2 de octubre de 2026 (Claude hizo la 2 y la 3 completas por encargo de Crid4m; Codex las revisará). Decisión de Crid4m: **universo propio**, jugable en una escena de OBS mientras él está ausente. Nombre y textos aprobados en [MMO-CHAT-ARTE-Y-LORE.md](MMO-CHAT-ARTE-Y-LORE.md).
 
-**Ya desarrollado:** Claude entregó la identidad propuesta [El Linde del Velo](MMO-CHAT-ARTE-Y-LORE.md), cuatro fondos y una maqueta estática. El motor guarda expediciones y renombre en SQLite; responde a `!mundo`, `!explorar` y `!expedicion`; ofrece `!mundo activar|pausar|apagar` al dueño y moderadores. `GET /api/mmo/estado` alimenta [mmo.html](../biblioteca/overlays/mmo.html), una copia conectada que muestra calma, progreso, victoria, derrota y desconexión. Arranca apagado. Falta añadir la escena a OBS y los controles del panel; solo se ha probado en navegador aislado.
+**Ya desarrollado:** identidad [El Linde del Velo](MMO-CHAT-ARTE-Y-LORE.md), cuatro fondos y la escena [mmo.html](../biblioteca/overlays/mmo.html), que muestra calma (con «Cómo se juega»), expedición, pausa, victoria, cierre sin completar, mundo cerrado y desconexión. El motor guarda expediciones y renombre en SQLite y responde a `!mundo`, `!explorar` y `!expedicion`; `!mundo activar|pausar|apagar` para dueño y moderadores. Panel → **Mundo**: estado, avisos (sin directo, bot apagado), Activar/Pausar/Apagar, vista previa y «Crear escena en OBS» (`✦ El Linde del Velo` con la fuente `ESC Linde del Velo` y las alertas encima; solo añade, nunca cambia la escena en emisión). Arranca apagado. Prueba de resistencia de 8 h simuladas en `src/interactions/mmo/resistencia.test.ts`. **Falta:** que Crid4m cree la escena desde el panel y una prueba supervisada con gente real.
 
 ## La experiencia
 

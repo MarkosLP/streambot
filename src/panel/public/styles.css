@@ -1338,3 +1338,16 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
 .grupo-galeria.panoramicas .imagen-vista > img { inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .grupo-galeria > summary > h3 code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .grupo-galeria.personaje > summary > h3 code { display: none; }
+
+/* ---------- Mundo: El Linde del Velo (2 oct 2026) ---------- */
+.mundo-rejilla { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); align-items: start; }
+.mundo-datos { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; margin: 0 0 16px; }
+.mundo-datos dt { color: var(--texto-3); }
+.mundo-datos dd { margin: 0; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.mundo-avisos { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 8px; }
+.mundo-avisos:empty { display: none; }
+.mundo-avisos li { padding: 8px 12px; border-radius: 9px; border: 1px solid var(--ambar); color: var(--ambar); background: color-mix(in srgb, var(--ambar) 10%, transparent); }
+.mundo-botones { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 12px; }
+.mundo-vista { border-radius: 10px; border: 1px solid var(--borde); }
+.mundo-hecho { margin: 8px 0 0; padding-left: 18px; color: var(--texto-2); }
+.mundo-hecho:empty { display: none; }

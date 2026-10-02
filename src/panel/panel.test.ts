@@ -973,3 +973,38 @@ test('efectos: probar sin directo no ejecuta Actions ni manda chat', async () =>
   assert.equal(r.status,200);assert.equal(ejecutadas.length,n);assert.equal(enviados.length,mensajes);
   assert.equal((await post('/api/efectos/prueba',{efecto:'inventado'})).status,400);
 });
+
+describe('El Linde del Velo desde el panel', () => {
+  test('activar, pausar y apagar; avisa si no hay directo y exige X-Panel', async () => {
+    const inicial = await pedir('GET', '/api/mmo');
+    assert.equal(inicial.body.estado.modo, 'apagado');
+    assert.equal(inicial.body.directo, false);
+    assert.equal((await pedir('POST', '/api/mmo', { cuerpo: { accion: 'activar' } })).status, 403);
+    assert.equal((await post('/api/mmo', { accion: 'borrar' })).status, 400);
+
+    const activo = await post('/api/mmo', { accion: 'activar' });
+    assert.equal(activo.body.estado.modo, 'activo');
+    assert.equal(activo.body.directo, false, 'el panel puede avisar de que sin directo no avanza');
+    streams.open();
+    assert.equal((await pedir('GET', '/api/mmo')).body.directo, true);
+    assert.equal((await post('/api/mmo', { accion: 'pausar' })).body.estado.modo, 'pausado');
+    assert.equal((await post('/api/mmo', { accion: 'apagar' })).body.estado.modo, 'apagado');
+  });
+
+  test('Crear en OBS: escena del mundo con el overlay y las alertas encima, sin duplicar', async () => {
+    obs.entradas.push({ inputName: 'OVL Alertas', inputKind: 'browser_source', settings: {} });
+    const r = await post('/api/escenas/obs', { tipo: 'mundo' });
+    assert.equal(r.status, 200);
+    assert.deepEqual(obs.items['✦ El Linde del Velo']!.map((i) => i.sourceName), ['ESC Linde del Velo', 'OVL Alertas']);
+    const fuente = obs.entradas.find((e) => e.inputName === 'ESC Linde del Velo')!;
+    assert.match(fuente.settings.url, /\/biblioteca\/overlays\/mmo\.html$/);
+    assert.equal(fuente.settings.shutdown, true, 'no gasta mientras la escena no se ve');
+    const item = obs.items['✦ El Linde del Velo']![0]!;
+    assert.equal(obs.transformes[item.sceneItemId].scaleX, 2560 / 1920);
+
+    const otra = await post('/api/escenas/obs', { tipo: 'mundo' });
+    assert.equal(obs.items['✦ El Linde del Velo']!.length, 2);
+    assert.ok(otra.body.hecho.some((x: string) => /ya existía/.test(x)));
+    assert.ok(!obs.items['Escena juego']!.some((i) => i.sourceName === 'ESC Linde del Velo'), 'no toca la escena del juego');
+  });
+});

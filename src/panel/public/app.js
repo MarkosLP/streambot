@@ -107,6 +107,7 @@ const cargadores = {
   loot: cargarLoot,
   interacciones: cargarInteracciones,
   espectadores: cargarEspectadores,
+  mundo: () => cargarMundo(),
 };
 
 function irA(tab) {
@@ -3244,6 +3245,74 @@ function pintarEspectadores() {
 
 $('buscar').addEventListener('input', pintarEspectadores);
 $('r-espectadores').addEventListener('click', cargarEspectadores);
+
+// ---------------------------------------------------------------------------
+// Mundo: El Linde del Velo (interactions/mmo)
+// ---------------------------------------------------------------------------
+
+const MUNDO_MODOS = { activo: ['Activo', 'ok'], pausado: ['En pausa', 'aviso'], apagado: ['Apagado', ''] };
+const MUNDO_FASES = { calma: 'En la Lumbre, esperando a que alguien escriba !explorar', expedicion: 'Expedición en marcha', resultado: 'Volviendo de la expedición' };
+
+function pintarMundo(d) {
+  const e = d.estado;
+  const [texto, clase] = MUNDO_MODOS[e.modo] ?? [e.modo, ''];
+  $('m-modo').textContent = texto;
+  $('m-modo').className = `estado ${clase}`;
+  // Por qué podría no avanzar aunque esté activo.
+  const avisos = [];
+  if (e.modo === 'activo' && !d.directo) avisos.push('No hay directo: el mundo espera y !explorar no cuenta hasta que empiece.');
+  if (e.modo === 'activo' && !d.interruptor) avisos.push('El bot está apagado (interruptor de abajo a la izquierda): el mundo no avanza.');
+  $('m-avisos').replaceChildren(...avisos.map((a) => h('li', {}, a)));
+  const filas = [
+    ['Ahora', e.modo === 'apagado' ? 'Cerrado' : MUNDO_FASES[e.fase] ?? e.fase],
+    [e.fase === 'calma' ? 'Próxima salida' : 'Lugar', e.region.nombre],
+  ];
+  if (e.fase !== 'calma') {
+    filas.push(['Progreso', `${e.objetivo.actual} / ${e.objetivo.meta}`]);
+    if (e.hasta) filas.push([e.fase === 'resultado' ? 'Nueva salida' : 'El Velo se cierra', `en ${Math.max(0, Math.ceil((new Date(e.hasta) - Date.now()) / 60000))} min`]);
+    filas.push(['Compañía', e.participantes.length ? e.participantes.map((p) => `${p.nombre} (${p.aporte})`).join(', ') : '—']);
+  }
+  if (e.ultimoSuceso) filas.push(['Último suceso', e.ultimoSuceso]);
+  $('m-datos').replaceChildren(...filas.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)]));
+  $('m-activar').disabled = e.modo === 'activo';
+  $('m-pausar').disabled = e.modo !== 'activo';
+  $('m-apagar').disabled = e.modo === 'apagado';
+  $('m-escena').textContent = d.escena;
+}
+
+async function cargarMundo() {
+  pintarMundo(await api('/api/mmo'));
+}
+
+for (const accion of ['activar', 'pausar', 'apagar']) {
+  $(`m-${accion}`).addEventListener('click', async () => {
+    if (accion === 'apagar' && !confirm('Apagar termina la expedición en curso sin repartir premios. Para dejarla a medias y seguir luego, usa Pausar. ¿Apago el mundo?')) return;
+    try {
+      pintarMundo(await api('/api/mmo', { accion }));
+      tostada({ activar: 'El mundo está activo', pausar: 'El mundo está en pausa', apagar: 'El mundo está apagado' }[accion]);
+    } catch (err) {
+      tostada(err.message, true);
+    }
+  });
+}
+
+$('m-obs').addEventListener('click', async () => {
+  if (!confirm(`Se creará (o completará) la escena «${$('m-escena').textContent}» en OBS.
+
+No cambia la escena que estás emitiendo ni borra nada. ¿Sigo?`)) return;
+  $('m-obs').disabled = true;
+  try {
+    const r = await api('/api/escenas/obs', { tipo: 'mundo' });
+    $('m-obs-hecho').replaceChildren(...r.hecho.map((x) => h('li', {}, x)));
+    tostada('Escena del mundo lista en OBS');
+  } catch (err) {
+    tostada(err.message, true);
+  } finally {
+    $('m-obs').disabled = false;
+  }
+});
+escalarOverlay.observe($('m-vista'));
+DirectoRed.sondear(() => ($('v-mundo').hidden ? undefined : cargarMundo()), 3000, false);
 
 // ---------------------------------------------------------------------------
 // Arranque

@@ -44,6 +44,10 @@
         <svg viewBox="0 0 24 24"><path d="M3 10a5 5 0 0 1 5-5h8a5 5 0 0 1 5 5v9H3zM3 12h18M10 12v3h4v-3"/></svg>
         Loot
       </button>
+      <button role="tab" data-tab="mundo">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg>
+        Mundo
+      </button>
       <button role="tab" data-tab="musica">
         <svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
         Música
@@ -450,6 +454,41 @@
     </section>
 
     <!-- ESCENAS -->
+    <!-- MUNDO: el MMO del chat (interactions/mmo) -->
+    <section class="vista" id="v-mundo" hidden>
+      <header class="cabecera-vista">
+        <div>
+          <p class="antetitulo">El MMO del chat para cuando no estás</p>
+          <h1>El Linde del Velo</h1>
+          <p class="nota">El chat juega con !explorar, !mundo y !expedicion. Mientras esté apagado, nadie puede jugar.</p>
+        </div>
+      </header>
+
+      <div class="mundo-rejilla">
+        <article class="tarjeta">
+          <header><h2>🔥 Estado</h2><span class="estado" id="m-modo">…</span></header>
+          <ul class="mundo-avisos" id="m-avisos"></ul>
+          <dl class="mundo-datos" id="m-datos"></dl>
+          <div class="mundo-botones">
+            <button class="boton primario" type="button" id="m-activar">▶ Activar</button>
+            <button class="boton" type="button" id="m-pausar">⏸ Pausar</button>
+            <button class="boton peligro" type="button" id="m-apagar">⏹ Apagar</button>
+          </div>
+          <p class="nota">Pausar conserva la expedición y el tiempo que le queda. Apagar la termina sin premios. Tú y los moderadores también podéis hacerlo en el chat: <code>!mundo activar</code>, <code>!mundo pausar</code>, <code>!mundo apagar</code>.</p>
+        </article>
+
+        <article class="tarjeta">
+          <header><h2>🖥️ La escena</h2><a class="enlace" href="/biblioteca/overlays/mmo.html" target="_blank" rel="noopener">Abrir aparte</a></header>
+          <div class="overlay-vista mundo-vista" id="m-vista"><iframe src="/biblioteca/overlays/mmo.html" sandbox="allow-scripts" title="Escena del mundo con datos reales" tabindex="-1"></iframe></div>
+          <div class="mundo-botones">
+            <button class="boton" type="button" id="m-obs">Crear escena en OBS</button>
+          </div>
+          <p class="nota">Crea «<span id="m-escena">✦ El Linde del Velo</span>» con la escena a pantalla completa y tus alertas encima. Solo añade: no cambia la escena que estás emitiendo. Cuando te vayas, cambia tú a ella.</p>
+          <ul class="mundo-hecho" id="m-obs-hecho"></ul>
+        </article>
+      </div>
+    </section>
+
     <section class="vista" id="v-escenas" hidden>
       <header class="cabecera-vista">
         <div>

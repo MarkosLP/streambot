@@ -2,6 +2,15 @@
 
 Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.**
 
+## MMO El Linde del Velo: fases 2 y 3 terminadas (2 oct, Claude) — para revisar Codex
+
+Crid4m pidió a Claude que hiciera también la parte de Codex y que Codex lo revise. Detalle en [MMO-CHAT-ARTE-Y-LORE.md](MMO-CHAT-ARTE-Y-LORE.md), sección «Fases 2 y 3, parte de Codex hecha por Claude».
+
+- Panel → **Mundo**: estado, Activar/Pausar/Apagar, vista previa y «Crear escena en OBS» (`✦ El Linde del Velo`).
+- Tocado del lado de Codex: `server.ts` (`/api/mmo`, `tipo: 'mundo'`), `obs-setup.ts` (`crearEscenaMundo`) y, en el motor, solo `avisarUnaVez` para el aviso de espera y descanso.
+- Pruebas: 652 correctas, TypeScript sin errores; `resistencia.test.ts` nueva (8 h simuladas); pruebas visuales `mmo` y `mundo-panel`.
+- Para usarlo: reiniciar el bot, crear la escena desde el panel y activar el mundo.
+
 ## Duelo y jefes en Biblioteca (29 sep, Codex)
 
 - `!duelo` tiene tarjeta propia en Biblioteca aunque comparte `jefe.html` y la fuente `FX Jefe` con los jefes. Su demo repite tandas de tres duelos y ya no queda vacía tras la primera.
