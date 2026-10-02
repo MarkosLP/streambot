@@ -21,9 +21,23 @@
   body[data-region="cantera"] { --acento: #b48cff; --acento-b: 180, 140, 255; }
   body[data-region="marisma"] { --acento: #5fe0c8; --acento-b: 95, 224, 200; }
 
-  /* Fondo pintado por lugar; al cambiar, funde. */
-  .fondo { position: absolute; inset: 0; background: center / cover no-repeat; transition: opacity 1.2s ease, filter 1.2s ease; }
-  .fondo.atenuado { filter: saturate(.35) brightness(.45) blur(3px); }
+  /* Fondo pintado por lugar: dos capas que se funden al cambiar de lugar. */
+  .fondo { position: absolute; inset: 0; background: center / cover no-repeat; transition: opacity 1.4s ease, filter 1.2s ease; }
+  .fondo.oculto { opacity: 0; }
+  .atenuado .fondo { filter: saturate(.35) brightness(.45) blur(3px); }
+  /* El fondo respira muy despacio: que no parezca una foto quieta. */
+  @media (prefers-reduced-motion: no-preference) { .capas { animation: respira 40s ease-in-out infinite alternate; } }
+  .capas { position: absolute; inset: 0; transform-origin: 40% 55%; }
+  @keyframes respira { from { transform: scale(1); } to { transform: scale(1.045) translate(-8px, -4px); } }
+
+  /* Ambiente de cada lugar (2 oct 2026): brasas, motas de ámbar, polvo y luciérnagas. */
+  .ambiente { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .ambiente i { position: absolute; left: var(--x); top: var(--y); width: var(--t); height: var(--t); border-radius: 50%; opacity: 0;
+    background: var(--c); box-shadow: 0 0 calc(var(--t) * 2.5) var(--c); animation: viaja var(--d) linear var(--r) infinite; }
+  @keyframes viaja { 0% { opacity: 0; transform: translate(0, 0); } 12% { opacity: var(--o, .9); } 80% { opacity: var(--o, .9); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)); } }
+  .ambiente.marisma i { animation: viaja var(--d) ease-in-out var(--r) infinite, parpadea 2.6s ease-in-out var(--r) infinite; }
+  @keyframes parpadea { 0%, 100% { filter: brightness(.4); } 50% { filter: brightness(1.6); } }
+  @media (prefers-reduced-motion: reduce) { .ambiente { display: none; } }
   .velo { position: absolute; inset: 0; pointer-events: none;
     background: linear-gradient(180deg, rgba(6, 5, 9, .78), transparent 22%, transparent 70%, rgba(6, 5, 9, .9)),
                 linear-gradient(270deg, rgba(6, 5, 9, .72), transparent 34%); }
@@ -43,7 +57,7 @@
 
   .ausente { position: absolute; right: 64px; top: 52px; display: flex; align-items: center; gap: 14px; padding: 12px 22px 12px 14px; font-size: 24px; font-weight: 700; }
   .ausente img { width: 46px; height: 46px; object-fit: contain; filter: drop-shadow(0 2px 4px #000); }
-  .ausente small { display: block; font-size: 18px; font-weight: 600; color: var(--suave); letter-spacing: .04em; }
+  .ausente small { display: block; font-size: 20px; font-weight: 600; color: var(--suave); letter-spacing: .04em; }
 
   /* Lateral: el objetivo común. */
   .lateral { position: absolute; right: 64px; top: 190px; width: 420px; padding: 26px 28px 24px; }
@@ -58,7 +72,7 @@
   .reloj { font-size: 26px; font-weight: 600; color: var(--suave); }
   .reloj b { color: var(--tinta); font-variant-numeric: tabular-nums; }
   .compania { margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255, 230, 170, .18); }
-  .compania h3 { margin: 0 0 10px; font-size: 18px; letter-spacing: .28em; text-transform: uppercase; color: var(--oro); }
+  .compania h3 { margin: 0 0 10px; font-size: 20px; letter-spacing: .28em; text-transform: uppercase; color: var(--oro); }
   .compania ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
   .compania li { display: flex; justify-content: space-between; gap: 12px; font-size: 27px; font-weight: 700; }
   .compania li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -91,11 +105,28 @@
 
   body.sin-datos .lateral, body.sin-datos .acciones, body.sin-datos .comandos { opacity: .35; filter: grayscale(.6); }
 
+  /* Reacciones a lo que hace el chat: solo con datos nuevos, nunca en cada consulta. */
+  .acciones li.nueva { animation: accion-entra 1.4s cubic-bezier(.2, .8, .2, 1); }
+  @keyframes accion-entra { 0% { opacity: 0; transform: translateX(-40px); } 25% { opacity: 1; transform: none; text-shadow: 0 0 18px rgba(var(--acento-b), .95), 0 2px 6px #000; } 100% { text-shadow: 0 2px 6px #000; } }
+  .barra i.nuevo { animation: segmento 1.3s ease-out; }
+  @keyframes segmento { 0% { transform: scaleY(.3); filter: brightness(2.4); } 35% { transform: scaleY(1.5); } 100% { transform: none; filter: none; } }
+  .cuenta b.sube { animation: cifra-sube .9s cubic-bezier(.2, 1.4, .4, 1); }
+  @keyframes cifra-sube { 0% { transform: scale(1); } 30% { transform: scale(1.35); color: #fff; } 100% { transform: none; } }
+  .centro.revela { animation: revela 1s cubic-bezier(.2, 1.3, .4, 1); }
+  @keyframes revela { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.82); } 100% { opacity: 1; transform: translate(-50%, -50%); } }
+  .destello { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    background: radial-gradient(ellipse at 50% 46%, rgba(var(--acento-b), .55), rgba(var(--acento-b), .12) 40%, transparent 70%); }
+  .destello.vivo { animation: destello 1.8s ease-out; }
+  @keyframes destello { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .acciones li.nueva, .barra i.nuevo, .cuenta b.sube, .centro.revela, .destello.vivo { animation: none; } }
+
 </style>
 </head>
 <body data-region="bosque">
-<div class="fondo" id="fondo"></div>
+<div class="capas" id="capas"><div class="fondo" id="fondo-a"></div><div class="fondo oculto" id="fondo-b"></div></div>
+<div class="ambiente" id="ambiente"></div>
 <div class="velo"></div>
+<div class="destello" id="destello"></div>
 
 <header class="cabecera">
   <div class="mundo">El Linde del Velo</div>
@@ -137,14 +168,67 @@
     objetivo: { actual: 0, meta: 4 }, hasta: null, participantes: [], acciones: [], resultado: null, ultimoSuceso: '' };
   let desconectado = true;
 
+  // ---------- Fondo y ambiente de cada lugar ----------
+  const LUGARES = ['refugio', 'bosque', 'cantera', 'marisma'];
+  for (const l of LUGARES) new Image().src = `../imagenes/mmo/${l}.png`;
+  /** Partículas por lugar: [cuántas, color, tamaño, zona de salida {x, y, w, h} en %, recorrido {dx, dy} en px, duración en s]. */
+  const AMBIENTES = {
+    refugio: [26, '#ffb35c', [3, 6], { x: 18, y: 52, w: 20, h: 14 }, { dx: [-60, 80], dy: [-420, -260] }, [4, 8]],
+    bosque: [22, '#ffcf7a', [3, 7], { x: 5, y: 15, w: 70, h: 70 }, { dx: [-120, 120], dy: [-160, -60] }, [9, 16]],
+    cantera: [30, '#d9c8ff', [2, 4], { x: 0, y: 10, w: 80, h: 80 }, { dx: [140, 320], dy: [-40, 40] }, [12, 22]],
+    marisma: [24, '#c9ff8a', [3, 5], { x: 5, y: 45, w: 65, h: 45 }, { dx: [-90, 90], dy: [-90, 50] }, [6, 11]],
+  };
+  const entre = ([a, b]) => a + Math.random() * (b - a);
+  let lugarPintado = null, capaVisible = 'fondo-a';
+  function ponerLugar(lugar) {
+    if (lugar === lugarPintado) return;
+    // La capa oculta recibe el lugar nuevo y se funde encima de la otra.
+    const nueva = capaVisible === 'fondo-a' ? 'fondo-b' : 'fondo-a';
+    $(nueva).style.backgroundImage = `url('../imagenes/mmo/${lugar}.png')`;
+    if (lugarPintado === null) $(capaVisible).style.backgroundImage = $(nueva).style.backgroundImage;
+    $(nueva).classList.remove('oculto');
+    $(capaVisible).classList.add('oculto');
+    capaVisible = nueva;
+    lugarPintado = lugar;
+    const [n, color, tam, zona, rec, dur] = AMBIENTES[lugar];
+    const caja = $('ambiente');
+    caja.className = `ambiente ${lugar}`;
+    caja.replaceChildren(...Array.from({ length: n }, () => {
+      const i = document.createElement('i');
+      const s = i.style;
+      s.setProperty('--x', `${zona.x + Math.random() * zona.w}%`);
+      s.setProperty('--y', `${zona.y + Math.random() * zona.h}%`);
+      s.setProperty('--t', `${entre(tam).toFixed(1)}px`);
+      s.setProperty('--c', color);
+      s.setProperty('--dx', `${entre(rec.dx).toFixed(0)}px`);
+      s.setProperty('--dy', `${entre(rec.dy).toFixed(0)}px`);
+      s.setProperty('--o', (.45 + Math.random() * .5).toFixed(2));
+      const d = entre(dur);
+      s.setProperty('--d', `${d.toFixed(1)}s`);
+      s.setProperty('--r', `${(-Math.random() * d).toFixed(1)}s`);
+      return i;
+    }));
+  }
+
+  // ---------- Reacciones: solo ante datos nuevos ----------
+  let pintado = null;          // el último estado pintado con conexión
+  const accionesVistas = new Set();
+  const claveAccion = (a) => `${a.at}|${a.quien}|${a.texto}`;
+  const claveResultado = (d) => d.fase === 'resultado'
+    ? `${d.region.id}|${d.resultado?.completada}|${d.objetivo.actual}/${d.objetivo.meta}|${d.acciones?.[0]?.at ?? ''}` : null;
+  // Cuántas reacciones ha habido (para las pruebas: una clase de animación dura solo hasta la siguiente consulta).
+  const contar = (que) => { const ds = document.documentElement.dataset; ds[que] = String(Number(ds[que] || 0) + 1); };
+  function reaccionar(clase, el) { el.classList.remove(clase); void el.offsetWidth; el.classList.add(clase); }
+
   /** Pinta un estado. Los nombres van siempre como texto, nunca como HTML. */
   function pintar(d, desconectado = false) {
     const fase = d.fase;
     const region = REGIONES[d.region.id] || REGIONES.bosque;
+    const antes = desconectado ? null : pintado;
     document.body.dataset.region = d.region.id;
     document.body.classList.toggle('sin-datos', desconectado);
-    $('fondo').style.backgroundImage = `url('../imagenes/mmo/${fase === 'calma' ? 'refugio' : (REGIONES[d.region.id] ? d.region.id : 'bosque')}.png')`;
-    $('fondo').classList.toggle('atenuado', desconectado);
+    document.body.classList.toggle('atenuado', desconectado);
+    ponerLugar(fase === 'calma' || d.modo !== 'activo' ? 'refugio' : (REGIONES[d.region.id] ? d.region.id : 'bosque'));
     $('lugar').textContent = fase === 'calma' ? 'La Última Lumbre' : region.nombre;
     $('estado').textContent = desconectado ? 'Reconectando' : d.modo === 'pausado' ? 'En pausa' : d.modo === 'apagado' ? 'Cerrado'
       : fase === 'resultado' && d.resultado?.completada === false ? 'Sin completar'
@@ -153,15 +237,34 @@
     $('meta').textContent = fase === 'calma' ? `Próxima salida: ${region.nombre}` : d.region.objetivo || region.meta;
     $('actual').textContent = String(d.objetivo.actual);
     $('total').textContent = `/ ${d.objetivo.meta}`;
-    $('barra').replaceChildren(...Array.from({ length: d.objetivo.meta }, (_, i) => texto('i', '', i < d.objetivo.actual ? 'lleno' : '')));
+    // Lo que ha subido desde la última consulta brilla. Una expedición que acaba de salir cuenta desde cero.
+    const recienSalida = antes && antes.fase !== 'expedicion' && fase === 'expedicion';
+    const previo = recienSalida ? 0 : antes?.objetivo.actual ?? 0;
+    const subio = Boolean(antes) && fase === 'expedicion' && (recienSalida || antes.fase === 'expedicion') && d.objetivo.actual > previo;
+    const desde = subio ? previo : d.objetivo.actual;
+    $('barra').replaceChildren(...Array.from({ length: d.objetivo.meta }, (_, i) =>
+      texto('i', '', i < d.objetivo.actual ? `lleno${i >= desde ? ' nuevo' : ''}` : '')));
+    if (subio) { reaccionar('sube', $('actual')); contar('segmentos'); }
     $('reloj').replaceChildren(...(d.hasta && d.modo === 'activo'
       ? [fase === 'resultado' ? 'Nueva salida en ' : 'El Velo se cierra en ', texto('b', mmss(new Date(d.hasta) - Date.now()))]
       : d.modo !== 'activo' ? ['El mundo está ', texto('b', d.modo === 'pausado' ? 'en pausa' : 'cerrado')]
       : ['Esperando a la primera persona que escriba ', texto('b', '!explorar')]));
+    const resto = d.participantes.length - 5;
     $('compania').replaceChildren(...(d.participantes.length
-      ? d.participantes.slice(0, 5).map((p) => { const li = document.createElement('li'); li.append(texto('span', p.nombre), texto('em', '◆'.repeat(Math.min(p.aporte, 5)))); return li; })
+      ? [...d.participantes.slice(0, 5).map((p) => { const li = document.createElement('li'); li.append(texto('span', p.nombre), texto('em', '◆'.repeat(Math.min(p.aporte, 5)))); return li; }),
+        ...(resto > 0 ? [texto('li', `y ${resto} ${resto === 1 ? 'aventurero' : 'aventureros'} más`, 'vacia')] : [])]
       : [texto('li', 'Aún nadie ha salido. Basta con una persona.', 'vacia')]));
-    $('acciones').replaceChildren(...(d.acciones || []).slice(0, 3).map((a) => { const li = document.createElement('li'); li.append(texto('b', a.quien), ` ${a.texto}`); return li; }));
+    // Al cargar, las acciones que ya había no se animan.
+    const acciones = (d.acciones || []).slice(0, 3);
+    $('acciones').replaceChildren(...acciones.map((a) => {
+      const li = document.createElement('li');
+      li.append(texto('b', a.quien), ` ${a.texto}`);
+      const clave = claveAccion(a);
+      if (antes && !accionesVistas.has(clave)) { li.className = 'nueva'; contar('acciones'); }
+      return li;
+    }));
+    if (!desconectado) for (const a of acciones) accionesVistas.add(claveAccion(a));
+    while (accionesVistas.size > 60) accionesVistas.delete(accionesVistas.values().next().value);
 
     const aviso = $('aviso');
     $('centro').className = `centro ${fase}`;
@@ -197,13 +300,26 @@
     } else {
       $('centro').hidden = true;
     }
+    // Al entrar en un resultado nuevo, el cartel aparece; si se completó, además, destello del lugar.
+    // Se compara qué resultado es, no solo la fase: entre dos consultas puede haber pasado una expedición entera.
+    const clave = claveResultado(d);
+    if (antes && clave && clave !== claveResultado(antes)) {
+      reaccionar('revela', $('centro'));
+      contar(d.resultado?.completada ? 'victorias' : 'cierres');
+      if (d.resultado?.completada) reaccionar('vivo', $('destello'));
+      else $('destello').classList.remove('vivo');
+    }
+    if (!desconectado) pintado = d;
   }
 
   pintar(ultimo, true);
 
   async function leerEstado() {
+    // Sin respuesta en 5 s cuenta como corte: una consulta colgada no deja la escena congelada.
+    const control = new AbortController();
+    const limite = setTimeout(() => control.abort(), 5000);
     try {
-      const respuesta = await fetch('/api/mmo/estado', { cache: 'no-store' });
+      const respuesta = await fetch('/api/mmo/estado', { cache: 'no-store', signal: control.signal });
       if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
       const nuevo = await respuesta.json();
       if (nuevo.version !== 1 || !nuevo.region || !nuevo.objetivo || !Array.isArray(nuevo.participantes)) throw new Error('Estado incompleto');
@@ -215,10 +331,12 @@
         desconectado = true;
         pintar(ultimo, true);
       }
+    } finally {
+      clearTimeout(limite);
     }
   }
-  leerEstado();
-  setInterval(leerEstado, 3000);
+  // Una consulta tras otra, sin solaparse aunque alguna tarde.
+  (async function sondear() { await leerEstado(); setTimeout(sondear, 3000); })();
   setInterval(() => {
     if (desconectado || !ultimo.hasta || ultimo.modo !== 'activo') return;
     const numero = $('reloj').querySelector('b');

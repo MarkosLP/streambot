@@ -85,6 +85,17 @@ Nada de esto rompe la `version: 1`; son campos nuevos.
 - Fase 5: retratos de amenazas o un jefe del Velo que aparezca a mitad de expedición (reutilizando el sistema de jefes).
 - Sonidos: entrada al Velo, aporte y expedición completada. El plan dice que la escena no lleva audio propio; si se quieren, irían por el sistema de sonidos existente.
 
+## Fase 2: la escena conectada (`mmo.html`)
+
+Codex la conectó al motor; Claude la dejó como overlay definitivo el 2 oct 2026, sin tocar el motor ni el contrato:
+
+- **Fondos que se funden** (1,4 s) al cambiar de lugar, en vez de saltar; respiran muy despacio para que no parezcan una foto quieta.
+- **Ambiente por lugar**, solo CSS: brasas sobre el brasero de la Lumbre, motas de ámbar en la Fronda, polvo que cruza las Canteras y luciérnagas que parpadean en la Marisma.
+- **Reacciones solo ante datos nuevos**: la acción que entra se desliza y brilla, los segmentos ganados destellan y la cifra salta; al completar, el cartel aparece y el lugar destella con su color. Un cierre del Velo sin completar no lleva destello. Si entre dos consultas pasa una expedición entera, también se nota.
+- **Consulta con tiempo límite (5 s)** y una tras otra: una respuesta colgada pasa a «Reconectando» en vez de dejar la escena congelada.
+- **Más de 5 en la compañía**: «y N aventureros más». Textos pequeños subidos a 20 px para el reproductor de Twitch.
+- Todo respeta «reducir movimiento». Capturas en [previews/mmo/](previews/mmo/) (`vivo-*`).
+
 ## Decisiones tomadas (Crid4m, 2 oct 2026)
 
 Definitivas para la fase 2 y siguientes: no volver a proponerlas salvo que él lo pida.

@@ -58,27 +58,45 @@ try {
     const inicio = Date.now() - 3*mmo.ACCION_MS;
     streams.openAt(new Date(inicio).toISOString());mmo.activar(inicio);
     await abrir('/biblioteca/overlays/mmo.html',1920,1080);
+    // La escena consulta cada 3 s más lo que tarde el bot: se espera a lo que se busca, no un tiempo fijo.
+    const hasta=async(expr)=>{for(let i=0;i<60&&!(await evaluar(expr));i++)await esperar(100);};
     assert.equal(await evaluar("document.querySelector('#estado').textContent"),'En calma');
+    // Ambiente del lugar: brasas en la Lumbre, sin animar lo que ya estaba al cargar.
+    assert.equal(await evaluar("document.querySelector('#ambiente').className"),'ambiente refugio');
+    assert.ok(await evaluar("document.querySelectorAll('#ambiente i').length")>10);
     await captura('mmo-vivo-calma');
     const ana={id:'mmo-ana',login:'ana',displayName:'Ana',isBroadcaster:false,isModerator:false,isVip:false,isSubscriber:false,rawRole:null};
     for(let i=0;i<3;i++)mmo.explorar(ana,`mmo-visual-${i}`,inicio+i*mmo.ACCION_MS);
-    await esperar(3200);
+    await hasta("document.querySelector('#actual').textContent==='3'");
     assert.equal(await evaluar("document.querySelector('#actual').textContent"),'3');
     assert.equal(await evaluar("document.querySelector('#acciones').textContent.includes('Ana')"),true);
+    // Lo nuevo reacciona: la acción entra, el segmento brilla y la cifra sube.
+    assert.ok(Number(await evaluar('document.documentElement.dataset.acciones'))>=1,'las acciones nuevas se animan');
+    assert.ok(Number(await evaluar('document.documentElement.dataset.segmentos'))>=1,'la barra reacciona al subir');
+    assert.equal(await evaluar("document.querySelector('#ambiente').className"),'ambiente bosque');
+    await esperar(1600);
     await captura('mmo-vivo-expedicion');
     mmo.explorar(ana,'mmo-visual-3',inicio+3*mmo.ACCION_MS);
-    await esperar(3200);
+    await hasta("document.querySelector('#aviso').textContent.includes('altar de savia antigua')");
     assert.equal(await evaluar("document.querySelector('#aviso').textContent.includes('altar de savia antigua')"),true);
     assert.equal(await evaluar("document.querySelector('#aviso').textContent.includes('+8 de renombre')"),true);
+    assert.equal(await evaluar('document.documentElement.dataset.victorias'),'1');
+    await esperar(1600);
     await captura('mmo-vivo-resultado');
     const salidaFallida = Date.now()+mmo.DESCANSO_MS+2000;
     mmo.avanzar(salidaFallida);
     mmo.explorar(ana,'mmo-visual-fallo',salidaFallida);
     mmo.avanzar(salidaFallida+mmo.DURACION_MS);
-    await esperar(3200);
+    await hasta("document.querySelector('#aviso').textContent.includes('Nadie pierde nada')");
     assert.equal(await evaluar("document.querySelector('#aviso').textContent.includes('Nadie pierde nada')"),true);
+    // Sin completar: el cartel aparece, pero sin destello de victoria. Y el fondo ya es el del lugar.
+    assert.equal(await evaluar('document.documentElement.dataset.cierres'),'1');
+    assert.equal(await evaluar('document.documentElement.dataset.victorias'),'1','sin destello de victoria');
+    await esperar(1600);
+    assert.match(await evaluar("[...document.querySelectorAll('.fondo')].find(f=>!f.classList.contains('oculto')).style.backgroundImage"),/cantera\.png/);
     await captura('mmo-vivo-fallo');
-    await evaluar("window.fetch=async()=>{throw Error('corte simulado')}");await esperar(3200);
+    await evaluar("window.fetch=async()=>{throw Error('corte simulado')}");
+    await hasta("document.querySelector('#estado').textContent==='Reconectando'");
     assert.equal(await evaluar("document.querySelector('#estado').textContent"),'Reconectando');
     await captura('mmo-vivo-desconexion');
   }
