@@ -39,6 +39,27 @@
   .ambiente.marisma i { animation: viaja var(--d) ease-in-out var(--r) infinite, parpadea 2.6s ease-in-out var(--r) infinite; }
   @keyframes parpadea { 0%, 100% { filter: brightness(.4); } 50% { filter: brightness(1.6); } }
   @media (prefers-reduced-motion: reduce) { .ambiente { display: none; } }
+  /* Clima de cada expedición (contenido.ts): el mismo fondo pintado, otro cielo. Sin mezclas de capa. */
+  .clima { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 1.6s ease; }
+  .capas { transition: filter 1.6s ease; }
+  body[data-clima="amanecer"] .capas { filter: saturate(.85) brightness(1.04) hue-rotate(-8deg); }
+  body[data-clima="amanecer"] .clima { opacity: 1; background: linear-gradient(180deg, rgba(255, 130, 175, .42), rgba(255, 175, 140, .22) 40%, rgba(150, 120, 200, .12) 80%); }
+  body[data-clima="ocaso"] .clima { opacity: 1; background: linear-gradient(180deg, rgba(110, 40, 120, .34), rgba(255, 120, 50, .2) 55%, rgba(40, 10, 30, .25)); }
+  body[data-clima="noche"] .capas { filter: brightness(.62) saturate(.75) hue-rotate(-12deg); }
+  body[data-clima="noche"] .clima { opacity: 1; background: radial-gradient(ellipse at 70% 10%, rgba(170, 190, 255, .16), transparent 45%), rgba(8, 14, 48, .34); }
+  body[data-clima="niebla"] .capas { filter: contrast(.8) saturate(.65) brightness(.95); }
+  body[data-clima="niebla"] .clima { opacity: 1; background: linear-gradient(0deg, rgba(205, 214, 230, .62), rgba(205, 214, 230, .34) 40%, rgba(205, 214, 230, .14) 75%, rgba(205, 214, 230, .08)); }
+  body[data-clima="tormenta"] .capas { filter: brightness(.72) saturate(.55); }
+  body[data-clima="tormenta"] .clima { opacity: 1; background: linear-gradient(180deg, rgba(20, 24, 40, .55), rgba(20, 24, 40, .2) 60%); }
+  .clima::after { content: ''; position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at 35% 0%, rgba(230, 235, 255, .7), transparent 60%); }
+  @media (prefers-reduced-motion: no-preference) {
+    body[data-clima="niebla"] .clima { animation: niebla 14s ease-in-out infinite alternate; }
+    body[data-clima="tormenta"] .clima::after { animation: relampago 11s linear infinite; }
+  }
+  @keyframes niebla { from { opacity: .75; } to { opacity: 1; } }
+  @keyframes relampago { 0%, 93% { opacity: 0; } 94% { opacity: .9; } 95% { opacity: 0; } 96.5% { opacity: .55; } 98%, 100% { opacity: 0; } }
+  .lugar .cielo { font-weight: 600; color: var(--suave); }
+
   .velo { position: absolute; inset: 0; pointer-events: none;
     background: linear-gradient(180deg, rgba(6, 5, 9, .78), transparent 22%, transparent 70%, rgba(6, 5, 9, .9)),
                 linear-gradient(270deg, rgba(6, 5, 9, .72), transparent 34%); }
@@ -101,6 +122,25 @@
   .acciones li { font-size: 28px; font-weight: 600; text-shadow: 0 2px 6px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .acciones li:nth-child(1) { opacity: 1; } .acciones li:nth-child(2) { opacity: .78; } .acciones li:nth-child(3) { opacity: .55; }
   .acciones b { color: var(--oro-claro); }
+  /* Lo que cuenta el mundo a mitad de camino: sin nombre, en el color del lugar. */
+  .acciones[hidden] { display: none; }
+  .acciones li.suceso { font-style: italic; color: var(--acento); }
+  .acciones li.suceso::before { content: '✦ '; font-style: normal; }
+
+  /* En calma, abajo a la izquierda: la Crónica del Velo, que avanza con las expediciones. */
+  .cronica { max-width: 900px; padding: 18px 26px 20px; }
+  .cronica[hidden] { display: none; }
+  .cronica .sello { font-size: 20px; letter-spacing: .32em; text-transform: uppercase; color: var(--acento); }
+  .cronica h3 { margin: 6px 0 6px; font-family: 'Cinzel Decorative Local', Georgia, serif; font-size: 32px; color: var(--oro-claro); }
+  .cronica p { margin: 0; font-size: 24px; font-weight: 600; line-height: 1.3; }
+  .cronica small { display: block; margin-top: 8px; font-size: 20px; font-weight: 600; color: var(--suave); }
+  /* La colección de reliquias, al pie de «Cómo se juega». */
+  .coleccion { margin-top: 20px; padding-top: 14px; border-top: 1px solid rgba(255, 230, 170, .18); }
+  .coleccion div { display: flex; justify-content: space-between; align-items: baseline; font-size: 22px; font-weight: 600; color: var(--suave); }
+  .coleccion b { font-size: 28px; color: var(--oro-claro); font-variant-numeric: tabular-nums; }
+  .coleccion .lleno { height: 8px; margin-top: 8px; border-radius: 4px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+  .coleccion .lleno i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--oro-viejo), var(--oro-claro)); transition: width 1s ease; }
+  .aviso .capitulo { margin-top: 12px; font-size: 24px; font-weight: 700; color: var(--acento); }
   .comandos { display: flex; gap: 14px; flex: none; margin-left: auto; }
   .comandos span { padding: 12px 22px; font-size: 32px; font-weight: 700; letter-spacing: .02em; color: var(--oro-claro); }
   .comandos span.principal { border-color: var(--acento); box-shadow: 0 0 0 1px #000, 0 0 22px rgba(var(--acento-b), .55), inset 0 1px 0 rgba(255, 230, 170, .2); }
@@ -161,6 +201,7 @@
 <body data-region="refugio">
 <div class="capas" id="capas"><div class="fondo" id="fondo-a"></div><div class="fondo oculto" id="fondo-b"></div></div>
 <div class="ambiente" id="ambiente"></div>
+<div class="clima" id="clima"></div>
 <div class="velo"></div>
 <div class="destello" id="destello"></div>
 
@@ -188,6 +229,7 @@
       <li><span>Llenad la barra antes de que el Velo se cierre.</span></li>
       <li><span>Quien ayuda gana renombre. Míralo con <b>!expedicion</b>.</span></li>
     </ol>
+    <div class="coleccion"><div><span>Reliquias de la Lumbre</span><b id="reliquias"></b></div><div class="lleno"><i id="reliquias-barra"></i></div></div>
   </div>
 </aside>
 
@@ -195,6 +237,7 @@
 <section class="centro" id="centro" hidden><div class="halo"></div><div class="aviso placa" id="aviso"></div></section>
 
 <footer class="pie">
+  <div class="cronica placa" id="cronica" hidden></div>
   <ul class="acciones" id="acciones"></ul>
   <div class="comandos"><span class="placa principal">!explorar</span><span class="placa">!mundo</span><span class="placa">!expedicion</span></div>
 </footer>
@@ -207,6 +250,8 @@
     marisma: { nombre: 'Marisma de los Faroles', meta: 'Encender los faroles hundidos', hallazgo: 'un farol que todavía arde' },
   };
   const $ = (id) => document.getElementById(id);
+  const CIELOS = { amanecer: 'al amanecer', ocaso: 'al ocaso', noche: 'de noche', niebla: 'entre la niebla', tormenta: 'bajo la tormenta' };
+  const romano = (n) => [['X', 10], ['IX', 9], ['V', 5], ['IV', 4], ['I', 1]].reduce((r, [l, v]) => { while (n >= v) { r += l; n -= v; } return r; }, '');
   const texto = (etiqueta, contenido, clase) => { const el = document.createElement(etiqueta); if (clase) el.className = clase; el.textContent = contenido; return el; };
   const mmss = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
   const resumenNombres = (nombres) => nombres.length <= 3
@@ -304,7 +349,25 @@
     const lugar = fase === 'calma' || cerrado ? 'refugio' : (REGIONES[d.region.id] ? d.region.id : 'bosque');
     document.body.dataset.region = lugar;   // en la Lumbre, el color es el del fuego
     ponerLugar(lugar);
-    $('lugar').textContent = fase === 'calma' || cerrado ? 'La Última Lumbre' : region.nombre;
+    const enLumbre = fase === 'calma' || cerrado;
+    const cielo = enLumbre ? null : CIELOS[d.clima];
+    document.body.dataset.clima = enLumbre ? 'dia' : d.clima || 'dia';
+    $('lugar').replaceChildren(enLumbre ? 'La Última Lumbre' : region.nombre, ...(cielo ? [texto('span', ` · ${cielo}`, 'cielo')] : []));
+    // La memoria del mundo: la colección y la crónica (si el bot es anterior a ellas, no se enseñan).
+    if (d.reliquias) {
+      $('reliquias').textContent = `${d.reliquias.halladas} / ${d.reliquias.total}`;
+      $('reliquias-barra').style.width = `${(100 * d.reliquias.halladas) / Math.max(1, d.reliquias.total)}%`;
+    }
+    $('cronica').hidden = !d.cronica || fase !== 'calma' || cerrado || desconectado;
+    $('acciones').hidden = !$('cronica').hidden;
+    if (d.cronica) {
+      const c = d.cronica;
+      $('cronica').replaceChildren(
+        texto('div', `Crónica del Velo · ${c.capitulo === 0 ? 'Prólogo' : `Capítulo ${romano(c.capitulo)} de ${romano(c.total)}`}`, 'sello'),
+        texto('h3', c.titulo), texto('p', c.texto),
+        texto('small', c.siguienteEn === null ? 'La crónica sigue abierta: cada expedición añade una línea.'
+          : `Próximo capítulo en ${c.siguienteEn} ${c.siguienteEn === 1 ? 'expedición completada' : 'expediciones completadas'}.`));
+    }
     // En calma el lateral explica cómo se juega; durante la expedición, una línea para quien acaba de llegar.
     $('bloque-guia').hidden = fase !== 'calma';
     $('bloque-objetivo').hidden = fase === 'calma';
@@ -339,9 +402,9 @@
     const acciones = (d.acciones || []).slice(0, 3);
     $('acciones').replaceChildren(...acciones.map((a) => {
       const li = document.createElement('li');
-      li.append(texto('b', a.quien), ` ${a.texto}`);
+      if (a.suceso) { li.className = 'suceso'; li.append(a.texto); } else li.append(texto('b', a.quien), ` ${a.texto}`);
       const clave = claveAccion(a);
-      if (antes && !accionesVistas.has(clave)) { li.className = 'nueva'; contar('acciones'); }
+      if (antes && !accionesVistas.has(clave)) { li.classList.add('nueva'); contar('acciones'); }
       return li;
     }));
     if (!desconectado) for (const a of acciones) accionesVistas.add(claveAccion(a));
@@ -389,7 +452,11 @@
         aviso.replaceChildren(texto('div', '¡Expedición completada!', 'sello'),
           texto('h1', hallazgo.charAt(0).toUpperCase() + hallazgo.slice(1)),
           texto('p', `${resumenNombres(nombres)} ${nombres.length <= 1 ? 'lo ha encontrado' : 'lo han encontrado'}.`),
-          texto('div', premio, 'premio'));
+          texto('div', premio, 'premio'),
+          ...(d.reliquias && 'nueva' in resultado ? [texto('p', resultado.nueva
+            ? `Nueva reliquia para la Lumbre · ${d.reliquias.halladas} de ${d.reliquias.total}`
+            : 'La Lumbre ya guardaba una igual.', 'nota')] : []),
+          ...(resultado.capitulo ? [texto('div', `✦ Nuevo capítulo de la crónica: «${resultado.capitulo.titulo}»`, 'capitulo')] : []));
       } else {
         aviso.replaceChildren(texto('div', 'El Velo se cierra', 'sello'), texto('h1', 'De vuelta a la Lumbre'),
           texto('p', `La expedición terminó con ${d.objetivo.actual}/${d.objetivo.meta}. Nadie pierde nada.`));

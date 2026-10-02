@@ -318,6 +318,27 @@ function migrate(database: DatabaseSync): void {
       renombre      INTEGER NOT NULL,
       PRIMARY KEY (expedicion_id, twitch_id)
     );
+
+    -- El contenido de cada expedición (interactions/mmo/contenido.ts): misión,
+    -- clima, el suceso de mitad de camino, la reliquia y el capítulo de la crónica.
+    CREATE TABLE IF NOT EXISTS mmo_expediciones (
+      expedicion_id  INTEGER PRIMARY KEY,
+      region_id      TEXT NOT NULL,
+      mision_id      TEXT NOT NULL,
+      clima          TEXT NOT NULL,
+      suceso         TEXT,
+      reliquia_id    TEXT,
+      reliquia_nueva INTEGER NOT NULL DEFAULT 0,
+      capitulo       INTEGER,
+      inicio_ms      INTEGER NOT NULL
+    );
+
+    -- La colección de la Lumbre: cada reliquia, una vez, con la expedición que la trajo.
+    CREATE TABLE IF NOT EXISTS mmo_reliquias (
+      reliquia_id   TEXT PRIMARY KEY,
+      expedicion_id INTEGER NOT NULL,
+      at_ms         INTEGER NOT NULL
+    );
   `);
 
   // El "continuará" de #24 es una fila por directo, así que vive en `streams`.
@@ -356,7 +377,7 @@ export function truncateAll(): void {
       'DELETE FROM ai_usage; DELETE FROM interactions; DELETE FROM users; DELETE FROM titulos; DELETE FROM ajustes; DELETE FROM suscriptores; ' +
       'DELETE FROM temporada_puntos; DELETE FROM salon_fama; DELETE FROM temporadas_cerradas;',
   );
-  database.exec('DELETE FROM mmo_world; DELETE FROM mmo_participantes; DELETE FROM mmo_jugadores; DELETE FROM mmo_acciones; DELETE FROM mmo_historial; DELETE FROM mmo_resultados; DELETE FROM mmo_premios;');
+  database.exec('DELETE FROM mmo_world; DELETE FROM mmo_participantes; DELETE FROM mmo_jugadores; DELETE FROM mmo_acciones; DELETE FROM mmo_historial; DELETE FROM mmo_resultados; DELETE FROM mmo_premios; DELETE FROM mmo_expediciones; DELETE FROM mmo_reliquias;');
 }
 
 export function nowIso(): string {

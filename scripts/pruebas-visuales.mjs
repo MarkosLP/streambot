@@ -146,6 +146,44 @@ try {
     await esperar(1600);
     await captura('mmo-vivo-cerrado');
   }
+  if(caso==='mmo-contenido') {
+    // Seis expediciones completadas: capítulo I de la crónica. Después, la séptima con cada cielo.
+    const mmo = await import('../src/interactions/mmo/index.ts');
+    const streams = await import('../src/data/streams.ts');
+    const { getDb } = await import('../src/data/db.ts');
+    sbConectado=true;
+    const ana={id:'mmo-ana',login:'ana',displayName:'Ana',isBroadcaster:false,isModerator:false,isVip:false,isSubscriber:false,rawRole:null};
+    let t=Date.now()-6*60*60000, n=0;
+    streams.openAt(new Date(t-60000).toISOString());mmo.activar(t);
+    const completar=()=>{for(;;){mmo.explorar(ana,`c-${n++}`,t);t+=mmo.ACCION_MS;if(mmo.estado().fase==='resultado')return;}};
+    for(let i=0;i<5;i++){completar();t+=mmo.DESCANSO_MS;mmo.avanzar(t);}
+    await abrir('/biblioteca/overlays/mmo.html',1920,1080);
+    // La sexta, en directo para la escena: el cartel anuncia el capítulo.
+    t=Date.now()-4*mmo.ACCION_MS;completar();
+    const hasta=async(expr)=>{for(let i=0;i<60&&!(await evaluar(expr));i++)await esperar(100);};
+    await hasta("document.querySelector('#aviso').textContent.includes('Nuevo capítulo')");
+    assert.ok(await evaluar("document.querySelector('#aviso').textContent.includes('Las primeras huellas')"));
+    await esperar(1600);
+    await captura('mmo-capitulo');
+    mmo.avanzar(Date.now()+mmo.DESCANSO_MS+1000);
+    await hasta("!document.querySelector('#cronica').hidden");
+    assert.ok(await evaluar("document.querySelector('#cronica').textContent.includes('Capítulo I de XV')"));
+    assert.equal(await evaluar("document.querySelector('#reliquias').textContent"),'6 / 60');
+    await esperar(1600);
+    await captura('mmo-cronica');
+    // La séptima: se fuerza cada cielo en la base para mirarlos todos.
+    t=Date.now()-2*mmo.ACCION_MS-5000;mmo.explorar(ana,'s-1',t);mmo.explorar(ana,'s-2',t+mmo.ACCION_MS);
+    const id=mmo.estado().acciones.length&&getDb().prepare('SELECT expedicion_id FROM mmo_world').get().expedicion_id;
+    for(const clima of ['dia','amanecer','ocaso','noche','niebla','tormenta']){
+      getDb().prepare('UPDATE mmo_expediciones SET clima=? WHERE expedicion_id=?').run(clima,id);
+      await hasta(`document.body.dataset.clima==='${clima}'`);
+      assert.equal(await evaluar('document.body.dataset.clima'),clima);
+      // Edge sin ventana no termina los fundidos: se quitan para ver el cielo final.
+      await evaluar("document.querySelectorAll('.clima,.capas,.fondo').forEach(e=>e.style.transition='none')");
+      await esperar(300);
+      await captura(`mmo-clima-${clima}`);
+    }
+  }
   if(caso==='mundo-panel') {
     // La pestaña Mundo del panel con una expedición en marcha, en escritorio y en móvil.
     const mmo = await import('../src/interactions/mmo/index.ts');

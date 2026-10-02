@@ -131,3 +131,27 @@ Crid4m pidió que Claude lo hiciera todo por ahora y que Codex lo revise despué
 - **Resistencia** (`resistencia.test.ts`): 8 h simuladas con seis personas que entran y salen, mensajes duplicados, pausa, corte de directo, dos reinicios, una caída de hora y media, `!olvidame` y apagado a mitad. Resultado: 35 expediciones completadas, ningún premio duplicado ni fuera de una expedición completada, ninguna fase pasada de plazo y, al volver de la caída, como mucho un paso de golpe.
 
 **Respuestas en el chat (decidido por Claude con permiso de Crid4m, 2 oct 2026):** con 1 o 2 personas en la expedición, el bot contesta a cada `!explorar`. Con 3 o más, solo a la salida, a la primera aportación de cada persona y al final; el resto cuenta igual y se ve en la escena. Así un grupo grande no agota el techo de 200 respuestas por hora que se comparte con el Loot. Revisar con datos de la primera prueba real.
+
+## Fase 4: aguantar muchos días sin Crid4m (3 oct 2026)
+
+Crid4m: «tenemos que generar contenido para aguantar muchísimos días de AFK». Todo es texto y CSS sobre los cuatro fondos que ya había; no se ha generado ninguna imagen.
+
+**Que no se rompa con el tiempo** (lo que señaló Codex al revisar): sin directo, con el bot apagado o al cerrarlo, el plazo de la expedición se **congela** y al volver se desplaza; la escena dice «El Velo espera al directo». Si Streamer.bot se desconecta, la escena y el panel lo avisan. Al recrear la escena en OBS, las alertas vuelven encima. El registro anota cada salida, final, cierre, pausa y congelación. Capturas `vivo-espera-directo` y `vivo-sin-chat`.
+
+**Contenido** ([contenido.ts](../src/interactions/mmo/contenido.ts)):
+
+| Qué | Cuánto | Cómo se reparte |
+|---|---|---|
+| Misiones | 30 (10 por región) | La que menos se ha hecho en la región, al azar entre empatadas y sin repetir la última. La primera visita a cada región es su misión de presentación. |
+| Reliquias | 60 (2 por misión) | Al completar, la que falte de esa misión; con las dos halladas, se repite y lo dice. Colección de la Lumbre: «Reliquias 23/60». |
+| Sucesos | 24 (8 por región) | Uno a mitad de cada expedición, el menos visto de la región. Sale en la escena en cursiva y en el `!explorar` que lo provoca. |
+| Crónica del Velo | Prólogo + 15 capítulos | Uno cada 6 expediciones completadas (90 para terminarla). Se anuncia en el chat y en el cartel; en calma, abajo a la izquierda. |
+| Clima | 6 cielos | Distinto al de la expedición anterior: día, amanecer, ocaso, noche, niebla y tormenta (con relámpagos). |
+
+**Cuánto dura:** una persona sola completa una expedición en unos 8 minutos. Con 20 expediciones al día, la crónica dura 4-5 días y la colección, 3. Después el mundo sigue igual de jugable: misiones y sucesos siguen rotando y la crónica queda en su epílogo. La prueba [contenido.test.ts](../src/interactions/mmo/contenido.test.ts) juega 200 expediciones seguidas y comprueba que cada tanda de diez visitas a una región recorre sus diez misiones, que salen todos los sucesos y cielos, que las 60 primeras expediciones traen las 60 reliquias y que todo cabe en un mensaje (el más largo, menos de 300 caracteres).
+
+**Para alargarlo** basta con añadir entradas en `contenido.ts`: misiones (con tres acciones y dos reliquias), sucesos o capítulos. El capítulo X, «La grieta», deja preparada una **cuarta región**; esa sí necesitaría un fondo nuevo (1 imagen, unos 0,06 $), solo si Crid4m lo pide.
+
+**Ojo con «muchos días»:** Twitch corta una emisión a las 48 horas. El mundo lo aguanta (se congela sin directo y sigue al volver), pero alguien tiene que volver a abrir el directo.
+
+Capturas en [previews/mmo/](previews/mmo/): `capitulo`, `cronica`, `clima-*` y las `vivo-*` actualizadas.

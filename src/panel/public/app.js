@@ -3269,12 +3269,16 @@ function pintarMundo(d) {
     [e.fase === 'calma' ? 'Próxima salida' : 'Lugar', e.region.nombre],
   ];
   if (e.fase !== 'calma') {
+    filas.push(['Misión', e.region.objetivo]);
     filas.push(['Progreso', `${e.objetivo.actual} / ${e.objetivo.meta}`]);
     if (e.detenido) filas.push(['Tiempo', 'Congelado hasta que vuelvan el directo y el bot']);
     else if (e.hasta) filas.push([e.fase === 'resultado' ? 'Nueva salida' : 'El Velo se cierra', `en ${Math.max(0, Math.ceil((new Date(e.hasta) - Date.now()) / 60000))} min`]);
     filas.push(['Compañía', e.participantes.length ? e.participantes.map((p) => `${p.nombre} (${p.aporte})`).join(', ') : '—']);
   }
   if (e.ultimoSuceso) filas.push(['Último suceso', e.ultimoSuceso]);
+  if (e.reliquias) filas.push(['Reliquias', `${e.reliquias.halladas} de ${e.reliquias.total} en la Lumbre`]);
+  if (e.cronica) filas.push(['Crónica', `${e.cronica.capitulo === 0 ? 'Prólogo' : `Capítulo ${e.cronica.capitulo} de ${e.cronica.total}`}: «${e.cronica.titulo}»`
+    + (e.cronica.siguienteEn === null ? '' : ` · el siguiente en ${e.cronica.siguienteEn} expediciones`)]);
   $('m-datos').replaceChildren(...filas.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)]));
   $('m-activar').disabled = e.modo === 'activo';
   $('m-pausar').disabled = e.modo !== 'activo';

@@ -7,6 +7,7 @@ import { closeDatabase, configureDatabase, getDb } from '../../data/db.js';
 import * as streams from '../../data/streams.js';
 import * as killswitch from '../../core/killswitch.js';
 import * as mmo from './index.js';
+import { MAX_MESSAGE_LENGTH } from '../../config.js';
 import type { Viewer } from '../../core/events.js';
 
 /**
@@ -119,7 +120,7 @@ test('ocho horas de mundo sin dueño: sin premios duplicados, sin bloqueos y sin
       }
       if (respuesta !== null) {
         respuestas++;
-        if (respuesta.length > 200) largas.push(respuesta);
+        if (respuesta.length > MAX_MESSAGE_LENGTH) largas.push(respuesta);
       }
       // A veces Streamer.bot entrega dos veces el mismo mensaje, justo detrás.
       if (texto === '!explorar' && r() < .1) {
@@ -166,7 +167,7 @@ test('ocho horas de mundo sin dueño: sin premios duplicados, sin bloqueos y sin
   for (const tabla of ['mmo_participantes', 'mmo_jugadores', 'mmo_acciones', 'mmo_historial', 'mmo_premios']) {
     assert.equal(contar(`SELECT COUNT(*) AS n FROM ${tabla} WHERE twitch_id = 'carla'`), 0, tabla);
   }
-  // Solo contesta a comandos, y con mensajes cortos.
+  // Solo contesta a comandos, y caben en un mensaje de Twitch.
   assert.ok(respuestas <= comandos);
   assert.deepEqual(largas, []);
   assert.ok(repetidos > 0, 'la simulación sí ha probado mensajes repetidos');
