@@ -143,6 +143,69 @@ describe('El Linde del Velo', () => {
     assert.equal(Date.parse(mmo.estado().hasta!), plazo + 209 * 60_000);
   });
 
+  test('si se desconecta Streamer.bot, la expedición conserva el tiempo hasta que vuelve', () => {
+    let conectado = true;
+    mmo.setChatConectado(() => conectado);
+    try {
+      mmo.explorar(persona('ana'), 'uno', ahora);
+      const plazo = Date.parse(mmo.estado().hasta!);
+      conectado = false;
+      mmo.avanzar(ahora + 5 * 60_000);
+      assert.equal(mmo.estado().detenido, 'sin-chat');
+      assert.equal(mmo.estado().hasta, null);
+      // Pasa de largo el plazo con el chat caído: la expedición no se cierra.
+      mmo.avanzar(ahora + mmo.DURACION_MS + 10 * 60_000);
+      assert.equal(mmo.estado().fase, 'expedicion');
+      conectado = true;
+      mmo.avanzar(ahora + 45 * 60_000);
+      assert.equal(mmo.estado().detenido, null);
+      assert.equal(Date.parse(mmo.estado().hasta!), plazo + 40 * 60_000, 'conserva los 15 min que quedaban');
+      // Y sigue jugable donde estaba.
+      assert.equal(mmo.explorar(persona('berto'), 'dos', ahora + 46 * 60_000).tipo, 'ok');
+    } finally {
+      mmo.setChatConectado(null);
+    }
+  });
+
+  test('si el bot se cierra de golpe (sin parar), al arrancar no cuenta el tiempo cerrado', () => {
+    const ana = persona('ana');
+    mmo.explorar(ana, 'uno', ahora);
+    const plazo = Date.parse(mmo.estado().hasta!);
+    mmo.avanzar(ahora + 60_000); // último latido antes del corte
+    closeDatabase(); // corte de luz: ni parar() ni nada
+    // Tres horas después arranca otra vez; sin recuperación, el Velo ya se habría cerrado.
+    const vuelta = ahora + 3 * 60 * 60_000;
+    mmo.recuperar(vuelta);
+    mmo.avanzar(vuelta);
+    assert.equal(mmo.estado().fase, 'expedicion');
+    assert.equal(Date.parse(mmo.estado().hasta!), plazo + 3 * 60 * 60_000 - 60_000);
+    assert.equal(mmo.explorar(ana, 'dos', vuelta + 1000).tipo, 'ok');
+    assert.equal(mmo.estado().objetivo.actual, 2, 'el progreso de antes del corte sigue ahí');
+    // Si se apagó bien (parar), recuperar no vuelve a descontar nada.
+    mmo.parar(vuelta + 2000);
+    const congelado = mmo.estado();
+    mmo.recuperar(vuelta + 60 * 60_000);
+    mmo.avanzar(vuelta + 60 * 60_000);
+    assert.equal(Date.parse(mmo.estado().hasta!), plazo + 3 * 60 * 60_000 - 60_000 + 60 * 60_000 - 2000);
+    assert.equal(congelado.fase, 'expedicion');
+  });
+
+  test('un cierre brusco durante el descanso tampoco se salta la vuelta al refugio', () => {
+    const ana = persona('ana');
+    for (let i = 0; i < 4; i++) mmo.explorar(ana, `r-${i}`, ahora + i * mmo.ACCION_MS);
+    assert.equal(mmo.estado().fase, 'resultado');
+    const premios = (getDb().prepare('SELECT COUNT(*) AS n FROM mmo_premios').get() as { n: number }).n;
+    mmo.avanzar(ahora + 3 * mmo.ACCION_MS + 1000);
+    closeDatabase();
+    const vuelta = ahora + 5 * 60 * 60_000;
+    mmo.recuperar(vuelta);
+    mmo.avanzar(vuelta);
+    assert.equal(mmo.estado().fase, 'resultado', 'el cartel de resultado sigue su minuto');
+    mmo.avanzar(vuelta + mmo.DESCANSO_MS);
+    assert.equal(mmo.estado().fase, 'calma');
+    assert.equal((getDb().prepare('SELECT COUNT(*) AS n FROM mmo_premios').get() as { n: number }).n, premios, 'ningún premio repetido al recuperar');
+  });
+
   test('el olvido borra el progreso personal y lo retira de la expedición', () => {
     const ana = persona('ana');
     mmo.explorar(ana, 'uno', ahora);

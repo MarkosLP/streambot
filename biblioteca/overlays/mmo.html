@@ -340,8 +340,10 @@
     const cerrado = d.modo === 'apagado';
     // Activo pero en espera: el tiempo congelado (sin directo, bot apagado) o el chat sin llegar.
     const espera = desconectado || d.modo !== 'activo' ? null
-      : d.detenido === 'sin-directo' ? 'directo' : d.detenido === 'bot-apagado' ? 'bot' : d.chatConectado === false ? 'chat' : null;
-    const congelado = d.modo === 'pausado' || espera === 'directo' || espera === 'bot';
+      : d.detenido === 'sin-directo' ? 'directo' : d.detenido === 'bot-apagado' ? 'bot'
+      : d.detenido === 'sin-chat' || d.chatConectado === false ? 'chat' : null;
+    // Sin chat también se congela el reloj (el motor lo sabe por Streamer.bot).
+    const congelado = d.modo === 'pausado' || Boolean(espera);
     document.body.classList.toggle('cerrado', !desconectado && cerrado);
     document.body.classList.toggle('pausado', !desconectado && congelado);
     document.body.classList.toggle('en-calma', !desconectado && d.modo === 'activo' && fase === 'calma');
@@ -388,7 +390,7 @@
     $('barra').replaceChildren(...Array.from({ length: d.objetivo.meta }, (_, i) =>
       texto('i', '', i < d.objetivo.actual ? `lleno${i >= desde ? ' nuevo' : ''}` : '')));
     if (subio) { reaccionar('sube', $('actual')); contar('segmentos'); }
-    $('reloj').replaceChildren(...(d.hasta && d.modo === 'activo'
+    $('reloj').replaceChildren(...(d.hasta && d.modo === 'activo' && !congelado
       ? [fase === 'resultado' ? 'Nueva salida en ' : 'El Velo se cierra en ', texto('b', mmss(new Date(d.hasta) - Date.now()))]
       : congelado ? ['El tiempo está ', texto('b', 'detenido')]
       : cerrado ? ['El mundo está ', texto('b', 'cerrado')]

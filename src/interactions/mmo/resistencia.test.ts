@@ -59,7 +59,7 @@ function reiniciarBot() {
 }
 
 const mundo = () => getDb().prepare('SELECT * FROM mmo_world WHERE id = 1').get() as {
-  modo: string; fase: string; expedicion_id: number; progreso: number; meta: number; hasta_ms: number | null;
+  modo: string; fase: string; expedicion_id: number; progreso: number; meta: number; hasta_ms: number | null; pausado_ms: number | null; latido_ms: number | null;
 };
 const contar = (sql: string, ...args: (string | number)[]) =>
   (getDb().prepare(sql).get(...args) as { n: number }).n;
@@ -67,6 +67,9 @@ const contar = (sql: string, ...args: (string | number)[]) =>
 test('ocho horas de mundo sin dueño: sin premios duplicados, sin bloqueos y sin hablar de más', () => {
   const r = azar(20261002);
   killswitch.enable('resistencia');
+  let chat = true, recuperaciones = 0;
+  let antesDelCorte: ReturnType<typeof mundo> | null = null;
+  mmo.setChatConectado(() => chat);
   streams.openAt(new Date(INICIO).toISOString());
   mmo.activar(INICIO);
 
@@ -94,19 +97,36 @@ test('ocho horas de mundo sin dueño: sin premios duplicados, sin bloqueos y sin
       reiniciarBot();
       const antes = mundo();
       const resultados = contar('SELECT COUNT(*) AS n FROM mmo_resultados');
+      // Se cayó sin parar(): al arrancar, la hora y media cerrado no cuenta.
+      mmo.recuperar(t);
       mmo.avanzar(t);
       const despues = mundo();
-      // Al volver no se ejecutan de golpe hora y media de expediciones: como mucho, un paso.
-      assert.ok(contar('SELECT COUNT(*) AS n FROM mmo_resultados') - resultados <= 1);
-      const pasos: Record<string, string> = { expedicion: 'resultado', resultado: 'calma', calma: 'calma' };
-      assert.ok(despues.fase === antes.fase || despues.fase === pasos[antes.fase], `${antes.fase} → ${despues.fase}`);
+      assert.equal(contar('SELECT COUNT(*) AS n FROM mmo_resultados'), resultados, 'no se cierra nada por el tiempo que estuvo caído');
+      assert.equal(despues.fase, antes.fase, `${antes.fase} → ${despues.fase}`);
+      assert.equal(despues.progreso, antes.progreso);
+      // Le queda lo mismo que le quedaba en el último latido antes de caerse.
+      if (antes.hasta_ms !== null) assert.equal(despues.hasta_ms! - t, antes.hasta_ms - antes.latido_ms!, 'conserva lo que le quedaba');
+      recuperaciones++;
     }
     if (min === 400) mmo.olvidar('carla');
+    // Streamer.bot se cae un cuarto de hora: no llega ningún comando y el reloj no corre.
+    if (min === 430) {
+      chat = false;
+      antesDelCorte = mundo();
+    }
+    if (min === 445) {
+      mmo.avanzar(t);
+      const w = mundo();
+      assert.equal(w.expedicion_id, antesDelCorte!.expedicion_id, 'el corte de chat no cierra la expedición');
+      assert.equal(w.fase, antesDelCorte!.fase);
+      chat = true;
+    }
     if (caido) continue;
 
     mmo.avanzar(t);
 
     for (const { v, desde, hasta, ganas } of JUGADORES) {
+      if (!chat) break; // sin Streamer.bot, el chat no llega al bot
       if (min < desde || min >= hasta || (v.id === 'carla' && min >= 400)) continue;
       if (r() >= ganas) continue;
       const texto = r() < .15 ? '!mundo' : r() < .1 ? '!expedicion' : '!explorar';
@@ -134,9 +154,9 @@ test('ocho horas de mundo sin dueño: sin premios duplicados, sin bloqueos y sin
     // Mensajes que no son comandos: el mundo no contesta.
     assert.equal(mmo.comando('hola a todos', JUGADORES[0]!.v, `charla-${t}`, t), null);
 
-    // Nunca se queda colgado: con directo y activo, ninguna fase pasa de su plazo.
+    // Nunca se queda colgado: corriendo el tiempo, ninguna fase pasa de su plazo.
     const w = mundo();
-    if (w.modo === 'activo' && streams.current() && w.fase !== 'calma') {
+    if (w.modo === 'activo' && w.pausado_ms === null && streams.current() && w.fase !== 'calma') {
       assert.ok(w.hasta_ms !== null && t <= w.hasta_ms + PASO, `fase ${w.fase} pasada de plazo en el minuto ${min}`);
     }
     if (w.fase === 'expedicion') assert.ok(w.progreso < w.meta && w.meta >= 4 && w.meta <= 12);
@@ -171,5 +191,7 @@ test('ocho horas de mundo sin dueño: sin premios duplicados, sin bloqueos y sin
   assert.ok(respuestas <= comandos);
   assert.deepEqual(largas, []);
   assert.ok(repetidos > 0, 'la simulación sí ha probado mensajes repetidos');
+  assert.equal(recuperaciones, 1);
+  mmo.setChatConectado(null);
   console.log(`8 h simuladas: ${completadas} expediciones completadas, ${fallidas} cerradas sin completar, ${comandos} comandos, ${respuestas} respuestas, ${repetidos} repetidos descartados.`);
 });

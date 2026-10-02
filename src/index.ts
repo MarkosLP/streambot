@@ -108,6 +108,8 @@ async function main(): Promise<void> {
   });
   terremoto.setTemblor(() => conObs((pedir) => temblar(pedir, { fuente: config.obs.fuenteJuego })));
   loot.arrancar();
+  // Sin Streamer.bot el chat no llega: el mundo congela su reloj hasta que vuelva.
+  mmo.setChatConectado(() => streamerbot.estado().conectado);
   mmo.arrancar();
 
   // ¿Estás en directo? Se lo pregunta a OBS cada minuto: si un aviso de

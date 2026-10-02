@@ -3271,7 +3271,7 @@ function pintarMundo(d) {
   if (e.fase !== 'calma') {
     filas.push(['Misión', e.region.objetivo]);
     filas.push(['Progreso', `${e.objetivo.actual} / ${e.objetivo.meta}`]);
-    if (e.detenido) filas.push(['Tiempo', 'Congelado hasta que vuelvan el directo y el bot']);
+    if (e.detenido) filas.push(['Tiempo', { 'sin-directo': 'Congelado hasta que vuelva el directo', 'bot-apagado': 'Congelado hasta que enciendas el bot', 'sin-chat': 'Congelado hasta que vuelva Streamer.bot' }[e.detenido] ?? 'Congelado']);
     else if (e.hasta) filas.push([e.fase === 'resultado' ? 'Nueva salida' : 'El Velo se cierra', `en ${Math.max(0, Math.ceil((new Date(e.hasta) - Date.now()) / 60000))} min`]);
     filas.push(['Compañía', e.participantes.length ? e.participantes.map((p) => `${p.nombre} (${p.aporte})`).join(', ') : '—']);
   }

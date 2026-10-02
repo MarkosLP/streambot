@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm test",
     "laboratorio": "tsx --disable-warning=ExperimentalWarning src/cli/laboratorio.ts",
-    "resistencia": "tsx --disable-warning=ExperimentalWarning src/cli/resistencia.ts"
+    "resistencia": "tsx --disable-warning=ExperimentalWarning src/cli/resistencia.ts",
+    "mmo:informe": "tsx --disable-warning=ExperimentalWarning src/cli/mmo-informe.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

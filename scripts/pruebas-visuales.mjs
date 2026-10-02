@@ -58,7 +58,7 @@ try {
     const streams = await import('../src/data/streams.ts');
     const inicio = Date.now() - 3*mmo.ACCION_MS;
     streams.openAt(new Date(inicio).toISOString());mmo.activar(inicio);
-    sbConectado=true;
+    sbConectado=true;mmo.setChatConectado(()=>sbConectado);
     await abrir('/biblioteca/overlays/mmo.html',1920,1080);
     // La escena consulta cada 3 s más lo que tarde el bot: se espera a lo que se busca, no un tiempo fijo.
     const hasta=async(expr)=>{for(let i=0;i<60&&!(await evaluar(expr));i++)await esperar(100);};
@@ -101,11 +101,12 @@ try {
     await captura('mmo-vivo-espera-directo');
     streams.open();mmo.avanzar();
     // Streamer.bot se desconecta: el chat no llega y la escena no invita a jugar.
-    sbConectado=false;
+    sbConectado=false;mmo.avanzar();
     await hasta("document.querySelector('#aviso').textContent.includes('Reconectando con el chat')");
     assert.equal(await evaluar("document.querySelector('#pista').hidden"),true);
+    assert.equal(await evaluar("document.querySelector('#reloj').textContent"),'El tiempo está detenido','sin chat, el reloj no corre');
     await captura('mmo-vivo-sin-chat');
-    sbConectado=true;
+    sbConectado=true;mmo.avanzar();
     await hasta("document.querySelector('#estado').textContent==='Expedición'");
     void corte;
     mmo.explorar(ana,'mmo-visual-3',inicio+3*mmo.ACCION_MS);

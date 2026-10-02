@@ -35,6 +35,8 @@ interface Mundo {
   hasta_ms: number | null;
   pausado_ms: number | null;
   ultimo_suceso: string;
+  /** Último momento en que el bot estaba vivo (lo apunta avanzar()). */
+  latido_ms: number | null;
 }
 
 interface Participante {
@@ -68,15 +70,26 @@ export interface EstadoPublico {
   /** capitulo 0 = prólogo. siguienteEn = expediciones completadas que faltan para el siguiente. */
   cronica: { capitulo: number; total: number; titulo: string; texto: string; siguienteEn: number | null };
   ultimoSuceso: string;
-  /** Activo pero con el tiempo congelado: sin directo o con el bot apagado. */
-  detenido: null | 'sin-directo' | 'bot-apagado';
+  /** Activo pero con el tiempo congelado: sin directo, con el bot apagado o sin conexión con el chat. */
+  detenido: null | 'sin-directo' | 'bot-apagado' | 'sin-chat';
 }
 
 /** El mundo solo corre con directo y con el bot encendido. */
 function detenido(): EstadoPublico['detenido'] {
   if (!streams.current()) return 'sin-directo';
   if (!killswitch.isEnabled()) return 'bot-apagado';
+  if (!chatConectado()) return 'sin-chat';
   return null;
+}
+
+/**
+ * Si el chat llega al bot (Streamer.bot conectado). Sin él, nadie puede escribir
+ * !explorar: el plazo se congela como sin directo. Lo conecta index.ts; por
+ * defecto (pruebas, simulador) se da por conectado.
+ */
+let chatConectado: () => boolean = () => true;
+export function setChatConectado(fn: (() => boolean) | null): void {
+  chatConectado = fn ?? (() => true);
 }
 
 function mundo(): Mundo {
@@ -213,8 +226,9 @@ export function estado(): EstadoPublico {
   };
 }
 
-export function arrancar(): void {
+export function arrancar(now = Date.now()): void {
   if (reloj) return;
+  recuperar(now);
   reloj = setInterval(() => { avanzar(); }, 5_000);
   reloj.unref();
 }
@@ -228,6 +242,19 @@ export function parar(now = Date.now()): void {
   } catch {
     // Sin base de datos abierta no hay nada que congelar.
   }
+}
+
+/**
+ * Al arrancar: si el bot se cerró de golpe (sin parar(), por un corte de luz o
+ * un cuelgue), el plazo no se congeló. Se congela desde el último latido, así el
+ * tiempo que estuvo cerrado no cuenta y la expedición no se pierde al volver.
+ */
+export function recuperar(now = Date.now()): void {
+  const w = mundo();
+  if (w.modo !== 'activo' || w.hasta_ms === null || w.pausado_ms !== null || w.latido_ms === null) return;
+  const desde = Math.min(w.latido_ms, now);
+  getDb().prepare('UPDATE mmo_world SET pausado_ms = ? WHERE id = 1 AND pausado_ms IS NULL').run(desde);
+  log.warn(`El Linde del Velo: el bot se cerró sin despedirse; los ${Math.round((now - desde) / 60_000)} min cerrado no cuentan.`);
 }
 
 /** pausado_ms con modo activo = plazo congelado hasta que el mundo pueda correr otra vez. */
@@ -267,6 +294,8 @@ export function apagar(): EstadoPublico {
 export function avanzar(now = Date.now()): EstadoPublico {
   let w = mundo();
   if (w.modo !== 'activo') return estado();
+  // El bot está vivo: si se cierra de golpe, recuperar() sabrá desde cuándo.
+  getDb().prepare('UPDATE mmo_world SET latido_ms = ? WHERE id = 1').run(now);
   // Sin directo o con el bot apagado, el plazo se congela; al volver, se desplaza lo que estuvo parado.
   if (detenido()) {
     congelar(now);

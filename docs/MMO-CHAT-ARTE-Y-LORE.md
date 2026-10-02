@@ -155,3 +155,13 @@ Crid4m: «tenemos que generar contenido para aguantar muchísimos días de AFK»
 **Ojo con «muchos días»:** Twitch corta una emisión a las 48 horas. El mundo lo aguanta (se congela sin directo y sigue al volver), pero alguien tiene que volver a abrir el directo.
 
 Capturas en [previews/mmo/](previews/mmo/): `capitulo`, `cronica`, `clima-*` y las `vivo-*` actualizadas.
+
+## Fiabilidad antes de la prueba con gente real (3 oct 2026)
+
+Los dos casos que encontró Codex, con sus pruebas:
+
+- **Streamer.bot desconectado:** el motor lo sabe (`setChatConectado`, conectado en `index.ts`) y congela el plazo como sin directo; al reconectar, la expedición conserva el tiempo que le quedaba. La escena dice «Reconectando con el chat» y «El tiempo está detenido».
+- **Cierre brusco sin `parar()`:** `avanzar()` apunta un latido (`mmo_world.latido_ms`) y, al arrancar, `recuperar()` congela el plazo desde ese latido. El tiempo cerrado no cuenta, no se pierde la expedición ni se repite ningún premio (también si se cae durante el descanso).
+- En las 8 h simuladas hay ahora un corte de Streamer.bot y la caída larga se recupera sin cerrar nada: 0 expediciones perdidas.
+
+Prueba con chat real preparada en [MMO-PRUEBA-SUPERVISADA.md](MMO-PRUEBA-SUPERVISADA.md), con `npm run mmo:informe` para revisar la base de datos real en solo lectura antes y después.

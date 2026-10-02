@@ -347,6 +347,8 @@ function migrate(database: DatabaseSync): void {
   addColumnIfMissing(database, 'streams', 'continuara', 'TEXT');
   // Objetos malditos de la Maldición (Loot). 0 = normal.
   addColumnIfMissing(database, 'loot', 'maldito', 'INTEGER NOT NULL DEFAULT 0');
+  // El Linde del Velo: último momento en que el bot estaba vivo, para recuperar tras un cierre brusco.
+  addColumnIfMissing(database, 'mmo_world', 'latido_ms', 'INTEGER');
 }
 
 /**
