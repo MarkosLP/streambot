@@ -1613,7 +1613,7 @@ async function cargarBiblioteca() {
     })
     : [vacioBiblioteca('sonidos', 'No hay sonidos. Genera los de los efectos con npm run sonidos, o mete los tuyos.')]));
 
-  const overlaysBiblioteca = lib.overlays.flatMap(o => o.nombre === 'jefe.html' ? [o, { ...o, vista: 'especiales' }, { ...o, vista: 'duelo' }] : [o]);
+  const overlaysBiblioteca = lib.overlays.flatMap(o => o.nombre === 'jefe.html' ? [o, { ...o, vista: 'especiales' }, { ...o, vista: 'aliados' }, { ...o, vista: 'duelo' }] : [o]);
   $('b-overlays').replaceChildren(...(overlaysBiblioteca.length
     ? overlaysBiblioteca.map((o) => {
       const vars = VARIANTES_OVERLAY[o.vista || o.nombre] || [];
@@ -1634,7 +1634,7 @@ async function cargarBiblioteca() {
         vista,
         chips,
         h('div', { class: 'overlay-pie' },
-          h('div', { class: 'sonido-info' }, h('strong', {}, o.vista === 'duelo' ? 'Duelo · !duelo' : o.vista === 'especiales' ? 'Ataques especiales' : o.nombre === 'jefe.html' ? 'Jefes de raid' : o.nombre === 'escena.html' ? 'Escenas actuales' : o.nombre), h('span', { class: 'sonido-meta' }, o.vista === 'duelo' ? 'La misma fuente «FX Jefe», con cada duelo del chat' : o.vista === 'especiales' ? 'Elige un jefe para ver su ataque en bucle' : o.nombre === 'escena.html' ? 'Fondos y textos configurados en Escenas' : usadoEn(o.usadoPor))),
+          h('div', { class: 'sonido-info' }, h('strong', {}, o.vista === 'duelo' ? 'Duelo · !duelo' : o.vista === 'especiales' ? 'Ataques especiales' : o.vista === 'aliados' ? 'Ataques del chat' : o.nombre === 'jefe.html' ? 'Jefes de raid' : o.nombre === 'escena.html' ? 'Escenas actuales' : o.nombre), h('span', { class: 'sonido-meta' }, o.vista === 'duelo' ? 'La misma fuente «FX Jefe», con cada duelo del chat' : o.vista === 'especiales' ? 'Elige un jefe para ver su ataque en bucle' : o.vista === 'aliados' ? 'Subs, regalos y bits contra el jefe, en bucle' : o.nombre === 'escena.html' ? 'Fondos y textos configurados en Escenas' : usadoEn(o.usadoPor))),
           // Misma dirección no recarga: se pasa por about:blank para repetir la animación.
           h('button', { class: 'boton pequeno', type: 'button', onclick: () => { marco.src = 'about:blank'; setTimeout(() => { marco.src = sinSonido(o.url + actual); }, 30); } }, '↻ Repetir'),
           botonCopiar(o.ruta)));
@@ -1657,7 +1657,7 @@ async function cargarBiblioteca() {
 const ESCENAS_INFO = {
   inicio: { icono: '🌅', nombre: 'Empezamos', que: 'Antes de empezar: título, cuenta atrás, evento de la semana, podio y últimos botines.' },
   charla: { icono: '💬', nombre: 'Charla', que: 'Just Chatting: marco para tu cámara, chat en pantalla con emotes, evento, podio y próximo cofre. Con el avatar, sin cámara.' },
-  compartir: { icono: '📺', nombre: 'Charla + compartir', que: 'Webcam a pantalla completa y una captura a la derecha con transparencia suave. Es una escena independiente de Charla.' },
+  compartir: { icono: '📺', nombre: 'Charla + compartir', que: 'Webcam a pantalla completa y tu captura a la derecha, opaca o con algo de transparencia. Es una escena independiente de Charla.' },
   pausa: { icono: '⏳', nombre: 'Pausa', que: 'Vuelvo enseguida: reloj de arena y cuenta atrás si la pones.' },
   final: { icono: '🌙', nombre: 'Final', que: 'Gracias por venir: resumen del directo y los nombres de quien ha pasado, en créditos.' },
 };
@@ -1838,10 +1838,10 @@ async function cargarEscenas() {
       h('div', { class: 'escena-controles' }, bloqueFondo));
   }));
   const rutaCompartir = '/biblioteca/overlays/charla-compartida.html';
-  let opacidadInicial = 84;
+  let opacidadInicial = 100;
   try {
-    const guardada = Number(localStorage.getItem('charla-compartida-opacidad'));
-    if (guardada >= 65 && guardada <= 95) opacidadInicial = guardada;
+    const guardada = Number(localStorage.getItem('charla-compartida-opacidad-v2'));
+    if (guardada >= 65 && guardada <= 100) opacidadInicial = guardada;
   } catch { /* sin almacenamiento, se usa el valor por defecto */ }
   const rutaDemoCompartir = (n) => `${rutaCompartir}?demo=1&opacidad=${n / 100}`;
   const vistaCompartir = h('div', { class: 'overlay-vista escena-vista' },
@@ -1850,7 +1850,7 @@ async function cargarEscenas() {
   const elegirCaptura = h('select', { id: 'e-compartir-fuente', 'aria-label': 'Captura que vas a compartir' },
     h('option', { value: '' }, 'Sin captura todavía'));
   const valorOpacidad = h('output', {}, `${opacidadInicial} %`);
-  const elegirOpacidad = h('input', { id: 'e-compartir-opacidad', type: 'range', min: '65', max: '95', step: '1', value: String(opacidadInicial), 'aria-label': 'Opacidad del contenido compartido' });
+  const elegirOpacidad = h('input', { id: 'e-compartir-opacidad', type: 'range', min: '65', max: '100', step: '1', value: String(opacidadInicial), 'aria-label': 'Opacidad del contenido compartido' });
   const verCompartirGrande = h('a', { class: 'boton', href: rutaDemoCompartir(opacidadInicial), target: '_blank', rel: 'noopener' }, '↗ Ver en grande');
   let esperaOpacidad;
   elegirOpacidad.addEventListener('input', () => {
@@ -1860,7 +1860,7 @@ async function cargarEscenas() {
       const ruta = rutaDemoCompartir(Number(elegirOpacidad.value));
       vistaCompartir.querySelector('iframe').src = ruta;
       verCompartirGrande.href = ruta;
-      try { localStorage.setItem('charla-compartida-opacidad', elegirOpacidad.value); } catch { /* sin almacenamiento */ }
+      try { localStorage.setItem('charla-compartida-opacidad-v2', elegirOpacidad.value); } catch { /* sin almacenamiento */ }
     }, 180);
   });
   const resultadoCompartir = h('ul', { class: 'escena-resultado', hidden: true });
@@ -1885,7 +1885,7 @@ async function cargarEscenas() {
       h('div', { class: 'escena-controles' },
         h('label', { class: 'campo' }, h('span', {}, 'Qué compartes'), elegirCaptura),
         h('label', { class: 'campo' }, h('span', {}, 'Opacidad del contenido · ', valorOpacidad), elegirOpacidad),
-        h('p', { class: 'nota' }, 'La webcam llena el fondo. La captura flota a la derecha y deja verla a través. El ajuste se aplica en OBS al pulsar «Crear en OBS».'),
+        h('p', { class: 'nota' }, 'La webcam llena el fondo y la captura va a la derecha: al 100 % se lee mejor; por debajo deja ver la webcam a través. Es tu misma captura (si cambias de ventana, aquí también). El ajuste se aplica en OBS al pulsar «Crear en OBS».'),
         h('div', { class: 'escena-botones' }, crearCompartir), resultadoCompartir))));
   cargarEscenasObs();
   pintarSelectoresFondo();
@@ -2729,6 +2729,13 @@ const VARIANTES_OVERLAY = {
     { nombre: '🤢 Minotauro', q: '?demo=especial&jefe=minotauro' },
     { nombre: '🛡️ Tanque', q: '?demo=especial&jefe=tanque' },
     { nombre: '⚡ Lag', q: '?demo=especial&jefe=lag' },
+  ],
+  aliados: [
+    { nombre: '📯 Sub · grito', q: '?demo=aliado&clase=grito' },
+    { nombre: '🎁 Regalos · refuerzos', q: '?demo=aliado&clase=refuerzos' },
+    { nombre: '💎 100 bits', q: '?demo=aliado&clase=cristal' },
+    { nombre: '⚡ 500 bits', q: '?demo=aliado&clase=tormenta' },
+    { nombre: '🗡️ 1000 bits', q: '?demo=aliado&clase=mecenas' },
   ],
   duelo: [{ nombre: 'Duelo', q: '?demo=duelo' }],
   'botin.html': [

@@ -30,6 +30,21 @@ Pedido por Crid4m: sacarle partido a los suscriptores, y qué hacer para Aion 2,
 
 **Mi recomendación:** S1 + S2 + S3 primero. Son los momentos que ya existen (alguien se suscribe, regala o te trae una raid) convertidos en algo que se ve y se agradece, sin inventar nada nuevo en pantalla.
 
+### Ataques del chat contra el jefe (2 oct 2026, aprobado por Crid4m)
+
+El jefe es cooperativo: que un sub o unos bits peguen fuerte ayuda a todo el chat. En los duelos un sub sigue pesando lo mismo. Cada ataque tiene efecto e icono pintados (`biblioteca/imagenes/jefes/aliados/`) y cartel «Ataque del chat» con el nombre de quien lo lanza.
+
+| Quién | Con jefe en pie |
+|---|---|
+| Sub / resub | **Grito de guerra**: golpe del 15 % de la vida y +50 % de daño para todos los `!atacar` durante 20 s (además del cofre de siempre). |
+| Subs regaladas | **Refuerzos**: un golpe por sub (hasta 10), a nombre de quien la recibe, que entra en el reparto. |
+| 100-499 bits | **Golpe de cristal**: un golpe por cada 100. |
+| 500-999 bits | **Tormenta de cristal**: 5 golpes, el primero crítico, y tiembla la pantalla. |
+| 1000+ bits | **Golpe del mecenas**: el tope de una vez. |
+| 500+ bits sin jefe, en directo | Lo **invocan** («invocado por…») en vez de dar cofre. |
+
+Ningún ataque pagado quita más del **35 %** de la vida máxima (`TOPE_ATAQUE`, `jefe.ts`). Sonidos provisionales, reutilizando los que ya había. Aún sin probar con eventos reales de Twitch: lanzar Test Events de Streamer.bot (Sub, Cheer, Gift Sub) con un jefe en pie.
+
 ### Cuidado
 
 - Los objetos son virtuales y sin valor fuera del canal: no hay problema con las normas de Twitch.

@@ -71,7 +71,16 @@ export function cofreDeSuscriptor(meses: number, azar: Azar = Math.random): { bo
 export async function alSuscribirse(e: ViewerSubEvent, azar: Azar = Math.random): Promise<void> {
   const v = e.viewer;
   if (v.id) suscriptores.apuntar(v.id, e.meses, e.nivel);
-  if (!activo() || !puedeRecibir(v)) return;
+  if (!activo()) return;
+  if (puedeRecibir(v)) await cofreSub(e, azar);
+  // Con un jefe en pie, además, Grito de guerra (aunque no juegue al Loot: ayuda al chat).
+  if (v.id && !consent.haPedidoOlvido(v.id)) {
+    for (const texto of jefe.gritoDeSub(v, azar) ?? []) await decir(texto, [], `grito de ${e.resub ? 'resub' : 'sub'}`, v.id);
+  }
+}
+
+async function cofreSub(e: ViewerSubEvent, azar: Azar): Promise<void> {
+  const v = e.viewer;
   const { botin, motivo } = cofreDeSuscriptor(e.meses, azar);
   const resultado = lootDb.dar(v.id, v.displayName, botin, 'suscriptor');
   enPantalla(v.displayName, botin, 'suscriptor');
@@ -169,6 +178,13 @@ async function cerrarTanda(t: Tanda, azar: Azar): Promise<void> {
     t.regala?.id,
   );
 
+  // Con un jefe en pie, las subs regaladas pegan: Refuerzos.
+  const sinOlvido = (v: Viewer) => !v.id || !consent.haPedidoOlvido(v.id);
+  const regala = t.regala && sinOlvido(t.regala) ? t.regala : null;
+  for (const texto of jefe.refuerzos(regala, t.recibe.filter(sinOlvido), n, azar) ?? []) {
+    await decir(texto, [], `refuerzos ${n}`, t.regala?.id);
+  }
+
   // Muchas de golpe: que llueva para todo el chat.
   if (n >= LLUVIA_DESDE) {
     // En una prueba del panel, no se reparte nada a la gente de verdad del chat.
@@ -228,6 +244,8 @@ export async function alRecibirRaid(e: ChannelRaidEvent, azar: Azar = Math.rando
 
 /** Bits a partir de los que, sin jefe, cae un cofre. */
 export const COFRE_BITS_DESDE = 300;
+/** Bits a partir de los que, sin jefe y en directo, aparece uno (2 oct 2026). */
+export const INVOCAR_BITS_DESDE = 500;
 
 export async function alRecibirBits(e: ViewerCheerEvent, azar: Azar = Math.random): Promise<void> {
   const v = e.viewer;
@@ -236,6 +254,12 @@ export async function alRecibirBits(e: ViewerCheerEvent, azar: Azar = Math.rando
   if (contraJefe) {
     for (const texto of contraJefe) await decir(texto, [], `bits ${e.bits} al jefe`, v.id);
     return;
+  }
+  // Sin jefe: quien dona mucho lo invoca. invocar() lo dice y lo deja en el registro.
+  if (e.bits >= INVOCAR_BITS_DESDE && streams.current()) {
+    const r = await jefe.invocar({ azar, intro: `💎 ¡${v.displayName} invoca a un jefe con ${e.bits} bits…` });
+    if (r.ok) return;
+    log.info(`Bits: no sale jefe (${r.motivo}); va un cofre.`);
   }
   if (e.bits < COFRE_BITS_DESDE || !juega(v.login)) return;
   const botin = tirar('oro', azar);

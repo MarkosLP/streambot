@@ -103,6 +103,31 @@ describe('💜 S1 · cofre de suscriptor', () => {
     assert.equal(mecenas.cofreDeSuscriptor(24, () => 0.99).botin.rareza, 'legendario');
   });
 
+  test('con jefe: Grito de guerra, y los !atacar del chat pegan un 50 % más un rato', async () => {
+    await jefe.invocar({ tipo: 'dragon' });
+    const { vidaMax } = jefe.paraOverlay().jefe!;
+    await handleEvent(sub('ana'));
+    const j = jefe.paraOverlay().jefe!;
+    assert.equal(vidaMax - j.vida, Math.max(20, Math.round(vidaMax * jefe.GOLPE_SUB)));
+    assert.equal(j.aliado?.clase, 'grito');
+    assert.ok(j.afectados.some((a) => a.icono === '📯' && a.quedanSeg === jefe.GRITO_MS / 1000));
+    assert.ok(enviados.some((t) => /^📯 ¡ana lanza un Grito de guerra contra el Dragón de Escarcha: −\d+! Todo el chat pega un 50 % más/.test(t)));
+    assert.equal(objetos('ana').length, 1, 'el cofre de sub sigue');
+    // Con azar fijo, el mismo golpe vale 1,5 veces.
+    const sinGrito = jefe.golpe(0, () => 0.5).dano;
+    const r = jefe.atacar.run({ viewer: { id: 'id-x', login: 'x', displayName: 'x' }, azar: () => 0.5 } as never);
+    void r;
+    const ultimo = jefe.paraOverlay().jefe!.golpes.at(-1)!;
+    assert.equal(ultimo.dano, Math.round(sinGrito * jefe.GRITO_FACTOR));
+    assert.equal(ultimo.icono, '📯');
+  });
+
+  test('sin jefe, la sub no ataca a nadie', async () => {
+    await handleEvent(sub('ana'));
+    assert.equal(enviados.length, 1);
+    assert.equal(jefe.hayJefe(), false);
+  });
+
   test('con el Loot apagado se apunta como sub, pero no cae nada', async () => {
     ajustes.setLootActivo(false, 'test');
     await handleEvent(sub('ana'));
@@ -124,6 +149,18 @@ describe('🎁 S2 · regalar subs = regalar cofres', () => {
     for (const r of recibe) assert.equal(objetos(r).length, 1, r);
     assert.ok(enviados.some((t) => t.startsWith('🌧️ ¡Lluvia de cofres por las 6 subs de luis!')));
     assert.equal(objetos('x1').length, 1, 'la lluvia es para el chat');
+  });
+
+  test('con jefe: Refuerzos, un golpe por sub a nombre de quien la recibe, que entra en el reparto', async () => {
+    await jefe.invocar({ tipo: 'kraken' });
+    for (const r of ['a1', 'a2', 'a3']) await handleEvent(regalo('luis', r, 3));
+    await esperar(80);
+    const j = jefe.paraOverlay().jefe!;
+    assert.equal(j.aliado?.clase, 'refuerzos');
+    assert.equal(j.aliado?.quien, 'luis');
+    assert.deepEqual(j.golpes.filter((g) => g.icono === '🎁').map((g) => g.quien), ['a1', 'a2', 'a3']);
+    assert.ok(enviados.some((t) => /^🎁 ¡Llegan refuerzos! Las subs de luis pegan 3 veces/.test(t)));
+    assert.deepEqual(jefe.estado()!.atacantes.map((a) => a.quien).sort(), ['a1', 'a2', 'a3']);
   });
 
   test('una sola, y anónima: bienvenida con mención, sin cofre para nadie más', async () => {
@@ -201,12 +238,42 @@ describe('💎 S7 · bits', () => {
     const antes = jefe.paraOverlay().jefe!.vida;
     await handleEvent(bits('pepe', 500));
     const j = jefe.paraOverlay().jefe;
-    assert.match(enviados.at(-1)!, /^💎 ¡pepe lanza 500 bits contra el Tanque que no sabe tanquear: 5 golpes con crítico/);
+    assert.match(enviados.at(-1)!, /^⚡ ¡pepe lanza Tormenta de cristal con 500 bits contra el Tanque que no sabe tanquear: \d golpes? con crítico/);
     if (j) {
       assert.ok(j.vida < antes);
-      assert.equal(j.golpes.filter((g) => g.icono === '💎').length, 5);
+      assert.ok(j.golpes.filter((g) => g.icono === '⚡').length >= 1);
       assert.ok(j.golpes.some((g) => g.critico));
+      assert.equal(j.aliado?.clase, 'tormenta');
+      assert.equal(j.aliado?.quien, 'pepe');
     }
+  });
+
+  test('cada tramo, su ataque; ninguno quita más del tope, ni el de 10 000 bits', async () => {
+    assert.equal(jefe.claseDeBits(99), null);
+    assert.equal(jefe.claseDeBits(100), 'cristal');
+    assert.equal(jefe.claseDeBits(500), 'tormenta');
+    assert.equal(jefe.claseDeBits(1000), 'mecenas');
+    await jefe.invocar({ tipo: 'golem' });
+    const { vidaMax } = jefe.paraOverlay().jefe!;
+    await handleEvent(bits('rico', 10_000));
+    const j = jefe.paraOverlay().jefe!;
+    assert.equal(vidaMax - j.vida, Math.round(vidaMax * jefe.TOPE_ATAQUE));
+    assert.equal(j.aliado?.clase, 'mecenas');
+    assert.match(enviados.at(-1)!, /^🗡️ ¡rico lanza Golpe del mecenas con 10000 bits/);
+    // Unos golpes de 100 con poco tope ya gastado: tampoco lo pasan.
+    for (let i = 0; i < 2; i++) await handleEvent(bits('otro', 400));
+    assert.ok(jefe.paraOverlay().jefe!.vida > 0);
+  });
+
+  test('sin jefe y en directo: 500 o más invocan uno; sin directo, cofre', async () => {
+    await handleEvent(bits('pepe', 500));
+    assert.equal(jefe.hayJefe(), false);
+    assert.equal(objetos('pepe').length, 1);
+    streams.open();
+    await handleEvent(bits('luis', 500));
+    assert.equal(jefe.hayJefe(), true);
+    assert.match(enviados.at(-1)!, /^💎 ¡luis invoca a un jefe con 500 bits… 🐉 ¡Aparece /);
+    assert.equal(objetos('luis').length, 0, 'invoca en vez de cofre');
   });
 
   test('sin jefe: desde 300, un cofre; con menos, nada', async () => {

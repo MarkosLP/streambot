@@ -37,11 +37,14 @@ try {
   if(caso==='charla-compartida') {
     await abrir('/biblioteca/overlays/charla-compartida.html?demo=1',1920,1080);
     assert.equal(await evaluar("document.querySelector('.demo-muestra').getBoundingClientRect().width"),850);
+    assert.equal(await evaluar("getComputedStyle(document.querySelector('.demo-muestra')).opacity"),'1');
+    assert.equal(await evaluar("document.querySelector('.pie .detalle')"),null);
     await captura('charla-compartida-concepto');
     await abrir('/#/escenas',1366,950);
     await evaluar("irA('escenas');elegirEscena('compartir')");
     await esperar(600);
     assert.equal(await evaluar("document.querySelector('[data-tipo=compartir].escena').hidden"),false);
+    assert.equal(await evaluar("document.querySelector('#e-compartir-opacidad').value"),'100');
     assert.equal(await evaluar("document.documentElement.scrollWidth<=innerWidth"),true);
     await captura('charla-compartida-panel');
     await evaluar("(()=>{const x=document.querySelector('#e-compartir-opacidad');x.value='70';x.dispatchEvent(new Event('input',{bubbles:true}));})()");
@@ -193,16 +196,37 @@ try {
     for(let i=0;i<40;i++){if(await evaluar("document.querySelector('#foto-combate').naturalWidth>0"))break;await esperar(200);}
     await evaluar(`pintar({jefe:{id:2,tipo:${JSON.stringify(tipo)},nombre:document.querySelector('#nombre').textContent,vida:240,vidaMax:400,quedanSeg:120,golpes:[],afectados:[]},final:null});document.querySelector('#rastro').style.transition='none';document.querySelector('#rastro').style.width='60%';if(${JSON.stringify(tipo)}==='lag'){clearInterval(glitchReloj);document.body.classList.remove('glitch')}`);
     await esperar(1000);
+    // Efecto e icono pintados (nada de trazos SVG): se precargan al aparecer el jefe.
+    for(let i=0;i<30;i++){if(await evaluar("document.querySelector('#efecto-pintura').naturalWidth>0&&document.querySelector('#ce-icono-img').naturalWidth>0"))break;await esperar(100);}
     await evaluar(`especial({n:99,icono:${JSON.stringify(icono)},titulo:${JSON.stringify(titulo)},texto:${JSON.stringify(texto)},at:Date.now()},${JSON.stringify(tipo)})`);
     assert.equal(await evaluar("document.querySelector('#efecto-jefe').classList.contains('"+tipo+"')"),true);
-    if(!['dragon','golem','liche','lag'].includes(tipo)) {
-      assert.equal(await evaluar("document.querySelector('#efecto-jefe').classList.contains('con-motivo')"),true);
-      assert.equal(await evaluar(`getComputedStyle(document.querySelector('#efecto-jefe .motivos .${tipo}')).display`),'inline');
-    }
+    assert.equal(await evaluar("document.querySelector('#efecto-pintura').naturalWidth>0&&!document.querySelector('#efecto-pintura').hidden"),true,`efecto pintado de ${tipo}`);
+    assert.equal(await evaluar("document.querySelector('#ce-icono-img').naturalWidth>0&&document.querySelector('#ce-icono').hidden"),true,`icono pintado de ${tipo}`);
+    assert.equal(await evaluar("document.querySelectorAll('#efecto-jefe svg').length"),0);
     assert.equal(await evaluar("document.querySelector('#foto-combate').naturalWidth>0"),true);
-    await esperar(600);
+    // Sin ventana, el navegador solo pinta al capturar: se congela el efecto en su punto álgido.
+    await evaluar("for(const [sel,ms] of [['#efecto-jefe .pintura',800],['#efecto-jefe .halo',500],['#cartel-especial',600]])for(const a of document.querySelector(sel).getAnimations()){a.pause();a.currentTime=ms}");
     await captura(`combate-especial-${tipo}`,{x:360,y:0,width:1200,height:520});
     assert.equal(await evaluar("!document.querySelector('#cartel-especial').hidden"),true);
+  }
+  if(caso==='combate-aliado')for(const [clase,titulo,texto,tipo] of [
+    ['grito','Grito de guerra','Ana · −60 · todo el chat +50 % de daño 20 s','golem'],['refuerzos','Refuerzos','Luis · 5 subs regaladas · 5 golpes · −74','kraken'],
+    ['cristal','Golpe de cristal','Pepe · 300 bits · −41','dragon'],['tormenta','Tormenta de cristal','Pepe · 500 bits · −96','liche'],
+    ['mecenas','Golpe del mecenas','Mecenas · 1000 bits · −140','tanque'],
+  ]) {
+    await abrir(`/biblioteca/overlays/jefe.html?demo=1&jefe=${tipo}&quieto=1&volumen=0`,1920,1080);
+    for(let i=0;i<40;i++){if(await evaluar("document.querySelector('#foto-combate').naturalWidth>0"))break;await esperar(200);}
+    const afectados=clase==='grito'?"[{quien:'Todo el chat +50 %',icono:'📯',quedanSeg:20}]":'[]';
+    await evaluar(`pintar({jefe:{id:2,tipo:${JSON.stringify(tipo)},nombre:document.querySelector('#nombre').textContent,vida:240,vidaMax:400,quedanSeg:120,golpes:[],afectados:${afectados}},final:null});document.querySelector('#rastro').style.transition='none';document.querySelector('#rastro').style.width='60%';if(${JSON.stringify(tipo)}==='lag'){clearInterval(glitchReloj);document.body.classList.remove('glitch')}`);
+    await esperar(1000);
+    for(let i=0;i<30;i++){if(await evaluar(`(()=>{const a=new Image();a.src='../imagenes/jefes/aliados/${clase}.png';return a.complete&&a.naturalWidth>0})()`))break;await esperar(100);}
+    const [quien,...resto]=texto.split(' · ');
+    await evaluar(`aliadoAtaca({n:99,clase:${JSON.stringify(clase)},icono:'',titulo:${JSON.stringify(titulo)},quien:${JSON.stringify(quien)},texto:${JSON.stringify(resto.join(' · '))},at:Date.now()})`);
+    assert.equal(await evaluar("document.querySelector('#cartel-especial').classList.contains('aliado')&&document.querySelector('#ce-aviso').textContent"),'ATAQUE DEL CHAT');
+    assert.match(await evaluar("document.querySelector('#aliado-pintura').src"),new RegExp(`aliados/${clase}\\.png$`));
+    for(let i=0;i<30;i++){if(await evaluar("document.querySelector('#aliado-pintura').naturalWidth>0&&document.querySelector('#ce-icono-img').naturalWidth>0"))break;await esperar(100);}
+    await evaluar("for(const [sel,ms] of [['#efecto-aliado .pintura',800],['#efecto-aliado .halo',800],['#cartel-especial',600]])for(const a of document.querySelector(sel).getAnimations()){a.pause();a.currentTime=ms}");
+    await captura(`combate-aliado-${clase}`,{x:360,y:0,width:1200,height:520});
   }
   if(caso==='combate-especial') {
     await abrir('/biblioteca/overlays/jefe.html?demo=especial&jefe=dragon&volumen=0',1920,1080);
@@ -210,7 +234,7 @@ try {
     assert.equal(await evaluar("!document.querySelector('#efecto-jefe').hidden"),true);
     await abrir('/biblioteca/overlays/jefe.html?demo=especial&jefe=kraken&volumen=0',1920,1080);
     for(let i=0;i<60;i++){if(await evaluar("document.querySelector('#efecto-jefe').classList.contains('kraken')"))break;await esperar(100);}
-    assert.equal(await evaluar("document.querySelector('#efecto-jefe').classList.contains('con-motivo')"),true);
+    assert.match(await evaluar("document.querySelector('#efecto-pintura').src"),/especiales\/kraken\.png$/);
     await abrir('/#/biblioteca',1366,900);await evaluar("irA('biblioteca')");await esperar(600);
     assert.equal(await evaluar("[...document.querySelectorAll('#b-overlays strong')].some(x=>x.textContent==='Ataques especiales')"),true);
     assert.equal(await evaluar("[...document.querySelectorAll('#b-overlays article')].find(x=>x.querySelector('strong')?.textContent==='Ataques especiales').querySelectorAll('.variantes button').length"),10);

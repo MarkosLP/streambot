@@ -437,6 +437,8 @@
   @keyframes cartel-entra { from { opacity: 0; transform: translateX(-50%) scale(2.2) rotate(-4deg); } }
   @keyframes cartel-sale { to { opacity: 0; transform: translateX(-50%) translateY(-20px) scale(.9); } }
   .cartel-especial .icono { font-size: 54px; line-height: 1; display: block; margin-top: -44px; filter: drop-shadow(0 0 14px rgba(var(--tb), 1)); }
+  .cartel-especial .pintado-icono { width: 96px; height: 96px; margin: -70px auto -6px; object-fit: contain; filter: drop-shadow(0 4px 6px #000) drop-shadow(0 0 14px rgba(var(--tb), .9)); }
+  .cartel-especial .icono[hidden] { display: none; }
   .cartel-especial .aviso-ataque { display: block; margin-top: 4px; font-size: 16px; font-weight: 700; letter-spacing: .4em; color: var(--t1); opacity: .85; }
   .cartel-especial .titulo-ataque {
     display: block; font-family: "Cinzel", Georgia, serif; font-weight: 900; font-size: 50px; line-height: 1.1; text-transform: uppercase;
@@ -451,82 +453,26 @@
   }
   @keyframes destello-jefe { 0% { opacity: 0; } 12% { opacity: 1; } 100% { opacity: 0; } }
 
-  /* El especial nace en el retrato, cruza la barra y deja una marca breve. */
+  /* El especial nace en el retrato y su efecto pintado (imagenes/jefes/especiales/<tipo>.png, 2 oct 2026) barre la barra. */
   .efecto-jefe { position: absolute; inset: 0; z-index: 5; overflow: hidden; pointer-events: none; }
-  .efecto-jefe i, .efecto-jefe span { position: absolute; display: block; font-style: normal; }
-  .efecto-jefe .halo { left: 103px; top: 71px; width: 280px; height: 280px; border: 5px solid var(--t1); border-radius: 50%;
-    box-shadow: 0 0 24px var(--t1), inset 0 0 24px var(--t1); animation: especial-halo 1.65s ease-out both; }
+  .efecto-jefe .halo { position: absolute; left: 103px; top: 71px; width: 280px; height: 280px; border: 5px solid var(--t1); border-radius: 50%;
+    box-shadow: 0 0 24px var(--t1), inset 0 0 24px var(--t1); animation: especial-halo 1.8s ease-out both; }
   @keyframes especial-halo { 0% { opacity: 0; transform: scale(.72); } 22% { opacity: .9; transform: scale(1.03); } 60% { opacity: .5; } 100% { opacity: 0; transform: scale(1.28); } }
-  .efecto-jefe .onda { left: 385px; top: 151px; width: 890px; height: 138px; transform-origin: left center;
-    background: linear-gradient(90deg, var(--t1), color-mix(in srgb, var(--t2) 55%, white), transparent);
-    clip-path: polygon(0 36%, 90% 17%, 100% 50%, 90% 83%, 0 64%);
-    filter: drop-shadow(0 0 22px var(--t2)); animation: especial-onda 1.65s cubic-bezier(.18, .65, .3, 1) both; }
-  @keyframes especial-onda { 0%, 20% { opacity: 0; transform: scaleX(.02); } 40% { opacity: .7; transform: scaleX(.35); } 68% { opacity: .8; transform: scaleX(1); } 100% { opacity: 0; transform: scaleX(1.08); } }
-  .efecto-jefe .marca { left: 590px; top: 178px; width: 595px; height: 86px; border: 3px solid var(--t1); border-radius: 50%;
-    box-shadow: 0 0 24px var(--t2), inset 0 0 18px var(--t2); animation: especial-marca 1.65s ease-out both; }
-  @keyframes especial-marca { 0%, 45% { opacity: 0; transform: scale(.65); } 70% { opacity: .9; transform: scale(1); } 100% { opacity: 0; transform: scale(1.16); } }
-  .efecto-jefe .simbolo { left: 1065px; top: 126px; width: 140px; height: 140px; display: grid; place-items: center;
-    font-size: 74px; color: #fff; text-shadow: 0 0 18px var(--t1), 0 4px 10px #000; animation: especial-simbolo 1.65s ease-out both; }
-  @keyframes especial-simbolo { 0%, 40% { opacity: 0; transform: translateX(-110px) rotate(-35deg) scale(.4); } 67% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateX(35px) scale(1.15); } }
-  /* Los cuatro primeros gestos conservan su composición original. */
-  .efecto-jefe.dragon .onda { background: repeating-linear-gradient(135deg, rgba(230, 255, 255, .92) 0 10px, rgba(94, 207, 255, .7) 10px 28px, transparent 28px 42px); clip-path: polygon(0 40%, 14% 8%, 27% 37%, 41% 2%, 55% 38%, 71% 7%, 84% 37%, 100% 50%, 83% 64%, 69% 98%, 54% 65%, 39% 94%, 26% 65%, 12% 91%, 0 60%); }
-  .efecto-jefe.dragon .marca { border-radius: 4px; transform: rotate(-4deg); border-color: #d8f9ff; box-shadow: 0 0 24px #7bdfff, inset 0 0 24px #7bdfff; }
-  .efecto-jefe.golem .onda { background: repeating-linear-gradient(110deg, rgba(255, 227, 166, .9) 0 18px, rgba(115, 65, 34, .85) 18px 25px, transparent 25px 44px); clip-path: polygon(0 30%, 14% 24%, 22% 51%, 36% 16%, 51% 43%, 65% 12%, 79% 42%, 100% 35%, 96% 72%, 75% 64%, 61% 90%, 44% 61%, 29% 92%, 17% 60%, 0 72%); }
-  .efecto-jefe.golem .marca { border-radius: 0; border-style: dashed; transform: rotate(3deg); }
-  .efecto-jefe.liche .onda { display: none; }
-  .efecto-jefe .almas { display: none; }
-  .efecto-jefe.liche .almas { display: block; position: absolute; inset: 0; width: 1540px; height: 445px; filter: drop-shadow(0 0 11px #b96dff); }
-  .efecto-jefe.liche .almas path { fill: none; stroke: #f8dfff; stroke-width: 8; stroke-linecap: round;
-    stroke-dasharray: 180 1300; opacity: 0; animation: alma-viaja 1.55s ease-in-out both; }
-  .efecto-jefe.liche .almas path:nth-child(2) { stroke: #bb73ff; stroke-width: 6; animation-delay: .12s; }
-  .efecto-jefe.liche .almas path:nth-child(3) { stroke: #fff; stroke-width: 4; animation-delay: .22s; }
-  @keyframes alma-viaja { 0% { opacity: 0; stroke-dashoffset: 0; } 18%, 75% { opacity: .95; } 100% { opacity: 0; stroke-dashoffset: -1100; } }
-  .efecto-jefe.liche .almas circle { opacity: 0; filter: drop-shadow(0 0 10px #fff) drop-shadow(0 0 18px #a357ff); animation: alma-orbe 1.5s ease-in-out both; }
-  .efecto-jefe.liche .almas circle:nth-of-type(2) { animation-delay: .12s; }
-  .efecto-jefe.liche .almas circle:nth-of-type(3) { animation-delay: .22s; }
-  @keyframes alma-orbe { 0%, 100% { opacity: 0; } 20%, 80% { opacity: 1; } }
-  .efecto-jefe.liche .marca { left: 1060px; top: 132px; width: 164px; height: 164px; border: 3px solid #e9c4ff; border-radius: 50%;
-    background: repeating-conic-gradient(from 0deg, rgba(246, 222, 255, .9) 0 3deg, transparent 3deg 24deg);
-    box-shadow: 0 0 28px #a357ff, inset 0 0 28px #a357ff; animation: liche-sello 1.65s ease-out both; }
-  .efecto-jefe.liche .marca::after { content: ""; position: absolute; inset: 24px; border: 2px solid #eed1ff; border-radius: 50%; box-shadow: 0 0 18px #b96dff; }
-  .efecto-jefe.liche .simbolo { left: 1075px; top: 145px; }
-  @keyframes liche-sello { 0% { opacity: 0; transform: scale(.35) rotate(-80deg); } 25%, 68% { opacity: .85; } 80% { transform: scale(1) rotate(75deg); } 100% { opacity: 0; transform: scale(1.25) rotate(110deg); } }
-  /* Los otros seis especiales dibujan su efecto, sin el barrido genérico. */
-  .efecto-jefe.con-motivo .onda, .efecto-jefe.con-motivo .marca, .efecto-jefe.con-motivo .simbolo { display: none; }
-  .efecto-jefe .motivos { display: none; }
-  .efecto-jefe.con-motivo .motivos { display: block; position: absolute; inset: 0; width: 1540px; height: 445px; overflow: visible; filter: drop-shadow(0 0 10px var(--t2)); }
-  .efecto-jefe .motivos g { display: none; }
-  .efecto-jefe.esqueleto .motivos .esqueleto, .efecto-jefe.hidra .motivos .hidra,
-  .efecto-jefe.arana .motivos .arana, .efecto-jefe.kraken .motivos .kraken,
-  .efecto-jefe.minotauro .motivos .minotauro, .efecto-jefe.tanque .motivos .tanque { display: inline; }
-  .motivos .trazo { fill: none; stroke: var(--t1); stroke-width: 8; stroke-linecap: round; stroke-linejoin: round;
-    opacity: .95; transform-box: fill-box; transform-origin: center; animation: motivo-traza 2.4s ease-out both; }
-  .motivos .trazo:nth-child(2) { animation-delay: .08s; }
-  .motivos .trazo:nth-child(3) { animation-delay: .16s; }
-  .motivos .masa { fill: var(--t1); opacity: .9; transform-box: fill-box; transform-origin: center; animation: motivo-aparece 2.4s ease-out both; }
-  @keyframes motivo-traza { 0%, 8% { transform: scale(.78); } 28%, 82% { transform: scale(1); } 100% { transform: scale(1.08); } }
-  @keyframes motivo-aparece { 0%, 10% { transform: translateY(24px) scale(.5); } 38%, 84% { transform: none; } 100% { transform: translateY(-12px) scale(1.08); } }
-  @keyframes motivo-surge { 0%, 8% { transform: translateY(65px) scaleY(.5); } 32%, 82% { transform: none; } 100% { transform: translateY(-12px); } }
-  @keyframes motivo-dispara { 0%, 8% { transform: translateX(-95px) scaleX(.55); } 30% { transform: translateX(12px) scaleX(1.02); } 42%, 82% { transform: none; } 100% { transform: translateX(25px); } }
-  @keyframes motivo-red { 0%, 8% { transform: rotate(-24deg) scale(.45); } 38% { transform: rotate(4deg) scale(1.04); } 50%, 82% { transform: none; } 100% { transform: scale(1.1); } }
-  @keyframes motivo-salpicadura { 0%, 8% { transform: translate(-85px, -28px) scale(.45); } 32% { transform: translate(8px, 5px) scale(1.04); } 45%, 82% { transform: none; } 100% { transform: translate(18px, 18px); } }
-  @keyframes motivo-rebote { 0%, 8% { transform: translateX(-80px) rotate(-15deg); } 38% { transform: translateX(14px) rotate(6deg); } 56% { transform: translateX(-30px) rotate(-8deg); } 82% { transform: none; } 100% { transform: translateX(-60px) rotate(-15deg); } }
-  .motivos .esqueleto .trazo { stroke: #e9ffe0; stroke-width: 14; animation-name: motivo-surge; }
-  .motivos .esqueleto .masa { fill: #d9ffd9; }
-  .motivos .hidra .trazo { stroke: #b8ff57; stroke-width: 13; animation-name: motivo-dispara; }
-  .motivos .hidra .masa { fill: #b8ff57; }
-  .motivos .arana .trazo { stroke: #ffe0e0; stroke-width: 5; animation-name: motivo-red; }
-  .motivos .arana .masa { fill: #ff5265; }
-  .motivos .kraken .trazo { stroke: #47e4d2; stroke-width: 23; animation-name: motivo-surge; }
-  .motivos .kraken .trazo.fino { stroke: #d0fff8; stroke-width: 5; }
-  .motivos .kraken .masa { fill: #a8fff5; }
-  .motivos .minotauro .trazo { stroke: #c9f06a; stroke-width: 19; animation-name: motivo-salpicadura; }
-  .motivos .minotauro .masa { fill: #b9e858; }
-  .motivos .tanque .trazo { stroke: #f1f6ff; stroke-width: 13; animation-name: motivo-rebote; }
-  .motivos .tanque .masa { fill: #bed1eb; }
-  .efecto-jefe.lag .onda { background: repeating-linear-gradient(0deg, rgba(0, 229, 255, .85) 0 8px, transparent 8px 15px, rgba(255, 0, 200, .72) 15px 20px, transparent 20px 32px); animation-timing-function: steps(5, end); }
-  .efecto-jefe.lag .marca { border-style: dashed; border-color: #00e5ff; border-radius: 2px; box-shadow: 8px 0 #f0c, -8px 0 #00e5ff; animation-timing-function: steps(4, end); }
+  .efecto-jefe .pintura { position: absolute; left: 300px; top: 30px; width: 960px; height: 370px; object-fit: contain; object-position: left center;
+    transform-origin: left center; filter: drop-shadow(0 0 18px rgba(var(--tb), .7)); animation: especial-pintura 2.6s cubic-bezier(.2, .7, .3, 1) both; }
+  .efecto-jefe .pintura[hidden] { display: none; }
+  @keyframes especial-pintura { 0% { opacity: 0; transform: translateX(-70px) scale(.82); } 18% { opacity: 1; } 30% { transform: translateX(0) scale(1); } 72% { opacity: .95; } 100% { opacity: 0; transform: translateX(45px) scale(1.05); } }
+  .efecto-jefe.lag .pintura { animation-timing-function: steps(7, end); }
+  .efecto-jefe.liche .pintura { animation-name: especial-pintura-vuelve; }
+  @keyframes especial-pintura-vuelve { 0% { opacity: 0; transform: translateX(60px) scale(1.06); } 20% { opacity: 1; } 72% { opacity: .95; } 100% { opacity: 0; transform: translateX(-50px) scale(.9); } }
   @media (prefers-reduced-motion: reduce) { .efecto-jefe { display: none !important; } }
+
+  /* Ataques del chat (subs, regalos y bits, 2 oct 2026): entran por la derecha y golpean el retrato. */
+  .efecto-aliado .halo { border-color: #ffe0a0; box-shadow: 0 0 26px #a970ff, inset 0 0 26px #a970ff; animation-delay: .5s; }
+  .efecto-aliado .pintura { left: 280px; object-position: left center; transform-origin: left center;
+    filter: drop-shadow(0 0 18px rgba(169, 112, 255, .75)); animation-name: aliado-pintura; }
+  @keyframes aliado-pintura { 0% { opacity: 0; transform: translateX(140px) scale(.85); } 16% { opacity: 1; } 30% { transform: translateX(0) scale(1); } 72% { opacity: .95; } 100% { opacity: 0; transform: translateX(-40px) scale(1.04); } }
+  .cartel-especial.aliado { --t1: #ffe6a8; --t2: #a970ff; --tb: 169, 112, 255; --m1: #261440; --m2: #120a1f; }
 
   /* Quién está afectado: debajo de la barra, donde va la pista. */
   .afectados { position: absolute; left: 176px; top: 122px; display: flex; gap: 10px; flex-wrap: wrap; }
@@ -736,58 +682,10 @@
 <div class="jefe" id="jefe" hidden>
   <img class="foto-combate" id="foto-combate" alt="" hidden>
   <div class="efecto-jefe" id="efecto-jefe" aria-hidden="true" hidden>
-    <i class="halo"></i><i class="onda"></i><i class="marca"></i>
-    <svg class="almas" viewBox="0 0 1540 445" aria-hidden="true">
-      <path d="M1145 197 C1000 100 870 270 690 165 S390 108 255 194"/>
-      <path d="M1170 239 C1010 325 865 132 685 246 S390 300 255 211"/>
-      <path d="M1090 274 C930 205 780 325 585 224 S375 134 255 207"/>
-      <circle r="12" fill="#fff"><animateMotion begin="indefinite" dur="1.45s" path="M1145 197 C1000 100 870 270 690 165 S390 108 255 194"/></circle>
-      <circle r="9" fill="#e2b7ff"><animateMotion begin="indefinite" dur="1.45s" path="M1170 239 C1010 325 865 132 685 246 S390 300 255 211"/></circle>
-      <circle r="7" fill="#fff"><animateMotion begin="indefinite" dur="1.45s" path="M1090 274 C930 205 780 325 585 224 S375 134 255 207"/></circle>
-    </svg>
-    <svg class="motivos" viewBox="0 0 1540 445" aria-hidden="true">
-      <g class="esqueleto">
-        <path class="trazo" pathLength="100" d="M515 350 Q565 270 555 175 M545 177 Q555 146 571 178 M545 177 Q528 151 518 182"/>
-        <path class="trazo" pathLength="100" d="M710 365 Q760 285 755 151 M746 155 Q755 125 771 156 M746 155 Q731 127 720 160"/>
-        <path class="trazo" pathLength="100" d="M925 365 Q963 277 950 175 M942 177 Q951 149 969 180 M942 177 Q927 153 917 187"/>
-        <path class="trazo" pathLength="100" d="M488 355 Q731 295 1015 355"/>
-        <circle class="masa" cx="755" cy="151" r="13"/><circle class="masa" cx="950" cy="175" r="12"/>
-      </g>
-      <g class="hidra">
-        <path class="trazo" pathLength="100" d="M350 210 C505 87 630 143 766 145 S1000 76 1170 132"/>
-        <path class="trazo" pathLength="100" d="M350 210 C520 183 615 217 765 220 S1015 180 1170 214"/>
-        <path class="trazo" pathLength="100" d="M350 210 C486 306 628 267 770 296 S1008 349 1170 286"/>
-        <path class="trazo" pathLength="100" d="M1140 132 l37 -18 -16 39 M1140 214 l37 -18 -16 39 M1140 286 l37 -18 -16 39"/>
-        <circle class="masa" cx="1008" cy="169" r="9"/><circle class="masa" cx="1060" cy="252" r="13"/><circle class="masa" cx="955" cy="317" r="8"/>
-      </g>
-      <g class="arana">
-        <path class="trazo" pathLength="100" d="M385 209 L1215 209 M800 72 L800 355 M515 85 L1090 338 M1082 80 L510 340"/>
-        <path class="trazo" pathLength="100" d="M680 149 Q800 128 915 150 Q950 212 913 270 Q800 292 686 266 Q650 208 680 149 Z"/>
-        <path class="trazo" pathLength="100" d="M585 108 Q800 71 1018 111 Q1081 210 1015 312 Q800 359 589 309 Q519 209 585 108 Z"/>
-        <path class="trazo" pathLength="100" d="M465 80 Q800 25 1135 78 Q1240 208 1138 343 Q800 412 468 343 Q365 208 465 80 Z"/>
-        <circle class="masa" cx="800" cy="209" r="16"/>
-      </g>
-      <g class="kraken">
-        <path class="trazo" pathLength="100" d="M475 415 C442 312 510 287 562 330 C660 411 734 281 670 210 C638 174 576 199 596 247"/>
-        <path class="trazo" pathLength="100" d="M740 429 C693 340 752 277 833 309 C936 348 971 236 909 172 C865 126 814 172 838 217"/>
-        <path class="trazo" pathLength="100" d="M1015 420 C949 337 1030 297 1088 319 C1174 353 1253 250 1194 188 C1167 159 1125 180 1136 216"/>
-        <path class="trazo fino" pathLength="100" d="M524 357 C578 386 656 333 660 268 M807 347 C903 369 970 285 926 212 M1060 358 C1158 379 1226 303 1208 244"/>
-        <circle class="masa" cx="616" cy="339" r="8"/><circle class="masa" cx="883" cy="309" r="8"/><circle class="masa" cx="1151" cy="303" r="8"/>
-      </g>
-      <g class="minotauro">
-        <path class="trazo" pathLength="100" d="M343 222 C505 105 633 136 790 204 S1015 288 1185 210"/>
-        <path class="trazo" pathLength="100" d="M381 258 C559 189 650 215 758 275 S1002 335 1135 290"/>
-        <path class="trazo" pathLength="100" d="M626 175 Q638 210 616 235 M866 251 Q873 291 850 318 M1040 274 Q1060 310 1034 337"/>
-        <circle class="masa" cx="700" cy="247" r="17"/><circle class="masa" cx="946" cy="299" r="12"/><circle class="masa" cx="1147" cy="223" r="22"/>
-      </g>
-      <g class="tanque">
-        <path class="trazo" pathLength="100" d="M350 212 C535 75 748 91 1028 189 C1090 213 1080 274 1025 283 C814 312 580 277 384 235"/>
-        <path class="trazo" pathLength="100" d="M1062 181 l65 -75 M1080 215 l106 0 M1062 252 l67 67"/>
-        <path class="trazo" pathLength="100" d="M347 159 l-32 -45 M332 208 l-64 -3 M349 255 l-37 45"/>
-        <path class="masa" d="M1050 167 l54 19 v55 q-18 45 -54 64 q-39 -20 -55 -64 v-55 Z"/>
-      </g>
-    </svg>
-    <span class="simbolo" id="efecto-simbolo"></span>
+    <i class="halo"></i><img class="pintura" id="efecto-pintura" alt="" hidden>
+  </div>
+  <div class="efecto-jefe efecto-aliado" id="efecto-aliado" aria-hidden="true" hidden>
+    <i class="halo"></i><img class="pintura" id="aliado-pintura" alt="">
   </div>
   <div class="contador-golpes" id="contador-golpes" title="Golpes acertados"><span class="espadas">⚔︎</span><b id="golpes-numero" hidden>0</b></div>
   <svg class="emblema" id="emblema" viewBox="0 0 200 200" aria-hidden="true">
@@ -839,8 +737,8 @@
 
 <!-- Ataque especial del jefe -->
 <div class="cartel-especial" id="cartel-especial" hidden>
-  <span class="icono" id="ce-icono"></span>
-  <span class="aviso-ataque">ATAQUE ESPECIAL</span>
+  <img class="icono pintado-icono" id="ce-icono-img" alt="" hidden><span class="icono" id="ce-icono"></span>
+  <span class="aviso-ataque" id="ce-aviso">ATAQUE ESPECIAL</span>
   <span class="titulo-ataque" id="ce-titulo"></span>
   <span class="texto-ataque" id="ce-texto"></span>
 </div>
@@ -929,6 +827,16 @@
     tanque: { entrada: 'jefe-tanque-entrada.ogg', especial: 'propuesta-tanque-escudo.wav' },
     lag: { entrada: 'jefe-lag-entrada.ogg', especial: 'lag.wav' },
   };
+
+  /** Ataques del chat: sonidos que ya había, mientras no haya propios. */
+  const SONIDOS_ALIADO = {
+    grito: ['grito-de-guerra.wav'],
+    refuerzos: ['propuesta-tanque-escudo.wav'],
+    cristal: ['propuesta-dragon-hielo-impacto.wav'],
+    tormenta: ['propuesta-dragon-hielo.wav', 'propuesta-dragon-hielo-impacto.wav'],
+    mecenas: ['propuesta-tanque-escudo.wav', 'propuesta-dragon-hielo-impacto.wav'],
+  };
+  const CLASES_ALIADO = Object.keys(SONIDOS_ALIADO);
 
   // ---------- Los jefes: retrato, colores y ambiente ----------
   //
@@ -1349,18 +1257,22 @@
   let glitchReloj = null;
   let cicloJefe = 0;
   let salidaJefe = null, salidaAmbiente = null, avisoReloj = null, salidaCartel = null;
-  let retratoGolpeReloj = null, retratoEspecialReloj = null, efectoEspecialReloj = null;
+  let retratoGolpeReloj = null, retratoEspecialReloj = null, efectoEspecialReloj = null, efectoAliadoReloj = null;
   // 27 sep 2026: un callback del jefe anterior no puede retirar al nuevo.
   function cancelarRetirada() {
-    for (const reloj of [salidaJefe, salidaAmbiente, avisoReloj, cartelReloj, salidaCartel, retratoGolpeReloj, retratoEspecialReloj, efectoEspecialReloj]) clearTimeout(reloj);
+    for (const reloj of [salidaJefe, salidaAmbiente, avisoReloj, cartelReloj, salidaCartel, retratoGolpeReloj, retratoEspecialReloj, efectoEspecialReloj, efectoAliadoReloj]) clearTimeout(reloj);
     $('jefe').classList.remove('sale');
     $('foto-combate').classList.remove('golpe', 'golpe-critico', 'especial');
     $('efecto-jefe').hidden = true;
+    $('efecto-aliado').hidden = true;
     $('ambiente').classList.remove('apagando');
     $('aviso').hidden = true;
     $('cartel-especial').hidden = true;
     $('cartel-especial').classList.remove('sale');
   }
+
+  /** Reasignar el mismo src vuelve a empezar la descarga: solo se pone si cambia. */
+  const fijarSrc = (img, url) => { if (img.urlPuesta !== url) { img.urlPuesta = url; img.src = url; } };
 
   /** Viste la pantalla con el jefe: colores, retrato, insignia y ambiente. */
   function vestir(tipo) {
@@ -1369,6 +1281,12 @@
     ['--t1', '--t2', '--t3', '--tb', '--m1', '--m2'].forEach((v, i) => raiz.setProperty(v, t.c[i]));
     document.body.dataset.jefe = tipo || '';
     ponerRetrato(tipo);
+    // El especial llega a mitad de combate: su efecto e icono ya cargados, para que no salgan a medias.
+    if (Object.hasOwn(TEMAS, tipo)) {
+      fijarSrc($('efecto-pintura'), `../imagenes/jefes/especiales/${tipo}.png`);
+      fijarSrc($('ce-icono-img'), `../imagenes/jefes/especiales/icono-${tipo}.png`);
+    }
+    for (const clase of CLASES_ALIADO) for (const n of [clase, `icono-${clase}`]) new Image().src = `../imagenes/jefes/aliados/${n}.png`;
     $('insignia').textContent = t.insignia;
     const capa = $('ambiente');
     capa.replaceChildren();
@@ -1388,7 +1306,9 @@
     clearInterval(glitchReloj);
     document.body.classList.remove('glitch');
     clearTimeout(efectoEspecialReloj);
+    clearTimeout(efectoAliadoReloj);
     $('efecto-jefe').hidden = true;
+    $('efecto-aliado').hidden = true;
     const capa = $('ambiente');
     capa.classList.add('apagando');
     const ciclo = cicloJefe;
@@ -1399,10 +1319,11 @@
   let visto = 0;          // último golpe pintado
   let finalVisto = null;  // id del jefe cuyo final ya se enseñó
   let especialVisto = 0;  // último ataque especial enseñado
+  let aliadoVisto = 0;  // último ataque del chat enseñado
   let dueloVisto = null;  // último duelo enseñado (o puesto en la cola)
   const colaDuelos = [];
   let enseñandoDuelo = false;
-  DirectoRed.alReiniciar(() => { ++cicloJefe; cancelarRetirada(); actual = null; visto = 0; finalVisto = null; especialVisto = 0; dueloVisto = null; colaDuelos.length = 0; $('jefe').hidden = true; });
+  DirectoRed.alReiniciar(() => { ++cicloJefe; cancelarRetirada(); actual = null; visto = 0; finalVisto = null; especialVisto = 0; aliadoVisto = 0; dueloVisto = null; colaDuelos.length = 0; $('jefe').hidden = true; });
 
   function pintar(d) {
     const j = d.jefe;
@@ -1428,7 +1349,8 @@
       contador.title = `${golpesAcertados} golpes acertados`;
       if (golpeNuevo) { contador.classList.remove('pulso'); void contador.offsetWidth; contador.classList.add('pulso'); }
       if (j.especial && j.especial.n > especialVisto) especial(j.especial, j.tipo);
-      else if (!j.especial && !$('cartel-especial').hidden) quitarCartel();
+      if (j.aliado && j.aliado.n > aliadoVisto) aliadoAtaca(j.aliado);
+      else if (!j.especial && !j.aliado && !$('cartel-especial').hidden) quitarCartel();
       pintarAfectados(j.afectados || []);
     } else if (actual !== null) {
       actual = null;
@@ -1517,6 +1439,7 @@
     // Los golpes de antes de que se cargara el overlay no se repiten.
     if (j.golpes.length) visto = Math.max(visto, ...j.golpes.map((g) => g.n));
     if (j.especial && !(j.vida === j.vidaMax && j.golpes.length === 0)) especialVisto = Math.max(especialVisto, j.especial.n - 1);
+    if (j.aliado) aliadoVisto = Math.max(aliadoVisto, j.aliado.n - 1);
     const nombre = mayuscula(j.nombre);
     $('nombre').textContent = nombre;
     const ajustarNombre = () => {
@@ -1605,7 +1528,13 @@
   function especial(e, tipo) {
     clearTimeout(salidaCartel);
     especialVisto = e.n;
+    const conPintura = Object.hasOwn(TEMAS, tipo);
+    $('cartel-especial').classList.remove('aliado');
+    $('ce-aviso').textContent = 'ATAQUE ESPECIAL';
     $('ce-icono').textContent = e.icono;
+    $('ce-icono').hidden = conPintura;
+    $('ce-icono-img').hidden = !conPintura;
+    if (conPintura) fijarSrc($('ce-icono-img'), `../imagenes/jefes/especiales/icono-${tipo}.png`);
     $('ce-titulo').textContent = e.titulo;
     $('ce-texto').textContent = e.texto;
     const cartel = $('cartel-especial');
@@ -1613,19 +1542,14 @@
     cartel.hidden = true; void cartel.offsetWidth; cartel.hidden = false;
     const efecto = $('efecto-jefe');
     clearTimeout(efectoEspecialReloj);
-    const conMotivo = ['esqueleto', 'hidra', 'arana', 'kraken', 'minotauro', 'tanque'].includes(tipo);
-    efecto.className = `efecto-jefe ${Object.hasOwn(TEMAS, tipo) ? tipo : ''}${conMotivo ? ' con-motivo' : ''}`;
-    $('efecto-simbolo').textContent = e.icono || '✦';
+    efecto.className = `efecto-jefe ${conPintura ? tipo : ''}`;
+    const pintura = $('efecto-pintura');
+    pintura.hidden = !conPintura;
+    if (conPintura) fijarSrc(pintura, `../imagenes/jefes/especiales/${tipo}.png`);
+    // Ocultar y volver a mostrar reinicia las animaciones del halo y la pintura.
     efecto.hidden = true; void efecto.offsetWidth; efecto.hidden = false;
-    if (conMotivo) {
-      const piezas = efecto.querySelectorAll('.motivos .trazo, .motivos .masa');
-      for (const pieza of piezas) pieza.style.animation = 'none';
-      void efecto.offsetWidth;
-      for (const pieza of piezas) pieza.style.removeProperty('animation');
-    }
-    if (tipo === 'liche') for (const alma of efecto.querySelectorAll('animateMotion')) alma.beginElement?.();
     const ciclo = cicloJefe;
-    efectoEspecialReloj = setTimeout(() => { if (ciclo === cicloJefe) efecto.hidden = true; }, conMotivo ? 2450 : 1700);
+    efectoEspecialReloj = setTimeout(() => { if (ciclo === cicloJefe) efecto.hidden = true; }, 2650);
     const foto = $('foto-combate');
     if (!foto.hidden) {
       clearTimeout(retratoEspecialReloj);
@@ -1638,6 +1562,47 @@
     setTimeout(() => d.remove(), 1200);
     sonar(SONIDOS_JEFE[tipo]?.especial || 'maldicion.wav', 0.9);
     if (tipo === 'dragon') setTimeout(() => sonar('propuesta-dragon-hielo-impacto.wav', 0.9), 450);
+    clearTimeout(cartelReloj);
+    cartelReloj = setTimeout(quitarCartel, 5500);
+  }
+
+  /** Un ataque del chat: el efecto entra por la derecha, golpea el retrato y sale el cartel. */
+  function aliadoAtaca(a) {
+    clearTimeout(salidaCartel);
+    aliadoVisto = a.n;
+    const clase = CLASES_ALIADO.includes(a.clase) ? a.clase : 'cristal';
+    const cartel = $('cartel-especial');
+    cartel.classList.add('aliado');
+    $('ce-aviso').textContent = 'ATAQUE DEL CHAT';
+    $('ce-icono').textContent = a.icono;
+    $('ce-icono').hidden = true;
+    $('ce-icono-img').hidden = false;
+    fijarSrc($('ce-icono-img'), `../imagenes/jefes/aliados/icono-${clase}.png`);
+    $('ce-titulo').textContent = a.titulo;
+    $('ce-texto').textContent = `${a.quien} · ${a.texto}`;
+    cartel.classList.remove('sale');
+    cartel.hidden = true; void cartel.offsetWidth; cartel.hidden = false;
+    const efecto = $('efecto-aliado');
+    clearTimeout(efectoAliadoReloj);
+    efecto.className = `efecto-jefe efecto-aliado ${clase}`;
+    fijarSrc($('aliado-pintura'), `../imagenes/jefes/aliados/${clase}.png`);
+    efecto.hidden = true; void efecto.offsetWidth; efecto.hidden = false;
+    const ciclo = cicloJefe;
+    efectoAliadoReloj = setTimeout(() => { if (ciclo === cicloJefe) efecto.hidden = true; }, 2650);
+    // Cuando el efecto llega al retrato: el jefe acusa el golpe; los grandes, además, hacen temblar.
+    setTimeout(() => {
+      if (ciclo !== cicloJefe) return;
+      const foto = $('foto-combate');
+      if (!foto.hidden) {
+        clearTimeout(retratoGolpeReloj);
+        foto.classList.remove('golpe', 'golpe-critico'); void foto.offsetWidth; foto.classList.add('golpe-critico');
+        retratoGolpeReloj = setTimeout(() => foto.classList.remove('golpe-critico'), 380);
+      }
+      if (clase === 'tormenta' || clase === 'mecenas') {
+        document.body.classList.remove('temblor'); void document.body.offsetWidth; document.body.classList.add('temblor');
+      }
+    }, 600);
+    SONIDOS_ALIADO[clase].forEach((archivo, i) => setTimeout(() => sonar(archivo, 0.9), i * 450));
     clearTimeout(cartelReloj);
     cartelReloj = setTimeout(quitarCartel, 5500);
   }
@@ -1700,6 +1665,7 @@
   const params = new URLSearchParams(location.search);
   if (params.get('demo') === '1') demo();
   else if (params.get('demo') === 'especial') demoEspecial();
+  else if (params.get('demo') === 'aliado') demoAliado();
   else if (params.get('demo') === 'duelo') demoDuelos();
   else {
     const api = new URL('/api/overlay/jefe', location.href);
@@ -1726,6 +1692,27 @@
     pintar({ jefe, final: null });
     let n = 0;
     const lanzar = () => pintar({ jefe: { ...jefe, especial: { n: ++n, icono: muestra.icono, titulo: muestra.titulo, texto: muestra.texto, at: Date.now() } }, final: null });
+    setTimeout(lanzar, 3000);
+    setInterval(lanzar, 8000);
+  }
+
+  /** Muestra repetible de los ataques del chat (subs, regalos y bits). */
+  function demoAliado() {
+    const muestras = {
+      grito: { icono: '📯', titulo: 'Grito de guerra', quien: 'Ana', texto: '−60 · todo el chat +50 % de daño 20 s' },
+      refuerzos: { icono: '🎁', titulo: 'Refuerzos', quien: 'Luis', texto: '5 subs regaladas · 5 golpes · −74' },
+      cristal: { icono: '💎', titulo: 'Golpe de cristal', quien: 'Pepe', texto: '300 bits · −41' },
+      tormenta: { icono: '⚡', titulo: 'Tormenta de cristal', quien: 'Pepe', texto: '500 bits · −96' },
+      mecenas: { icono: '🗡️', titulo: 'Golpe del mecenas', quien: 'Mecenas', texto: '1000 bits · −140' },
+    };
+    const clase = Object.hasOwn(muestras, params.get('clase')) ? params.get('clase') : 'grito';
+    const tipo = Object.hasOwn(TEMAS, params.get('jefe')) ? params.get('jefe') : 'golem';
+    const nombres = { dragon: 'el Dragón de Escarcha', esqueleto: 'el Rey Esqueleto', hidra: 'la Hidra del Pantano', golem: 'el Gólem de Obsidiana', liche: 'el Liche sin Nombre', arana: 'la Araña Reina', kraken: 'el Kraken del Foso', minotauro: 'el Minotauro con Resaca', tanque: 'el Tanque que no sabe tanquear', lag: 'el Lag Primigenio' };
+    const afectados = clase === 'grito' ? [{ quien: 'Todo el chat +50 %', icono: '📯', quedanSeg: 20 }] : [];
+    const jefe = { id: 1, tipo, nombre: nombres[tipo], vida: 260, vidaMax: 400, quedanSeg: 120, golpes: [], golpesAcertados: 0, afectados: [] };
+    pintar({ jefe, final: null });
+    let n = 0;
+    const lanzar = () => pintar({ jefe: { ...jefe, afectados, aliado: { n: ++n, clase, ...muestras[clase], at: Date.now() } }, final: null });
     setTimeout(lanzar, 3000);
     setInterval(lanzar, 8000);
   }

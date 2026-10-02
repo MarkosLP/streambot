@@ -91,6 +91,44 @@ export interface EspecialEnCurso {
   at: number;
 }
 
+/**
+ * Ataques del chat (2 oct 2026): subs, regalos y bits contra el jefe, cada uno
+ * con su efecto pintado en el overlay (imagenes/jefes/aliados/<clase>.png).
+ * Pegan fuerte porque el jefe es de todos: ayudan al chat, no compiten con él.
+ * En los duelos un sub sigue pesando lo mismo.
+ */
+export const ALIADOS = {
+  grito: { icono: '📯', titulo: 'Grito de guerra' },
+  refuerzos: { icono: '🎁', titulo: 'Refuerzos' },
+  cristal: { icono: '💎', titulo: 'Golpe de cristal' },
+  tormenta: { icono: '⚡', titulo: 'Tormenta de cristal' },
+  mecenas: { icono: '🗡️', titulo: 'Golpe del mecenas' },
+} as const;
+export type ClaseAliado = keyof typeof ALIADOS;
+
+/** El ataque del chat en marcha, para el cartel del overlay. */
+export interface AtaqueAliado {
+  n: number;
+  clase: ClaseAliado;
+  icono: string;
+  titulo: string;
+  quien: string;
+  texto: string;
+  at: number;
+}
+
+/**
+ * Lo máximo que quita un ataque pagado, de la vida máxima. Con 1-3 personas,
+ * si unos bits lo tumbaran de golpe, el resto del chat se quedaría sin pelea.
+ */
+export const TOPE_ATAQUE = 0.35;
+/** El sub: un golpe de esta parte de la vida máxima, y todo el chat pega más un rato. */
+export const GOLPE_SUB = 0.15;
+export const GRITO_MS = 20_000;
+export const GRITO_FACTOR = 1.5;
+/** Golpes como mucho por una tanda de subs regaladas. */
+export const TOPE_REFUERZOS = 10;
+
 interface Jefe {
   /** Cambia con cada jefe: el overlay sabe así que es uno nuevo. */
   id: number;
@@ -111,6 +149,10 @@ interface Jefe {
   fallan: Set<string>;
   /** El Lag para su reloj hasta aquí (quedanSeg se queda quieto mientras). */
   congeladoHasta?: number;
+  /** El último ataque del chat (sub, regalo, bits), para el overlay. */
+  aliado: AtaqueAliado | null;
+  /** Grito de guerra de un sub: todo el chat pega GRITO_FACTOR hasta entonces. */
+  grito: { hasta: number; quien: string } | null;
 }
 
 let jefe: Jefe | null = null;
@@ -124,6 +166,7 @@ function quedan(j: Jefe, now: number): number {
 let contador = 0;
 let golpesTotales = 0;
 let especialesTotales = 0;
+let aliadosTotales = 0;
 /** Cuánto se queda el cartel del especial en el overlay. */
 const CARTEL_ESPECIAL_MS = 6000;
 
@@ -155,7 +198,7 @@ export async function invocar(
   const nombre = elegido.nombre;
   const vidaMax = VIDA_POR_PERSONA * Math.max(1, aventureros(now).length);
   jefe = { id: ++contador, tipo: elegido.tipo, nombre, golpes: [], golpesAcertados: 0, vidaMax, vida: vidaMax, hasta: now + DURACION_MS, danos: new Map(), avisoMitad: false,
-    especialUsado: false, especial: null, bloqueos: new Map(), debiles: new Map(), fallan: new Set() };
+    especialUsado: false, especial: null, bloqueos: new Map(), debiles: new Map(), fallan: new Set(), aliado: null, grito: null };
   novedades.anotar('jefe', 'Jefe del chat', nombre, 'Ha aparecido · escribe !atacar');
   final = null;
   reloj = setTimeout(() => void terminarPorTiempo(), DURACION_MS);
@@ -235,7 +278,9 @@ export const atacar: Interaction<CtxComando> = {
     let { dano, critico } = golpe(lootDb.poder(yo.id), azar);
     const debil = j.debiles.get(yo.id);
     if (debil && debil.hasta > now) dano = Math.max(1, Math.round(dano * debil.factor));
-    apuntarGolpe(j, { quien: yo.displayName, dano, critico, tipo: 'golpe', icono: debil && debil.hasta > now ? '🐍' : undefined });
+    const conGrito = Boolean(j.grito && j.grito.hasta > now);
+    if (conGrito) dano = Math.round(dano * GRITO_FACTOR);
+    apuntarGolpe(j, { quien: yo.displayName, dano, critico, tipo: 'golpe', icono: debil && debil.hasta > now ? '🐍' : conGrito ? '📯' : undefined });
     const antes = j.danos.get(ctx.viewer.id)?.dano ?? 0;
     j.danos.set(ctx.viewer.id, { viewer: ctx.viewer, dano: antes + dano });
     j.vida = Math.max(0, j.vida - dano);
@@ -258,31 +303,102 @@ export const atacar: Interaction<CtxComando> = {
   },
 };
 
-/**
- * Bits contra el jefe (propuesta S7): 100 bits, un golpe (hasta 5); 500 o
- * más, un crítico asegurado además. Pagados, así que pegan aunque estés
- * congelado o atrapado, y sin esperar. Devuelve lo que se dice en el chat, o
- * null si no hay jefe (entonces los bits van a un cofre: mecenas.ts). Uno o
- * dos mensajes: el segundo, el reparto si lo tumban.
- */
-export function golpesDeBits(viewer: Viewer, bits: number, azar: Azar = Math.random): string[] | null {
-  const j = jefe;
-  if (!j || bits < 100) return null;
-  const golpes = Math.min(5, Math.floor(bits / 100));
-  let total = 0;
-  for (let i = 0; i < golpes && j.vida > 0; i++) {
-    const g = golpe(lootDb.poder(viewer.id), azar);
-    const critico = bits >= 500 && i === 0 ? true : g.critico;
-    const dano = critico && !g.critico ? g.dano * 2 : g.dano;
-    apuntarGolpe(j, { quien: viewer.displayName, dano, critico, tipo: 'golpe', icono: '💎' });
-    j.danos.set(viewer.id, { viewer, dano: (j.danos.get(viewer.id)?.dano ?? 0) + dano });
-    j.vida = Math.max(0, j.vida - dano);
-    total += dano;
-  }
-  const inicio = `💎 ¡${viewer.displayName} lanza ${bits} bits contra ${j.nombre}: ${golpes} golpe${golpes === 1 ? '' : 's'}${bits >= 500 ? ' con crítico' : ''}, −${total}!`;
-  // Si lo tumban, el reparto va aparte: juntos podrían pasar del largo máximo.
+/** Qué ataque lanzan unos bits: 100-499 cristal, 500-999 tormenta, 1000 o más mecenas. */
+export function claseDeBits(bits: number): ClaseAliado | null {
+  if (bits >= 1000) return 'mecenas';
+  if (bits >= 500) return 'tormenta';
+  if (bits >= 100) return 'cristal';
+  return null;
+}
+
+/** Un golpe pagado: pega aunque estés congelado o atrapado, y sin esperar. */
+function pegarPagado(j: Jefe, quien: Viewer | null, nombre: string, dano: number, critico: boolean, icono: string, texto?: string): number {
+  const d = Math.max(0, Math.min(dano, j.vida));
+  if (!d) return 0;
+  apuntarGolpe(j, { quien: nombre, dano: d, critico, tipo: 'golpe', icono, texto });
+  if (quien?.id) j.danos.set(quien.id, { viewer: quien, dano: (j.danos.get(quien.id)?.dano ?? 0) + d });
+  j.vida -= d;
+  return d;
+}
+
+function anunciarAliado(j: Jefe, clase: ClaseAliado, quien: string, texto: string, now: number): void {
+  j.aliado = { n: ++aliadosTotales, clase, icono: ALIADOS[clase].icono, titulo: ALIADOS[clase].titulo, quien, texto, at: now };
+}
+
+/** Uno o dos mensajes: el segundo, el reparto si el ataque lo tumba (juntos podrían pasar del largo máximo). */
+function trasAtaque(j: Jefe, inicio: string, azar: Azar, cola = `Le quedan ${j.vida}/${j.vidaMax}.`): string[] {
   if (j.vida === 0) return [inicio, derrotado(j, azar).text];
-  return [`${inicio} Le quedan ${j.vida}/${j.vidaMax}.`];
+  return [`${inicio} ${cola}`];
+}
+
+/**
+ * Bits contra el jefe (propuesta S7, con sus ataques desde el 2 oct 2026):
+ * 100 bits, un golpe (hasta 4); 500, Tormenta de cristal (5 golpes, el primero
+ * crítico); 1000, Golpe del mecenas (TOPE_ATAQUE de la vida de una vez). Nada
+ * quita más de TOPE_ATAQUE. Devuelve lo que se dice en el chat, o null si no
+ * hay jefe (entonces los bits invocan uno o dan un cofre: mecenas.ts).
+ */
+export function golpesDeBits(viewer: Viewer, bits: number, azar: Azar = Math.random, now = Date.now()): string[] | null {
+  const j = jefe;
+  const clase = claseDeBits(bits);
+  if (!j || !clase) return null;
+  const tope = Math.round(j.vidaMax * TOPE_ATAQUE);
+  let total = 0;
+  let golpes = 0;
+  if (clase === 'mecenas') {
+    total = pegarPagado(j, viewer, viewer.displayName, tope, true, '🗡️', '¡MECENAS!');
+    golpes = total ? 1 : 0;
+  } else {
+    const n = clase === 'tormenta' ? 5 : Math.floor(bits / 100);
+    for (let i = 0; i < n && j.vida > 0 && total < tope; i++) {
+      const g = golpe(lootDb.poder(viewer.id), azar);
+      const critico = clase === 'tormenta' && i === 0 ? true : g.critico;
+      const dano = critico && !g.critico ? g.dano * 2 : g.dano;
+      total += pegarPagado(j, viewer, viewer.displayName, Math.min(dano, tope - total), critico, clase === 'tormenta' ? '⚡' : '💎');
+      golpes++;
+    }
+  }
+  const { icono, titulo } = ALIADOS[clase];
+  anunciarAliado(j, clase, viewer.displayName, `${bits} bits · −${total}`, now);
+  const detalle = clase === 'mecenas' ? '' : `: ${golpes} golpe${golpes === 1 ? '' : 's'}${clase === 'tormenta' ? ' con crítico' : ''}`;
+  return trasAtaque(j, `${icono} ¡${viewer.displayName} lanza ${titulo} con ${bits} bits contra ${j.nombre}${detalle}, −${total}!`, azar);
+}
+
+/**
+ * Un sub con el jefe en pie: Grito de guerra. Un golpe de GOLPE_SUB de la vida
+ * y, durante GRITO_MS, los !atacar de todo el chat pegan GRITO_FACTOR.
+ */
+export function gritoDeSub(viewer: Viewer, azar: Azar = Math.random, now = Date.now()): string[] | null {
+  const j = jefe;
+  if (!j) return null;
+  const dano = pegarPagado(j, viewer, viewer.displayName, Math.max(20, Math.round(j.vidaMax * GOLPE_SUB)), true, '📯', '¡GRITO!');
+  j.grito = { hasta: now + GRITO_MS, quien: viewer.displayName };
+  const pct = Math.round((GRITO_FACTOR - 1) * 100);
+  anunciarAliado(j, 'grito', viewer.displayName, `−${dano} · todo el chat +${pct} % de daño ${GRITO_MS / 1000} s`, now);
+  return trasAtaque(j, `📯 ¡${viewer.displayName} lanza un Grito de guerra contra ${j.nombre}: −${dano}!`, azar,
+    `Todo el chat pega un ${pct} % más durante ${GRITO_MS / 1000} s: ¡!atacar!`);
+}
+
+/**
+ * Subs regaladas con el jefe en pie: Refuerzos. Un golpe por sub (hasta
+ * TOPE_REFUERZOS), a nombre de quien la recibe, que así entra en el reparto.
+ * Sin receptores conocidos (bomba anónima), pegan a nombre de quien regala.
+ */
+export function refuerzos(regala: Viewer | null, recibe: Viewer[], n: number, azar: Azar = Math.random, now = Date.now()): string[] | null {
+  const j = jefe;
+  if (!j || n < 1) return null;
+  const tope = Math.round(j.vidaMax * TOPE_ATAQUE);
+  let total = 0;
+  let golpes = 0;
+  for (let i = 0; i < Math.min(n, TOPE_REFUERZOS) && j.vida > 0 && total < tope; i++) {
+    const quien = recibe[i] ?? regala;
+    const g = golpe(quien?.id ? lootDb.poder(quien.id) : 0, azar);
+    total += pegarPagado(j, quien, quien?.displayName ?? 'Refuerzo', Math.min(g.dano, tope - total), g.critico, '🎁');
+    golpes++;
+  }
+  const quien = regala?.displayName ?? 'Alguien anónimo';
+  anunciarAliado(j, 'refuerzos', quien, `${n === 1 ? '1 sub regalada' : `${n} subs regaladas`} · ${golpes} golpe${golpes === 1 ? '' : 's'} · −${total}`, now);
+  return trasAtaque(j, `🎁 ¡Llegan refuerzos! Las subs de ${quien} pegan ${golpes} ${golpes === 1 ? 'vez' : 'veces'} a ${j.nombre}: −${total}!`, azar);
 }
 
 /** ¿Hay un jefe en pie? */
@@ -393,6 +509,9 @@ function afectados(j: Jefe, now: number) {
   for (const [id, b] of j.bloqueos) if (b.hasta > now) lista.push({ quien: nombre(id), icono: b.icono, quedanSeg: Math.ceil((b.hasta - now) / 1000) });
   for (const [id, d] of j.debiles) if (d.hasta > now) lista.push({ quien: nombre(id), icono: '🐍', quedanSeg: Math.ceil((d.hasta - now) / 1000) });
   for (const id of j.fallan) lista.push({ quien: nombre(id), icono: '🤢', quedanSeg: null });
+  if (j.grito && j.grito.hasta > now) {
+    lista.unshift({ quien: `Todo el chat +${Math.round((GRITO_FACTOR - 1) * 100)} %`, icono: '📯', quedanSeg: Math.ceil((j.grito.hasta - now) / 1000) });
+  }
   return lista;
 }
 
@@ -481,6 +600,7 @@ export function paraOverlay(now = Date.now()) {
         golpes: jefe.golpes,
         golpesAcertados: jefe.golpesAcertados,
         especial: jefe.especial && now - jefe.especial.at < CARTEL_ESPECIAL_MS ? jefe.especial : null,
+        aliado: jefe.aliado && now - jefe.aliado.at < CARTEL_ESPECIAL_MS ? jefe.aliado : null,
         afectados: afectados(jefe, now),
       }
       : null,
