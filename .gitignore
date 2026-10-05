@@ -19,6 +19,9 @@ node_modules/
 logs/
 *.log
 
+# Archivos de trabajo locales: capturas, material crudo y muestras de VOD
+tmp/
+
 # Sistema operativo / editor
 Thumbs.db
 desktop.ini

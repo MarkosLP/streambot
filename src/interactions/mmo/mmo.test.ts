@@ -34,6 +34,12 @@ after(() => {
 });
 
 describe('El Linde del Velo', () => {
+  test('acepta un !explorar copiado con carácter invisible al final', () => {
+    const respuesta = mmo.comando('!explorar \u034f', persona('ana'), 'copiado', ahora);
+    assert.match(respuesta!, /1\/4/);
+    assert.equal(mmo.estado().objetivo.actual, 1);
+  });
+
   test('una persona completa la expedición y cada premio se entrega una vez', () => {
     const ana = persona('ana');
     for (let i = 0; i < 3; i++) {

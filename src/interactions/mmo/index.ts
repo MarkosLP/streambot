@@ -609,7 +609,8 @@ function avisarUnaVez(clave: string, hasta: number, now: number): boolean {
 
 /** Respuestas del MVP. Los controles requieren propietario o moderador. */
 export function comando(texto: string, viewer: Viewer, mensajeId: string, now = Date.now()): string | null {
-  const t = texto.trim().toLowerCase();
+  // El chat puede añadir caracteres invisibles al copiar comandos (p. ej. U+034F).
+  const t = texto.replace(/[\u034f\u200b-\u200d\u2060\ufeff]/g, '').trim().toLowerCase();
   if (t === '!mundo activar' || t === '!mundo pausar' || t === '!mundo apagar') {
     if (!viewer.isBroadcaster && !viewer.isModerator) return 'Solo Crid4m o un moderador puede controlar el mundo.';
     if (t.endsWith('activar')) { activar(now); return 'El Linde del Velo está activo. Escribe !explorar para iniciar una expedición.'; }
