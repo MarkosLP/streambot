@@ -622,7 +622,10 @@ export function comando(texto: string, viewer: Viewer, mensajeId: string, now = 
   }
   if (t === '!mundo') {
     const e = avanzar(now);
-    if (e.modo !== 'activo') return 'El Velo está cerrado ahora mismo. Vuelve cuando Crid4m abra el mundo.';
+    if (e.modo === 'apagado') return 'El Velo está cerrado ahora mismo. Vuelve cuando Crid4m abra el mundo.';
+    if (e.modo === 'pausado') return 'El Linde del Velo está en pausa. La expedición y su tiempo seguirán donde quedaron al reactivarlo.';
+    if (e.detenido === 'sin-directo') return `El Velo espera al directo. La expedición sigue en ${e.objetivo.actual}/${e.objetivo.meta} con el tiempo detenido.`;
+    if (e.detenido === 'bot-apagado') return `El mundo espera a que se encienda el bot. La expedición sigue en ${e.objetivo.actual}/${e.objetivo.meta} con el tiempo detenido.`;
     const memoria = `Reliquias de la Lumbre: ${e.reliquias.halladas}/${e.reliquias.total} · Crónica: ${e.cronica.capitulo === 0 ? 'prólogo' : `capítulo ${e.cronica.capitulo} de ${e.cronica.total}`}.`;
     if (e.fase === 'calma') return `El Linde del Velo · La compañía descansa en la Última Lumbre. Escribe !explorar para salir hacia ${e.region.nombre}. Basta con una persona. ${memoria}`;
     if (e.fase === 'resultado') return e.resultado?.completada

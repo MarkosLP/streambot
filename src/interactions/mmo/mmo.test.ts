@@ -101,12 +101,15 @@ describe('El Linde del Velo', () => {
     const antes = mmo.estado().hasta!;
     mmo.pausar(ahora + 60_000);
     assert.equal(mmo.estado().hasta, null, 'la escena no muestra una cuenta atrás en pausa');
+    assert.match(mmo.comando('!mundo', ana, 'consulta-pausa', ahora + 60_000)!, /está en pausa/);
     mmo.avanzar(ahora + mmo.DURACION_MS + 1);
     assert.equal(mmo.estado().fase, 'expedicion');
     mmo.activar(ahora + 120_000);
     assert.equal(Date.parse(mmo.estado().hasta!), Date.parse(antes) + 60_000);
     streams.close();
     assert.deepEqual(mmo.explorar(ana, 'dos', ahora + mmo.ACCION_MS), { tipo: 'sin-directo' });
+    assert.match(mmo.comando('!mundo', ana, 'consulta-sin-directo', ahora + mmo.ACCION_MS)!, /tiempo detenido/);
+    assert.doesNotMatch(mmo.comando('!mundo', ana, 'consulta-sin-directo-2', ahora + mmo.ACCION_MS)!, /0 min/);
   });
 
   test('sin directo, con el bot apagado o cerrado, el plazo se congela y luego se desplaza', () => {

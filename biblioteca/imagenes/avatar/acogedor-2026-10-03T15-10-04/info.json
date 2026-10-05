@@ -1,0 +1,16 @@
+{
+  "titulo": "Avatar épico inspirado en el Summoner de",
+  "descripcion": "Avatar épico inspirado en el Summoner de Aion 1, primer plano, armadura mística oscura, ojos brillantes, energía mágica violeta y azul, espíritu invocado detrás, estética MMORPG fantasy, fondo oscuro, iluminación cinematográfica, ultra detallado.",
+  "ojos": {
+    "x": 0.5,
+    "y": 0.326171875,
+    "w": 0.1640625,
+    "h": 0.17
+  },
+  "cara": {
+    "x": 0.5,
+    "y": 0.3531640625,
+    "w": 0.2240625,
+    "h": 0.25398437500000004
+  }
+}

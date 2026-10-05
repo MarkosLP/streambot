@@ -214,6 +214,34 @@
   @keyframes destello { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { .acciones li.nueva, .barra i.nuevo, .cuenta b.sube, .centro.revela, .destello.vivo { animation: none; } }
 
+  /* Controles exclusivos de ?demo=1: nunca aparecen en la fuente normal de OBS. */
+  .demo-controles { position: absolute; z-index: 20; top: 145px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); }
+  .demo-controles[hidden] { display: none; }
+  .demo-controles .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  .demo-panel { width: min(1320px, calc(100vw - 48px)); }
+  .demo-panel summary { width: max-content; max-width: 100%; margin: auto; padding: 8px 14px; border: 1px solid #f0a24a; border-radius: 10px; background: rgba(12, 9, 15, .97); box-shadow: 0 3px 14px #000; color: #ffcf8c; font: 700 16px 'Rajdhani Local', sans-serif; cursor: pointer; list-style: none; }
+  .demo-panel summary::-webkit-details-marker { display: none; }
+  .demo-panel[open] { padding: 12px 16px; border: 1px solid #f0a24a; border-radius: 12px; background: rgba(12, 9, 15, .97); box-shadow: 0 5px 24px #000; }
+  .demo-panel[open] summary { margin: 0 0 8px; box-shadow: none; }
+  .demo-cuerpo { display: grid; gap: 8px; }
+  .demo-controles strong { color: #ffcf8c; font-size: 18px; white-space: nowrap; }
+  .demo-cabecera { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+  .demo-comando { display: flex; gap: 6px; }
+  .demo-comando input { width: 190px; padding: 7px 10px; border: 1px solid rgba(255, 230, 170, .45); border-radius: 8px; background: #100d14; color: #fff1cc; font: 700 18px 'Rajdhani Local', sans-serif; }
+  .demo-controles button { padding: 8px 12px; border: 1px solid rgba(255, 230, 170, .35); border-radius: 8px; background: #241b28; color: #fff1cc; font: 700 18px 'Rajdhani Local', sans-serif; cursor: pointer; }
+  .demo-controles button:hover, .demo-controles button:focus-visible { background: #543824; outline: 2px solid #ffcf8c; outline-offset: 1px; }
+  .demo-acciones { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .demo-acciones button { min-width: 0; white-space: nowrap; }
+  .demo-ayuda, .demo-respuesta { min-width: 0; margin: 0; padding: 2px 4px; color: #d9cdb8; font-size: 16px; line-height: 1.25; }
+  .demo-respuesta { color: #fff1cc; }
+  @media (max-width: 760px) {
+    .demo-cabecera { align-items: stretch; }
+    .demo-comando input { min-width: 0; width: 100%; }
+    .demo-comando { width: 100%; }
+    .demo-acciones { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .demo-acciones button { white-space: normal; }
+  }
+
 </style>
 </head>
 <body data-region="refugio">
@@ -222,6 +250,28 @@
 <div class="clima" id="clima"></div>
 <div class="velo"></div>
 <div class="destello" id="destello"></div>
+<nav class="demo-controles" id="demo-controles" aria-label="Controles de la demo local" hidden>
+  <details class="demo-panel">
+  <summary>DEMO LOCAL · mostrar comandos y controles</summary>
+  <div class="demo-cuerpo">
+  <div class="demo-cabecera"><strong>DEMO LOCAL · nada se guarda ni se envía</strong>
+  <form class="demo-comando" id="demo-form"><label class="sr-only" for="demo-entrada">Comando de chat simulado</label><input id="demo-entrada" value="!mundo" autocomplete="off" spellcheck="false"><button type="submit">Enviar</button></form>
+  </div>
+  <div class="demo-acciones">
+  <button type="button" data-demo="explorar">Simular !explorar</button>
+  <button type="button" data-demo="grupo">Añadir compañía</button>
+  <button type="button" data-demo="encrucijada">Encrucijada</button>
+  <button type="button" data-demo="votar">Votar 2</button>
+  <button type="button" data-demo="victoria">Victoria</button>
+  <button type="button" data-demo="cierre">Cierre</button>
+  <button type="button" data-demo="pausa">Pausar / seguir</button>
+  <button type="button" data-demo="reiniciar">Reiniciar</button>
+  </div>
+  <p class="demo-ayuda">Demo acelerada: cada clic simula un aporte sin espera. En el juego real, una expedicion en solitario dura unos 8 min y puede tardar hasta 20 min.</p>
+  <output class="demo-respuesta" id="demo-respuesta" aria-live="polite">Escribe !mundo, !expedicion, !explorar o !explorar 1 / !explorar 2.</output>
+  </div>
+  </details>
+</nav>
 
 <header class="cabecera">
   <div class="mundo">El Linde del Velo</div>
@@ -442,7 +492,7 @@
       const [sello, titulo, linea] = {
         directo: ['Un momento', 'El Velo espera al directo', fase === 'expedicion' ? `La expedición a ${region.nombre} sigue en ${d.objetivo.actual}/${d.objetivo.meta}.` : 'La Lumbre sigue encendida.'],
         bot: ['Pausa', 'El tiempo se detiene', fase === 'expedicion' ? `La expedición a ${region.nombre} sigue en ${d.objetivo.actual}/${d.objetivo.meta}.` : 'La Lumbre sigue encendida.'],
-        chat: ['Un momento', 'Reconectando con el chat', 'Vuestros !explorar llegarán en cuanto vuelva la conexión.'],
+        chat: ['Un momento', 'Reconectando con el chat', 'Los comandos escritos durante el corte no llegan. Volved a escribir !explorar cuando vuelva la conexión.'],
       }[espera];
       aviso.replaceChildren(texto('div', sello, 'sello'), texto('h1', titulo), texto('p', linea),
         ...(espera === 'chat' ? [] : [texto('p', 'Continuará donde la dejasteis.', 'nota')]));
@@ -528,7 +578,137 @@
 
   pintar(ultimo, true);
 
+  // Demo aislada en el navegador: no consulta el estado real ni llama al motor.
+  const DEMO = new URLSearchParams(location.search).get('demo') === '1';
+  let demoPausado = false;
+  let demoRestante = null;
+  let demoExpediciones = 0, demoRenombre = 0;
+  const demoBase = () => ({ version: 1, modo: 'activo', fase: 'calma',
+    region: { id: 'bosque', nombre: REGIONES.bosque.nombre, objetivo: REGIONES.bosque.meta },
+    objetivo: { actual: 0, meta: 4 }, hasta: null, participantes: [], acciones: [], resultado: null,
+    encrucijada: null, clima: 'ocaso', reliquias: { halladas: 23, total: 60 },
+    cronica: { capitulo: 3, total: 15, titulo: 'La voz bajo las raíces', texto: 'Una voz antigua despierta al otro lado del Velo.', siguienteEn: 2 },
+    ultimoSuceso: '', detenido: null, chatConectado: true });
+  let demo = demoBase();
+  const demoPintar = () => { ultimo = structuredClone(demo); desconectado = false; pintar(ultimo); };
+  function demoExpedicion() {
+    demoPausado = false; demoRestante = null;
+    demo.modo = 'activo'; demo.fase = 'expedicion'; demo.region = { id: 'bosque', nombre: REGIONES.bosque.nombre, objetivo: REGIONES.bosque.meta };
+    demo.objetivo = { actual: 0, meta: 4 }; demo.hasta = new Date(Date.now() + 20 * 60_000).toISOString();
+    demo.participantes = []; demo.acciones = []; demo.resultado = null; demo.encrucijada = null;
+  }
+  function demoVictoria() {
+    const nuevoResultado = demo.fase !== 'resultado' || !demo.resultado?.completada;
+    demoPausado = false; demoRestante = null; demo.modo = 'activo'; demo.fase = 'resultado'; demo.objetivo.actual = demo.objetivo.meta;
+    demo.hasta = new Date(Date.now() + 60_000).toISOString();
+    const participantes = demo.participantes.length ? demo.participantes : [{ nombre: 'Crid4m', aporte: 4 }];
+    demo.participantes = participantes;
+    demo.resultado = { completada: true, hallazgo: REGIONES[demo.region.id].hallazgo,
+      premios: participantes.map((p) => ({ nombre: p.nombre, renombre: 8 })), nueva: true, capitulo: null,
+      arriesgado: demo.encrucijada?.decision === 2 };
+    demo.reliquias = { halladas: 24, total: 60 };
+    if (nuevoResultado) {
+      demoExpediciones++;
+      demoRenombre += participantes.find((p) => p.nombre === 'Crid4m') ? 8 : 0;
+    }
+  }
+  function demoAccion(accion) {
+    if (accion === 'reiniciar') { demo = demoBase(); demoPausado = false; demoRestante = null; demoExpediciones = 0; demoRenombre = 0; }
+    else if (accion === 'explorar') {
+      if (demo.fase !== 'expedicion') demoExpedicion();
+      demo.objetivo.actual = Math.min(demo.objetivo.meta, demo.objetivo.actual + 1);
+      const nombre = 'Crid4m';
+      const participante = demo.participantes.find((p) => p.nombre === nombre);
+      if (participante) participante.aporte++; else demo.participantes.push({ nombre, aporte: 1 });
+      demo.acciones.unshift({ quien: nombre, texto: 'avanza por el sendero de raíces.', at: new Date().toISOString() });
+      if (demo.objetivo.actual >= demo.objetivo.meta) demoVictoria();
+    } else if (accion === 'grupo') {
+      if (demo.fase !== 'expedicion') demoExpedicion();
+      demo.objetivo.meta = 12;
+      for (const nombre of ['Crid4m', 'Ithra', 'Narel', 'Vela', 'Orin', 'Sira', 'Darel', 'Mara']) {
+        if (demo.objetivo.actual >= demo.objetivo.meta) break;
+        demo.participantes.push({ nombre, aporte: 1 }); demo.objetivo.actual++;
+      }
+      demo.acciones.unshift({ quien: 'La compañía', texto: 'avanza unida hacia el santuario.', at: new Date().toISOString() });
+      if (demo.objetivo.actual >= demo.objetivo.meta) demoVictoria();
+    } else if (accion === 'encrucijada') {
+      if (demo.fase !== 'expedicion') demoExpedicion();
+      demo.region = { id: 'marisma', nombre: REGIONES.marisma.nombre, objetivo: REGIONES.marisma.meta };
+      demo.objetivo = { actual: 2, meta: 6 }; demo.encrucijada = { pregunta: '¿Qué camino seguirá la compañía?',
+        opciones: [{ texto: 'Seguir el camino conocido', votos: 0 }, { texto: 'Atravesar el Velo', votos: 0 }],
+        hasta: new Date(Date.now() + 180_000).toISOString(), decision: null };
+      demo.acciones.unshift({ quien: '', texto: 'La compañía encuentra una encrucijada.', at: new Date().toISOString(), suceso: true });
+    } else if (accion === 'votar' && demo.encrucijada) {
+      demo.encrucijada.opciones[1].votos++;
+    } else if (accion === 'victoria') demoVictoria();
+    else if (accion === 'cierre') {
+      if (demo.fase !== 'expedicion') demoExpedicion();
+      demoPausado = false; demoRestante = null; demo.modo = 'activo'; demo.fase = 'resultado'; demo.hasta = new Date(Date.now() + 60_000).toISOString();
+      demo.resultado = { completada: false, hallazgo: null, premios: [], nueva: false, capitulo: null, arriesgado: false };
+    } else if (accion === 'pausa') {
+      if (!demoPausado) {
+        demoRestante = { hasta: demo.hasta ? Math.max(0, Date.parse(demo.hasta) - Date.now()) : null,
+          voto: demo.encrucijada?.hasta ? Math.max(0, Date.parse(demo.encrucijada.hasta) - Date.now()) : null };
+        demoPausado = true; demo.modo = 'pausado'; demo.hasta = null;
+        if (demo.encrucijada) demo.encrucijada.hasta = null;
+      } else {
+        demoPausado = false; demo.modo = 'activo';
+        if (demoRestante && demoRestante.hasta !== null) demo.hasta = new Date(Date.now() + demoRestante.hasta).toISOString();
+        if (demoRestante && demoRestante.voto !== null && demo.encrucijada) demo.encrucijada.hasta = new Date(Date.now() + demoRestante.voto).toISOString();
+        demoRestante = null;
+      }
+    }
+    demoPintar();
+  }
+  function demoComando(entrada) {
+    const comando = entrada.trim().toLowerCase().replace(/\s+/g, ' ');
+    let respuesta;
+    if (comando === '!mundo') {
+      if (demo.modo === 'apagado') respuesta = 'El Velo está cerrado ahora mismo. Esta respuesta es solo una muestra.';
+      else if (demo.modo === 'pausado') respuesta = `El Linde del Velo está en pausa. La expedición sigue en ${demo.objetivo.actual}/${demo.objetivo.meta}.`;
+      else if (demo.fase === 'calma') respuesta = `El Linde del Velo · La compañía descansa en la Última Lumbre. Escribe !explorar para salir hacia ${demo.region.nombre}.`;
+      else if (demo.fase === 'resultado') respuesta = `La compañía vuelve de ${demo.region.nombre}. Próxima salida en ${demo.hasta ? mmss(Date.parse(demo.hasta) - Date.now()) : 'un momento'}.`;
+      else respuesta = `La compañía explora ${demo.region.nombre}: ${demo.objetivo.actual}/${demo.objetivo.meta}. El Velo se cierra en ${mmss(Date.parse(demo.hasta) - Date.now())}.`;
+      respuesta += ` Reliquias de la Lumbre: ${demo.reliquias.halladas}/${demo.reliquias.total}.`;
+    } else if (comando === '!mundo activar') {
+      if (demo.modo === 'pausado') demoAccion('pausa'); else { demo.modo = 'activo'; demoPintar(); }
+      respuesta = 'El mundo está activo en esta demo local.';
+    } else if (comando === '!mundo pausar') {
+      if (demo.modo === 'activo') { demoAccion('pausa'); respuesta = 'El mundo queda en pausa en esta demo local.'; }
+      else respuesta = 'El mundo ya está parado.';
+    } else if (comando === '!mundo apagar') {
+      demo = demoBase(); demo.modo = 'apagado'; demoPausado = false; demoRestante = null; demoPintar();
+      respuesta = 'El mundo está apagado en esta demo local.';
+    } else if (comando === '!expedicion') {
+      const aporte = demo.participantes.find((p) => p.nombre === 'Crid4m')?.aporte ?? 0;
+      respuesta = `Crid4m: ${demoExpediciones} ${demoExpediciones === 1 ? 'expedición' : 'expediciones'} completadas · ${demoRenombre} de renombre · ${aporte} aportes en esta expedición. (Demo)`;
+    } else if (comando === '!explorar') {
+      if (demo.modo !== 'activo') respuesta = 'El mundo está parado; en esta demo, activa o reanuda el mundo primero.';
+      else { demoAccion('explorar'); respuesta = demo.fase === 'resultado'
+        ? `¡Expedición completada! ${demo.resultado.hallazgo} · Crid4m gana 8 de renombre. (Demo)`
+        : `Crid4m aporta un paso: ${demo.objetivo.actual}/${demo.objetivo.meta}. (Demo)`; }
+    } else if (comando === '!explorar 1' || comando === '!explorar 2') {
+      const opcion = Number(comando.at(-1));
+      if (!demo.encrucijada || demo.encrucijada.decision !== null) respuesta = 'No hay una encrucijada abierta para votar. Pulsa Encrucijada en la demo.';
+      else {
+        demo.encrucijada.opciones.forEach((o, i) => { o.votos = i + 1 === opcion ? 1 : 0; });
+        demoPintar(); respuesta = `Voto de Crid4m registrado por la opción ${opcion}. Puedes cambiarlo con !explorar 1 o !explorar 2.`;
+      }
+    } else respuesta = 'Comando de muestra no reconocido. Prueba !mundo, !mundo activar/pausar/apagar, !expedicion, !explorar o !explorar 1/2.';
+    $('demo-respuesta').textContent = respuesta;
+  }
+  if (DEMO) {
+    $('demo-controles').hidden = false;
+    $('demo-controles').addEventListener('click', (event) => {
+      const boton = event.target.closest('button[data-demo]');
+      if (boton) demoAccion(boton.dataset.demo);
+    });
+    $('demo-form').addEventListener('submit', (event) => { event.preventDefault(); demoComando($('demo-entrada').value); });
+    demoPintar();
+  }
+
   async function leerEstado() {
+    if (DEMO) { demoPintar(); return; }
     // Sin respuesta en 5 s cuenta como corte: una consulta colgada no deja la escena congelada.
     const control = new AbortController();
     const limite = setTimeout(() => control.abort(), 5000);

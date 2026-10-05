@@ -44,7 +44,8 @@ if (!w) {
 const latido = columnas.has('latido_ms') ? (w.latido_ms as number | null) : null;
 console.log(`Modo: ${w.modo} · fase: ${w.fase} · expedición ${w.expedicion_id} · ${w.progreso}/${w.meta}`);
 console.log(`Plazo: ${hora(w.hasta_ms as number)}${w.pausado_ms ? ` · CONGELADO desde ${hora(w.pausado_ms as number)}` : ''}`);
-console.log(`Último latido del bot: ${latido ? `${hora(latido)} (${hace(latido)})` : 'nunca (bot anterior a la recuperación)'}`);
+console.log(`Último latido del mundo: ${latido !== null ? `${hora(latido)} (${hace(latido)})`
+  : columnas.has('latido_ms') ? 'aún no hay latido (el mundo no ha estado activo)' : 'sin columna de latido (bot anterior a la recuperación)'}`);
 console.log(`Último suceso: ${w.ultimo_suceso || '—'}`);
 
 const completadas = n('SELECT COUNT(*) AS n FROM mmo_resultados WHERE completada = 1');

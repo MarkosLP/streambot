@@ -14,6 +14,7 @@ import * as interactionLog from '../data/interactions.js';
 import * as loot from '../interactions/loot/index.js';
 import * as jefe from '../interactions/loot/jefe.js';
 import * as arena from '../interactions/loot/arena.js';
+import * as mmo from '../interactions/mmo/index.js';
 import * as terremoto from '../interactions/terremoto.js';
 import type { Rareza } from '../interactions/loot/objetos.js';
 
@@ -532,6 +533,93 @@ async function main(): Promise<void> {
     notas.push(`${bloqueados} respuestas frenadas por el techo por hora (${config.respuestasPerHour} respuestas/hora)`);
     if (enviados.length > config.respuestasPerHour + config.messagesPerHour) fallos.push(`el bot mandó ${enviados.length} mensajes: se saltó el techo por hora`);
     return eventos.length;
+  });
+
+  await prueba('Mundo y Loot: ocho aventureros exploran mientras pelean, consultan y canjean', async (fallos, notas) => {
+    streams.open();
+    mmo.activar();
+    for (const p of GENTE) meter(p, 'Espada oxidada', 'comun');
+    await jefe.invocar({ tipo: 'arana' });
+    const primera = mensaje('ana', '!explorar');
+    const mezcla = [
+      primera, primera, // Streamer.bot puede entregar el mismo mensaje dos veces.
+      ...GENTE.slice(1).map((p) => mensaje(p, '!explorar')),
+      ...GENTE.map((p) => mensaje(p, '!atacar')),
+      mensaje('ana', '!mundo'), mensaje('luis', '!expedicion'),
+      mensaje('pepe', '!inventario'), mensaje('marta', '!top'),
+      canje('sofia', 'Lag'), canje('dani', 'Terremoto'),
+    ];
+    await aLaVez(mezcla, 150);
+    const estado = mmo.estado();
+    if (estado.fase !== 'expedicion' || estado.objetivo.actual !== 8 || estado.objetivo.meta !== 12)
+      fallos.push(`mundo en ${estado.fase} ${estado.objetivo.actual}/${estado.objetivo.meta}; se esperaban ocho aportes únicos y meta 12`);
+    if (estado.participantes.length !== 8) fallos.push(`${estado.participantes.length} participantes en vez de ocho`);
+    const premios = (getDb().prepare('SELECT COUNT(*) n FROM mmo_premios').get() as { n: number }).n;
+    if (premios !== 0) fallos.push(`el mundo entregó ${premios} premios antes de completar`);
+    if (estado.acciones.length !== 3) fallos.push(`${estado.acciones.length} acciones visibles en vez de tres`);
+    notas.push(`mundo ${estado.objetivo.actual}/${estado.objetivo.meta}; ${estado.participantes.length} participantes; Loot y canjes simultáneos`);
+    jefe.reset();
+    mmo.apagar();
+    return mezcla.length;
+  });
+
+  await prueba('Mundo: ráfaga repetida, cierre simultáneo y un premio por persona', async (fallos, notas) => {
+    streams.open();
+    mmo.activar();
+    const salida = GENTE.map((p) => mensaje(p, '!explorar'));
+    await aLaVez([...salida, ...salida], 20);
+    // Avanza el reloj personal de las ocho personas sin esperar dos minutos reales.
+    getDb().prepare('UPDATE mmo_participantes SET ultimo_ms = ?').run(Date.now() - mmo.ACCION_MS);
+    const cierre = GENTE.flatMap((p) => [mensaje(p, '!explorar'), mensaje(p, '!explorar')]);
+    await aLaVez(cierre, 30);
+    const estado = mmo.estado();
+    const premios = getDb().prepare('SELECT twitch_id, COUNT(*) n FROM mmo_premios GROUP BY twitch_id').all() as Array<{ twitch_id: string; n: number }>;
+    if (estado.fase !== 'resultado' || estado.objetivo.actual !== 12 || !estado.resultado?.completada)
+      fallos.push(`cierre del mundo en ${estado.fase} ${estado.objetivo.actual}/${estado.objetivo.meta}`);
+    if (premios.length !== 8 || premios.some((p) => p.n !== 1)) fallos.push(`${premios.length} personas premiadas; alguna recibió un premio duplicado`);
+    const finales = enviados.filter((e) => e.texto.includes('¡Expedición completada')).length;
+    if (finales !== 1) fallos.push(`${finales} anuncios finales en lugar de uno`);
+    notas.push(`${estado.objetivo.actual}/${estado.objetivo.meta}; ${premios.length} premios únicos; ${finales} anuncio final`);
+    mmo.apagar();
+    return salida.length * 2 + cierre.length;
+  });
+
+  await prueba('Mundo: ocho votos simultáneos, Loot y cierre por el camino arriesgado', async (fallos, notas) => {
+    streams.open();
+    mmo.activar();
+    mmo.setAzar(() => 0); // La encrucijada aparece en esta expedición.
+    try {
+      for (const p of GENTE) meter(p, 'Espada oxidada', 'comun');
+      await jefe.invocar({ tipo: 'arana' });
+      const salida = GENTE.map((p) => mensaje(p, '!explorar'));
+      await aLaVez(salida, 40);
+      const abierta = mmo.estado().encrucijada;
+      if (!abierta || abierta.decision !== null) fallos.push('no se abrió la encrucijada tras ocho aportes');
+      const votos = GENTE.map((p, i) => mensaje(p, i < 5 ? '!explorar 2' : '!explorar 1'));
+      const mezcla = [votos[0]!, ...votos, ...GENTE.map((p) => mensaje(p, '!atacar')),
+        mensaje('ana', '!mundo'), mensaje('pepe', '!inventario'), canje('dani', 'Terremoto')];
+      await aLaVez(mezcla, 80);
+      const encrucijada = mmo.estado().encrucijada;
+      const recuento = encrucijada?.opciones.map((o) => o.votos);
+      if (recuento?.[0] !== 3 || recuento[1] !== 5) fallos.push(`votos ${recuento?.join(' a ') ?? 'sin votación'} en vez de 3 a 5`);
+      if (mmo.estado().objetivo.actual !== 8) fallos.push('votar durante la espera sumó pasos a la expedición');
+      getDb().prepare('UPDATE mmo_participantes SET ultimo_ms = ?').run(Date.now() - mmo.ACCION_MS);
+      const cierre = GENTE.map((p) => mensaje(p, '!explorar'));
+      await aLaVez(cierre, 40);
+      const estado = mmo.estado();
+      const premios = getDb().prepare('SELECT twitch_id, COUNT(*) n, renombre FROM mmo_premios GROUP BY twitch_id').all() as Array<{ twitch_id: string; n: number; renombre: number }>;
+      if (estado.fase !== 'resultado' || estado.objetivo.actual !== 14 || estado.objetivo.meta !== 14 || estado.encrucijada?.decision !== 2)
+        fallos.push(`cierre arriesgado en ${estado.fase} ${estado.objetivo.actual}/${estado.objetivo.meta}; decisión ${estado.encrucijada?.decision}`);
+      if (premios.length !== 8 || premios.some((p) => p.n !== 1 || p.renombre < 9)) fallos.push(`${premios.length} premios; faltan o hay duplicados o sin bono`);
+      const finales = enviados.filter((e) => e.texto.includes('¡Expedición completada')).length;
+      if (finales !== 1) fallos.push(`${finales} anuncios finales en lugar de uno`);
+      notas.push(`votos ${recuento?.join(' a ') ?? '?'}; ${estado.objetivo.actual}/${estado.objetivo.meta}; ${premios.length} premios únicos`);
+      jefe.reset();
+      mmo.apagar();
+      return salida.length + mezcla.length + cierre.length;
+    } finally {
+      mmo.setAzar(null);
+    }
   });
 
   // ---------- Resumen ----------

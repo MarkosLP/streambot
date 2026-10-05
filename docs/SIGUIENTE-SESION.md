@@ -2,14 +2,22 @@
 
 Traspaso para la próxima sesión. **Lo primero de todo está en la sección 00.**
 
-## MMO El Linde del Velo: fases 2 y 3 terminadas (2 oct, Claude) — para revisar Codex
+## MMO El Linde del Velo: revisión y demo local (2 oct, Codex)
+
+- OBS no estaba emitiendo. Creada `✦ El Linde del Velo` con `ESC Linde del Velo`; tras la prueba, OBS volvió a `Principal`. El bot del proyecto no estaba arrancado: la fuente mostrará reconexión hasta que se inicie.
+- Laboratorio ampliado con Mundo + Loot simultáneos y cierre con entregas duplicadas: 17 escenarios, 564 eventos, tres semillas sin fallos; TypeScript correcto. Ocho participantes llegaron a 8/12; después 12/12, ocho premios únicos y un solo anuncio final.
+- [Captura real de OBS con ocho aventureros](previews/mmo/demo-ocho-aventureros.png): cinco nombres visibles y «3 aventureros más», sin desbordamiento.
+- Claude resolvió en `2df37ad` el reloj durante cortes del directo, el aviso de Streamer.bot y el orden de las alertas; en `d919600` añadió misiones, reliquias, sucesos, crónica y cielos. Codex verificó 657 pruebas y repitió el laboratorio mixto: 17 escenarios, 562 eventos, sin fallos (semilla 20261003). Corregidos además los textos de `!mundo` en pausa/corte y del cartel de chat desconectado.
+- Claude cerró esos dos pendientes en `e5cd627`: el reloj se congela sin Streamer.bot y un latido en SQLite permite recuperar el tiempo tras un cierre brusco. Codex verificó 660 pruebas, el laboratorio (17/17) y `mmo:informe` sobre la base real: todo en orden, mundo sin usar. Pendiente: la [prueba supervisada con chat real](MMO-PRUEBA-SUPERVISADA.md), sin ejecutar.
+
+## MMO El Linde del Velo: fases 2 y 3 terminadas (2 oct, Claude)
 
 Crid4m pidió a Claude que hiciera también la parte de Codex y que Codex lo revise. Detalle en [MMO-CHAT-ARTE-Y-LORE.md](MMO-CHAT-ARTE-Y-LORE.md), sección «Fases 2 y 3, parte de Codex hecha por Claude».
 
 - Panel → **Mundo**: estado, Activar/Pausar/Apagar, vista previa y «Crear escena en OBS» (`✦ El Linde del Velo`).
 - Tocado del lado de Codex: `server.ts` (`/api/mmo`, `tipo: 'mundo'`), `obs-setup.ts` (`crearEscenaMundo`) y, en el motor, solo `avisarUnaVez` para el aviso de espera y descanso.
 - Pruebas: 652 correctas, TypeScript sin errores; `resistencia.test.ts` nueva (8 h simuladas); pruebas visuales `mmo` y `mundo-panel`.
-- Para usarlo: reiniciar el bot, crear la escena desde el panel y activar el mundo.
+- Para usarlo: arrancar el bot y activar el mundo; la escena de OBS ya está creada.
 
 ## Duelo y jefes en Biblioteca (29 sep, Codex)
 
