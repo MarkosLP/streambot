@@ -79,6 +79,8 @@ export interface EstadoPublico {
   };
   clima: Clima;
   reliquias: { halladas: number; total: number };
+  /** Primer hallazgo de cada región y últimas piezas únicas que guarda la Lumbre. */
+  memoria: { regiones: string[]; piezas: Array<{ nombre: string; region: string }> };
   /** capitulo 0 = prólogo. siguienteEn = expediciones completadas que faltan para el siguiente. */
   cronica: { capitulo: number; total: number; titulo: string; texto: string; siguienteEn: number | null };
   ultimoSuceso: string;
@@ -266,7 +268,7 @@ export function estado(): EstadoPublico {
   const datos = enCurso ? expedicion(w.expedicion_id) : undefined;
   const gente = enCurso ? participantes(w.expedicion_id) : [];
   const acciones = enCurso ? getDb().prepare(
-    'SELECT twitch_id, nombre, texto, at_ms FROM mmo_historial WHERE expedicion_id = ? ORDER BY id DESC LIMIT 3',
+    'SELECT twitch_id, nombre, texto, at_ms FROM mmo_historial WHERE expedicion_id = ? ORDER BY id DESC LIMIT 12',
   ).all(w.expedicion_id) as Array<{ twitch_id: string; nombre: string; texto: string; at_ms: number }> : [];
   const final = w.fase === 'resultado' ? getDb().prepare(
     'SELECT completada, hallazgo FROM mmo_resultados WHERE expedicion_id = ?',
@@ -276,6 +278,18 @@ export function estado(): EstadoPublico {
        JOIN mmo_participantes p ON p.expedicion_id = r.expedicion_id AND p.twitch_id = r.twitch_id
       WHERE r.expedicion_id = ? ORDER BY p.aporte DESC, p.nombre ASC`,
   ).all(w.expedicion_id) as Array<{ nombre: string; renombre: number }> : [];
+  const regionesDescubiertas = getDb().prepare(`SELECT DISTINCT e.region_id AS id FROM mmo_resultados r
+    JOIN mmo_expediciones e ON e.expedicion_id = r.expedicion_id WHERE r.completada = 1`)
+    .all() as Array<{ id: string }>;
+  const piezasGuardadas = getDb().prepare('SELECT reliquia_id FROM mmo_reliquias ORDER BY at_ms DESC, expedicion_id DESC LIMIT 6')
+    .all() as Array<{ reliquia_id: string }>;
+  const piezas = piezasGuardadas.flatMap(({ reliquia_id }) => {
+    const [regionId, misionId, indice] = reliquia_id.split('.');
+    const regionPieza = REGIONES.find((r) => r.id === regionId);
+    const mision = regionPieza?.misiones.find((m) => m.id === misionId);
+    const nombre = mision?.reliquias[Number(indice)];
+    return nombre && regionPieza ? [{ nombre, region: regionPieza.id }] : [];
+  });
   return {
     version: 1,
     modo: w.modo,
@@ -310,6 +324,7 @@ export function estado(): EstadoPublico {
     })(),
     clima: CLIMAS.find((c) => c.id === datos?.clima)?.id ?? 'dia',
     reliquias: { halladas: reliquiasHalladas(), total: TOTAL_RELIQUIAS },
+    memoria: { regiones: regionesDescubiertas.map((r) => r.id), piezas },
     cronica: cronica(),
     ultimoSuceso: w.ultimo_suceso,
     detenido: w.modo === 'activo' ? detenido() : null,

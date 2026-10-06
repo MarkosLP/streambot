@@ -62,7 +62,12 @@ describe('El Linde del Velo', () => {
     assert.equal(mmo.renombre('ana'), 8);
     const premios = getDb().prepare('SELECT COUNT(*) AS n FROM mmo_premios').get() as { n: number };
     assert.equal(premios.n, 1);
-    assert.equal(mmo.estado().acciones.length, 3);
+    assert.equal(mmo.estado().acciones.filter((a) => a.quien === 'ana').length, 4,
+      'el overlay recibe todos los aportes de la expedición para mostrar sus avatares');
+    assert.deepEqual(mmo.estado().memoria.regiones, ['bosque']);
+    assert.equal(mmo.estado().memoria.piezas[0]?.nombre, 'un altar de savia antigua');
+    closeDatabase();
+    assert.deepEqual(mmo.estado().memoria.regiones, ['bosque'], 'las pistas sobreviven al reinicio');
   });
 
   test('al cerrarse el Velo sin completar no se inventa victoria ni premio', () => {

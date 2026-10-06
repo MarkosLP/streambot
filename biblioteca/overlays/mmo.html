@@ -63,6 +63,12 @@
   .velo { position: absolute; inset: 0; pointer-events: none;
     background: linear-gradient(180deg, rgba(6, 5, 9, .78), transparent 22%, transparent 70%, rgba(6, 5, 9, .9)),
                 linear-gradient(270deg, rgba(6, 5, 9, .72), transparent 34%); }
+  .amenaza { position: absolute; z-index: 1; inset: 0; pointer-events: none; opacity: 0; transition: opacity 2s ease;
+    background: radial-gradient(ellipse at 49% 45%, transparent 26%, rgba(91, 85, 120, .24) 52%, rgba(7, 6, 17, .77) 100%); }
+  .amenaza::after { content: ''; position: absolute; inset: 0; opacity: .48; background: radial-gradient(ellipse at 50% 100%, rgba(185, 197, 217, .33), transparent 65%);
+    animation: velo-acerca 7s ease-in-out infinite alternate; }
+  @keyframes velo-acerca { to { transform: scale(1.13) translateY(-16px); } }
+  @media (prefers-reduced-motion: reduce) { .amenaza::after { animation: none; } }
 
   .placa { background: var(--placa); border: 1.5px solid var(--oro-viejo); border-radius: 12px;
     box-shadow: 0 0 0 1px #000, 0 10px 30px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 230, 170, .2); }
@@ -126,6 +132,46 @@
   .acciones[hidden] { display: none; }
   .acciones li.suceso { font-style: italic; color: var(--acento); }
   .acciones li.suceso::before { content: '✦ '; font-style: normal; }
+
+  /* Un personaje representa cada aportación nueva; el globo es texto vivo del motor. */
+  .aventurero { position: absolute; z-index: 3; left: 64px; top: 320px; width: 520px; height: 520px; pointer-events: none; }
+  .aventurero[hidden] { display: none; }
+  .aventurero img { position: absolute; left: 208px; top: 160px; width: 306px; height: 410px; object-fit: contain; object-position: center bottom;
+    filter: drop-shadow(0 15px 14px #000) drop-shadow(0 0 15px rgba(var(--acento-b), .25)); }
+  .aventurero .globo { position: absolute; z-index: 1; left: 0; top: 0; width: 408px; min-height: 112px; padding: 15px 19px 17px;
+    background: linear-gradient(160deg, rgba(21, 15, 20, .97), rgba(9, 8, 13, .97)); border: 2px solid var(--acento); border-radius: 18px;
+    box-shadow: 0 0 0 1px #000, 0 12px 28px #000b, 0 0 22px rgba(var(--acento-b), .22); }
+  .aventurero .globo::after { content: ''; position: absolute; right: 38px; bottom: -18px; width: 28px; height: 28px;
+    background: #100c12; border-right: 2px solid var(--acento); border-bottom: 2px solid var(--acento); transform: rotate(45deg); }
+  .aventurero .nombre { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--oro-claro);
+    font-size: 30px; font-weight: 700; line-height: 1.1; }
+  .aventurero .frase { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; margin-top: 7px;
+    font-size: 25px; font-weight: 600; line-height: 1.15; color: var(--tinta); overflow-wrap: anywhere; }
+  .aventurero.entra { animation: aventurero-entra .55s cubic-bezier(.2, .9, .2, 1) both; }
+  @keyframes aventurero-entra { from { opacity: 0; transform: translateY(30px) scale(.94); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .aventurero.entra { animation: none; } }
+  .mapa-memoria { position: absolute; z-index: 2; left: 64px; top: 245px; width: 410px; padding: 18px 22px 20px; }
+  .mapa-memoria[hidden] { display: none; }
+  .mapa-memoria h2 { margin: 0 0 12px; font-size: 20px; letter-spacing: .25em; text-transform: uppercase; color: var(--oro); }
+  .ruta { display: grid; gap: 12px; }
+  .ruta li { position: relative; list-style: none; padding-left: 32px; color: var(--suave); }
+  .ruta li::before { content: '◇'; position: absolute; left: 0; top: 0; font-size: 27px; line-height: 1; color: var(--oro-viejo); }
+  .ruta li.descubierta::before { content: '◆'; color: var(--acento); text-shadow: 0 0 12px var(--acento); }
+  .ruta strong { display: block; font-size: 22px; color: var(--oro-claro); }
+  .ruta span { display: block; font-size: 17px; font-weight: 600; line-height: 1.13; }
+  .relicario { margin-top: 15px; padding-top: 12px; border-top: 1px solid #ffffff2a; }
+  .relicario h3 { margin: 0 0 8px; font-size: 19px; letter-spacing: .18em; text-transform: uppercase; color: var(--oro); }
+  .relicario ul { display: grid; gap: 5px; margin: 0; padding: 0; }
+  .relicario li { list-style: none; padding-left: 22px; font-size: 18px; font-weight: 600; line-height: 1.1; color: var(--tinta); }
+  .relicario li::before { content: '✦'; margin-left: -22px; margin-right: 7px; color: var(--acento); }
+  .compania-final { position: absolute; z-index: 3; left: 560px; bottom: 100px; width: 800px; display: flex; align-items: flex-end; justify-content: center; gap: 14px; pointer-events: none; }
+  .compania-final[hidden] { display: none; }
+  .compania-final figure { width: 140px; margin: 0; text-align: center; animation: grupo-entra .75s cubic-bezier(.2,.9,.2,1) both; animation-delay: var(--retraso); }
+  .compania-final img { width: 120px; height: 160px; object-fit: contain; object-position: bottom; filter: drop-shadow(0 6px 8px #000); }
+  .compania-final figcaption { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 19px; font-weight: 700; text-shadow: 0 2px 4px #000; }
+  .compania-final .mas { align-self: center; font-size: 22px; font-weight: 700; color: var(--oro-claro); }
+  @keyframes grupo-entra { from { opacity: 0; transform: translateY(55px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .compania-final figure { animation: none; } }
 
   /* En calma, abajo a la izquierda: la Crónica del Velo, que avanza con las expediciones. */
   .cronica { max-width: 900px; padding: 18px 26px 20px; }
@@ -212,6 +258,30 @@
     background: radial-gradient(ellipse at 50% 46%, rgba(var(--acento-b), .55), rgba(var(--acento-b), .12) 40%, transparent 70%); }
   .destello.vivo { animation: destello 1.8s ease-out; }
   @keyframes destello { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; } }
+  /* El cambio de región presenta el nuevo paisaje; cada paso solo deja una estela breve. */
+  .transicion-mundo { position: absolute; z-index: 8; inset: 0; display: grid; place-items: center; pointer-events: none; opacity: 0;
+    background: radial-gradient(ellipse at center, rgba(12, 10, 18, .83) 0%, rgba(7, 6, 10, .91) 70%); }
+  .transicion-mundo.viaje { animation: viaje 2.1s ease-in-out both; }
+  .transicion-mundo .titulo { max-width: 1100px; padding: 26px 58px; text-align: center; font-family: 'Cinzel Decorative Local', Georgia, serif;
+    font-size: 70px; line-height: 1.15; color: var(--oro-claro); text-shadow: 0 4px 0 #000, 0 0 35px var(--acento); }
+  .transicion-mundo .titulo::before { content: '✦'; display: block; margin-bottom: 12px; font: 36px 'Rajdhani Local', sans-serif; color: var(--acento); }
+  @keyframes viaje { 0% { opacity: 0; } 18%, 65% { opacity: 1; } 100% { opacity: 0; } }
+  .estela-paso { position: absolute; z-index: 2; left: 4%; right: 27%; top: 48%; height: 90px; pointer-events: none; opacity: 0;
+    background: linear-gradient(90deg, transparent, rgba(var(--acento-b), .05) 22%, rgba(var(--acento-b), .32) 62%, transparent);
+    filter: blur(12px); transform: skewY(-7deg); }
+  .estela-paso.avanza { animation: paso-luz .8s ease-out both; }
+  @keyframes paso-luz { 0% { opacity: 0; transform: translateX(-260px) skewY(-7deg); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateX(210px) skewY(-7deg); } }
+  /* Seis faroles en el camino de la Marisma: el progreso los enciende sin tapar la escena. */
+  .faroles { position: absolute; z-index: 1; inset: 0; display: none; pointer-events: none; }
+  body[data-region="marisma"] .faroles { display: block; }
+  .farol { position: absolute; left: var(--x); top: var(--y); width: 150px; height: 150px; transform: translate(-50%, -50%) scale(var(--escala));
+    border-radius: 50%; opacity: 0; mix-blend-mode: screen; transition: opacity .7s ease;
+    background: radial-gradient(circle, #fff1bbbf 0 3%, #ffe6a894 8%, #f4b86850 23%, #7ce5cc31 42%, transparent 70%); }
+  .farol.encendido { opacity: .9; }
+  .farol.nuevo { animation: farol-prende 1.2s ease-out; }
+  @keyframes farol-prende { 0% { filter: brightness(.35); } 32% { filter: brightness(2.3); } 100% { filter: brightness(1); } }
+  @media (prefers-reduced-motion: reduce) { .farol.nuevo { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .transicion-mundo.viaje, .estela-paso.avanza { animation: none; } }
   @media (prefers-reduced-motion: reduce) { .acciones li.nueva, .barra i.nuevo, .cuenta b.sube, .centro.revela, .destello.vivo { animation: none; } }
 
   /* Controles exclusivos de ?demo=1: nunca aparecen en la fuente normal de OBS. */
@@ -249,7 +319,11 @@
 <div class="ambiente" id="ambiente"></div>
 <div class="clima" id="clima"></div>
 <div class="velo"></div>
+<div class="amenaza" id="amenaza"></div>
 <div class="destello" id="destello"></div>
+<div class="estela-paso" id="estela-paso"></div>
+<div class="faroles" id="faroles" aria-hidden="true"></div>
+<div class="transicion-mundo" id="transicion-mundo"><div class="titulo" id="transicion-titulo"></div></div>
 <nav class="demo-controles" id="demo-controles" aria-label="Controles de la demo local" hidden>
   <details class="demo-panel">
   <summary>DEMO LOCAL · mostrar comandos y controles</summary>
@@ -301,9 +375,20 @@
   </div>
 </aside>
 
+<aside class="mapa-memoria placa" id="mapa-memoria" hidden>
+  <h2>El rastro del Velo</h2>
+  <ol class="ruta" id="ruta"></ol>
+  <div class="relicario"><h3>Reliquias en la Lumbre</h3><ul id="piezas"></ul></div>
+</aside>
+
 <div class="chispas" id="chispas"></div>
 <section class="encrucijada placa" id="encrucijada" hidden></section>
 <section class="centro" id="centro" hidden><div class="halo"></div><div class="aviso placa" id="aviso"></div></section>
+<div class="aventurero" id="aventurero" hidden aria-live="polite">
+  <img id="aventurero-imagen" alt="">
+  <div class="globo"><strong class="nombre" id="aventurero-nombre"></strong><span class="frase" id="aventurero-frase"></span></div>
+</div>
+<div class="compania-final" id="compania-final" hidden></div>
 
 <footer class="pie">
   <div class="cronica placa" id="cronica" hidden></div>
@@ -377,11 +462,103 @@
   let encrucijadaVista = null; // para animar solo la encrucijada que acaba de abrirse
   const accionesVistas = new Set();
   const claveAccion = (a) => `${a.at}|${a.quien}|${a.texto}`;
+  const AVATARES = ['guardabosques.png', 'guardian-cantera.png', 'farera-marisma.png', 'explorador-errante.png', 'sabio-farolero.png'];
+  for (const archivo of AVATARES) new Image().src = `../imagenes/mmo/avatares/${archivo}`;
+  const avatarDe = (nombre) => {
+    let codigo = 0;
+    for (const letra of nombre.toLocaleLowerCase('es-ES')) codigo = (codigo * 31 + letra.codePointAt(0)) >>> 0;
+    return AVATARES[codigo % AVATARES.length];
+  };
+  const PISTAS = [
+    { id: 'bosque', nombre: 'Fronda Ámbar', pista: 'Una raíz señala las antiguas canteras.' },
+    { id: 'cantera', nombre: 'Canteras del Eco', pista: 'La piedra habla de una luz bajo la marisma.' },
+    { id: 'marisma', nombre: 'Marisma de los Faroles', pista: 'La torre apunta a la Última Lumbre.' },
+  ];
+  function pintarMemoria(d, visible) {
+    $('mapa-memoria').hidden = !visible;
+    if (!visible) return;
+    const descubiertas = new Set(d.memoria?.regiones || []);
+    $('ruta').replaceChildren(...PISTAS.map((pista) => {
+      const li = document.createElement('li');
+      if (descubiertas.has(pista.id)) li.className = 'descubierta';
+      li.append(texto('strong', pista.nombre), texto('span', descubiertas.has(pista.id) ? pista.pista : 'Pista por descubrir'));
+      return li;
+    }));
+    $('piezas').replaceChildren(...((d.memoria?.piezas || []).length
+      ? d.memoria.piezas.map((pieza) => texto('li', pieza.nombre))
+      : [texto('li', 'La colección espera su primer hallazgo.') ]));
+  }
+  function pintarCompaniaFinal(d) {
+    const caja = $('compania-final');
+    const nombres = d.fase === 'resultado' && d.resultado?.completada ? d.participantes.map((p) => p.nombre) : [];
+    if (nombres.length < 2) { caja.hidden = true; caja.dataset.clave = ''; return; }
+    const clave = claveResultado(d);
+    caja.hidden = false;
+    if (caja.dataset.clave === clave) return;
+    caja.dataset.clave = clave;
+    caja.replaceChildren(...nombres.slice(0, 4).map((nombre, i) => {
+      const figure = document.createElement('figure');
+      figure.style.setProperty('--retraso', `${i * .16}s`);
+      const img = document.createElement('img');
+      img.src = `../imagenes/mmo/avatares/${avatarDe(nombre)}`;
+      img.alt = '';
+      figure.append(img, texto('figcaption', nombre));
+      return figure;
+    }), ...(nombres.length > 4 ? [texto('span', `+${nombres.length - 4} más`, 'mas')] : []));
+    contar('companias');
+  }
+  const colaAventureros = [];
+  let tiempoAventurero;
+  function mostrarSiguienteAventurero() {
+    const accion = colaAventureros.shift();
+    if (!accion) { $('aventurero').hidden = true; return; }
+    $('aventurero-imagen').src = `../imagenes/mmo/avatares/${avatarDe(accion.quien)}`;
+    $('aventurero-nombre').textContent = accion.quien;
+    $('aventurero-frase').textContent = accion.texto;
+    $('aventurero').hidden = false;
+    reaccionar('entra', $('aventurero'));
+    tiempoAventurero = setTimeout(mostrarSiguienteAventurero, 5200);
+    contar('avatares');
+  }
+  function anadirAventureros(acciones) {
+    if (!acciones.length) return;
+    const ocupado = !$('aventurero').hidden;
+    colaAventureros.push(...acciones);
+    if (colaAventureros.length > 12) colaAventureros.splice(0, colaAventureros.length - 12);
+    if (!ocupado) mostrarSiguienteAventurero();
+  }
+  function ocultarAventurero() {
+    clearTimeout(tiempoAventurero);
+    colaAventureros.length = 0;
+    $('aventurero').hidden = true;
+  }
   const claveResultado = (d) => d.fase === 'resultado'
     ? `${d.region.id}|${d.resultado?.completada}|${d.objetivo.actual}/${d.objetivo.meta}|${d.acciones?.[0]?.at ?? ''}` : null;
   // Cuántas reacciones ha habido (para las pruebas: una clase de animación dura solo hasta la siguiente consulta).
   const contar = (que) => { const ds = document.documentElement.dataset; ds[que] = String(Number(ds[que] || 0) + 1); };
   function reaccionar(clase, el) { el.classList.remove(clase); void el.offsetWidth; el.classList.add(clase); }
+  const PUESTOS_FAROLES = [[2, 61, .65], [20, 60, .8], [29, 69, 1], [43, 82, .8], [59, 71, 1], [68, 70, .9]];
+  $('faroles').replaceChildren(...PUESTOS_FAROLES.map(([x, y, escala]) => {
+    const farol = document.createElement('i');
+    farol.className = 'farol';
+    farol.style.cssText = `--x:${x}%;--y:${y}%;--escala:${escala}`;
+    return farol;
+  }));
+  function pintarFaroles(d, antes, lugar) {
+    const faroles = $('faroles').children;
+    const encendidos = lugar === 'marisma' ? Math.min(faroles.length, Math.ceil(faroles.length * d.objetivo.actual / Math.max(1, d.objetivo.meta))) : 0;
+    const previos = antes?.region.id === 'marisma' ? Math.ceil(faroles.length * antes.objetivo.actual / Math.max(1, antes.objetivo.meta)) : encendidos;
+    for (let i = 0; i < faroles.length; i++) {
+      faroles[i].classList.toggle('encendido', i < encendidos);
+      faroles[i].classList.remove('nuevo');
+      if (i >= previos && i < encendidos) reaccionar('nuevo', faroles[i]);
+    }
+  }
+  function presentarMundo(nombre) {
+    $('transicion-titulo').textContent = nombre;
+    reaccionar('viaje', $('transicion-mundo'));
+    contar('viajes');
+  }
   /** Una sola ráfaga de chispas desde el cartel al completar; se retiran solas. */
   function chispas() {
     const caja = $('chispas');
@@ -421,10 +598,17 @@
     const lugar = fase === 'calma' || cerrado ? 'refugio' : (REGIONES[d.region.id] ? d.region.id : 'bosque');
     document.body.dataset.region = lugar;   // en la Lumbre, el color es el del fuego
     ponerLugar(lugar);
+    pintarFaroles(d, antes, lugar);
+    if (antes && !espera && d.modo === 'activo' && d.region.id !== antes.region.id) presentarMundo(region.nombre);
     const enLumbre = fase === 'calma' || cerrado;
     const cielo = enLumbre ? null : CIELOS[d.clima];
     document.body.dataset.clima = enLumbre ? 'dia' : d.clima || 'dia';
+    const restante = d.hasta ? Date.parse(d.hasta) - Date.now() : Infinity;
+    $('amenaza').style.opacity = !desconectado && !espera && d.modo === 'activo' && fase === 'expedicion' && restante < 4 * 60_000
+      ? String(Math.max(0, Math.min(.85, (4 * 60_000 - restante) / (4 * 60_000) * .85))) : '0';
     $('lugar').replaceChildren(enLumbre ? 'La Última Lumbre' : region.nombre, ...(cielo ? [texto('span', ` · ${cielo}`, 'cielo')] : []));
+    pintarMemoria(d, !desconectado && d.modo === 'activo' && fase === 'calma' && !espera);
+    pintarCompaniaFinal(d);
     // La memoria del mundo: la colección y la crónica (si el bot es anterior a ellas, no se enseñan).
     if (d.reliquias) {
       $('reliquias').textContent = `${d.reliquias.halladas} / ${d.reliquias.total}`;
@@ -459,7 +643,7 @@
     const desde = subio ? previo : d.objetivo.actual;
     $('barra').replaceChildren(...Array.from({ length: d.objetivo.meta }, (_, i) =>
       texto('i', '', i < d.objetivo.actual ? `lleno${i >= desde ? ' nuevo' : ''}` : '')));
-    if (subio) { reaccionar('sube', $('actual')); contar('segmentos'); }
+    if (subio) { reaccionar('sube', $('actual')); reaccionar('avanza', $('estela-paso')); contar('segmentos'); }
     $('reloj').replaceChildren(...(d.hasta && d.modo === 'activo' && !congelado
       ? [fase === 'resultado' ? 'Nueva salida en ' : 'El Velo se cierra en ', texto('b', mmss(new Date(d.hasta) - Date.now()))]
       : congelado ? ['El tiempo está ', texto('b', 'detenido')]
@@ -471,14 +655,26 @@
         ...(resto > 0 ? [texto('li', `y ${resto} ${resto === 1 ? 'aventurero' : 'aventureros'} más`, 'vacia')] : [])]
       : [texto('li', 'Aún nadie ha salido. Basta con una persona.', 'vacia')]));
     // Al cargar, las acciones que ya había no se animan.
-    const acciones = (d.acciones || []).slice(0, 3);
-    $('acciones').replaceChildren(...acciones.map((a) => {
+    const acciones = (d.acciones || []).slice(0, 12);
+    const aportesNuevos = [];
+    $('acciones').replaceChildren(...acciones.slice(0, 3).map((a) => {
       const li = document.createElement('li');
       if (a.suceso) { li.className = 'suceso'; li.append(a.texto); } else li.append(texto('b', a.quien), ` ${a.texto}`);
       const clave = claveAccion(a);
       if (antes && !accionesVistas.has(clave)) { li.classList.add('nueva'); contar('acciones'); }
       return li;
     }));
+    if (antes) for (const a of acciones) {
+      if (!a.suceso && !accionesVistas.has(claveAccion(a)) && Date.now() - Date.parse(a.at) < 12000) aportesNuevos.push(a);
+    }
+    if (desconectado || d.modo !== 'activo' || fase === 'calma' || (fase === 'resultado' && d.resultado?.completada && d.participantes.length >= 2)) ocultarAventurero();
+    else {
+      // El último aporte da paso al cartel final: su personaje tiene prioridad sobre la cola.
+      if (fase === 'resultado' && aportesNuevos.length) {
+        ocultarAventurero();
+        anadirAventureros([aportesNuevos[0]]);
+      } else anadirAventureros(aportesNuevos.reverse());
+    }
     if (!desconectado) for (const a of acciones) accionesVistas.add(claveAccion(a));
     while (accionesVistas.size > 60) accionesVistas.delete(accionesVistas.values().next().value);
 
@@ -582,11 +778,12 @@
   const DEMO = new URLSearchParams(location.search).get('demo') === '1';
   let demoPausado = false;
   let demoRestante = null;
-  let demoExpediciones = 0, demoRenombre = 0;
+  let demoExpediciones = 0, demoRenombre = 0, demoAportes = 0;
   const demoBase = () => ({ version: 1, modo: 'activo', fase: 'calma',
     region: { id: 'bosque', nombre: REGIONES.bosque.nombre, objetivo: REGIONES.bosque.meta },
     objetivo: { actual: 0, meta: 4 }, hasta: null, participantes: [], acciones: [], resultado: null,
     encrucijada: null, clima: 'ocaso', reliquias: { halladas: 23, total: 60 },
+    memoria: { regiones: ['bosque'], piezas: [{ nombre: 'una campana de madera petrificada', region: 'bosque' }] },
     cronica: { capitulo: 3, total: 15, titulo: 'La voz bajo las raíces', texto: 'Una voz antigua despierta al otro lado del Velo.', siguienteEn: 2 },
     ultimoSuceso: '', detenido: null, chatConectado: true });
   let demo = demoBase();
@@ -607,27 +804,31 @@
       premios: participantes.map((p) => ({ nombre: p.nombre, renombre: 8 })), nueva: true, capitulo: null,
       arriesgado: demo.encrucijada?.decision === 2 };
     demo.reliquias = { halladas: 24, total: 60 };
+    if (!demo.memoria.regiones.includes(demo.region.id)) demo.memoria.regiones.push(demo.region.id);
+    if (nuevoResultado) demo.memoria.piezas.unshift({ nombre: demo.resultado.hallazgo, region: demo.region.id });
     if (nuevoResultado) {
       demoExpediciones++;
       demoRenombre += participantes.find((p) => p.nombre === 'Crid4m') ? 8 : 0;
     }
   }
   function demoAccion(accion) {
-    if (accion === 'reiniciar') { demo = demoBase(); demoPausado = false; demoRestante = null; demoExpediciones = 0; demoRenombre = 0; }
+    if (accion === 'reiniciar') { demo = demoBase(); demoPausado = false; demoRestante = null; demoExpediciones = 0; demoRenombre = 0; demoAportes = 0; ocultarAventurero(); }
     else if (accion === 'explorar') {
       if (demo.fase !== 'expedicion') demoExpedicion();
       demo.objetivo.actual = Math.min(demo.objetivo.meta, demo.objetivo.actual + 1);
-      const nombre = 'Crid4m';
+      const nombre = ['Crid4m', 'Ithra', 'Vela'][demoAportes++ % 3];
       const participante = demo.participantes.find((p) => p.nombre === nombre);
       if (participante) participante.aporte++; else demo.participantes.push({ nombre, aporte: 1 });
-      demo.acciones.unshift({ quien: nombre, texto: 'avanza por el sendero de raíces.', at: new Date().toISOString() });
+      demo.acciones.unshift({ quien: nombre, texto: ['aparta una cortina de raíces.', 'sigue un rastro de brasas.', 'trepa a un tronco caído para mirar lejos.'][(demoAportes - 1) % 3], at: new Date().toISOString() });
       if (demo.objetivo.actual >= demo.objetivo.meta) demoVictoria();
     } else if (accion === 'grupo') {
       if (demo.fase !== 'expedicion') demoExpedicion();
       demo.objetivo.meta = 12;
       for (const nombre of ['Crid4m', 'Ithra', 'Narel', 'Vela', 'Orin', 'Sira', 'Darel', 'Mara']) {
         if (demo.objetivo.actual >= demo.objetivo.meta) break;
-        demo.participantes.push({ nombre, aporte: 1 }); demo.objetivo.actual++;
+        const presente = demo.participantes.find((p) => p.nombre === nombre);
+        if (presente) presente.aporte++; else demo.participantes.push({ nombre, aporte: 1 });
+        demo.objetivo.actual++;
       }
       demo.acciones.unshift({ quien: 'La compañía', texto: 'avanza unida hacia el santuario.', at: new Date().toISOString() });
       if (demo.objetivo.actual >= demo.objetivo.meta) demoVictoria();
@@ -705,6 +906,12 @@
     });
     $('demo-form').addEventListener('submit', (event) => { event.preventDefault(); demoComando($('demo-entrada').value); });
     demoPintar();
+    // Captura local en OBS: una aportación simulada, sin API ni chat real.
+    const auto = new URLSearchParams(location.search).get('auto');
+    if (auto === 'avatar' || auto === 'world') demoAccion('explorar');
+    if (auto === 'world') demoAccion('encrucijada');
+    if (auto === 'faroles') { demoAccion('encrucijada'); demoAccion('explorar'); }
+    if (auto === 'group') { demoAccion('grupo'); demoAccion('victoria'); }
   }
 
   async function leerEstado() {

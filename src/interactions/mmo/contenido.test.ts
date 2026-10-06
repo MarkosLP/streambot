@@ -105,6 +105,8 @@ test('200 expediciones: misiones sin repetir antes de tiempo, colección complet
 
   const e = mmo.estado();
   assert.deepEqual(e.reliquias, { halladas: TOTAL_RELIQUIAS, total: TOTAL_RELIQUIAS }, 'con 200 expediciones se completa la colección');
+  assert.deepEqual(new Set(e.memoria.regiones), new Set(['bosque', 'cantera', 'marisma']), 'las tres pistas reflejan regiones completadas');
+  assert.equal(e.memoria.piezas.length, 6, 'el expositor muestra solo las seis reliquias únicas más recientes');
   // Hasta completar cada misión dos veces, todas las reliquias son nuevas: 60 de las primeras 60 de cada… sin repetidas antes de tiempo.
   const nuevas = getDb().prepare('SELECT expedicion_id FROM mmo_expediciones WHERE reliquia_nueva = 1 ORDER BY expedicion_id').all() as Array<{ expedicion_id: number }>;
   assert.equal(nuevas.length, TOTAL_RELIQUIAS);

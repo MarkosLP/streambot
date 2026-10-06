@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<title>Paneles de Twitch · variantes épicas</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { width: 640px; margin: 0; }
+  body { font-family: Arial, sans-serif; }
+  .panel { position: relative; width: 640px; height: var(--alto); overflow: hidden; color: #fff6e5; background: #101323 var(--marco) center / 640px var(--alto) no-repeat; }
+  .panel.cielo { --oro: #ffe1a0; --luz: #f6f7ed; --linea: #e8c77c; --placa: #0b2447dc; }
+  .panel.velo { --oro: #f3d28d; --luz: #f2e8e1; --linea: #bd8e61; --placa: #211624dc; }
+  .contenido { position: absolute; top: 270px; left: 47px; right: 47px; bottom: 132px; }
+  h1 { margin: 0; color: var(--oro); font: bold 40px/1 Georgia, serif; text-align: center; text-shadow: 0 2px 4px #000, 0 0 10px #000; letter-spacing: 1px; }
+  .subtitulo { margin: 5px 0 12px; color: var(--luz); font: bold 17px/1.1 Arial, sans-serif; text-align: center; text-shadow: 0 2px 3px #000; }
+  h2 { display: flex; align-items: center; gap: 8px; margin: 11px 0 6px; color: var(--oro); font: bold 18px Georgia, serif; letter-spacing: .5px; text-shadow: 0 1px 3px #000; }
+  h2::after { content: ''; flex: 1; height: 5px; background: linear-gradient(90deg, var(--linea), transparent) left center / 100% 1px no-repeat; }
+  .cuadricula { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 8px; }
+  .placa { min-width: 0; border: 1px solid var(--linea); border-radius: 5px; background: linear-gradient(180deg, #ffffff18, #0006), var(--placa); box-shadow: inset 0 1px 0 #fff7, inset 0 0 0 2px #0005, 0 2px 5px #000a; }
+  .comando { height: 46px; padding: 4px 9px; }
+  .comando b { display: block; color: var(--oro); font: bold 20px/1.06 Consolas, monospace; letter-spacing: -.7px; white-space: nowrap; }
+  .comando span { display: block; margin-top: 2px; color: var(--luz); font: bold 15px/1.04 Arial, sans-serif; white-space: nowrap; }
+  .lista { display: grid; gap: 6px; }
+  .recompensa { display: grid; grid-template-columns: 36px 1fr auto; gap: 9px; align-items: center; height: 55px; padding: 6px 11px; }
+  .simbolo { color: var(--oro); font: bold 25px Georgia, serif; text-align: center; text-shadow: 0 0 8px var(--linea); }
+  .recompensa b { display: block; font-size: 20px; }
+  .recompensa small { display: block; margin-top: 3px; font-size: 15px; color: var(--luz); }
+  .recompensa strong { color: var(--oro); font: bold 22px Georgia, serif; }
+  .dato { padding: 8px 10px; color: var(--luz); font-size: 17px; line-height: 1.1; }
+  .dato strong { color: var(--oro); }
+  .jefe { display: flex; align-items: center; gap: 7px; height: 73px; padding: 5px 7px; }
+  .jefe img { width: 61px; height: 61px; flex: none; object-fit: cover; border: 2px ridge var(--oro); border-radius: 50%; box-shadow: 0 0 8px #000; }
+  .jefe b { display: block; color: var(--luz); font-size: 16px; line-height: 1.05; }
+  .jefe span { display: block; margin-top: 4px; color: var(--oro); font-size: 14px; }
+  .recompensas .contenido, .jefes .contenido { top: 265px; }
+  .recompensas .subtitulo, .jefes .subtitulo { margin-bottom: 14px; }
+  .loot .lista { gap: 7px; }
+  .loot .dato { padding: 7px 10px; font-size: 17px; }
+  .mundo .dato { margin-top: 8px; padding: 10px; font-size: 18px; }
+  .mundo .comando { height: 51px; }
+  .aviso { margin-top: 12px; color: var(--oro); font: bold 17px/1.2 Georgia, serif; text-align: center; text-shadow: 0 2px 3px #000; }
+</style>
+<main id="raiz"></main>
+<script>
+const q = new URLSearchParams(location.search);
+const tema = q.get('tema') === 'velo' ? 'velo' : 'cielo';
+const panel = q.get('panel') || 'comandos';
+const alturas = { comandos: 1070, recompensas: 840, loot: 1000, jefes: 920, mundo: 840 };
+const titulos = { comandos: ['COMANDOS', 'Escríbelos en el chat'], recompensas: ['RECOMPENSAS', 'Canjea tus Oros, los puntos del canal'], loot: ['LOOT DEL CHAT', 'Botín por participar en el directo'], jefes: ['JEFES DE RAID', '¡Escribe !atacar cuando aparezcan!'], mundo: ['EL LINDE DEL VELO', 'Una aventura que vive en el chat'] };
+if (!alturas[panel]) throw Error('Panel desconocido');
+const raiz = document.querySelector('#raiz');
+raiz.className = `panel ${tema} ${panel}`;
+raiz.style.setProperty('--alto', `${alturas[panel]}px`);
+raiz.style.setProperty('--marco', `url('arte/${tema}-marco-${panel}.jpg')`);
+const caja = (contenido, clase = '') => `<div class="placa ${clase}">${contenido}</div>`;
+const comandos = lista => `<div class="cuadricula">${lista.map(([comando, descripcion]) => caja(`<b>${comando}</b><span>${descripcion}</span>`, 'comando')).join('')}</div>`;
+const ayudaLoot = [
+  ['!loot', 'Cómo funciona'], ['!pj', 'Tu ficha'], ['!inventario', 'Tu mochila'], ['!poder', 'Tu poder y duelos'],
+  ['!top', 'Podio del mes'], ['!temporada', 'Puntos y premios'], ['!evento', 'Evento semanal'], ['!duelo nombre', 'Reta a alguien'],
+  ['!dar ana 2', 'Regala un objeto'], ['!usar', 'Usa un objeto mágico'], ['!atacar', 'Pega al jefe'], ['!forjar', '3 iguales → 1 mejor'],
+  ['!presumir', 'Muestra tu mejor pieza'], ['!coleccion', 'Colección y títulos'], ['!purificar', 'Limpia un maldito'],
+];
+const ayudaChat = [['!cancion', 'Qué música suena'], ['!pregunta', 'Pregúntale a la IA'], ['!incomoda', 'Pregunta para subs']];
+const recompensas = [
+  ['✚', 'Poción de vida', 'Bebe agua; permite !purificar', '500'], ['♫', 'Grito de guerra', 'Cae un cofre de armas', '750'],
+  ['◆', 'Cofre del tesoro', 'Botín mejorado al momento', '1.500'], ['✦', 'Maldición', 'Blanco y negro + objeto maldito', '2.500'],
+  ['◈', 'Terremoto', 'Tiembla y sale un jefe', '3.000'], ['⌛', 'Lag', 'Congela imagen y jefe', '5.000'],
+];
+const jefes = [
+  ['dragon', 'Dragón de Escarcha', 'Aliento helado'], ['esqueleto', 'Rey Esqueleto', 'Alzar a los muertos'],
+  ['hidra', 'Hidra del Pantano', 'Mordisco venenoso'], ['golem', 'Gólem de Obsidiana', 'Terremoto'],
+  ['liche', 'Liche sin Nombre', 'Drenar alma'], ['arana', 'Araña Reina', 'Telaraña'],
+  ['kraken', 'Kraken del Foso', 'Tentáculo'], ['minotauro', 'Minotauro con Resaca', 'Vomitona'],
+  ['tanque', 'Tanque que no sabe tanquear', 'Provocación fallida'], ['lag', 'Lag Primigenio', 'Desconexión'],
+];
+const loot = [
+  '<strong>Cofre cada 20–30 min:</strong> para alguien que haya escrito hace poco.',
+  '<strong>Cuatro rarezas:</strong> común, raro, épico y legendario.',
+  '<strong>Fidelidad:</strong> tres directos seguidos traen un cofre especial.',
+  '<strong>Temporada:</strong> podio mensual, premios y títulos.',
+  '<strong>Jefes:</strong> !atacar; botín para quien golpee si cae.',
+  '<strong>Subs y regalos:</strong> cofres y apoyo en los combates.',
+  '<strong>Bits:</strong> 300 dan cofre; 500 pueden invocar jefe sin uno activo.',
+  '<strong>Raids:</strong> cofre para quien la trae; con 3+ sale un jefe.',
+];
+let cuerpo = '';
+if (panel === 'comandos') cuerpo = '<h2>LOOT</h2>' + comandos(ayudaLoot) + '<h2>CHAT Y DIRECTO</h2>' + comandos(ayudaChat);
+if (panel === 'recompensas') cuerpo = `<div class="lista">${recompensas.map(([icono, nombre, descripcion, precio]) => caja(`<div class="simbolo">${icono}</div><div><b>${nombre}</b><small>${descripcion}</small></div><strong>${precio}</strong>`, 'recompensa')).join('')}</div>`;
+if (panel === 'loot') cuerpo = '<h2>BOTÍN Y PROGRESO</h2>' + `<div class="lista">${loot.slice(0, 4).map(t => caja(t, 'dato')).join('')}</div>` + '<h2>JEFES Y APOYOS</h2>' + `<div class="lista">${loot.slice(4).map(t => caja(t, 'dato')).join('')}</div>`;
+if (panel === 'jefes') cuerpo = `<div class="cuadricula">${jefes.map(([imagen, nombre, ataque]) => caja(`<img src="../../biblioteca/imagenes/jefes/${imagen}.png" alt=""><div><b>${nombre}</b><span>${ataque}</span></div>`, 'jefe')).join('')}</div>`;
+if (panel === 'mundo') cuerpo = '<h2>JUEGA EN EL CHAT</h2>' + comandos([
+  ['!mundo', 'Estado del Velo'], ['!explorar', 'Inicia o aporta un paso'],
+  ['!expedicion', 'Consulta tu renombre'], ['!explorar 1', 'Vota por la opción 1'], ['!explorar 2', 'Vota por la opción 2'],
+]) + caja('<strong>Un viaje a tu ritmo:</strong> una sola persona puede completar una expedición. Si el directo se detiene, el tiempo del mundo también se detiene.', 'dato')
+  + '<div class="aviso">✦ La compañía espera al otro lado del Velo ✦</div>';
+raiz.innerHTML = `<div class="contenido"><h1>${titulos[panel][0]}</h1><p class="subtitulo">${titulos[panel][1]}</p>${cuerpo}</div>`;
+</script>
+</html>

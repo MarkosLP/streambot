@@ -18,6 +18,16 @@ En tu canal de Twitch → **Acerca de** → **Editar paneles** → **+** → **A
 
 Orden recomendado: `comandos.jpg`, `recompensas.jpg`, `loot.jpg`, `jefes.jpg`.
 
+## Nuevas variantes (5 oct 2026)
+
+Hay dos juegos completos adicionales en `biblioteca/imagenes/twitch/paneles/cielo/` y `biblioteca/imagenes/twitch/paneles/velo/`. Cada juego tiene los cuatro JPG originales con sus **dimensiones exactas**: Comandos 640×1070, Recompensas 640×840, Loot 640×1000 y Jefes 640×920. Incluye además un quinto panel del MMO, Mundo, de 640×840. Todos pesan menos de 1 MB. **Cielo** usa islas flotantes y colores claros; **Velo** usa un santuario crepuscular, runas y tonos violeta. Los originales de taberna siguen intactos en la raíz de `paneles/`.
+
+Los marcos ilustrados completos están en `docs/paneles/arte/`. El texto, los precios documentados y la composición están en `docs/paneles/variantes-epicas.html`; se exportan con `node docs/paneles/exportar-variantes.mjs` (requiere Edge e ImageMagick). Así se pueden corregir palabras y volver a generar los JPG sin pedir otra imagen a la IA.
+
+La revisión de comandos incorporó `!cancion` a Comandos. El panel Mundo contiene `!mundo`, `!explorar`, `!explorar 1`, `!explorar 2` y `!expedicion`. El panel Loot actualiza la ayuda de bits: sin jefe, desde 300 bits hay cofre y desde 500 puede invocarse un jefe. Los precios de Recompensas se copiaron de los paneles existentes y de las guías del proyecto; **comprueba sus costes actuales en Twitch antes de subir cualquier variante** porque el proyecto no guarda el precio real del canje de Cofre del tesoro.
+
+Para cambiar de tema, sube los cuatro JPG de una misma carpeta en Twitch → Acerca de → Editar paneles. El quinto panel Mundo es opcional. Esta operación es manual: generar los archivos locales no modifica el canal.
+
 ## Rehacer uno
 
 Si cambia un comando, un precio o un jefe, hay que volver a pintar **ese** panel. Cada imagen cuesta dinero (OpenAI): se genera solo el que cambia.
