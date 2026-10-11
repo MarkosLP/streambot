@@ -662,9 +662,9 @@
         <div class="ovl-cols">
           <section class="ovl-bloque">
             <h3>Alertas</h3>
-            <p class="nota">Follows y suscripciones (también resubs y regalos) se gestionan en Streamlabs. Aquí solo quedan bits y raids. «Emitir prueba» envía un aviso real al overlay, sin sumar a los contadores.</p>
+            <p class="nota">Suscripciones (también resubs y regalos) se gestionan en Streamlabs. Los follows pueden salir aquí con la animación de captura: si los enciendes, apaga los de Streamlabs para que no salgan dos veces. «Emitir prueba» envía un aviso real al overlay, sin sumar a los contadores.</p>
             <div class="overlay-vista ovl-vista" id="o-vista-alertas"><iframe src="/biblioteca/overlays/alertas.html?demo=1&amp;volumen=0&amp;encuadre=1" sandbox="allow-scripts" title="Prueba local de alertas" tabindex="-1"></iframe></div>
-            <p class="nota" id="o-prueba-estado" role="status">Vista ampliada · ejemplos sin sonido. «Ver aquí» reproduce solo en este panel.</p>
+            <div class="ovl-vista-pie"><p class="nota" id="o-prueba-estado" role="status">Vista ampliada · ejemplos sin sonido. «Ver aquí» reproduce solo en este panel.</p><button class="boton pequeno" type="button" id="o-grande" title="Abrir la alerta entera en otra pestaña, con sonido opcional">↗ Ver en grande</button></div>
             <div class="ovl-tipos" id="o-tipos"></div>
             <label class="musica-volumen ovl-volumen"><span>🔉 Sonido</span><input type="range" id="o-volumen" min="0" max="100" step="1" aria-label="Volumen de las alertas"><span class="nota" id="o-volumen-n"></span></label>
           </section>
@@ -948,7 +948,25 @@
         <button type="button" role="tab" data-apartado="sonidos">Sonidos <span class="cuenta" id="c-sonidos"></span></button>
         <button type="button" role="tab" data-apartado="overlays">Overlays <span class="cuenta" id="c-overlays"></span></button>
         <button type="button" role="tab" data-apartado="referencias">Referencias IA <span class="cuenta" id="c-referencias"></span></button>
+        <button type="button" role="tab" data-apartado="bocetos">Bocetos <span class="cuenta" id="c-bocetos"></span></button>
       </div>
+
+      <section class="bloque" data-apartado="bocetos">
+        <header class="bloque-cabecera"><h2>Bocetos y ejemplos</h2><span class="nota" id="n-bocetos">docs/previews</span></header>
+        <p class="nota">Capturas, pruebas de diseño y candidatos de sonido que se han ido haciendo. «Citado en» dice qué documento o código lo nombra: lo que nadie cita suele sobrar. Borrar los manda a la <b>Papelera de Windows</b>: se pueden recuperar.</p>
+        <div class="galeria-filtros">
+          <input type="search" id="bo-buscar" placeholder="Buscar por nombre o carpeta…" autocomplete="off" spellcheck="false" aria-label="Buscar bocetos">
+          <div class="chips" id="bo-carpetas" role="group" aria-label="Carpetas"></div>
+          <label class="interruptor-fila"><input type="checkbox" id="bo-sin-citar"><span>Solo los que nadie cita</span></label>
+        </div>
+        <div class="bocetos-seleccion" id="bo-seleccion">
+          <span id="bo-n" role="status">Nada seleccionado</span>
+          <button type="button" class="boton pequeno" id="bo-todo">Seleccionar lo visible</button>
+          <button type="button" class="boton pequeno" id="bo-nada">Quitar selección</button>
+          <button type="button" class="boton peligro" id="bo-borrar" disabled>🗑 Borrar seleccionados</button>
+        </div>
+        <div id="b-bocetos"></div>
+      </section>
 
       <section class="bloque tarjeta" id="b-referencias" data-apartado="referencias">
         <h2>Referencias para la IA</h2>

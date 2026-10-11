@@ -60,12 +60,16 @@ window.medir = async (b64) => window.volumen(await window.decodificar(b64));
 window.preparar = async (b64, objetivo, max) => {
   let chs = await window.decodificar(b64);
   const len = chs[0].length;
+  // Los umbrales de silencio, relativos al pico: en una grabación muy floja, la cola que
+  // después se subirá de volumen no es silencio. Con picos normales (≥ -1 dB) no cambian.
+  let pico0 = 0; for (const c of chs) for (const x of c) pico0 = Math.max(pico0, Math.abs(x));
+  const escala = Math.min(1, pico0 / 0.89) || 1;
   // Silencio del principio fuera (deja 10 ms).
-  let ini = 0; while (ini < len && chs.every((c) => Math.abs(c[ini]) < 0.01)) ini++;
+  let ini = 0; while (ini < len && chs.every((c) => Math.abs(c[ini]) < 0.01 * escala)) ini++;
   ini = Math.max(0, ini - 441);
   // Final: tope de duración, y sin la cola en silencio.
   let fin = Math.min(len, ini + Math.round(max * 44100));
-  while (fin > ini && chs.every((c) => Math.abs(c[fin - 1]) < 0.003)) fin--;
+  while (fin > ini && chs.every((c) => Math.abs(c[fin - 1]) < 0.003 * escala)) fin--;
   chs = chs.map((c) => c.slice(ini, fin));
   const recortado = fin < len && (fin - ini) >= Math.round(max * 44100) - 1;
   // Fundidos: 5 ms al entrar (sin chasquido) y, si se cortó, 600 ms al salir.

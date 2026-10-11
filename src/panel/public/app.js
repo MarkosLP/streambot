@@ -1546,6 +1546,30 @@ function botonEscuchar(url, tamano = '') {
   return el;
 }
 
+/**
+ * «Ver en grande»: los overlays miden 1920×1080 fijos y, abiertos tal cual en una
+ * ventana más pequeña, salen recortados. El visor (ver.html) los encoge enteros.
+ * modo: escena (overlay de 1920×1080) · pagina (web normal) · imagen · audio · texto.
+ */
+const enGrande = (src, modo = 'escena', titulo = '') => `/ver.html?${new URLSearchParams({ src, modo, ...(titulo && { titulo }) })}`;
+
+/** «Ver en grande» en una ventana flotante encima del panel (Esc, ✕ o pinchar fuera la cierran). */
+function abrirGrande(src, modo = 'escena', titulo = '') {
+  let d = $('visor-grande');
+  if (!d) {
+    d = h('dialog', { class: 'visor-grande', id: 'visor-grande', 'aria-label': 'Ver en grande' },
+      h('button', { class: 'visor-grande-cerrar', type: 'button', 'aria-label': 'Cerrar', onclick: () => d.close() }, '✕'),
+      h('iframe', { title: 'Vista en grande', allow: 'autoplay' }));
+    // Pinchar en el fondo oscuro (fuera de la ventana) también cierra.
+    d.addEventListener('click', (ev) => { if (ev.target === d) d.close(); });
+    // Al cerrar, fuera la página: que no siga sonando.
+    d.addEventListener('close', () => { d.querySelector('iframe').src = 'about:blank'; });
+    document.body.append(d);
+  }
+  d.querySelector('iframe').src = enGrande(src, modo, titulo);
+  d.showModal();
+}
+
 const tamano = (bytes) => (bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
 
 function vacioBiblioteca(seccion, texto) {
@@ -1638,6 +1662,7 @@ async function cargarBiblioteca() {
           h('div', { class: 'sonido-info' }, h('strong', {}, o.vista === 'duelo' ? 'Duelo · !duelo' : o.vista === 'especiales' ? 'Ataques especiales' : o.vista === 'aliados' ? 'Ataques del chat' : o.nombre === 'jefe.html' ? 'Jefes de raid' : o.nombre === 'escena.html' ? 'Escenas actuales' : o.nombre === 'espectadores.html' ? 'Contador de espectadores' : o.nombre), h('span', { class: 'sonido-meta' }, o.vista === 'duelo' ? 'La misma fuente «FX Jefe», con cada duelo del chat' : o.vista === 'especiales' ? 'Elige un jefe para ver su ataque en bucle' : o.vista === 'aliados' ? 'Subs, regalos y bits contra el jefe, en bucle' : o.nombre === 'escena.html' ? 'Fondos y textos configurados en Escenas' : o.nombre === 'espectadores.html' ? 'El número de Twitch · se oculta sin directo' : usadoEn(o.usadoPor))),
           // Misma dirección no recarga: se pasa por about:blank para repetir la animación.
           h('button', { class: 'boton pequeno', type: 'button', onclick: () => { marco.src = 'about:blank'; setTimeout(() => { marco.src = sinSonido(o.url + actual); }, 30); } }, '↻ Repetir'),
+          h('button', { class: 'boton pequeno', type: 'button', title: 'Ver en grande', 'aria-label': `Ver ${o.nombre} en grande`, onclick: () => abrirGrande(sinSonido(o.url + actual), 'escena', o.nombre) }, '↗'),
           botonCopiar(o.ruta)));
     })
     : [vacioBiblioteca('overlays', 'No hay overlays todavía.')]));
@@ -1648,7 +1673,154 @@ async function cargarBiblioteca() {
   $('c-referencias').textContent = String(catalogoReferencias.length);
   galeria.imagenes = lib.imagenes;
   pintarGaleria();
+  cargarBocetos();
 }
+
+// ---------------------------------------------------------------------------
+// Biblioteca → Bocetos (docs/previews): verlo todo y borrar lo que sobra
+// ---------------------------------------------------------------------------
+
+const bocetos = { lista: [], bytes: 0, sel: new Set(), carpeta: '', texto: '', sinCitar: false };
+const urlBoceto = (ruta) => `/bocetos/${ruta.split('/').map(encodeURIComponent).join('/')}`;
+const raizBoceto = (b) => b.carpeta.split('/')[0] || '(sueltos)';
+const fechaCorta = (iso) => new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+
+async function cargarBocetos() {
+  try {
+    const r = await api('/api/bocetos');
+    bocetos.lista = r.bocetos;
+    bocetos.bytes = r.bytes;
+  } catch (err) {
+    $('b-bocetos').replaceChildren(h('p', { class: 'nota' }, err.message === 'no existe' ? 'Reinicia el bot para ver los bocetos (Ctrl+C y npm start).' : `No se pudieron cargar: ${err.message}`));
+    return;
+  }
+  // Lo seleccionado que ya no existe, fuera.
+  const existen = new Set(bocetos.lista.map((b) => b.ruta));
+  for (const r of bocetos.sel) if (!existen.has(r)) bocetos.sel.delete(r);
+  $('c-bocetos').textContent = String(bocetos.lista.length);
+  $('n-bocetos').textContent = `docs/previews · ${bocetos.lista.length} archivos · ${tamano(bocetos.bytes)}`;
+  pintarBocetos();
+}
+
+function visiblesBocetos() {
+  const t = bocetos.texto.trim().toLowerCase();
+  return bocetos.lista.filter((b) => (!bocetos.carpeta || raizBoceto(b) === bocetos.carpeta)
+    && (!t || `${b.carpeta}/${b.nombre}`.toLowerCase().includes(t))
+    && (!bocetos.sinCitar || !b.citadoEn.length));
+}
+
+function pintarSeleccionBocetos() {
+  const elegidos = bocetos.lista.filter((b) => bocetos.sel.has(b.ruta));
+  const bytes = elegidos.reduce((n, b) => n + b.bytes, 0);
+  $('bo-n').textContent = elegidos.length ? `${elegidos.length} seleccionado${elegidos.length === 1 ? '' : 's'} · ${tamano(bytes)}` : 'Nada seleccionado';
+  $('bo-borrar').disabled = !elegidos.length;
+  $('bo-borrar').textContent = elegidos.length ? `🗑 Borrar ${elegidos.length}` : '🗑 Borrar seleccionados';
+  $('bo-seleccion').classList.toggle('activa', elegidos.length > 0);
+  for (const el of document.querySelectorAll('#b-bocetos [data-ruta]')) {
+    const si = bocetos.sel.has(el.dataset.ruta);
+    el.classList.toggle('elegido', si);
+    el.querySelector('.boceto-marca input').checked = si;
+  }
+  for (const g of document.querySelectorAll('#b-bocetos [data-grupo]')) {
+    const rutas = [...g.querySelectorAll('[data-ruta]')].map((el) => el.dataset.ruta);
+    const n = rutas.filter((r) => bocetos.sel.has(r)).length;
+    const marca = g.querySelector('.grupo-marca');
+    marca.checked = n > 0 && n === rutas.length;
+    marca.indeterminate = n > 0 && n < rutas.length;
+  }
+}
+
+function vistaBoceto(b) {
+  const url = urlBoceto(b.ruta);
+  const ver = () => abrirGrande(url, b.clase, b.nombre);
+  if (b.clase === 'imagen') {
+    return h('button', { class: 'imagen-vista cuadros', type: 'button', 'aria-label': `Ver ${b.nombre} en grande`, onclick: ver },
+      h('img', { src: url, alt: '', loading: 'lazy', decoding: 'async' }));
+  }
+  if (b.clase === 'escena' || b.clase === 'pagina') {
+    const vista = h('div', { class: 'overlay-vista' },
+      h('iframe', { src: url, loading: 'lazy', sandbox: 'allow-scripts', title: b.nombre, tabindex: '-1' }),
+      h('button', { class: 'boceto-tapa', type: 'button', 'aria-label': `Ver ${b.nombre} en grande`, onclick: ver }));
+    escalarOverlay.observe(vista);
+    return vista;
+  }
+  if (b.clase === 'audio') return h('div', { class: 'overlay-vista boceto-icono' }, botonEscuchar(url, 'grande'));
+  return h('button', { class: 'overlay-vista boceto-icono', type: 'button', 'aria-label': `Ver ${b.nombre}`, onclick: ver },
+    h('span', {}, '📄'), h('small', {}, b.nombre.split('.').pop().toUpperCase()));
+}
+
+function pintarBocetos() {
+  // Carpetas de primer nivel, con cuántos hay en cada una.
+  const cuenta = new Map();
+  for (const b of bocetos.lista) cuenta.set(raizBoceto(b), (cuenta.get(raizBoceto(b)) ?? 0) + 1);
+  if (bocetos.carpeta && !cuenta.has(bocetos.carpeta)) bocetos.carpeta = '';
+  $('bo-carpetas').replaceChildren(
+    h('button', { type: 'button', class: 'chip', 'aria-pressed': String(!bocetos.carpeta), onclick: () => { bocetos.carpeta = ''; pintarBocetos(); } }, `Todas ${bocetos.lista.length}`),
+    ...[...cuenta].map(([c, n]) => h('button', { type: 'button', class: 'chip', 'aria-pressed': String(bocetos.carpeta === c), onclick: () => { bocetos.carpeta = c; pintarBocetos(); } }, `${c} ${n}`)));
+
+  const visibles = visiblesBocetos();
+  const grupos = new Map();
+  for (const b of visibles) {
+    if (!grupos.has(b.carpeta)) grupos.set(b.carpeta, []);
+    grupos.get(b.carpeta).push(b);
+  }
+  $('b-bocetos').replaceChildren(...(grupos.size
+    ? [...grupos].map(([carpeta, lista]) => {
+      const marcaGrupo = h('input', { type: 'checkbox', class: 'grupo-marca', 'aria-label': `Seleccionar todo ${carpeta || 'docs/previews'}`, onclick: (ev) => ev.stopPropagation(), onchange: (ev) => {
+        for (const b of lista) ev.target.checked ? bocetos.sel.add(b.ruta) : bocetos.sel.delete(b.ruta);
+        pintarSeleccionBocetos();
+      } });
+      return h('details', { class: 'grupo-bocetos', open: true, 'data-grupo': carpeta },
+        h('summary', {}, marcaGrupo, h('strong', {}, carpeta || 'docs/previews'),
+          h('span', { class: 'nota' }, `${lista.length} · ${tamano(lista.reduce((n, b) => n + b.bytes, 0))}`)),
+        h('div', { class: 'lista-bocetos' }, lista.map((b) => {
+          const citado = b.citadoEn.length
+            ? h('span', { class: 'usado', title: b.citadoEn.join('\n') }, 'Citado en ', b.citadoEn.slice(0, 2).map((r) => r.split('/').pop()).join(', '), b.citadoEn.length > 2 ? ` y ${b.citadoEn.length - 2} más` : '')
+            : h('span', { class: 'usado libre' }, 'Nadie lo cita');
+          return h('article', { class: 'overlay boceto', 'data-ruta': b.ruta },
+            vistaBoceto(b),
+            h('label', { class: 'boceto-marca', title: 'Seleccionar' }, h('input', { type: 'checkbox', 'aria-label': `Seleccionar ${b.nombre}`, onchange: (ev) => {
+              ev.target.checked ? bocetos.sel.add(b.ruta) : bocetos.sel.delete(b.ruta);
+              pintarSeleccionBocetos();
+            } })),
+            h('div', { class: 'overlay-pie' },
+              h('div', { class: 'sonido-info' }, h('strong', { title: b.ruta }, b.nombre),
+                h('span', { class: 'sonido-meta' }, citado, h('span', { class: 'dato' }, `${tamano(b.bytes)} · ${fechaCorta(b.modificado)}`))),
+              h('button', { class: 'boton pequeno', type: 'button', title: 'Ver en grande', 'aria-label': `Ver ${b.nombre} en grande`, onclick: () => abrirGrande(urlBoceto(b.ruta), b.clase, b.nombre) }, '↗'),
+              h('button', { class: 'boton pequeno peligro', type: 'button', title: 'Borrar (a la Papelera)', 'aria-label': `Borrar ${b.nombre}`, onclick: () => borrarBocetos([b.ruta]) }, '🗑')));
+        })));
+    })
+    : [h('p', { class: 'nota' }, bocetos.lista.length ? 'Nada con ese filtro.' : 'No hay bocetos: docs/previews está vacía.')]));
+  pintarSeleccionBocetos();
+}
+
+async function borrarBocetos(rutas) {
+  const elegidos = bocetos.lista.filter((b) => rutas.includes(b.ruta));
+  if (!elegidos.length) return;
+  const citados = elegidos.filter((b) => b.citadoEn.length);
+  const nombres = elegidos.slice(0, 8).map((b) => `· ${b.carpeta ? `${b.carpeta}/` : ''}${b.nombre}`).join('\n') + (elegidos.length > 8 ? `\n· y ${elegidos.length - 8} más` : '');
+  const aviso = citados.length
+    ? `\n\n⚠ ${citados.length === 1 ? 'Uno aparece citado' : `${citados.length} aparecen citados`} en documentos o código (${[...new Set(citados.flatMap((b) => b.citadoEn))].slice(0, 4).join(', ')}): esos enlaces quedarían rotos.`
+    : '';
+  if (!confirm(`¿Mandar ${elegidos.length === 1 ? 'este archivo' : `estos ${elegidos.length} archivos`} (${tamano(elegidos.reduce((n, b) => n + b.bytes, 0))}) a la Papelera de Windows?\n\n${nombres}${aviso}`)) return;
+  $('bo-borrar').disabled = true;
+  try {
+    const r = await api('/api/bocetos/borrar', { rutas: elegidos.map((b) => b.ruta) });
+    for (const ruta of r.borrados) bocetos.sel.delete(ruta);
+    tostada(r.fallos.length
+      ? `${r.borrados.length} a la Papelera · ${r.fallos.length} no se pudieron borrar: ${r.fallos[0].error}`
+      : `${r.borrados.length === 1 ? 'Enviado' : `${r.borrados.length} enviados`} a la Papelera de Windows`, r.fallos.length > 0);
+  } catch (err) {
+    tostada(err.message, true);
+  }
+  await cargarBocetos();
+}
+
+$('bo-buscar').addEventListener('input', (ev) => { bocetos.texto = ev.target.value; pintarBocetos(); });
+$('bo-sin-citar').addEventListener('change', (ev) => { bocetos.sinCitar = ev.target.checked; pintarBocetos(); });
+$('bo-todo').addEventListener('click', () => { for (const b of visiblesBocetos()) bocetos.sel.add(b.ruta); pintarSeleccionBocetos(); });
+$('bo-nada').addEventListener('click', () => { bocetos.sel.clear(); pintarSeleccionBocetos(); });
+$('bo-borrar').addEventListener('click', () => borrarBocetos([...bocetos.sel]));
 
 
 // ---------------------------------------------------------------------------
@@ -1833,7 +2005,7 @@ async function cargarEscenas() {
         h('div', {}, h('h2', {}, `${info.icono} ${info.nombre}`), h('p', { class: 'nota' }, info.que),
           h('p', { class: 'nota' }, 'En OBS: ', h('code', {}, e.escena))),
         h('div', { class: 'escena-botones' },
-          h('a', { class: 'boton', href: ruta, target: '_blank', rel: 'noopener' }, '↗ Ver en grande'),
+          h('button', { class: 'boton', type: 'button', onclick: () => abrirGrande(ruta, 'escena', info.nombre) }, '↗ Ver en grande'),
           botonCopiar(e.url, 'Copiar dirección'))),
         h('details', { class: 'escena-avanzado escena-obs' }, h('summary', {}, 'Configurar esta escena en OBS'), crear, resultado)),
       h('div', { class: 'escena-controles' }, bloqueFondo));
@@ -1852,7 +2024,8 @@ async function cargarEscenas() {
     h('option', { value: '' }, 'Sin captura todavía'));
   const valorOpacidad = h('output', {}, `${opacidadInicial} %`);
   const elegirOpacidad = h('input', { id: 'e-compartir-opacidad', type: 'range', min: '65', max: '100', step: '1', value: String(opacidadInicial), 'aria-label': 'Opacidad del contenido compartido' });
-  const verCompartirGrande = h('a', { class: 'boton', href: rutaDemoCompartir(opacidadInicial), target: '_blank', rel: 'noopener' }, '↗ Ver en grande');
+  let rutaCompartirGrande = rutaDemoCompartir(opacidadInicial);
+  const verCompartirGrande = h('button', { class: 'boton', type: 'button', onclick: () => abrirGrande(rutaCompartirGrande, 'escena', 'Charla + compartir') }, '↗ Ver en grande');
   let esperaOpacidad;
   elegirOpacidad.addEventListener('input', () => {
     valorOpacidad.textContent = `${elegirOpacidad.value} %`;
@@ -1860,7 +2033,7 @@ async function cargarEscenas() {
     esperaOpacidad = setTimeout(() => {
       const ruta = rutaDemoCompartir(Number(elegirOpacidad.value));
       vistaCompartir.querySelector('iframe').src = ruta;
-      verCompartirGrande.href = ruta;
+      rutaCompartirGrande = ruta;
       try { localStorage.setItem('charla-compartida-opacidad-v2', elegirOpacidad.value); } catch { /* sin almacenamiento */ }
     }, 180);
   });
@@ -2520,7 +2693,7 @@ $('t-vaciar').addEventListener('click', () => { if (confirm('¿Vaciar el guion d
 // ---------------------------------------------------------------------------
 
 let ovl = null;
-const TIPOS_ALERTA = [['bits', '◆ Bits'], ['raid', '⚔ Raids']];
+const TIPOS_ALERTA = [['follow', '✦ Follows (captura)'], ['bits', '◆ Bits'], ['raid', '⚔ Raids']];
 const PARTES_PANEL = [['cofre', '🎁 Próximo cofre'], ['top', '🏆 Líder de Loot'], ['follow', '❤ Último follow'], ['sub', '★ Último sub'], ['meta', '🎯 Meta']];
 
 async function cargarOverlays() {
@@ -2572,10 +2745,7 @@ function pintarOverlays() {
   $('o-tipos').replaceChildren(...TIPOS_ALERTA.map(([t, nombre]) => h('div', { class: 'ovl-tipo' },
     h('label', { class: 'interruptor-fila' }, h('input', { type: 'checkbox', checked: a.alertas[t], onchange: (ev) => guardarOverlays({ accion: 'ajustes', ajustes: { alertas: { [t]: ev.target.checked } } }) }), h('span', {}, nombre)),
     h('div', { class: 'ovl-acciones' },
-      h('button', { class: 'boton pequeno', type: 'button', 'data-prueba-alerta': t, onclick: () => {
-        $('o-vista-alertas').querySelector('iframe').src = `/biblioteca/overlays/alertas.html?demo=1&volumen=0&encuadre=1&tipo=${t}`;
-        $('o-prueba-estado').textContent = `Prueba local: ${nombre} · sin sonido · solo en este panel.`;
-      } }, 'Ver aquí'),
+      h('button', { class: 'boton pequeno', type: 'button', 'data-prueba-alerta': t, onclick: () => verAlertaAqui(t, nombre) }, 'Ver aquí'),
       h('button', { class: 'boton pequeno', type: 'button', onclick: () => guardarOverlays({ accion: 'probar', tipo: t }, `Alerta de prueba: ${nombre}`) }, 'Emitir prueba')))));
   if (document.activeElement !== $('o-volumen')) $('o-volumen').value = String(Math.round(a.volumen * 100));
   $('o-volumen-n').textContent = `${Math.round(a.volumen * 100)} %`;
@@ -2618,9 +2788,25 @@ function pintarOverlays() {
   $('o-ultimos').textContent = partes.length ? partes.join(' · ') : 'Aún no ha llegado ningún follow ni sub desde que el bot los escucha.';
 }
 
+// La vista de alertas: una franja de 1000×260 para los avisos de arriba, o la
+// pantalla entera (16:9) para la captura del follow, que ocupa el centro.
+const anchoVistaAlertas = () => ($('o-vista-alertas').classList.contains('completa') ? 1920 : 1000);
 new ResizeObserver(entradas => {
-  for (const e of entradas) e.target.style.setProperty('--escala', String(e.contentRect.width / 1000));
+  for (const e of entradas) e.target.style.setProperty('--escala', String(e.contentRect.width / anchoVistaAlertas()));
 }).observe($('o-vista-alertas'));
+function verAlertaAqui(tipo, nombre) {
+  const vista = $('o-vista-alertas');
+  const completa = tipo === 'follow';
+  vista.classList.toggle('completa', completa);
+  vista.style.setProperty('--escala', String(vista.clientWidth / anchoVistaAlertas()));
+  vista.querySelector('iframe').src = `/biblioteca/overlays/alertas.html?demo=1&volumen=0${completa ? '' : '&encuadre=1'}&tipo=${tipo}`;
+  $('o-prueba-estado').textContent = `Prueba local: ${nombre} · sin sonido · solo en este panel.`;
+}
+$('o-grande').addEventListener('click', () => {
+  const actual = new URL($('o-vista-alertas').querySelector('iframe').src);
+  actual.searchParams.delete('encuadre');
+  abrirGrande(actual.pathname + actual.search, 'escena', 'Alertas');
+});
 $('o-volumen').addEventListener('input', () => { $('o-volumen-n').textContent = `${$('o-volumen').value} %`; });
 $('o-volumen').addEventListener('change', () => guardarOverlays({ accion: 'ajustes', ajustes: { volumen: Number($('o-volumen').value) / 100 } }));
 $('o-segundos').addEventListener('change', () => guardarOverlays({ accion: 'ajustes', ajustes: { segundos: Number($('o-segundos').value) } }));
@@ -2774,7 +2960,7 @@ const rutaCarpeta = (c) => `imagenes/${c ? `${c}/` : ''}`;
 
 // ---------- Apartados de la Biblioteca: uno a la vez, para no bajar por todo ----------
 
-const APARTADOS = ['imagenes', 'sonidos', 'overlays', 'referencias'];
+const APARTADOS = ['imagenes', 'sonidos', 'overlays', 'referencias', 'bocetos'];
 
 function verApartado(apartado) {
   if (!APARTADOS.includes(apartado)) apartado = 'imagenes';

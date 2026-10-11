@@ -1,0 +1,152 @@
+<!doctype html>
+<!--
+  Visor «en grande» del panel (11 oct 2026). Los overlays miden 1920×1080 fijos:
+  abiertos tal cual en una ventana más pequeña, el navegador los recorta. Aquí se
+  encogen enteros a la ventana, sobre cuadros (para ver lo transparente) u otro fondo.
+
+    /ver.html?src=/biblioteca/overlays/alertas.html?demo=1&modo=escena&titulo=Alertas
+    modo: escena (1920×1080 encogido) · pagina (web normal) · imagen · audio · texto.
+    Solo abre rutas del propio panel: /biblioteca/… y /bocetos/….
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ver en grande</title>
+<style>
+  :root { color-scheme: dark; --fondo: #0d1018; --barra: #151a26; --borde: #2a3142; --texto: #e8eaf0; --suave: #9aa3b5; --oro: #f2b84b; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--fondo); color: var(--texto); font: 14px/1.4 Inter, "Segoe UI", system-ui, sans-serif; }
+  body { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+  header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 14px; background: var(--barra); border-bottom: 1px solid var(--borde); }
+  h1 { margin: 0 auto 0 0; font-size: 15px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  h1 small { color: var(--suave); font-weight: 400; margin-left: 8px; }
+  button, a.boton { padding: 6px 12px; border: 1px solid var(--borde); border-radius: 8px; background: #1e2433; color: var(--texto); font: inherit; cursor: pointer; text-decoration: none; }
+  button:hover, a.boton:hover { border-color: var(--oro); }
+  button[aria-pressed="true"] { background: var(--oro); border-color: var(--oro); color: #1a1408; }
+  .grupo { display: flex; gap: 4px; }
+  main { position: relative; overflow: hidden; display: grid; place-items: center; }
+  main.cuadros { background: repeating-conic-gradient(#1c2130 0% 25%, #151924 0% 50%) 0 0 / 24px 24px; }
+  main.negro { background: #000; }
+  main.claro { background: #e9ebf0; }
+  #escena { position: relative; overflow: hidden; box-shadow: 0 0 0 1px var(--borde), 0 20px 60px rgba(0, 0, 0, .5); }
+  #escena iframe { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; color-scheme: light; }
+  main.pagina { place-items: stretch; }
+  main.pagina iframe { width: 100%; height: 100%; border: 0; background: #fff; }
+  main img { max-width: calc(100% - 32px); max-height: calc(100% - 32px); object-fit: contain; }
+  main audio { width: min(560px, calc(100% - 32px)); }
+  .error { color: var(--suave); text-align: center; padding: 24px; }
+  /* Dentro de la ventana flotante del panel: hueco para su ✕. */
+  body.incrustado header { padding-right: 56px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="titulo"></h1>
+  <div class="grupo" id="fondos" role="group" aria-label="Fondo">
+    <button type="button" data-fondo="cuadros">▦ Cuadros</button>
+    <button type="button" data-fondo="negro">Negro</button>
+    <button type="button" data-fondo="claro">Claro</button>
+  </div>
+  <button type="button" id="sonido" hidden>🔇 Sin sonido</button>
+  <button type="button" id="repetir">↻ Repetir</button>
+  <a class="boton" id="tal-cual" target="_blank" rel="noopener">Abrir tal cual</a>
+</header>
+<main id="lienzo"></main>
+<script>
+'use strict';
+const q = new URLSearchParams(location.search);
+const $ = (id) => document.getElementById(id);
+const lienzo = $('lienzo');
+if (window !== window.top) document.body.classList.add('incrustado');
+let src = q.get('src') || '';
+// Solo rutas del panel: nada de otras webs ni javascript:.
+const valida = /^\/(biblioteca|bocetos)\/[^\s]*$/.test(src) && !src.includes('..');
+const ext = (src.split('?')[0].match(/\.([a-z0-9]+)$/i) || [])[1]?.toLowerCase() || '';
+const modo = q.get('modo') || ({ png: 'imagen', jpg: 'imagen', jpeg: 'imagen', webp: 'imagen', gif: 'imagen', mp3: 'audio', wav: 'audio', ogg: 'audio', md: 'texto', txt: 'texto', json: 'texto', jsonl: 'texto' }[ext] || 'escena');
+const nombre = decodeURIComponent(src.split('?')[0].split('/').pop() || '');
+$('titulo').textContent = q.get('titulo') || nombre;
+if (q.get('titulo') && q.get('titulo') !== nombre) $('titulo').append(Object.assign(document.createElement('small'), { textContent: nombre }));
+document.title = `${q.get('titulo') || nombre} · en grande`;
+
+// Fondo, recordado entre visitas.
+let fondo = 'cuadros';
+try { fondo = localStorage.getItem('ver-fondo') || fondo; } catch { /* nada */ }
+function ponerFondo(f) {
+  fondo = f;
+  lienzo.classList.remove('cuadros', 'negro', 'claro');
+  lienzo.classList.add(f);
+  for (const b of $('fondos').children) b.setAttribute('aria-pressed', String(b.dataset.fondo === f));
+  try { localStorage.setItem('ver-fondo', f); } catch { /* nada */ }
+}
+$('fondos').addEventListener('click', (e) => { const b = e.target.closest('[data-fondo]'); if (b) ponerFondo(b.dataset.fondo); });
+
+// Sonido: las vistas del panel van mudas con ?volumen=0; aquí se puede quitar.
+const conVolumen = (url, mudo) => {
+  const [ruta, busqueda = ''] = url.split('?');
+  const p = new URLSearchParams(busqueda);
+  if (mudo) p.set('volumen', '0'); else p.delete('volumen');
+  const s = p.toString();
+  return s ? `${ruta}?${s}` : ruta;
+};
+let mudo = /[?&]volumen=0(&|$)/.test(src);
+
+let marco = null;
+function pintar() {
+  lienzo.replaceChildren();
+  $('tal-cual').href = valida ? src : '#';
+  if (!valida) { lienzo.append(Object.assign(document.createElement('p'), { className: 'error', textContent: 'Esta dirección no es del panel.' })); return; }
+  lienzo.classList.toggle('pagina', modo === 'pagina' || modo === 'texto');
+  if (modo === 'imagen') {
+    lienzo.append(Object.assign(document.createElement('img'), { src, alt: nombre }));
+  } else if (modo === 'audio') {
+    lienzo.append(Object.assign(document.createElement('audio'), { src, controls: true, autoplay: true }));
+  } else {
+    marco = document.createElement('iframe');
+    marco.setAttribute('sandbox', 'allow-scripts');
+    marco.setAttribute('allow', 'autoplay');
+    marco.title = nombre;
+    marco.src = src;
+    if (modo === 'escena') {
+      const caja = document.createElement('div');
+      caja.id = 'escena';
+      caja.append(marco);
+      lienzo.append(caja);
+      encajar();
+    } else {
+      lienzo.append(marco);
+    }
+  }
+}
+// 1920×1080 encogido entero, con un margen alrededor.
+function encajar() {
+  const caja = $('escena');
+  if (!caja) return;
+  const w = lienzo.clientWidth - 32, h = lienzo.clientHeight - 32;
+  const s = Math.max(0.05, Math.min(w / 1920, h / 1080));
+  caja.style.width = `${Math.round(1920 * s)}px`;
+  caja.style.height = `${Math.round(1080 * s)}px`;
+  caja.querySelector('iframe').style.transform = `scale(${s})`;
+}
+new ResizeObserver(encajar).observe(lienzo);
+
+$('repetir').addEventListener('click', () => {
+  if (modo === 'audio') { const a = lienzo.querySelector('audio'); if (a) { a.currentTime = 0; a.play(); } return; }
+  if (!marco) return;
+  // La misma dirección no recarga: se pasa por about:blank.
+  marco.src = 'about:blank';
+  setTimeout(() => { marco.src = src; }, 40);
+});
+if (src.startsWith('/biblioteca/overlays/') && (modo === 'escena' || modo === 'pagina')) {
+  const b = $('sonido');
+  b.hidden = false;
+  const etiqueta = () => { b.textContent = mudo ? '🔇 Sin sonido' : '🔊 Con sonido'; b.setAttribute('aria-pressed', String(!mudo)); };
+  etiqueta();
+  b.addEventListener('click', () => { mudo = !mudo; src = conVolumen(src, mudo); etiqueta(); pintar(); });
+}
+if (modo === 'imagen' || modo === 'audio') $('repetir').hidden = modo === 'imagen';
+ponerFondo(fondo);
+pintar();
+</script>
+</body>
+</html>

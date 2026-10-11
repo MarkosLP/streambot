@@ -18,10 +18,10 @@ beforeEach(() => {
 const ev = (nombre: string, datos: any): DomainEvent => normalize(nombre, datos, 'simulator');
 
 describe('alertas', () => {
-  test('Streamlabs: ajustes antiguos o nuevas peticiones no reactivan follows ni suscripciones', () => {
-    getDb().prepare('INSERT INTO ajustes (clave, valor, at) VALUES (?, ?, ?)').run('overlays', JSON.stringify({ ajustes: { alertas: { follow: true, sub: true, regalo: true } } }), new Date().toISOString());
+  test('Streamlabs: ajustes antiguos o nuevas peticiones no reactivan suscripciones ni regalos', () => {
+    getDb().prepare('INSERT INTO ajustes (clave, valor, at) VALUES (?, ?, ?)').run('overlays', JSON.stringify({ ajustes: { alertas: { sub: true, regalo: true } } }), new Date().toISOString());
     alertas.reset();
-    for (const tipo of ['follow', 'sub', 'regalo'] as const) {
+    for (const tipo of ['sub', 'regalo'] as const) {
       assert.equal(alertas.ajustes().alertas[tipo], false);
       alertas.cambiarAjustes({ alertas: { [tipo]: true } });
       assert.equal(alertas.ajustes().alertas[tipo], false);
@@ -29,17 +29,30 @@ describe('alertas', () => {
     }
     assert.equal(alertas.paraAlertas().alertas.length, 0);
   });
-  test('un follow se cuenta y guarda sin emitir una alerta propia', () => {
+  test('el follow (captura) viene apagado: se cuenta y guarda sin alerta propia', () => {
     const e = ev('Twitch.Follow', { user_id: '7', user_login: 'raftaei', user_name: 'raftaei' });
     assert.equal(e.type, 'viewer.follow');
+    assert.equal(alertas.ajustes().alertas.follow, false, 'hasta apagar el de Streamlabs no sale doble');
     assert.equal(alertas.alEvento(e), null);
     assert.equal(alertas.estado().ultimoFollow?.quien, 'raftaei');
     assert.equal(alertas.estado().mes.follows, 1);
   });
 
+  test('encendido, el follow sale en el overlay; su prueba no cuenta', () => {
+    alertas.cambiarAjustes({ alertas: { follow: true } });
+    const a = alertas.alEvento(ev('Twitch.Follow', { user_id: '7', user_login: 'raftaei', user_name: 'raftaei' }));
+    assert.equal(a?.tipo, 'follow');
+    assert.equal(a?.quien, 'raftaei');
+    const p = alertas.probar('follow');
+    assert.equal(p.prueba, true);
+    assert.equal(alertas.estado().mes.follows, 1);
+    assert.equal(alertas.paraAlertas().alertas.length, 2);
+  });
+
   test('dejar de seguir y volver no repite la alerta; los bots no cuentan', () => {
+    alertas.cambiarAjustes({ alertas: { follow: true } });
     const f = ev('Twitch.Follow', { user_id: '7', user_login: 'raftaei', user_name: 'raftaei' });
-    alertas.alEvento(f);
+    assert.ok(alertas.alEvento(f));
     assert.equal(alertas.alEvento(f), null);
     assert.equal(alertas.alEvento(ev('Twitch.Follow', { user_id: '9', user_login: 'streamelements', user_name: 'StreamElements' })), null);
     assert.equal(alertas.estado().mes.follows, 1);

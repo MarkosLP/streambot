@@ -17,6 +17,7 @@ import * as revision from './revision.js';
 import * as datos from './datos.js';
 import { EFECTOS, PREFIJO_ACCION, guia, mismoNombre } from './efectos.js';
 import * as biblioteca from './biblioteca.js';
+import * as bocetos from './bocetos.js';
 import * as obsSetup from './obs-setup.js';
 import * as importar from './importar.js';
 import * as loot from '../interactions/loot/index.js';
@@ -96,6 +97,8 @@ const PUBLICOS: Record<string, { archivo: string; tipo: string }> = {
   '/avatar-local.js': { archivo: 'avatar-local.js', tipo: 'text/javascript; charset=utf-8' },
   '/musica-online.js': { archivo: 'musica-online.js', tipo: 'text/javascript; charset=utf-8' },
   '/styles.css': { archivo: 'styles.css', tipo: 'text/css; charset=utf-8' },
+  // Visor «en grande»: encoge los overlays de 1920×1080 a la ventana en vez de recortarlos.
+  '/ver.html': { archivo: 'ver.html', tipo: 'text/html; charset=utf-8' },
 };
 
 const DIR_PUBLICO = new URL('./public/', import.meta.url);
@@ -253,6 +256,21 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       // Las imágenes, legibles desde los overlays (van en su sandbox, con origen propio):
       // el avatar busca dónde tiene los ojos leyendo los píxeles. Solo lectura.
       ...((archivo.tipo.startsWith('image/') || archivo.tipo.startsWith('font/')) && { 'Access-Control-Allow-Origin': '*' }),
+    });
+    res.end(contenido);
+    return;
+  }
+
+  // Bocetos y ejemplos (docs/previews): solo lectura, con el mismo aislamiento que los overlays.
+  if (metodo === 'GET' && url.pathname.startsWith('/bocetos/')) {
+    const archivo = bocetos.resolver(url.pathname.slice('/bocetos/'.length));
+    const contenido = archivo && (await readFile(archivo.ruta).catch(() => null));
+    if (!archivo || !contenido) throw new ErrorHttp(404, 'no existe');
+    res.writeHead(200, {
+      'Content-Type': archivo.mime,
+      'Content-Length': contenido.length,
+      'Cache-Control': 'no-store',
+      'Content-Security-Policy': 'sandbox allow-scripts',
     });
     res.end(contenido);
     return;
@@ -969,6 +987,16 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   if (ruta === 'POST /api/referencias') return json(res, 201, await referencias.subir(await cuerpo(req, 6 * 1024 * 1024), dirReferencias));
 
   if (ruta === 'GET /api/biblioteca') return json(res, 200, await biblioteca.listar());
+  if (ruta === 'GET /api/bocetos') return json(res, 200, await bocetos.listar());
+  if (ruta === 'POST /api/bocetos/borrar') {
+    // Hasta 500 rutas de unos 100 caracteres: más que el límite general.
+    const { rutas } = await cuerpo(req, 64 * 1024);
+    try {
+      return json(res, 200, await bocetos.borrar(rutas));
+    } catch (err) {
+      throw new ErrorHttp(400, (err as Error).message);
+    }
+  }
 
   if (ruta === 'GET /api/obs') {
     const fuente = url.searchParams.get('fuente') || undefined;

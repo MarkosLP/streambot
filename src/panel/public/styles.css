@@ -1162,6 +1162,11 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
 .ovl-bloque .nota { margin: 0; }
 .ovl-vista { aspect-ratio: 1000 / 260; border-radius: 10px; border: 1px solid var(--borde); }
 .ovl-vista iframe { width: 1000px; height: 260px; }
+.ovl-vista.completa { aspect-ratio: 16 / 9; }
+.ovl-vista.completa iframe { width: 1920px; height: 1080px; }
+.ovl-vista-pie { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ovl-vista-pie .nota { margin: 0; }
+.ovl-vista-pie .boton { flex: none; white-space: nowrap; }
 .ovl-panel-vista { position: relative; width: min(100%, 480px); aspect-ratio: 24 / 7; box-sizing: content-box; border-radius: 10px; overflow: hidden; border: 1px solid var(--borde);
   background: repeating-conic-gradient(#1c2130 0% 25%, #151924 0% 50%) 0 0 / 20px 20px; }
 .ovl-panel-vista iframe { width: 480px; height: 140px; border: 0; display: block; color-scheme: light; transform: scale(var(--escala, 1)); transform-origin: top left; }
@@ -1351,3 +1356,38 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
 .mundo-vista { border-radius: 10px; border: 1px solid var(--borde); }
 .mundo-hecho { margin: 8px 0 0; padding-left: 18px; color: var(--texto-2); }
 .mundo-hecho:empty { display: none; }
+
+/* Biblioteca → Bocetos (docs/previews) */
+.bocetos-seleccion {
+  position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--borde); border-radius: var(--radio);
+  background: color-mix(in srgb, var(--tarjeta) 94%, transparent); backdrop-filter: blur(6px);
+}
+.bocetos-seleccion #bo-n { margin-right: auto; color: var(--texto-3); font-variant-numeric: tabular-nums; }
+.bocetos-seleccion.activa { border-color: var(--oro); }
+.bocetos-seleccion.activa #bo-n { color: var(--oro-claro); }
+.grupo-bocetos { margin-bottom: 18px; }
+.grupo-bocetos > summary { display: flex; align-items: center; gap: 10px; padding: 8px 2px; cursor: pointer; list-style-position: inside; }
+.grupo-bocetos > summary input { width: 17px; height: 17px; accent-color: var(--oro); }
+.lista-bocetos { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.boceto { position: relative; }
+.boceto.elegido { border-color: var(--oro); box-shadow: 0 0 0 2px color-mix(in srgb, var(--oro) 45%, transparent); }
+.boceto .imagen-vista { aspect-ratio: 16 / 9; width: 100%; border: 0; cursor: zoom-in; }
+.boceto .overlay-vista { aspect-ratio: 16 / 9; }
+.boceto-tapa { position: absolute; inset: 0; border: 0; background: transparent; cursor: zoom-in; }
+.boceto-icono { display: grid; place-items: center; align-content: center; gap: 4px; width: 100%; border: 0; color: var(--texto-3); font-size: 2rem; cursor: pointer; }
+.boceto-icono small { font-size: .75rem; letter-spacing: .1em; }
+.boceto-marca { position: absolute; top: 8px; left: 8px; z-index: 2; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px;
+  background: rgba(10, 12, 18, .78); border: 1px solid var(--borde); cursor: pointer; }
+.boceto-marca input { width: 17px; height: 17px; margin: 0; accent-color: var(--oro); cursor: pointer; }
+.boceto .overlay-pie { gap: 6px; }
+.boceto .sonido-info { min-width: 0; flex: 1; }
+.boceto .sonido-info strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.boceto .sonido-meta { display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: .8rem; }
+
+/* «Ver en grande»: ventana flotante mediana encima del panel */
+.visor-grande { width: min(1180px, 92vw); padding: 0; border: 1px solid var(--borde); border-radius: var(--radio); background: var(--tarjeta); box-shadow: 0 30px 80px rgba(0, 0, 0, .6); overflow: hidden; }
+.visor-grande::backdrop { background: rgba(5, 7, 12, .72); }
+.visor-grande iframe { display: block; width: 100%; height: min(calc(min(1180px, 92vw) * 9 / 16 + 52px), 88vh); border: 0; }
+.visor-grande-cerrar { position: absolute; top: 9px; right: 10px; z-index: 1; width: 32px; height: 32px; border: 1px solid var(--borde); border-radius: 8px; background: #1e2433; color: var(--texto); font-size: 15px; cursor: pointer; }
+.visor-grande-cerrar:hover { border-color: var(--oro); }

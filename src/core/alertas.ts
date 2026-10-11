@@ -8,8 +8,9 @@ import type { DomainEvent } from './events.js';
  * más, para no llenar la pantalla:
  *
  *  - Alertas (biblioteca/overlays/alertas.html, fuente `OVL Alertas`): un aviso
- *    de unos segundos al mandar bits o traer una raid. Follows y suscripciones
- *    se muestran en Streamlabs. En cola: nunca dos a la vez.
+ *    de unos segundos al mandar bits o traer una raid, y la captura de los
+ *    follows si está encendida. Las suscripciones se muestran en Streamlabs.
+ *    En cola: nunca dos a la vez.
  *  - Panel rotativo (biblioteca/overlays/panel.html, fuente `OVL Panel`): una
  *    caja pequeña que va cambiando entre el top de la temporada, el último
  *    follow, el último sub y una meta del mes.
@@ -22,8 +23,12 @@ import type { DomainEvent } from './events.js';
 
 export const TIPOS = ['follow', 'sub', 'regalo', 'bits', 'raid'] as const;
 export type TipoAlerta = (typeof TIPOS)[number];
-/** Follows y suscripciones los muestra Streamlabs; se conservan sus contadores. */
-export const TIPOS_PROPIOS: readonly TipoAlerta[] = ['bits', 'raid'];
+/**
+ * Las que salen en nuestro overlay. Suscripciones y regalos los muestra Streamlabs
+ * (se conservan sus contadores). El follow sale con la animación de captura
+ * (11 oct 2026), apagado por defecto: al encenderlo, hay que apagar el de Streamlabs.
+ */
+export const TIPOS_PROPIOS: readonly TipoAlerta[] = ['follow', 'bits', 'raid'];
 
 export interface Alerta {
   n: number;
@@ -218,7 +223,7 @@ export function alEvento(event: DomainEvent): Alerta | null {
 }
 
 const PRUEBAS: Record<TipoAlerta, [string, string]> = {
-  follow: ['raftaei', 'ahora te sigue'],
+  follow: ['LunaErrante', 'ahora te sigue'],
   sub: ['Ana_la_Tanque', 'se resuscribe · 6 meses'],
   regalo: ['Pepe', 'regala 5 subs a la comunidad'],
   bits: ['Sombra_22', 'manda 500 bits'],
@@ -227,7 +232,7 @@ const PRUEBAS: Record<TipoAlerta, [string, string]> = {
 
 /** Una alerta de prueba (panel): se ve igual, no cuenta ni cambia el último follow o sub. */
 export function probar(tipo: TipoAlerta): Alerta {
-  if (!TIPOS_PROPIOS.includes(tipo)) throw new Error('Los avisos de follows y suscripciones se gestionan en Streamlabs');
+  if (!TIPOS_PROPIOS.includes(tipo)) throw new Error('Los avisos de suscripciones se gestionan en Streamlabs');
   const [quien, linea] = PRUEBAS[tipo];
   return alertar(tipo, quien, linea, true)!;
 }

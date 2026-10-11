@@ -4,6 +4,8 @@ Los `.wav` de `biblioteca/sonidos/`. Suenan en los canjes (Actions de Streamer.b
 
 ## De dónde sale cada uno
 
+**Alerta de follow «captura»:** `follow-captura.wav` usa [Bubbly achievement tone de Mixkit](https://mixkit.co/free-sound-effects/bubbles/) (ID 3193), elegido por Crid4m el 11 de octubre de 2026 tras descartar dos rondas de Freesound y una primera elección (el «Guiño» de MLaudio). Quedó en 1,21 s al volumen de la poción. Lo reproduce `alertas.html` (fuente `OVL Alertas`) cuando se abre la cápsula, a 1,94 s de empezar la alerta. **No está en git:** la licencia gratuita de Mixkit permite usarlo en el directo sin crédito, pero no deja claro que se pueda repartir el archivo, y el repositorio es público. Para recrearlo: `node scripts/poner-sonido.mjs follow-captura <mp3 de https://assets.mixkit.co/active_storage/sfx/3193/3193-preview.mp3> 5`.
+
 El 28 sep 2026 Crid4m pidió cambiar los sintetizados («muy cutres o básicos»), menos la poción. Escuchó 4 candidatos de cada uno y eligió estos. Todos con licencia **CC0** (dominio público): se pueden usar en Twitch sin atribución ni avisos de copyright. Se tomó la versión de escucha de Freesound (mp3 de alta calidad).
 
 | Archivo | Sonido original | Autor | Enlace |

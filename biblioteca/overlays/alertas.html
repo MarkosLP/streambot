@@ -2,14 +2,15 @@
 <!--
   Alertas del directo, para OBS (27 sep 2026). Fuente «OVL Alertas», a
   pantalla completa: un aviso arriba en el centro al mandar bits o traer
-  una raid. Follows y suscripciones los muestra Streamlabs.
+  una raid, y la captura de cada follow (si está encendida en el panel).
+  Las suscripciones las muestra Streamlabs.
 
   Los datos vienen de core/alertas.ts (GET /api/overlay/alertas, CORS abierto
   como las demás: el overlay corre en su sandbox). Colores y letra, los del
   estilo de las escenas. Lo que viene de Twitch se pinta con textContent.
   Qué alertas salen y el volumen se cambian en el panel (Escenas → Overlays).
 
-    ?demo=1        una alerta de cada tipo, seguidas
+    ?demo=1        una alerta de cada tipo, seguidas (&tipo=follow: solo la captura)
     ?volumen=0     sin sonido (manda sobre el del panel)
 -->
 <html lang="es">
@@ -17,7 +18,7 @@
 <meta charset="utf-8">
 <title>Alertas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@500;600&family=Fraunces:wght@500;600&family=Cormorant+Garamond:wght@500;600&family=Orbitron:wght@600&family=Bangers&family=Press+Start+2P&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@500;600&family=Fraunces:wght@500;600&family=Cormorant+Garamond:wght@500;600&family=Orbitron:wght@600&family=Bangers&family=Press+Start+2P&family=Barlow+Condensed:wght@700;800&family=Nunito:wght@800;900&display=swap">
 <style>
   html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
   body { font-family: "Inter", "Segoe UI", sans-serif; color: #fff; -webkit-font-smoothing: antialiased;
@@ -54,6 +55,51 @@
   .alerta > div:last-child { min-width: 0; }
   .linea { margin-top: 4px; font-size: 19px; color: rgba(255, 255, 255, .78); overflow-wrap: anywhere; }
   .t-follow { --color: var(--acento); } .t-sub { --color: #b58cff; } .t-regalo { --color: #ff7eb6; } .t-bits { --color: #7ce0ff; } .t-raid { --color: #ffb347; }
+
+  /* ---------- Follow: captura (11 oct 2026) ----------
+     Capas pintadas con IA (imagenes/alertas/captura/): la cápsula cae y se sacude,
+     se abre y la criatura salta; después, el nombre. Sin caja: todo se funde con
+     el juego. Duración: 5,7 s de animación, 9 s en pantalla. */
+  .captura { position: absolute; left: 50%; top: 60px; width: 1120px; height: 630px; transform: translateX(-50%); pointer-events: none; }
+  .captura.sale { animation: cap-sale .8s ease-in forwards; }
+  @keyframes cap-sale { to { opacity: 0; transform: translateX(-50%) scale(.96); } }
+  .captura > * { position: absolute; }
+  .captura .halo { z-index: 0; width: 64%; aspect-ratio: 1; border-radius: 50%; left: -3%; top: 7%;
+    background: repeating-conic-gradient(from 0deg, #ffcf8c18 0 9deg, transparent 9deg 21deg); filter: blur(4px);
+    -webkit-mask: radial-gradient(circle, #000 30%, transparent 70%); mask: radial-gradient(circle, #000 30%, transparent 70%);
+    animation: cap-gira 18s linear infinite, cap-aparece .8s ease-out both; }
+  .captura .suelo { z-index: 1; left: 4%; bottom: 4%; width: 60%; height: 18%; background: radial-gradient(ellipse, #f9b66c44, transparent 70%); filter: blur(18px); }
+  /* Solo para leer el nombre encima de cualquier juego. */
+  .captura .sombra { z-index: 1; left: 44%; right: -26%; top: 14%; bottom: 14%; background: radial-gradient(closest-side, rgba(5, 8, 22, .72), rgba(5, 8, 22, .42) 55%, transparent); animation: cap-letras 5.7s both; }
+  .captura .aro { z-index: 2; left: 8%; top: 20%; width: 37%; aspect-ratio: 1; border: 4px solid #ffce81; border-radius: 50%;
+    box-shadow: 0 0 15px 3px #ffd38c77, inset 0 0 14px #ffd38c66; animation: cap-impacto 5.7s both; }
+  .captura .cerrada { z-index: 3; left: 10%; top: 27%; width: 27%; height: 48%; object-fit: contain;
+    filter: brightness(.88) saturate(.84) drop-shadow(0 8px 12px #ffb06166); animation: cap-cerrada 5.7s both; }
+  .captura .abierta { z-index: 3; left: 3%; bottom: 4%; width: 42%; height: 78%; object-fit: contain;
+    filter: brightness(.88) saturate(.88) drop-shadow(0 8px 12px #ffb06177); animation: cap-abre 5.7s both; }
+  .captura .criatura { z-index: 4; left: 12%; top: 11%; width: 41%; height: 70%; object-fit: contain;
+    filter: brightness(.9) saturate(.9) drop-shadow(0 0 10px #ffba6477); animation: cap-salta 5.7s both; }
+  .captura .destello { z-index: 7; left: -10%; top: -10%; width: 70%; height: 120%; background: radial-gradient(circle, #fff, transparent 62%); opacity: 0; animation: cap-flash 5.7s both; }
+  .captura .chispas { z-index: 6; inset: 0; }
+  .captura .chispas i { position: absolute; left: var(--x); top: var(--y); width: var(--t); height: var(--t); transform: rotate(45deg); background: #ffd986;
+    box-shadow: 0 0 5px 1px #ffc47c88; opacity: 0; animation: cap-chispa 1.2s var(--r) ease-out both; }
+  .captura .texto { z-index: 5; left: 55%; right: -24%; top: 50%; transform: translateY(-50%); animation: cap-letras 5.7s both; text-shadow: 0 4px 24px #060716, 0 2px 4px #000; }
+  .captura .etq-c { font: 800 26px "Barlow Condensed", "Segoe UI", sans-serif; text-transform: uppercase; letter-spacing: .15em; color: #ffd891; }
+  .captura .nombre { margin: 7px 0; font: 900 64px/1.05 "Nunito", "Segoe UI", sans-serif; color: #f9f6ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .captura .linea-c { font: 700 30px "Barlow Condensed", "Segoe UI", sans-serif; color: #d9e8ff; }
+  .captura .rayas { display: flex; gap: 10px; margin-top: 17px; }
+  .captura .rayas i { width: 36px; height: 8px; background: #ffca78; transform: skewX(-25deg); box-shadow: 0 0 5px #ffba6a77; }
+  @keyframes cap-gira { to { transform: rotate(360deg); } }
+  @keyframes cap-aparece { from { opacity: 0; } }
+  @keyframes cap-cerrada { 0% { opacity: 0; transform: translate(-120%, -100%) scale(.4) rotate(-50deg); } 14% { opacity: 1; transform: translate(0) scale(1.1) rotate(20deg); }
+    25%, 29% { transform: rotate(-12deg); } 27%, 32% { transform: rotate(12deg); } 34% { opacity: 1; transform: scale(1); } 38%, 100% { opacity: 0; transform: scale(.3); } }
+  @keyframes cap-abre { 0%, 34% { opacity: 0; transform: scale(.55); } 43%, 100% { opacity: 1; transform: scale(1); } }
+  @keyframes cap-salta { 0%, 40% { opacity: 0; transform: translate(-20%, 35%) scale(.25) rotate(-22deg); } 58% { opacity: 1; transform: translate(8%, -9%) scale(1.14) rotate(7deg); }
+    73%, 100% { opacity: 1; transform: translate(0) scale(1) rotate(0); } }
+  @keyframes cap-impacto { 0%, 34% { opacity: 0; transform: scale(.3); } 44% { opacity: 1; transform: scale(1); } 65%, 100% { opacity: 0; transform: scale(2.1); } }
+  @keyframes cap-letras { 0%, 51% { opacity: 0; translate: 8% 0; } 69%, 100% { opacity: 1; translate: 0 0; } }
+  @keyframes cap-flash { 0%, 35%, 42%, 100% { opacity: 0; } 38% { opacity: .22; } }
+  @keyframes cap-chispa { 0% { opacity: 0; transform: translate(0, 0) rotate(45deg) scale(.2); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(180deg) scale(.1); } }
 </style>
 </head>
 <body>
@@ -69,6 +115,8 @@ if (q.get('demo') === '1' && q.get('encuadre') === '1') {
 const $ = (id) => document.getElementById(id);
 const API = new URL('/api/overlay/alertas', location.href);
 const INFO = {
+  // El follow no es un aviso de caja: es la animación de captura (capturar()).
+  follow: { captura: true, seg: 9, sonido: 'follow-captura.wav' },
   bits: { icono: '◆', etq: 'Bits', seg: 6, sonido: 'cofre.wav' },
   raid: { icono: '⚔', etq: 'Raid', seg: 8, sonido: 'legendario.wav' },
 };
@@ -80,6 +128,9 @@ for (const tipo of ['raid']) {
   PINTADOS[tipo] = im.src = `../imagenes/emblemas/${tipo}.png`;
   im.onerror = () => { delete PINTADOS[tipo]; };
 }
+// Las capas de la captura, también de antemano.
+const CAPTURA = '../imagenes/alertas/captura/';
+for (const f of ['capsula-cerrada', 'capsula-capa', 'criatura-capa']) new Image().src = `${CAPTURA}${f}.png`;
 const LETRAS = { moderna: '"Sora"', editorial: '"Fraunces"', elegante: '"Cormorant Garamond"', futurista: '"Orbitron"', pixel: '"Press Start 2P"', comic: '"Bangers"' };
 
 let volumen = 0.3;
@@ -106,6 +157,34 @@ function sonar(archivo) {
   a.play().catch(() => {});
 }
 
+const nodo = (etiqueta, clase, texto) => { const e = document.createElement(etiqueta); if (clase) e.className = clase; if (texto != null) e.textContent = texto; return e; };
+
+/** Follow: la cápsula cae, se abre al sonar y sale la criatura; luego el nombre. */
+function capturar(a, i) {
+  const el = nodo('div', 'captura');
+  const img = (clase, archivo) => { const m = nodo('img', clase); m.src = `${CAPTURA}${archivo}.png`; m.alt = ''; return m; };
+  const chispas = nodo('div', 'chispas');
+  for (let k = 0; k < 28; k++) {
+    const c = document.createElement('i');
+    c.style.cssText = `--x:${(k * 37 + 9) % 62}%;--y:${(k * 43 + 11) % 90}%;--dx:${(k % 2 ? 1 : -1) * (30 + k % 5 * 14)}px;--dy:${-20 - k % 7 * 12}px;--t:${3 + k % 5}px;--r:${1.7 + k % 8 * .09}s`;
+    chispas.append(c);
+  }
+  const texto = nodo('div', 'texto');
+  const nombre = nodo('div', 'nombre', a.quien);
+  const rayas = nodo('div', 'rayas');
+  for (let k = 0; k < 4; k++) rayas.append(document.createElement('i'));
+  texto.append(nodo('div', 'etq-c', '¡Captura completada!'), nombre, nodo('div', 'linea-c', 'Nuevo miembro del equipo'), rayas);
+  el.append(nodo('div', 'halo'), nodo('div', 'suelo'), nodo('div', 'sombra'), nodo('div', 'aro'),
+    img('cerrada', 'capsula-cerrada'), img('abierta', 'capsula-capa'), img('criatura', 'criatura-capa'), chispas, nodo('div', 'destello'), texto);
+  $('caja').append(el);
+  // Un nombre largo encoge hasta caber (los de Twitch llegan a 25 letras); si aun así no cabe, puntos suspensivos.
+  for (let t = 64; t > 34 && nombre.scrollWidth > nombre.clientWidth; t -= 2) nombre.style.fontSize = `${t - 2}px`;
+  // Suena cuando se abre la cápsula (34 % de 5,7 s).
+  setTimeout(() => sonar(i.sonido), 1940);
+  setTimeout(() => el.classList.add('sale'), i.seg * 1000);
+  setTimeout(() => { el.remove(); mostrando = false; siguiente(); }, i.seg * 1000 + 850);
+}
+
 function siguiente() {
   if (mostrando || !cola.length) return;
   const a = DirectoRed.extraer(cola);
@@ -113,6 +192,7 @@ function siguiente() {
   mostrando = true;
   const i = INFO[a.tipo];
   if (!i) { mostrando = false; siguiente(); return; }
+  if (i.captura) { capturar(a, i); return; }
   const el = document.createElement('div');
   el.className = `alerta t-${a.tipo}`;
   let icono;
@@ -150,7 +230,9 @@ function aplicar(d) {
 
 if (q.get('demo') === '1') {
   vistas = 0;
-  const demo = [['raid', 'OtroCanal', 'llega de raid con 23 personas'], ['bits', 'Sombra', 'manda 500 bits']].filter(([tipo]) => !q.has('tipo') || q.get('tipo') === tipo);
+  // La captura no cabe en el recuadro pequeño del panel (encuadre=1): ahí, solo las de caja.
+  const demo = [['follow', 'LunaErrante', 'ahora te sigue'], ['raid', 'OtroCanal', 'llega de raid con 23 personas'], ['bits', 'Sombra', 'manda 500 bits']]
+    .filter(([tipo]) => (q.has('tipo') ? q.get('tipo') === tipo : !(tipo === 'follow' && q.get('encuadre') === '1')));
   // En bucle: es la vista previa del panel.
   let vuelta = 0;
   const tanda = () => aplicar({ estilo: q.get('estilo') || 'oscuro', volumen: 0, alertas: demo.map(([tipo, quien, texto], i) => ({ n: vuelta * 10 + i + 1, tipo, quien, texto })) });
