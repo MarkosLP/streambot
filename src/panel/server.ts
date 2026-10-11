@@ -51,6 +51,7 @@ import * as temporada from '../interactions/loot/temporada.js';
 import * as temporadas from '../data/temporadas.js';
 import * as iaLocal from '../services/ia-local.js';
 import * as arena from '../interactions/loot/arena.js';
+import * as duelos from '../interactions/loot/duelo.js';
 import { MOCHILA_MAX, PROBABILIDADES, tirar } from '../interactions/loot/objetos.js';
 import * as cooldowns from '../core/cooldowns.js';
 import { conObs, type PedirObs } from '../transport/obs.js';
@@ -349,7 +350,8 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       'Access-Control-Allow-Origin': '*',
     });
     // Sin Streamer.bot, los !explorar no llegan: la escena lo dice en vez de invitar a jugar.
-    res.end(JSON.stringify({ ...mmo.estado(), chatConectado: sb.estado().conectado }));
+    const estado = mmo.estadoParaOverlay();
+    res.end(JSON.stringify({ ...estado, chatConectado: estado.pruebaVisual || sb.estado().conectado }));
     return;
   }
 
@@ -449,6 +451,8 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
       recientes: lootDb.recientes(25),
       mochilas: lootDb.mochilas(10),
       duelosRecientes: arena.paraPanel(),
+      duelosPantalla: duelos.pantalla(),
+      retosPendientes: duelos.pendientes(),
       progresion: progresion.estado(),
       comandos: lootComandos.LISTA,
       mochilaMax: MOCHILA_MAX,
@@ -496,7 +500,15 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
   }
 
   if (ruta === 'POST /api/loot/ajustes') {
-    const { activo, canalJuega } = await cuerpo(req);
+    const { activo, canalJuega, duelosPantalla } = await cuerpo(req);
+    // Duelos en pantalla: completo (~10 s) · corto (5 s) · solo en el chat.
+    if (duelosPantalla !== undefined) {
+      try {
+        return json(res, 200, { duelosPantalla: duelos.setPantalla(duelosPantalla) });
+      } catch (err) {
+        throw new ErrorHttp(400, (err as Error).message);
+      }
+    }
     if (canalJuega !== undefined) {
       if (typeof canalJuega !== 'boolean') throw new ErrorHttp(400, 'canalJuega tiene que ser true o false');
       ajustes.setCanalJuega(canalJuega, 'desde el panel');
@@ -806,6 +818,13 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     }
     if (tipo === 'mundo') {
       const hecho = await obs((pedir) => obsSetup.crearEscenaMundo(pedir)).catch((err) => {
+        throw new ErrorHttp(502, err instanceof Error ? err.message : String(err));
+      });
+      for (const h of hecho) log.info(`Panel → OBS: ${h}`);
+      return json(res, 200, { hecho });
+    }
+    if (tipo === 'retro') {
+      const hecho = await obs((pedir) => obsSetup.crearEscenaRetro(pedir)).catch((err) => {
         throw new ErrorHttp(502, err instanceof Error ? err.message : String(err));
       });
       for (const h of hecho) log.info(`Panel → OBS: ${h}`);

@@ -53,6 +53,72 @@ try {
     await abrir('/biblioteca/overlays/espectadores.html',640,200);await esperar(800);
     assert.equal(await evaluar("document.querySelector('#contador').hidden"),true);
   }
+  if(caso==='mmo-prueba') {
+    const mmo = await import('../src/interactions/mmo/index.ts');
+    const dueno = {id:'crid4m',login:'crid4m',displayName:'Crid4m',isBroadcaster:true,isModerator:false,isVip:false,isSubscriber:false,rawRole:null};
+    mmo.comando('!mundo probar',dueno,'prueba-visual',Date.now());
+    await abrir('/biblioteca/overlays/mmo.html',1920,1080);
+    assert.equal(await evaluar("document.querySelector('#prueba-visual').hidden"),false);
+    assert.equal(await evaluar("document.body.dataset.viva"),'calma');
+    await captura('mmo-prueba-calma');
+    await esperar(7500);
+    await esperar(3200); // la escena consulta el endpoint cada 3 s
+    assert.equal(await evaluar("document.body.dataset.viva"),'expedicion');
+    assert.equal(await evaluar("document.querySelector('#prueba-visual').hidden"),false);
+    await captura('mmo-prueba-expedicion');
+    assert.equal(mmo.estado().fase,'calma','el recorrido no cambia el estado real');
+  }
+  if(caso==='mmo-auditoria') {
+    const mmo = await import('../src/interactions/mmo/index.ts');
+    const dueno = {id:'crid4m',login:'crid4m',displayName:'Crid4m',isBroadcaster:true,isModerator:false,isVip:false,isSubscriber:false,rawRole:null};
+    const fases = ['calma','expedicion','expedicion','expedicion','resultado','expedicion','expedicion','expedicion','resultado'];
+    for(let paso=0;paso<9;paso++) {
+      mmo.comando('!mundo probar',dueno,`auditoria-${paso}`,Date.now()-paso*7000);
+      await abrir('/biblioteca/overlays/mmo.html',1920,1080);
+      assert.equal(await evaluar("document.querySelector('#prueba-visual').hidden"),false);
+      if(paso===7) {
+        assert.equal(await evaluar("document.body.classList.contains('pausado')"),true,'el paso 7 muestra la pausa');
+        assert.equal(await evaluar("document.body.classList.contains('diorama')"),true,'la pausa conserva el diorama');
+        assert.equal(await evaluar("document.querySelector('#viva-titulo').textContent"),'El tiempo se detiene');
+      }
+      assert.equal(await evaluar("document.body.dataset.viva"),fases[paso],`fase del paso ${paso}`);
+      await captura(`mmo-prueba-${paso}`);
+      console.log(`Escena ${paso}: ${await evaluar("document.body.dataset.viva")} · ${await evaluar("document.body.dataset.region")}`);
+    }
+    assert.equal(mmo.estado().fase,'calma','la prueba visual no altera el mundo real');
+  }
+  if(caso==='mmo-faroles') {
+    await abrir('/biblioteca/overlays/mmo.html?demo=1&auto=faroles',1920,1080);
+    assert.equal(await evaluar("document.body.dataset.region"),'marisma');
+    assert.ok(await evaluar("document.querySelectorAll('#faroles .encendido').length")>0,'la Marisma enciende faroles al explorar');
+    assert.equal(await evaluar("getComputedStyle(document.querySelector('#faroles .encendido')).backgroundImage.includes('radial-gradient')"),true,'solo se añade luz al farol pintado');
+    assert.equal(await evaluar("document.querySelector('#faroles').parentElement.id"),'capas','la luz acompaña al fondo cuando se mueve');
+    await evaluar("document.querySelector('#encrucijada').hidden=true; document.querySelector('#demo-controles').hidden=true; document.querySelector('#transicion-mundo').classList.remove('viaje'); document.querySelector('#aventurero').hidden=true");
+    await captura('mmo-faroles-fondo');
+  }
+  if(caso==='mmo-marisma-ritmo') {
+    await abrir('/biblioteca/overlays/mmo.html?demo=1&auto=marisma',1920,1080);
+    await evaluar("document.querySelector('#transicion-mundo').classList.remove('viaje')");
+    const antes=Number(await evaluar("document.querySelectorAll('#faroles .encendido').length"));
+    assert.equal(antes,2,'dos faroles encendidos antes del aporte');
+    await evaluar("demoAccion('explorar')");
+    assert.equal(await evaluar("document.querySelectorAll('#faroles .encendido').length"),3,'el avance enciende otro farol');
+    assert.equal(await evaluar("document.querySelector('#compania-viva figure.avanza') !== null"),true,'el personaje reacciona');
+    assert.equal(await evaluar("document.querySelector('#capas').classList.contains('impulso')"),true,'la cámara sigue el avance');
+    assert.equal(await evaluar("document.querySelector('#acciones').textContent.includes('farol hundido')"),true,'la acción de prueba corresponde a la Marisma');
+    await evaluar("document.querySelector('#demo-controles').hidden=true; document.querySelector('#aventurero').hidden=true");
+    await esperar(300);
+    await captura('mmo-marisma-avance');
+  }
+  if(caso==='mmo-elenco') {
+    await abrir('/biblioteca/overlays/mmo.html?demo=1&auto=group',1920,1080);
+    assert.equal(await evaluar('AVATARES.length'),7);
+    assert.equal(await evaluar("document.querySelectorAll('#compania-viva img').length"),3);
+    assert.equal(await evaluar("new Set([...document.querySelectorAll('#compania-viva img')].map(img => img.src)).size"),3,'la compañía visible no repite personaje');
+    assert.equal(await evaluar("Promise.all(AVATARES.map(nombre => new Promise(resolve => { const img = new Image(); img.onload = () => resolve(img.naturalWidth > 0); img.onerror = () => resolve(false); img.src = '../imagenes/mmo/avatares/' + nombre; }))).then(resultados => resultados.every(Boolean))"),true,'los siete personajes cargan en el navegador');
+    await evaluar("document.querySelector('#demo-controles').hidden=true; document.querySelector('#transicion-mundo').classList.remove('viaje')");
+    await captura('mmo-elenco-victoria');
+  }
   if(caso==='mmo') {
     const mmo = await import('../src/interactions/mmo/index.ts');
     const streams = await import('../src/data/streams.ts');
@@ -71,13 +137,18 @@ try {
     assert.equal(await evaluar("document.querySelector('#bloque-objetivo').hidden"),true);
     await captura('mmo-vivo-calma');
     const ana={id:'mmo-ana',login:'ana',displayName:'Ana',isBroadcaster:false,isModerator:false,isVip:false,isSubscriber:false,rawRole:null};
+    const inicioRespuesta=performance.now();
     for(let i=0;i<3;i++)mmo.explorar(ana,`mmo-visual-${i}`,inicio+i*mmo.ACCION_MS);
     await hasta("document.querySelector('#actual').textContent==='3'");
+    const latenciaRespuesta=Math.round(performance.now()-inicioRespuesta);
+    assert.ok(latenciaRespuesta<2500,`la escena tardó ${latenciaRespuesta} ms en mostrar la acción`);
+    console.log(`MMO: acción visible en ${latenciaRespuesta} ms`);
     assert.equal(await evaluar("document.querySelector('#actual').textContent"),'3');
     assert.equal(await evaluar("document.querySelector('#acciones').textContent.includes('Ana')"),true);
     // Lo nuevo reacciona: la acción entra, el segmento brilla y la cifra sube.
     assert.ok(Number(await evaluar('document.documentElement.dataset.acciones'))>=1,'las acciones nuevas se animan');
     assert.ok(Number(await evaluar('document.documentElement.dataset.segmentos'))>=1,'la barra reacciona al subir');
+    assert.equal(await evaluar("document.querySelector('.compania-viva figure')?.classList.contains('avanza')"),true,'el personaje avanza con el aporte');
     assert.equal(await evaluar("document.querySelector('#ambiente').className"),'ambiente bosque');
     assert.equal(await evaluar("document.querySelector('#pista').hidden"),false,'pista para quien acaba de llegar');
     await esperar(1600);

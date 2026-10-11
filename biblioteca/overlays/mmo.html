@@ -30,6 +30,9 @@
   @media (prefers-reduced-motion: no-preference) { .capas { animation: respira 40s ease-in-out infinite alternate; } }
   .capas { position: absolute; inset: 0; transform-origin: 40% 55%; }
   @keyframes respira { from { transform: scale(1); } to { transform: scale(1.045) translate(-8px, -4px); } }
+  .capas.impulso { animation: camara-avanza .85s cubic-bezier(.2,.75,.25,1) both; }
+  @keyframes camara-avanza { 0%, 100% { transform: none; } 48% { transform: scale(1.025) translate(-12px, -5px); } }
+  @media (prefers-reduced-motion: reduce) { .capas.impulso { animation: none; } }
 
   /* Ambiente de cada lugar (2 oct 2026): brasas, motas de ámbar, polvo y luciérnagas. */
   .ambiente { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
@@ -49,8 +52,8 @@
   body[data-clima="noche"] .clima { opacity: 1; background: radial-gradient(ellipse at 70% 10%, rgba(170, 190, 255, .16), transparent 45%), rgba(8, 14, 48, .34); }
   body[data-clima="niebla"] .capas { filter: contrast(.8) saturate(.65) brightness(.95); }
   body[data-clima="niebla"] .clima { opacity: 1; background: linear-gradient(0deg, rgba(205, 214, 230, .62), rgba(205, 214, 230, .34) 40%, rgba(205, 214, 230, .14) 75%, rgba(205, 214, 230, .08)); }
-  body[data-clima="tormenta"] .capas { filter: brightness(.72) saturate(.55); }
-  body[data-clima="tormenta"] .clima { opacity: 1; background: linear-gradient(180deg, rgba(20, 24, 40, .55), rgba(20, 24, 40, .2) 60%); }
+  body[data-clima="tormenta"] .capas { filter: brightness(.88) saturate(.68); }
+  body[data-clima="tormenta"] .clima { opacity: 1; background: linear-gradient(180deg, rgba(20, 24, 40, .35), rgba(20, 24, 40, .1) 60%); }
   .clima::after { content: ''; position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at 35% 0%, rgba(230, 235, 255, .7), transparent 60%); }
   @media (prefers-reduced-motion: no-preference) {
     body[data-clima="niebla"] .clima { animation: niebla 14s ease-in-out infinite alternate; }
@@ -271,15 +274,15 @@
     filter: blur(12px); transform: skewY(-7deg); }
   .estela-paso.avanza { animation: paso-luz .8s ease-out both; }
   @keyframes paso-luz { 0% { opacity: 0; transform: translateX(-260px) skewY(-7deg); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateX(210px) skewY(-7deg); } }
-  /* Seis faroles en el camino de la Marisma: el progreso los enciende sin tapar la escena. */
+  /* La luz se posa sobre los faroles que ya están pintados en el fondo. */
   .faroles { position: absolute; z-index: 1; inset: 0; display: none; pointer-events: none; }
   body[data-region="marisma"] .faroles { display: block; }
-  .farol { position: absolute; left: var(--x); top: var(--y); width: 150px; height: 150px; transform: translate(-50%, -50%) scale(var(--escala));
-    border-radius: 50%; opacity: 0; mix-blend-mode: screen; transition: opacity .7s ease;
-    background: radial-gradient(circle, #fff1bbbf 0 3%, #ffe6a894 8%, #f4b86850 23%, #7ce5cc31 42%, transparent 70%); }
-  .farol.encendido { opacity: .9; }
+  .farol { position: absolute; left: var(--x); top: var(--y); width: var(--tam); height: var(--tam); transform: translate(-50%, -50%);
+    opacity: 0; transition: opacity .7s ease; mix-blend-mode: screen;
+    background: radial-gradient(circle, #fff6cbb8 0%, #ffd37591 10%, #ffb44f52 27%, #e99b3530 45%, transparent 69%); }
+  .farol.encendido { opacity: 1; }
   .farol.nuevo { animation: farol-prende 1.2s ease-out; }
-  @keyframes farol-prende { 0% { filter: brightness(.35); } 32% { filter: brightness(2.3); } 100% { filter: brightness(1); } }
+  @keyframes farol-prende { 0% { opacity: .25; } 45% { opacity: 1; } 100% { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .farol.nuevo { animation: none; } }
   @media (prefers-reduced-motion: reduce) { .transicion-mundo.viaje, .estela-paso.avanza { animation: none; } }
   @media (prefers-reduced-motion: reduce) { .acciones li.nueva, .barra i.nuevo, .cuenta b.sube, .centro.revela, .destello.vivo { animation: none; } }
@@ -312,18 +315,121 @@
     .demo-acciones button { white-space: normal; }
   }
 
+/* Dirección visual del mundo sin webcam. El estado y los premios siguen en el motor MMO. */
+.escena-viva[hidden] { display: none; }
+.escena-viva { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.prueba-visual { position: absolute; z-index: 12; top: 143px; right: 64px; padding: 9px 15px; border: 1px solid #ffd17a; background: #17121be8; color: #ffe0a2; font: 700 19px 'Rajdhani Local', sans-serif; letter-spacing: .16em; text-transform: uppercase; }
+.prueba-visual[hidden] { display: none; }
+.escena-viva::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #090811a8, transparent 35%, transparent 65%, #0908118a), linear-gradient(0deg, #08070bd9, transparent 30%, transparent 80%, #08070b78); }
+.efecto-region { position: absolute; inset: 0; overflow: hidden; }
+.efecto-region i { position: absolute; display: block; pointer-events: none; }
+/* La Fronda abre raíces luminosas en el sendero. */
+body[data-region="bosque"] .efecto-region i { left: var(--bosque-x); bottom: var(--bosque-y); width: 18%; height: 4px; border-radius: 50%; background: linear-gradient(90deg, transparent, #e8a952bc, #ffe3a9); box-shadow: 0 0 15px #f5af68; transform: rotate(var(--bosque-rot)); opacity: 0; }
+body[data-region="bosque"] .efecto-region.impacto i { animation: raiz-despierta 1.5s ease-out both; animation-delay: var(--demora); }
+@keyframes raiz-despierta { 0% { opacity: 0; clip-path: inset(0 100% 0 0); } 35% { opacity: .75; } 100% { opacity: 0; clip-path: inset(0 0 0 0); } }
+/* En las Canteras la piedra responde con una corona de cristal. */
+body[data-region="cantera"] .efecto-region i { left: var(--cantera-x); top: var(--cantera-y); width: var(--cristal-w); height: var(--cristal-h); clip-path: polygon(50% 0, 100% 27%, 78% 100%, 20% 100%, 0 31%); background: linear-gradient(100deg, #4c3682b8, #f4dcffed 47%, #a989edb8 53%, #3d3163b8); box-shadow: 0 0 24px #b48cff; opacity: 0; transform: rotate(var(--cantera-rot)); }
+body[data-region="cantera"] .efecto-region.impacto i { animation: cristal-pulsa 1.25s ease-out both; animation-delay: var(--demora); }
+@keyframes cristal-pulsa { 0% { opacity: 0; filter: brightness(.5); transform: translateY(22px) scale(.8) rotate(var(--cantera-rot)); } 30% { opacity: .8; filter: brightness(1.5); } 100% { opacity: 0; filter: brightness(1); transform: rotate(var(--cantera-rot)); } }
+/* La Marisma ilumina los faroles que forman parte de la pintura original. */
+.mision-viva { position: absolute; left: 60px; top: 44%; width: 530px; display: grid; gap: 8px; text-shadow: 0 3px 14px #000; }
+.mision-viva #viva-sello { color: var(--oro); font-size: 22px; letter-spacing: .27em; text-transform: uppercase; }
+.mision-viva #viva-titulo { font: 700 43px/1.15 'Cinzel Decorative Local', Georgia, serif; color: var(--oro-claro); text-wrap: balance; }
+.mision-viva #viva-linea { font-size: 27px; line-height: 1.15; }
+body[data-viva="calma"] .mision-viva { top: 44%; width: 660px; }
+body[data-viva="calma"] .mision-viva #viva-titulo { font-size: 56px; }
+body[data-viva="resultado"] .mision-viva #viva-titulo { font-size: 54px; }
+.compania-viva { position: absolute; left: 36%; bottom: 22%; display: flex; align-items: end; justify-content: center; gap: 8px; width: 29%; height: 36%; transition: opacity .25s ease; }
+.compania-viva::before { content: ''; position: absolute; left: 24%; right: 24%; bottom: 38px; height: 24px; border-radius: 50%; background: rgba(var(--acento-b), .28); filter: blur(17px); }
+.compania-viva figure { flex: 0 1 33%; min-width: 0; margin: 0; text-align: center; filter: drop-shadow(0 13px 11px #000); }
+.compania-viva figure:only-child { flex-basis: 58%; }
+.compania-viva img { width: 100%; height: 310px; object-fit: contain; object-position: bottom; filter: drop-shadow(0 0 12px rgba(var(--acento-b), .22)); }
+.compania-viva figure:only-child img { height: 355px; }
+.compania-viva figure.avanza { animation: aventurero-avanza .75s cubic-bezier(.22,.8,.25,1) both; }
+@keyframes aventurero-avanza { 0% { transform: translateY(12px) scale(.96); } 55% { transform: translateY(-13px) scale(1.025); } 100% { transform: none; } }
+.compania-viva figcaption { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 21px; text-shadow: 0 2px 7px #000; }
+.senda-viva { position: absolute; left: 20%; right: 20%; bottom: 12%; height: 82px; }
+.senda-linea, .senda-progreso { position: absolute; left: 0; top: 37px; height: 3px; border-radius: 8px; }
+.senda-linea { width: 100%; background: #bdcbc660; }
+.senda-progreso { width: 0; background: linear-gradient(90deg, #ffb16d, #ffe2ae, var(--acento)); box-shadow: 0 0 17px 4px rgba(var(--acento-b), .6); transition: width .9s ease; }
+.senda-pasos { position: absolute; inset: 0; display: flex; align-items: flex-start; justify-content: space-between; }
+.senda-pasos i { position: relative; display: grid; place-items: center; width: 76px; height: 76px; border: 2px solid #b9c4c4a0; border-radius: 50%; background: #15131fe8; box-shadow: 0 0 0 5px #100d1678; }
+.senda-pasos i::after { content: '◇'; color: #c3d1d0; font: 34px Georgia, serif; }
+.senda-pasos i:first-child::after { content: '✦'; }
+.senda-pasos i.encendido { border-color: var(--oro-claro); box-shadow: 0 0 0 7px #100d1678, 0 0 28px rgba(var(--acento-b), .8); }
+.senda-pasos i.encendido::after { content: '◆'; color: var(--oro-claro); }
+.senda-pasos i:first-child.encendido::after { content: '✦'; }
+body[data-viva="calma"] .senda-viva { opacity: .42; }
+.llamada-viva { position: absolute; left: 60px; bottom: 50px; padding: 12px 22px; border-left: 4px solid var(--acento); background: #100d17e8; box-shadow: 0 10px 24px #0009; font-size: 30px; }
+.tiempo-vivo { position: absolute; right: 60px; bottom: 44px; display: grid; gap: 2px; text-align: right; text-shadow: 0 2px 12px #000; font-family: 'Segoe UI', sans-serif; }
+.tiempo-vivo span { font-size: 23px; text-transform: uppercase; letter-spacing: .1em; }
+.tiempo-vivo strong { font-size: 42px; line-height: 1; color: var(--oro-claro); font-variant-numeric: tabular-nums; }
+.memoria-viva { position: absolute; right: 64px; top: 55%; width: 390px; padding: 18px 22px 20px; border-left: 3px solid rgba(var(--acento-b), .8); background: linear-gradient(90deg, #100d18d9, #100d1894); box-shadow: 0 10px 30px #0007; }
+.memoria-viva[hidden] { display: none; }
+.memoria-viva small { display: block; margin-bottom: 6px; color: var(--oro); font-size: 18px; letter-spacing: .2em; text-transform: uppercase; }
+.memoria-viva strong { display: block; color: var(--oro-claro); font: 700 28px/1.15 'Cinzel Decorative Local', Georgia, serif; }
+.memoria-viva p { margin: 8px 0 0; font-size: 23px; line-height: 1.15; }
+.victoria-viva { position: absolute; z-index: 2; left: 565px; top: 205px; width: 790px; text-align: center; text-shadow: 0 5px 18px #000; }
+.victoria-viva[hidden] { display: none; }
+.victoria-viva::before, .victoria-viva::after { content: ''; display: inline-block; width: 130px; height: 2px; margin: 0 18px 18px; background: linear-gradient(90deg, transparent, var(--oro-claro)); }
+.victoria-viva::after { transform: rotate(180deg); }
+.victoria-viva strong { font: 700 76px/1 'Cinzel Decorative Local', Georgia, serif; letter-spacing: .08em; color: #fff0cb; }
+.victoria-viva span { display: block; margin-top: 10px; color: #f3d5a3; font-size: 23px; font-weight: 700; letter-spacing: .3em; text-transform: uppercase; }
+.victoria-viva.entra { animation: victoria-entra 1.2s cubic-bezier(.18,.8,.2,1) both; }
+@keyframes victoria-entra { from { opacity: 0; transform: translateY(28px) scale(.94); } to { opacity: 1; transform: none; } }
+body.diorama .cabecera { z-index: 4; }
+body.diorama .cabecera .mundo { font-size: 27px; letter-spacing: .13em; }
+body.diorama .cabecera .lugar { margin-top: 9px; font-size: 42px; }
+body.diorama .cabecera .estado { font-size: 17px; }
+body.diorama .ausente { z-index: 4; padding: 9px 16px; font-size: 18px; font-family: 'Segoe UI', sans-serif; }
+body.diorama .ausente img { width: 38px; height: 38px; }
+body.diorama .ausente small { font-size: 17px; }
+body.cerrado .ausente, body.pausado .ausente, body.sin-datos .ausente { display: none; }
+body.diorama .lateral, body.diorama .mapa-memoria, body.diorama .comandos, body.diorama .cronica, body.diorama .compania-final { display: none; }
+body.diorama .centro.calma { display: none; }
+body.diorama.pausado .centro.expedicion { display: none; }
+body.diorama .centro.resultado { display: block; z-index: 4; left: auto; right: 65px; top: 278px; transform: none; width: 430px; text-align: left; }
+body.diorama .centro.resultado .aviso { padding: 22px 25px 24px; background: linear-gradient(155deg, #19131ce8, #0c0a11ed); border-color: var(--acento); box-shadow: 0 16px 42px #000b, inset 0 1px 0 #fff3; }
+body.diorama .centro.resultado .sello { font-size: 17px; letter-spacing: .23em; }
+body.diorama .centro.resultado h1 { font-size: 30px; line-height: 1.13; margin: 10px 0; }
+body.diorama .centro.resultado p { font-size: 21px; line-height: 1.2; }
+body.diorama .centro.resultado .premio { margin: 14px 0 12px; font-size: 23px; }
+body.diorama .centro.resultado .nota, body.diorama .centro.resultado .capitulo { margin-top: 8px; font-size: 18px; }
+body.diorama .centro.resultado.ganada::before { content: 'HALLAZGO DE LA COMPAÑÍA'; display: block; margin-bottom: 8px; color: var(--oro-claro); font-size: 20px; font-weight: 700; letter-spacing: .18em; text-shadow: 0 2px 8px #000; }
+body[data-viva="resultado"].diorama .pie { display: none; }
+body.diorama .pie { z-index: 3; top: 52%; bottom: auto; left: auto; right: 65px; width: 470px; }
+body.diorama .acciones { max-width: 470px; padding-left: 20px; border-left: 2px solid rgba(var(--acento-b), .45); }
+body.diorama .acciones li { font-size: 22px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.15; }
+body[data-viva="calma"].diorama .pie { top: 76%; }
+body.diorama .aventurero { z-index: 5; left: 950px; top: 260px; }
+body.diorama .aventurero .globo { width: 350px; }
+body.diorama .aventurero img { display: none; }
+body.diorama .encrucijada { z-index: 6; }
+body.diorama .destello, body.diorama .chispas, body.diorama .estela-paso { z-index: 5; }
+@media (prefers-reduced-motion: reduce) { .efecto-region.impacto i, .victoria-viva.entra { animation: none; } .senda-progreso { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .compania-viva figure.avanza { animation: none; } }
+
 </style>
 </head>
 <body data-region="refugio">
-<div class="capas" id="capas"><div class="fondo" id="fondo-a"></div><div class="fondo oculto" id="fondo-b"></div></div>
+<div class="capas" id="capas"><div class="fondo" id="fondo-a"></div><div class="fondo oculto" id="fondo-b"></div><div class="faroles" id="faroles" aria-hidden="true"></div></div>
 <div class="ambiente" id="ambiente"></div>
 <div class="clima" id="clima"></div>
 <div class="velo"></div>
 <div class="amenaza" id="amenaza"></div>
 <div class="destello" id="destello"></div>
 <div class="estela-paso" id="estela-paso"></div>
-<div class="faroles" id="faroles" aria-hidden="true"></div>
 <div class="transicion-mundo" id="transicion-mundo"><div class="titulo" id="transicion-titulo"></div></div>
+<div class="escena-viva" id="escena-viva" aria-hidden="true">
+  <div class="efecto-region" id="efecto-region"></div>
+  <div class="mision-viva"><span id="viva-sello"></span><strong id="viva-titulo"></strong><span id="viva-linea"></span></div>
+  <div class="victoria-viva" id="victoria-viva" hidden><strong>¡VICTORIA!</strong><span>El Velo cede ante la compañía</span></div>
+  <div class="compania-viva" id="compania-viva"></div>
+  <aside class="memoria-viva" id="memoria-viva"><small id="memoria-sello"></small><strong id="memoria-titulo"></strong><p id="memoria-texto"></p></aside>
+  <div class="senda-viva" id="senda-viva"><div class="senda-linea"></div><div class="senda-progreso" id="senda-progreso"></div><div class="senda-pasos" id="senda-pasos"></div></div>
+  <div class="llamada-viva" id="llamada-viva"></div><div class="tiempo-vivo" id="tiempo-vivo"></div>
+</div>
+<div class="prueba-visual" id="prueba-visual" hidden>Prueba visual · sin premios</div>
 <nav class="demo-controles" id="demo-controles" aria-label="Controles de la demo local" hidden>
   <details class="demo-panel">
   <summary>DEMO LOCAL · mostrar comandos y controles</summary>
@@ -334,6 +440,8 @@
   <div class="demo-acciones">
   <button type="button" data-demo="explorar">Simular !explorar</button>
   <button type="button" data-demo="grupo">Añadir compañía</button>
+  <button type="button" data-demo="cantera">Ver Canteras</button>
+  <button type="button" data-demo="marisma">Ver Marisma</button>
   <button type="button" data-demo="encrucijada">Encrucijada</button>
   <button type="button" data-demo="votar">Votar 2</button>
   <button type="button" data-demo="victoria">Victoria</button>
@@ -352,7 +460,7 @@
   <div class="lugar"><span id="lugar"></span><span class="estado" id="estado"></span></div>
 </header>
 
-<div class="ausente placa"><img src="../imagenes/espectadores/icono.png" alt=""><div>Crid4m está ausente<small>El mundo sigue: jugad vosotros</small></div></div>
+<div class="ausente placa"><img src="../imagenes/espectadores/icono.png" alt=""><div>El mundo sigue en el chat<small>Explorad juntos con !explorar</small></div></div>
 
 <aside class="lateral placa" id="lateral">
   <div id="bloque-objetivo">
@@ -414,6 +522,13 @@
   let ultimo = { version: 1, modo: 'apagado', fase: 'calma', region: { id: 'bosque', nombre: 'Fronda Ámbar' },
     objetivo: { actual: 0, meta: 4 }, hasta: null, participantes: [], acciones: [], resultado: null, ultimoSuceso: '' };
   let desconectado = true;
+  const sonidoInicio = new Audio('../sonidos/inicio-explorar.wav');
+  sonidoInicio.preload = 'auto';
+  sonidoInicio.volume = .22;
+  function sonarInicio() {
+    sonidoInicio.currentTime = 0;
+    sonidoInicio.play().catch(() => {});
+  }
 
   // ---------- Fondo y ambiente de cada lugar ----------
   const LUGARES = ['refugio', 'bosque', 'cantera', 'marisma'];
@@ -462,12 +577,24 @@
   let encrucijadaVista = null; // para animar solo la encrucijada que acaba de abrirse
   const accionesVistas = new Set();
   const claveAccion = (a) => `${a.at}|${a.quien}|${a.texto}`;
-  const AVATARES = ['guardabosques.png', 'guardian-cantera.png', 'farera-marisma.png', 'explorador-errante.png', 'sabio-farolero.png'];
+  const AVATARES = ['cartografo-ceniza.webp', 'guardiana-umbral.webp', 'buey-musgo.webp', 'farera-sal.webp',
+    'ciervo-brasa.webp', 'manticora-basalto.webp', 'tortuga-aurora.webp'];
   for (const archivo of AVATARES) new Image().src = `../imagenes/mmo/avatares/${archivo}`;
-  const avatarDe = (nombre) => {
+  const indiceAvatar = (nombre) => {
     let codigo = 0;
     for (const letra of nombre.toLocaleLowerCase('es-ES')) codigo = (codigo * 31 + letra.codePointAt(0)) >>> 0;
-    return AVATARES[codigo % AVATARES.length];
+    return codigo % AVATARES.length;
+  };
+  const avatarDe = (nombre, participantes = []) => {
+    const usados = new Set();
+    const nombres = [...new Set(participantes.map((p) => p.nombre))].sort((a, b) => a.localeCompare(b, 'es'));
+    for (const participante of nombres) {
+      let indice = indiceAvatar(participante);
+      for (let intento = 0; intento < AVATARES.length && usados.has(indice); intento++) indice = (indice + 1) % AVATARES.length;
+      if (participante === nombre) return AVATARES[indice];
+      usados.add(indice);
+    }
+    return AVATARES[indiceAvatar(nombre)];
   };
   const PISTAS = [
     { id: 'bosque', nombre: 'Fronda Ámbar', pista: 'Una raíz señala las antiguas canteras.' },
@@ -500,7 +627,7 @@
       const figure = document.createElement('figure');
       figure.style.setProperty('--retraso', `${i * .16}s`);
       const img = document.createElement('img');
-      img.src = `../imagenes/mmo/avatares/${avatarDe(nombre)}`;
+      img.src = `../imagenes/mmo/avatares/${avatarDe(nombre, d.participantes)}`;
       img.alt = '';
       figure.append(img, texto('figcaption', nombre));
       return figure;
@@ -512,12 +639,12 @@
   function mostrarSiguienteAventurero() {
     const accion = colaAventureros.shift();
     if (!accion) { $('aventurero').hidden = true; return; }
-    $('aventurero-imagen').src = `../imagenes/mmo/avatares/${avatarDe(accion.quien)}`;
+    $('aventurero-imagen').src = `../imagenes/mmo/avatares/${avatarDe(accion.quien, ultimo.participantes)}`;
     $('aventurero-nombre').textContent = accion.quien;
     $('aventurero-frase').textContent = accion.texto;
     $('aventurero').hidden = false;
     reaccionar('entra', $('aventurero'));
-    tiempoAventurero = setTimeout(mostrarSiguienteAventurero, 5200);
+    tiempoAventurero = setTimeout(mostrarSiguienteAventurero, 2600);
     contar('avatares');
   }
   function anadirAventureros(acciones) {
@@ -537,11 +664,16 @@
   // Cuántas reacciones ha habido (para las pruebas: una clase de animación dura solo hasta la siguiente consulta).
   const contar = (que) => { const ds = document.documentElement.dataset; ds[que] = String(Number(ds[que] || 0) + 1); };
   function reaccionar(clase, el) { el.classList.remove(clase); void el.offsetWidth; el.classList.add(clase); }
-  const PUESTOS_FAROLES = [[2, 61, .65], [20, 60, .8], [29, 69, 1], [43, 82, .8], [59, 71, 1], [68, 70, .9]];
-  $('faroles').replaceChildren(...PUESTOS_FAROLES.map(([x, y, escala]) => {
+  const PUESTOS_FAROLES = [[309, 864, 175], [557, 766, 175], [706, 642, 115], [1155, 784, 200]];
+  $('efecto-region').replaceChildren(...Array.from({ length: 6 }, (_, n) => {
+    const marca = document.createElement('i');
+    marca.style.cssText = `--demora:${n * 65}ms;--bosque-x:${30 + n * 7}%;--bosque-y:${22 + n}%;--bosque-rot:${-22 + n * 8}deg;--cantera-x:${54 + n * 4}%;--cantera-y:${36 + (n % 3) * 9}%;--cristal-w:${27 + n * 5}px;--cristal-h:${95 + n * 12}px;--cantera-rot:${-19 + n * 5}deg;--marisma-x:${42 + n * 6}%;--marisma-y:${25 + (n % 2) * 4}%`;
+    return marca;
+  }));
+  $('faroles').replaceChildren(...PUESTOS_FAROLES.map(([x, y, tam]) => {
     const farol = document.createElement('i');
     farol.className = 'farol';
-    farol.style.cssText = `--x:${x}%;--y:${y}%;--escala:${escala}`;
+    farol.style.cssText = `--x:${x}px;--y:${y}px;--tam:${tam}px`;
     return farol;
   }));
   function pintarFaroles(d, antes, lugar) {
@@ -577,8 +709,83 @@
     chispas.limpieza = setTimeout(() => caja.replaceChildren(), 3000);
   }
 
+  let memoriaTarjetas = [], memoriaIndice = 0, memoriaClave = '';
+  function mostrarMemoriaViva() {
+    const tarjeta = memoriaTarjetas[memoriaIndice % memoriaTarjetas.length];
+    if (!tarjeta) return;
+    $('memoria-sello').textContent = tarjeta.sello;
+    $('memoria-titulo').textContent = tarjeta.titulo;
+    $('memoria-texto').textContent = tarjeta.texto;
+  }
+  function pintarMemoriaViva(d) {
+    const caja = $('memoria-viva');
+    caja.hidden = d.fase !== 'calma';
+    if (caja.hidden) return;
+    const tarjetas = [];
+    if (d.cronica) tarjetas.push({ sello: 'Crónica del Velo', titulo: d.cronica.titulo, texto: d.cronica.texto });
+    if (d.reliquias) tarjetas.push({ sello: 'La colección', titulo: `${d.reliquias.halladas} de ${d.reliquias.total} reliquias`, texto: 'Cada expedición completada puede traer un nuevo hallazgo a la Lumbre.' });
+    const regiones = d.memoria?.regiones || [];
+    if (regiones.length) tarjetas.push({ sello: 'El rastro del Velo', titulo: `${regiones.length} ${regiones.length === 1 ? 'región descubierta' : 'regiones descubiertas'}`, texto: regiones.map((id) => REGIONES[id]?.nombre).filter(Boolean).join(' · ') });
+    caja.hidden = tarjetas.length === 0;
+    const clave = JSON.stringify(tarjetas);
+    if (clave !== memoriaClave) { memoriaClave = clave; memoriaTarjetas = tarjetas; memoriaIndice = 0; mostrarMemoriaViva(); }
+  }
+  setInterval(() => {
+    if ($('memoria-viva').hidden || memoriaTarjetas.length < 2) return;
+    memoriaIndice = (memoriaIndice + 1) % memoriaTarjetas.length;
+    mostrarMemoriaViva();
+  }, 18_000);
+
+  // El diorama usa solo el estado del motor. Nunca inventa viajeros ni progreso.
+  function pintarEscenaViva(d, { desconectado, cerrado, espera, congelado, lugar }) {
+    const viva = $('escena-viva');
+    const enPausa = d.modo === 'pausado' && d.fase === 'expedicion';
+    const activa = !desconectado && !cerrado && !espera && (d.modo === 'activo' || enPausa);
+    viva.hidden = !activa;
+    document.body.classList.toggle('diorama', activa);
+    if (!activa) return;
+    const fase = d.fase;
+    document.body.dataset.viva = fase;
+    document.body.dataset.vivaResultado = fase === 'resultado' && !d.resultado?.completada ? 'no' : 'si';
+    $('victoria-viva').hidden = !(fase === 'resultado' && d.resultado?.completada);
+    pintarMemoriaViva(d);
+    const region = REGIONES[d.region.id] || REGIONES.bosque;
+    const progreso = Math.max(0, Math.min(1, d.objetivo.actual / Math.max(1, d.objetivo.meta)));
+    $('senda-progreso').style.width = `${progreso * 100}%`;
+    const marcas = $('senda-pasos');
+    if (marcas.children.length !== 5) marcas.replaceChildren(...Array.from({ length: 5 }, () => document.createElement('i')));
+    [...marcas.children].forEach((paso, i) => paso.classList.toggle('encendido', fase === 'resultado' && d.resultado?.completada || progreso >= i / 4));
+    $('viva-sello').textContent = enPausa ? 'Expedición en pausa' : fase === 'calma' ? 'Una aventura del chat' : fase === 'resultado' ? d.resultado?.completada ? 'La compañía lo ha conseguido' : 'El Velo se ha cerrado' : 'Objetivo de la compañía';
+    $('viva-titulo').textContent = enPausa ? 'El tiempo se detiene' : fase === 'calma' ? 'La Lumbre sigue encendida' : fase === 'resultado' ? d.resultado?.completada ? 'El camino está abierto' : 'La compañía regresa' : d.region.objetivo || region.meta;
+    $('viva-linea').textContent = fase === 'calma' ? `La próxima salida lleva a ${region.nombre}. Basta con una persona.`
+      : fase === 'resultado' ? d.resultado?.completada ? (d.resultado.hallazgo || 'Una nueva reliquia espera en la Lumbre.') : 'La próxima salida ofrecerá otra oportunidad.'
+      : `${d.objetivo.actual} de ${d.objetivo.meta} pasos · ${d.participantes.length} ${d.participantes.length === 1 ? 'aventurero' : 'aventureros'}`;
+    $('llamada-viva').textContent = enPausa ? 'La compañía continuará al reanudar el mundo' : fase === 'calma' ? 'Escribe !explorar para cruzar el Velo'
+      : fase === 'resultado' ? d.resultado?.completada ? 'Mira tu renombre con !expedicion' : 'La compañía vuelve a la Lumbre'
+      : 'Ayuda a la compañía con !explorar';
+    const tiempo = $('tiempo-vivo');
+    tiempo.replaceChildren(texto('span', enPausa ? 'Expedición en pausa' : fase === 'calma' ? 'Próxima región' : fase === 'resultado' ? 'Nueva salida' : 'El Velo se cierra en'),
+      texto('strong', fase === 'calma' ? region.nombre : congelado ? 'Tiempo detenido' : d.hasta ? mmss(Date.parse(d.hasta) - Date.now()) : 'En espera'));
+    const compania = $('compania-viva');
+    const nombres = fase === 'calma' ? [] : d.participantes.slice(0, 3).map((p) => p.nombre);
+    const avatares = nombres.map((nombre) => avatarDe(nombre, d.participantes));
+    const clave = `${lugar}|${nombres.join('|')}|${avatares.join('|')}`;
+    if (compania.dataset.clave !== clave) {
+      compania.dataset.clave = clave;
+      compania.replaceChildren(...nombres.map((nombre, i) => {
+        const figura = document.createElement('figure');
+        const img = document.createElement('img');
+        img.src = `../imagenes/mmo/avatares/${avatares[i]}`;
+        img.alt = '';
+        figura.append(img, texto('figcaption', nombre));
+        return figura;
+      }));
+    }
+  }
+
   /** Pinta un estado. Los nombres van siempre como texto, nunca como HTML. */
   function pintar(d, desconectado = false) {
+    $('prueba-visual').hidden = !d.pruebaVisual;
     const fase = d.fase;
     const region = REGIONES[d.region.id] || REGIONES.bosque;
     const antes = desconectado ? null : pintado;
@@ -597,6 +804,7 @@
     // En pausa se queda en el lugar de la expedición, con el tiempo detenido; cerrado vuelve a la Lumbre.
     const lugar = fase === 'calma' || cerrado ? 'refugio' : (REGIONES[d.region.id] ? d.region.id : 'bosque');
     document.body.dataset.region = lugar;   // en la Lumbre, el color es el del fuego
+    pintarEscenaViva(d, { desconectado, cerrado, espera, congelado, lugar });
     ponerLugar(lugar);
     pintarFaroles(d, antes, lugar);
     if (antes && !espera && d.modo === 'activo' && d.region.id !== antes.region.id) presentarMundo(region.nombre);
@@ -638,12 +846,23 @@
     $('total').textContent = `/ ${d.objetivo.meta}`;
     // Lo que ha subido desde la última consulta brilla. Una expedición que acaba de salir cuenta desde cero.
     const recienSalida = antes && antes.fase !== 'expedicion' && fase === 'expedicion';
+    if (recienSalida && !desconectado && !espera && d.modo === 'activo') sonarInicio();
     const previo = recienSalida ? 0 : antes?.objetivo.actual ?? 0;
     const subio = Boolean(antes) && fase === 'expedicion' && (recienSalida || antes.fase === 'expedicion') && d.objetivo.actual > previo;
     const desde = subio ? previo : d.objetivo.actual;
     $('barra').replaceChildren(...Array.from({ length: d.objetivo.meta }, (_, i) =>
       texto('i', '', i < d.objetivo.actual ? `lleno${i >= desde ? ' nuevo' : ''}` : '')));
-    if (subio) { reaccionar('sube', $('actual')); reaccionar('avanza', $('estela-paso')); contar('segmentos'); }
+    if (subio) {
+      reaccionar('sube', $('actual'));
+      reaccionar('avanza', $('estela-paso'));
+      reaccionar('impacto', $('efecto-region'));
+      if (document.body.classList.contains('diorama')) reaccionar('impulso', $('capas'));
+      const figuras = $('compania-viva').querySelectorAll('figure');
+      const quien = d.acciones?.find(a => !a.suceso)?.quien;
+      const figura = [...figuras].find(f => f.querySelector('figcaption')?.textContent === quien) || figuras[figuras.length - 1];
+      if (figura) reaccionar('avanza', figura);
+      contar('segmentos');
+    }
     $('reloj').replaceChildren(...(d.hasta && d.modo === 'activo' && !congelado
       ? [fase === 'resultado' ? 'Nueva salida en ' : 'El Velo se cierra en ', texto('b', mmss(new Date(d.hasta) - Date.now()))]
       : congelado ? ['El tiempo está ', texto('b', 'detenido')]
@@ -721,9 +940,10 @@
           texto('h1', hallazgo.charAt(0).toUpperCase() + hallazgo.slice(1)),
           texto('p', `${resumenNombres(nombres)} ${nombres.length <= 1 ? 'lo ha encontrado' : 'lo han encontrado'}.`),
           texto('div', premio, 'premio'),
-          ...(d.reliquias && 'nueva' in resultado ? [texto('p', resultado.nueva
-            ? `Nueva reliquia para la Lumbre · ${d.reliquias.halladas} de ${d.reliquias.total}`
-            : 'La Lumbre ya guardaba una igual.', 'nota')] : []),
+          ...(d.pruebaVisual ? [texto('p', 'Reliquia de muestra · no se guarda', 'nota')]
+            : d.reliquias && 'nueva' in resultado ? [texto('p', resultado.nueva
+              ? `Nueva reliquia para la Lumbre · ${d.reliquias.halladas} de ${d.reliquias.total}`
+              : 'La Lumbre ya guardaba una igual.', 'nota')] : []),
           ...(resultado.arriesgado ? [texto('p', 'Camino arriesgado: renombre extra para cada aventurero.', 'nota')] : []),
           ...(resultado.capitulo ? [texto('div', `✦ Nuevo capítulo de la crónica: «${resultado.capitulo.titulo}»`, 'capitulo')] : []));
       } else {
@@ -766,7 +986,7 @@
     if (antes && clave && clave !== claveResultado(antes)) {
       reaccionar('revela', $('centro'));
       contar(d.resultado?.completada ? 'victorias' : 'cierres');
-      if (d.resultado?.completada) { reaccionar('vivo', $('destello')); chispas(); }
+      if (d.resultado?.completada) { reaccionar('vivo', $('destello')); reaccionar('entra', $('victoria-viva')); chispas(); }
       else $('destello').classList.remove('vivo');
     }
     if (!desconectado) pintado = d;
@@ -813,13 +1033,22 @@
   }
   function demoAccion(accion) {
     if (accion === 'reiniciar') { demo = demoBase(); demoPausado = false; demoRestante = null; demoExpediciones = 0; demoRenombre = 0; demoAportes = 0; ocultarAventurero(); }
+    else if (accion === 'cantera' || accion === 'marisma') {
+      demoExpedicion();
+      demo.region = { id: accion, nombre: REGIONES[accion].nombre, objetivo: REGIONES[accion].meta };
+      demo.objetivo = { actual: accion === 'marisma' ? 3 : 2, meta: 6 };
+      demo.participantes = [{ nombre: 'Ithra', aporte: demo.objetivo.actual }];
+    }
     else if (accion === 'explorar') {
       if (demo.fase !== 'expedicion') demoExpedicion();
       demo.objetivo.actual = Math.min(demo.objetivo.meta, demo.objetivo.actual + 1);
       const nombre = ['Crid4m', 'Ithra', 'Vela'][demoAportes++ % 3];
       const participante = demo.participantes.find((p) => p.nombre === nombre);
       if (participante) participante.aporte++; else demo.participantes.push({ nombre, aporte: 1 });
-      demo.acciones.unshift({ quien: nombre, texto: ['aparta una cortina de raíces.', 'sigue un rastro de brasas.', 'trepa a un tronco caído para mirar lejos.'][(demoAportes - 1) % 3], at: new Date().toISOString() });
+      const textos = demo.region.id === 'marisma' ? ['enciende un farol hundido.', 'salta entre piedras sobre el agua.', 'descubre la senda bajo la niebla.']
+        : demo.region.id === 'cantera' ? ['sigue el eco entre las rocas.', 'revela una veta de cristal.', 'abre paso entre los derrumbes.']
+        : ['aparta una cortina de raíces.', 'sigue un rastro de brasas.', 'trepa a un tronco caído para mirar lejos.'];
+      demo.acciones.unshift({ quien: nombre, texto: textos[(demoAportes - 1) % textos.length], at: new Date().toISOString() });
       if (demo.objetivo.actual >= demo.objetivo.meta) demoVictoria();
     } else if (accion === 'grupo') {
       if (demo.fase !== 'expedicion') demoExpedicion();
@@ -912,6 +1141,7 @@
     if (auto === 'world') demoAccion('encrucijada');
     if (auto === 'faroles') { demoAccion('encrucijada'); demoAccion('explorar'); }
     if (auto === 'group') { demoAccion('grupo'); demoAccion('victoria'); }
+    if (auto === 'cantera' || auto === 'marisma') demoAccion(auto);
   }
 
   async function leerEstado() {
@@ -937,11 +1167,13 @@
     }
   }
   // Una consulta tras otra, sin solaparse aunque alguna tarde.
-  (async function sondear() { await leerEstado(); setTimeout(sondear, 3000); })();
+  (async function sondear() { await leerEstado(); setTimeout(sondear, ultimo.modo === 'activo' ? 750 : 2500); })();
   setInterval(() => {
     if (desconectado || !ultimo.hasta || ultimo.modo !== 'activo') return;
     const numero = $('reloj').querySelector('b');
     if (numero) numero.textContent = mmss(new Date(ultimo.hasta) - Date.now());
+    const tiempoVivo = $('tiempo-vivo').querySelector('strong');
+    if (tiempoVivo && !$('escena-viva').hidden && ultimo.fase !== 'calma') tiempoVivo.textContent = mmss(new Date(ultimo.hasta) - Date.now());
     const voto = $('encrucijada').querySelector('.tiempo b');
     if (voto && ultimo.encrucijada?.hasta) voto.textContent = mmss(new Date(ultimo.encrucijada.hasta) - Date.now());
   }, 1000);

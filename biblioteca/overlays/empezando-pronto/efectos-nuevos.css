@@ -1,0 +1,35 @@
+/* Destello sobre la lámpara rosa, sin tapar la ilustración. */
+.lamp-glint{position:absolute;left:275px;top:248px;width:91px;height:143px;pointer-events:none;mix-blend-mode:screen;background:radial-gradient(ellipse at 50% 47%,rgba(255,227,255,.22) 0,rgba(250,83,251,.20) 14%,rgba(229,72,255,.08) 34%,transparent 67%);filter:blur(3px);animation:lampBreath 9s ease-in-out infinite}
+.lamp-glint:after{content:"";position:absolute;left:43px;top:62px;width:4px;height:4px;border-radius:50%;background:#ffdfff;box-shadow:0 0 7px 3px #f4a8ff,0 0 18px 8px #a946ff;animation:lampSpark 9s ease-in-out infinite}
+@keyframes lampBreath{0%,100%{opacity:.12}42%{opacity:.3}47%{opacity:.53}53%{opacity:.24}}
+@keyframes lampSpark{0%,39%,55%,100%{opacity:.14}45%{opacity:.58}49%{opacity:.35}}
+
+/* La bola gira de verdad; la estela queda detrás y no rota. */
+.runner{top:912px;width:160px;height:160px;left:-270px}
+.runner .runner-trail{position:absolute;left:-94px;top:-36px;width:145px;height:232px;object-fit:contain;opacity:.78}
+.runner .runner-ball{position:absolute;left:0;top:0;width:160px;height:160px;object-fit:contain}
+.runner.go{animation:retroDash 2.75s cubic-bezier(.28,.02,.66,.98) 1 forwards}
+.runner.go .runner-trail{animation:trailShimmer .28s ease-in-out infinite alternate}
+.runner.go .runner-ball{animation:sonicSpin .30s linear infinite}
+@keyframes retroDash{0%{transform:translateX(0);opacity:0}7%{opacity:.9}90%{opacity:.9}100%{transform:translateX(2240px);opacity:0}}
+@keyframes sonicSpin{to{transform:rotate(360deg)}}
+@keyframes trailShimmer{to{opacity:.49;transform:scaleX(.88)}}
+
+/* Dos poses distintas sobre la cama: carga frontal y disparo lateral. */
+.goku-event{position:absolute;left:168px;top:523px;width:350px;height:240px;opacity:0;pointer-events:none;image-rendering:pixelated;filter:drop-shadow(0 0 9px rgba(71,192,255,.48))}
+.goku-event img{position:absolute;inset:0;width:350px;height:240px;object-fit:fill;image-rendering:pixelated}
+.goku-front{opacity:1;animation:chargePulse .52s ease-in-out infinite alternate}
+.goku-body{opacity:0;clip-path:inset(0 51% 0 0)}
+.goku-beam{opacity:0;clip-path:inset(0 100% 0 49%);filter:drop-shadow(0 0 9px #6fdfff)}
+.goku-event.go{animation:gokuAppear 5.2s ease-in-out 1 forwards}
+.goku-event.aim .goku-front{opacity:0;animation:none}
+.goku-event.aim .goku-body,.goku-event.aim .goku-beam{opacity:1}
+.goku-event.fire .goku-beam{animation:beamReveal .58s steps(8,end) forwards,beamPulse .3s ease-in-out .58s 6 alternate}
+.goku-event.preview,.goku-event.preview-front{opacity:1}
+.goku-event.preview .goku-front{opacity:0;animation:none}
+.goku-event.preview .goku-body,.goku-event.preview .goku-beam{opacity:1}
+.goku-event.preview .goku-beam{clip-path:inset(0 0 0 49%)}
+@keyframes gokuAppear{0%,100%{opacity:0}9%,87%{opacity:1}}
+@keyframes chargePulse{to{filter:drop-shadow(0 0 12px rgba(76,210,255,.7))}}
+@keyframes beamReveal{from{clip-path:inset(0 100% 0 49%)}to{clip-path:inset(0 0 0 49%)}}
+@keyframes beamPulse{to{opacity:.68;filter:drop-shadow(0 0 18px #9af9ff)}}

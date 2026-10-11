@@ -128,7 +128,7 @@ async function main(): Promise<void> {
     const r = azar();
     switch (p.tipo) {
       case 'charlatan': return r < 0.8 ? elegir(CHARLA) : elegir(['!inventario', '!top', '!loot']);
-      case 'competitivo': return r < 0.35 ? `!duelo ${otro}` : r < 0.5 ? '!poder' : r < 0.6 ? '!top' : elegir(CHARLA);
+      case 'competitivo': return r < 0.3 ? `!duelo ${otro}` : r < 0.45 ? '!acepto' : r < 0.5 ? '!revancha' : r < 0.55 ? '!poder' : r < 0.6 ? '!top' : elegir(CHARLA);
       case 'coleccionista': return r < 0.25 ? '!forjar' : r < 0.45 ? '!coleccion' : r < 0.6 ? '!inventario' : r < 0.7 ? '!usar' : elegir(CHARLA);
       case 'generoso': return r < 0.2 ? `!dar ${otro} ${entre(1, 4)}` : r < 0.3 ? '!dar' : r < 0.4 ? '!presumir' : elegir(CHARLA);
       default: return r < 0.7 ? elegir(CHARLA) : '!inventario';

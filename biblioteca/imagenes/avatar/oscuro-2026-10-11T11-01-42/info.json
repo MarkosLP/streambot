@@ -1,0 +1,16 @@
+{
+  "titulo": "Crid4m",
+  "descripcion": "Convierte mi foto en un avatar gamer animado, usando mis rasgos reales solo como referencia para que siga siendo reconocible como yo.\nEstilo ilustración 3D de videojuego occidental, atractivo y carismático, sin intentar copiar fotográficamente mi cara.\nFantasía oscura MMORPG, ropa épica, energía arcana violeta y azul, aspecto poderoso pero cercano.\nPersonaje de medio cuerpo para webcam de Twitch, expresivo, limpio, profesional, sin texto, casco ni estética anime.",
+  "ojos": {
+    "x": 0.5,
+    "y": 0.302734375,
+    "w": 0.268359375,
+    "h": 0.17
+  },
+  "cara": {
+    "x": 0.5,
+    "y": 0.3316796875,
+    "w": 0.328359375,
+    "h": 0.25789062500000004
+  }
+}

@@ -15,6 +15,7 @@ import * as loot from './index.js';
 import * as comandos from './comandos.js';
 import * as consent from '../../core/consent.js';
 import * as arena from './arena.js';
+import * as duelos from './duelo.js';
 import * as progresion from './progresion.js';
 import { MOCHILA_MAX, OBJETOS, type Rareza } from './objetos.js';
 
@@ -52,6 +53,7 @@ before(() => configureDatabase(':memory:'));
 beforeEach(() => {
   truncateAll();
   cooldowns.reset();
+  duelos.reset();
   policy.reset();
   killswitch.enable('test');
   ajustes.reset();
@@ -141,6 +143,14 @@ describe('!forjar', () => {
   });
 });
 
+const PEPE = { id: 'id-pepe', login: 'pepe', displayName: 'pepe' } as any;
+const ANA = { id: 'id-ana', login: 'ana', displayName: 'ana' } as any;
+/** Reta y el otro acepta: la pelea entera. */
+async function pelea(retador: any, rival: any, azar: () => number, now?: number) {
+  await engine.run(comandos.duelo, { viewer: retador, trigger: 'command', args: rival.login, ...(now && { now }) } as any);
+  await engine.run(comandos.acepto, { viewer: rival, trigger: 'command', args: '', azar, ...(now && { now }) } as any);
+}
+
 describe('!poder y !duelo', () => {
   test('el poder suma según la rareza', async () => {
     dar('pepe', 'comun', 2);
@@ -161,27 +171,112 @@ describe('!poder y !duelo', () => {
     assert.match(enviados[0]!, /Poder 6 \(1🔵×3; 1 maldito cuenta doble\)/);
   });
 
-  test('un duelo tiene ganador y se apunta', async () => {
+  test('un reto no pelea solo: espera a que el otro acepte, y entonces hay ganador y se apunta', async () => {
     dar('pepe', 'epico', 1);
     dar('ana', 'comun', 1);
     await handleEvent(mensaje('ana'));
-    await engine.run(comandos.duelo, { viewer: { id: 'id-pepe', login: 'pepe', displayName: 'pepe' } as any, trigger: 'command', args: '@ana', azar: fijo(0) });
-    assert.match(enviados[0]!, /^⚔️ @pepe \(poder 8, 80 %\) reta a @ana \(poder 1, 20 %\)\. La suerte decide: ¡Gana pepe! \+5 de temporada$/);
+    await engine.run(comandos.duelo, { viewer: PEPE, trigger: 'command', args: '@ana' });
+    assert.match(enviados[0]!, /^⚔️ @pepe \(poder 8, 80 %\) reta a @ana \(poder 1, 20 %\)\. @ana: !acepto para luchar o !huyo para escapar \(60 s\)\.$/);
+    assert.deepEqual(lootDb.duelos('id-pepe'), { ganados: 0, perdidos: 0 }, 'aún no se ha peleado');
+    assert.equal(arena.paraPanel().length, 0, 'la espera no sale en pantalla');
+    await engine.run(comandos.acepto, { viewer: ANA, trigger: 'command', args: '', azar: fijo(0) });
+    assert.match(enviados[1]!, /^⚔️ Duelo: pepe 🟣 · pepe 🟣 → ¡Gana pepe 2-0! \+5 de temporada\. @ana: !revancha en 2 min\.$/);
     assert.deepEqual(lootDb.duelos('id-pepe'), { ganados: 1, perdidos: 0 });
     assert.deepEqual(lootDb.duelos('id-ana'), { ganados: 0, perdidos: 1 });
     const registrado = arena.paraPanel()[0]!;
     assert.equal(registrado.retador.poder, 8);
     assert.equal(registrado.rival.poder, 1);
     assert.equal(registrado.prob, 0.8);
-    assert.equal(registrado.tirada, 0);
     assert.equal(registrado.ganaRetador, true);
+    assert.equal(registrado.asaltos!.length, 2, 'al mejor de tres: 2-0 acaba en dos');
+    assert.deepEqual(registrado.asaltos![0]!.a, { objeto: registrado.asaltos![0]!.a.objeto, rareza: 'epico', maldito: false });
+    assert.equal(registrado.pantalla, 'completo');
+  });
+
+  test('!huyo: nadie pierde nada; y sin reto pendiente, !acepto lo explica', async () => {
+    dar('pepe', 'comun', 1);
+    dar('ana', 'comun', 1);
+    await handleEvent(mensaje('ana'));
+    await engine.run(comandos.duelo, { viewer: PEPE, trigger: 'command', args: 'ana' });
+    await engine.run(comandos.huyo, { viewer: ANA, trigger: 'command', args: '' });
+    assert.match(enviados[1]!, /^🏃 @ana huye del duelo contra @pepe\. Nadie pierde nada\.$/);
+    await engine.run(comandos.acepto, { viewer: ANA, trigger: 'command', args: '' });
+    assert.match(enviados[2]!, /No tienes ningún reto pendiente/);
+    assert.deepEqual(lootDb.duelos('id-ana'), { ganados: 0, perdidos: 0 });
+  });
+
+  test('el reto caduca a los 60 s', async () => {
+    dar('pepe', 'comun', 1);
+    dar('ana', 'comun', 1);
+    await handleEvent(mensaje('ana'));
+    const t = Date.now();
+    await engine.run(comandos.duelo, { viewer: PEPE, trigger: 'command', args: 'ana', now: t } as any);
+    await engine.run(comandos.acepto, { viewer: ANA, trigger: 'command', args: '', now: t + duelos.RETO_MS + 1 } as any);
+    assert.match(enviados[1]!, /No tienes ningún reto pendiente/);
+  });
+
+  test('a quien ya tiene un reto esperando no se le amontonan', async () => {
+    dar('pepe', 'comun', 1);
+    dar('ana', 'comun', 1);
+    dar('luis', 'comun', 1);
+    await handleEvent(mensaje('ana'));
+    await engine.run(comandos.duelo, { viewer: PEPE, trigger: 'command', args: 'ana' });
+    await engine.run(comandos.duelo, { viewer: { id: 'id-luis', login: 'luis', displayName: 'luis' } as any, trigger: 'command', args: 'ana' });
+    assert.match(enviados[1]!, /ana ya tiene un reto de pepe esperando/);
+  });
+
+  test('tras pelear hay que descansar para retar a otro; la revancha no espera y paga doble', async () => {
+    dar('pepe', 'comun', 1);
+    dar('ana', 'comun', 1);
+    await handleEvent(mensaje('ana'));
+    await handleEvent(mensaje('pepe'));
+    await pelea(PEPE, ANA, fijo(0));
+    cooldowns.reset();
+    await engine.run(comandos.duelo, { viewer: PEPE, trigger: 'command', args: 'ana' });
+    assert.match(enviados.at(-1)!, /Aún te recuperas del último duelo/);
+    // Ana perdió: pide la revancha y, si gana, puntos dobles.
+    await engine.run(comandos.revancha, { viewer: ANA, trigger: 'command', args: '' });
+    assert.match(enviados.at(-1)!, /^🔥 @ana pide la revancha a @pepe: \+10 % y puntos dobles si gana\. @pepe: !acepto o !huyo \(60 s\)\.$/);
+    await engine.run(comandos.acepto, { viewer: PEPE, trigger: 'command', args: '', azar: fijo(0) });
+    assert.match(enviados.at(-1)!, /^⚔️ Revancha: ana ⚪ · ana ⚪ → ¡Gana ana 2-0! \+10 de temporada\.$/);
+    assert.equal(arena.paraPanel()[0]!.revancha, true);
+    // La revancha de la revancha no existe.
+    cooldowns.reset();
+    await engine.run(comandos.revancha, { viewer: PEPE, trigger: 'command', args: '' });
+    assert.match(enviados.at(-1)!, /La revancha se pide en los 2 minutos/);
+  });
+
+  test('«solo en el chat»: se pelea y se apunta, pero el overlay no lo enseña', async () => {
+    duelos.setPantalla('chat');
+    dar('pepe', 'comun', 1);
+    dar('ana', 'comun', 1);
+    await handleEvent(mensaje('ana'));
+    await pelea(PEPE, ANA, fijo(0));
+    assert.equal(arena.paraPanel()[0]!.pantalla, 'chat');
+    assert.throws(() => duelos.setPantalla('enorme'), /no válido/);
+  });
+
+  test('los asaltos respetan la probabilidad del poder total (20-80 %)', () => {
+    for (const p of [0.2, 0.5, 0.8]) {
+      const q = duelos.probAsalto(p);
+      assert.ok(Math.abs(q * q * (3 - 2 * q) - p) < 1e-6, `q=${q} para p=${p}`);
+    }
+    // Muchos duelos con objetos iguales: gana tantas veces como dice su probabilidad.
+    let semilla = 7;
+    const azar = () => { semilla = (semilla * 1664525 + 1013904223) >>> 0; return semilla / 2 ** 32; };
+    const pieza = { objeto: 'Espada', rareza: 'raro' as const, maldito: false };
+    for (const p of [0.2, 0.8]) {
+      let gana = 0;
+      for (let i = 0; i < 20000; i++) if (duelos.combatir(p, [pieza], [pieza], azar).ganaRetador) gana++;
+      assert.ok(Math.abs(gana / 20000 - p) < 0.015, `con ${p} ganó ${gana / 20000}`);
+    }
   });
 
   test('el panel deja de mostrar un duelo si alguien pide el olvido', async () => {
     dar('pepe', 'comun', 1);
     dar('ana', 'comun', 1);
     await handleEvent(mensaje('ana'));
-    await engine.run(comandos.duelo, { viewer: { id: 'id-pepe', login: 'pepe', displayName: 'pepe' } as any, trigger: 'command', args: 'ana', azar: fijo(0) });
+    await pelea(PEPE, ANA, fijo(0));
     assert.equal(arena.paraPanel().length, 1);
     consent.olvidar('id-ana');
     assert.equal(arena.paraPanel().length, 0);
@@ -200,8 +295,8 @@ describe('!poder y !duelo', () => {
     dar('pepe', 'comun', 1);
     dar('ana', 'legendario', 1);
     await handleEvent(mensaje('ana'));
-    await engine.run(comandos.duelo, { viewer: { id: 'id-pepe', login: 'pepe', displayName: 'pepe' } as any, trigger: 'command', args: 'ana', azar: fijo(0.1) });
-    assert.match(enviados[0]!, /¡Gana pepe! ¡Sorpresa!/);
+    await pelea(PEPE, ANA, fijo(0.1));
+    assert.match(enviados.at(-1)!, /¡Gana pepe 2-0! ¡Sorpresa!/);
   });
 
   test('solo a quien está en el chat', async () => {

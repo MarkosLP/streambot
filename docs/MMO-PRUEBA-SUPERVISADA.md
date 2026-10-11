@@ -25,7 +25,7 @@ Ir marcando. Lo que hay que mirar está en la columna de la derecha.
 | 3 | Esa persona escribe `!explorar`. | El bot anuncia la salida y la misión. La escena cambia a Fronda Ámbar, 1/4. |
 | 4 | Repite `!explorar` enseguida, dos o tres veces. | **Un solo** aviso de «Aún te recuperas…»; los siguientes no contestan. |
 | 5 | Una segunda persona escribe `!explorar`. | La meta pasa a 6, su nombre aparece en la compañía. |
-| 6 | Seguir hasta completar (las esperas son de 2 min). | A mitad, un suceso en cursiva en la escena. Al final: cartel con la reliquia, «Nueva reliquia · 1 de 60», chispas, y un solo anuncio en el chat. |
+| 6 | Seguir hasta completar (45 s entre aportes de la misma persona). | A mitad, un suceso en cursiva en la escena. Al final: cartel con la reliquia, «Nueva reliquia · 1 de 60», chispas, y un solo anuncio en el chat. |
 | 7 | Esperar el minuto de descanso. | Vuelve a la Lumbre por sí solo. |
 | 7b | Repetir expediciones hasta que salga una **encrucijada** (sale en un 40 % de ellas). Votar una con `!explorar 2` y otra persona con `!explorar 1`; luego cambiar a `!explorar 2`. | El chat anuncia la encrucijada. La tarjeta muestra los votos (0 a 2 tras el cambio) y la cuenta atrás de 3 min. Al acabar, «La compañía elige: …», la meta sube 2 y el cartel final dice «Camino arriesgado». |
 | 8 | Empezar otra expedición y, a mitad, Panel → **Pausar**. Esperar 1 min. **Activar**. | En pausa: «El tiempo se detiene», sin cuenta atrás. Al activar, el reloj sigue donde estaba. |
@@ -50,7 +50,7 @@ Anotar cualquier texto que se lea mal desde el reproductor de Twitch (sobre todo
 - Laboratorio de Codex: 17 escenarios con Mundo y Loot a la vez y ocho jugadores simultáneos.
 - Escena revisada captura a captura en todos sus estados (`docs/previews/mmo/`).
 
-Lo que solo puede verse con gente real: el retraso del reproductor de Twitch, cómo se lee en el móvil, si el ritmo (2 min entre aportes, 20 min por expedición) se siente bien, y cuántos mensajes del bot son demasiados.
+Lo que solo puede verse con gente real: el retraso del reproductor de Twitch, cómo se lee en el móvil, si el ritmo (45 s entre aportes, 20 min por expedición) se siente bien, y cuántos mensajes del bot son demasiados.
 
 ## Resultados
 

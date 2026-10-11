@@ -334,6 +334,8 @@ async function main(): Promise<void> {
     const retos: Evento[] = [];
     for (const a of GENTE) retos.push(mensaje(a, `!duelo ${GENTE[(GENTE.indexOf(a) + 1) % GENTE.length]}`));
     await aLaVez(retos, 10);
+    // Desde el 11 oct el retado acepta: todos a la vez.
+    await aLaVez(GENTE.map((p) => mensaje(p, '!acepto')), 10);
     const malditosDespues = filasLoot().filter((f) => f.maldito).length;
     if (malditosDespues !== malditosAntes) fallos.push(`había ${malditosAntes} objeto(s) maldito(s) y ahora ${malditosDespues}`);
     const d = getDb().prepare('SELECT SUM(ganados) g, SUM(perdidos) p FROM duelos').get() as { g: number; p: number };
@@ -556,7 +558,11 @@ async function main(): Promise<void> {
     if (estado.participantes.length !== 8) fallos.push(`${estado.participantes.length} participantes en vez de ocho`);
     const premios = (getDb().prepare('SELECT COUNT(*) n FROM mmo_premios').get() as { n: number }).n;
     if (premios !== 0) fallos.push(`el mundo entregó ${premios} premios antes de completar`);
-    if (estado.acciones.length !== 3) fallos.push(`${estado.acciones.length} acciones visibles en vez de tres`);
+    const aportesVisibles = estado.acciones.filter((accion) => !accion.suceso);
+    if (aportesVisibles.length !== 8 || new Set(aportesVisibles.map((accion) => accion.quien)).size !== 8)
+      fallos.push(`${aportesVisibles.length} aportes visibles; se esperaban ocho personas únicas`);
+    if (estado.acciones.filter((accion) => accion.suceso).length !== 1)
+      fallos.push('se esperaba un único suceso visible durante la expedición');
     notas.push(`mundo ${estado.objetivo.actual}/${estado.objetivo.meta}; ${estado.participantes.length} participantes; Loot y canjes simultáneos`);
     jefe.reset();
     mmo.apagar();

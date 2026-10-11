@@ -1,0 +1,16 @@
+{
+  "titulo": "Usa EXACTAMENTE mi rostro de la",
+  "descripcion": "Usa EXACTAMENTE mi rostro de la fotografía como referencia, sin reinterpretar mis facciones, ojos, mandíbula, nariz, tono de piel ni peinado.\nConviérteme en un avatar gamer realista de fantasía oscura MMORPG, manteniendo mi identidad y parecido fotográfico por encima del estilo.\nAñade vestimenta épica oscura y energía arcana violeta sutil, evitando estética asiática, anime, rostro genérico o embellecimiento facial.\nAvatar de medio cuerpo para usar como personaje de webcam en Twitch, cinematográfico, natural, expresivo y de alta calidad.",
+  "ojos": {
+    "x": 0.5,
+    "y": 0.29296875,
+    "w": 0.333984375,
+    "h": 0.177734375
+  },
+  "cara": {
+    "x": 0.5,
+    "y": 0.31703125,
+    "w": 0.393984375,
+    "h": 0.248125
+  }
+}

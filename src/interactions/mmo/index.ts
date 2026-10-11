@@ -21,8 +21,11 @@ const elegir = <T>(lista: readonly T[]): T => lista[Math.min(lista.length - 1, M
 
 export const DURACION_MS = 20 * 60_000;
 export const DESCANSO_MS = 60_000;
-export const ACCION_MS = 2 * 60_000;
+export const ACCION_MS = 45_000;
 let reloj: NodeJS.Timeout | null = null;
+const PASO_PRUEBA_MS = 7_000;
+const PRUEBA_ETAPAS = 9;
+let pruebaVisualDesde: number | null = null;
 
 type Modo = 'apagado' | 'activo' | 'pausado';
 type Fase = 'calma' | 'expedicion' | 'resultado';
@@ -86,6 +89,8 @@ export interface EstadoPublico {
   ultimoSuceso: string;
   /** Activo pero con el tiempo congelado: sin directo, con el bot apagado o sin conexión con el chat. */
   detenido: null | 'sin-directo' | 'bot-apagado' | 'sin-chat';
+  /** Recorrido temporal del overlay, sin cambios en el progreso real. */
+  pruebaVisual?: true;
 }
 
 /** El mundo solo corre con directo y con el bot encendido. */
@@ -331,6 +336,69 @@ export function estado(): EstadoPublico {
   };
 }
 
+/** Solo el endpoint del overlay usa esta vista; el motor y el panel siguen leyendo estado(). */
+export function estadoParaOverlay(now = Date.now()): EstadoPublico {
+  const real = estado();
+  if (pruebaVisualDesde === null) return real;
+  const paso = Math.floor((now - pruebaVisualDesde) / PASO_PRUEBA_MS);
+  if (paso < 0 || paso >= PRUEBA_ETAPAS) { pruebaVisualDesde = null; return real; }
+  const region = REGIONES[paso === 5 ? 1 : paso >= 6 ? 2 : 0]!;
+  const mision = region.misiones[0]!;
+  const calma = paso === 0;
+  const resultado = paso === 4 || paso === 8;
+  const fallida = paso === 8;
+  const pausada = paso === 7;
+  const progreso = calma ? 0 : resultado ? fallida ? 2 : 4 : paso === 1 ? 1 : paso === 6 || paso === 7 ? 3 : 2;
+  const tiempo = new Date(now + 90_000).toISOString();
+  const accion = (texto: string, offset: number) => ({ quien: 'Crid4m', texto, at: new Date(pruebaVisualDesde! + offset * PASO_PRUEBA_MS).toISOString() });
+  const enc = region.encrucijadas[0];
+  return {
+    ...real, pruebaVisual: true, modo: pausada ? 'pausado' : 'activo', fase: calma ? 'calma' : resultado ? 'resultado' : 'expedicion',
+    region: { id: region.id, nombre: region.nombre, objetivo: mision.objetivo },
+    objetivo: { actual: progreso, meta: 4 }, hasta: calma || pausada ? null : tiempo,
+    participantes: calma ? [] : [{ nombre: 'Crid4m', aporte: progreso }],
+    acciones: calma ? [] : paso === 1 ? [accion(mision.acciones[0]!, 1)]
+      : [accion(mision.acciones[1]!, Math.min(paso, 6)), accion(mision.acciones[0]!, 1)],
+    resultado: resultado ? {
+      completada: !fallida, hallazgo: fallida ? null : mision.reliquias[0]!,
+      premios: fallida ? [] : [{ nombre: 'Crid4m', renombre: 8 }], nueva: !fallida, capitulo: null, arriesgado: false,
+    } : null,
+    encrucijada: paso === 3 && enc ? {
+      pregunta: enc.pregunta,
+      opciones: [{ texto: enc.opciones[0], votos: 1 }, { texto: enc.opciones[1], votos: 0 }],
+      hasta: tiempo, decision: null,
+    } : null,
+    clima: paso === 5 ? 'tormenta' : paso === 6 || paso === 8 ? 'noche' : 'ocaso',
+    ultimoSuceso: 'Prueba visual del canal; no altera la expedición real.', detenido: null,
+  };
+}
+
+/** Cierra la expedición actual sin premios ni reliquias. */
+export function terminarParaPrueba(now = Date.now()): boolean {
+  const w = mundo();
+  if (w.fase !== 'expedicion') return false;
+  const db = getDb();
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.prepare('INSERT OR IGNORE INTO mmo_resultados (expedicion_id, completada, hallazgo, at_ms) VALUES (?, 0, NULL, ?)')
+      .run(w.expedicion_id, now);
+    db.prepare("UPDATE mmo_world SET fase = 'resultado', hasta_ms = ?, pausado_ms = NULL, ultimo_suceso = 'Expedición cerrada por el propietario para probar la escena.' WHERE id = 1")
+      .run(now + DESCANSO_MS);
+    db.exec('COMMIT');
+    log.info(`El Linde del Velo: el propietario cerró la expedición ${w.expedicion_id} sin premios.`);
+    return true;
+  } catch (err) { db.exec('ROLLBACK'); throw err; }
+}
+
+/** Salta el cartel de resultado y deja preparada la región siguiente. */
+export function siguienteParaPrueba(now = Date.now()): EstadoPublico {
+  if (mundo().fase === 'calma') return estado();
+  terminarParaPrueba(now);
+  getDb().prepare("UPDATE mmo_world SET fase = 'calma', progreso = 0, meta = 4, hasta_ms = NULL, pausado_ms = NULL, ultimo_suceso = 'La siguiente región espera a la compañía.' WHERE id = 1")
+    .run();
+  return estado();
+}
+
 export function arrancar(now = Date.now()): void {
   if (reloj) return;
   recuperar(now);
@@ -340,6 +408,7 @@ export function arrancar(now = Date.now()): void {
 
 /** Al cerrar el bot, el plazo se congela: el tiempo que esté cerrado no cuenta. */
 export function parar(now = Date.now()): void {
+  pruebaVisualDesde = null;
   if (reloj) clearInterval(reloj);
   reloj = null;
   try {
@@ -390,6 +459,7 @@ export function pausar(now = Date.now()): EstadoPublico {
 
 /** Apagar termina la sesión del mundo sin dar premios a una expedición a medias. */
 export function apagar(): EstadoPublico {
+  pruebaVisualDesde = null;
   mundo();
   getDb().prepare("UPDATE mmo_world SET modo = 'apagado', fase = 'calma', progreso = 0, meta = 4, hasta_ms = NULL, pausado_ms = NULL WHERE id = 1").run();
   log.info('El Linde del Velo: apagado.');
@@ -626,6 +696,21 @@ function avisarUnaVez(clave: string, hasta: number, now: number): boolean {
 export function comando(texto: string, viewer: Viewer, mensajeId: string, now = Date.now()): string | null {
   // El chat puede añadir caracteres invisibles al copiar comandos (p. ej. U+034F).
   const t = texto.replace(/[\u034f\u200b-\u200d\u2060\ufeff]/g, '').trim().toLowerCase();
+  if (['!mundo terminar', '!mundo siguiente', '!mundo probar', '!mundo cancelar', '!mundo pruebas'].includes(t)) {
+    if (!viewer.isBroadcaster) return 'Estos controles de prueba son solo para Crid4m.';
+    if (t === '!mundo pruebas') return 'Controles: !mundo terminar (cierra sin premios), !mundo siguiente (salta al próximo lugar), !mundo probar (recorrido visual de 63 s), !mundo cancelar (detiene la prueba visual).';
+    if (t === '!mundo probar') { pruebaVisualDesde = now; return 'Prueba visual iniciada: 9 escenas en 63 s. No cambia la expedición ni da premios. !mundo cancelar para detenerla.'; }
+    if (t === '!mundo cancelar') { pruebaVisualDesde = null; return 'Prueba visual cancelada. La escena vuelve al estado real.'; }
+    pruebaVisualDesde = null;
+    if (t === '!mundo terminar') return terminarParaPrueba(now)
+      ? 'Expedición cerrada sin premios. Verás el resultado; usa !mundo siguiente para pasar al próximo lugar.'
+      : 'No hay una expedición en curso que cerrar.';
+    const antes = mundo().fase;
+    const e = siguienteParaPrueba(now);
+    const salida = e.modo === 'activo' ? 'Escribe !explorar para salir.' : 'Activa el mundo antes de usar !explorar.';
+    return antes === 'calma' ? `Ya está preparada la siguiente región: ${e.region.nombre}. ${salida}`
+      : `Siguiente región preparada: ${e.region.nombre}. ${salida} No se han dado premios de prueba.`;
+  }
   if (t === '!mundo activar' || t === '!mundo pausar' || t === '!mundo apagar') {
     if (!viewer.isBroadcaster && !viewer.isModerator) return 'Solo Crid4m o un moderador puede controlar el mundo.';
     if (t.endsWith('activar')) { activar(now); return 'El Linde del Velo está activo. Escribe !explorar para iniciar una expedición.'; }

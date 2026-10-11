@@ -1080,9 +1080,23 @@ async function cargarLoot() {
       h('span', { class: 'dato' }, `${ORIGEN[f.origen] || f.origen} · ${hace(f.at)}`)))
     : [h('li', { class: 'vacio-lista' }, 'Todavía no ha caído nada. El primer cofre llegará en el próximo directo.')]));
 
+  if (document.activeElement !== $('l-duelos-pantalla')) $('l-duelos-pantalla').value = d.duelosPantalla || 'completo';
+  $('l-retos').hidden = !d.retosPendientes?.length;
+  $('l-retos').textContent = d.retosPendientes?.length
+    ? `Esperando respuesta: ${d.retosPendientes.map((r) => `${r.retador} → ${r.rival}${r.revancha ? ' (revancha)' : ''} · ${r.quedanSeg} s`).join(' · ')}`
+    : '';
   $('l-duelos').replaceChildren(...(d.duelosRecientes?.length
     ? d.duelosRecientes.slice(0, 10).map((x) => {
       const a = Math.round(x.prob * 100);
+      if (x.asaltos?.length) {
+        const ganador = x.ganaRetador ? x.retador : x.rival;
+        const ganadosA = x.asaltos.filter((s) => s.ganaRetador).length;
+        const marcador = x.ganaRetador ? `${ganadosA}-${x.asaltos.length - ganadosA}` : `${x.asaltos.length - ganadosA}-${ganadosA}`;
+        const asaltos = x.asaltos.map((s, i) => `${i + 1}º ${s.a.objeto} contra ${s.b.objeto} → ${s.ganaRetador ? x.retador.nombre : x.rival.nombre}`).join(' · ');
+        return h('li', {},
+          h('strong', {}, `${x.revancha ? '🔥 Revancha · ' : ''}${x.retador.nombre} ${a} % · ${x.rival.nombre} ${100 - a} % → gana ${ganador.nombre} ${marcador}`),
+          h('span', { class: 'dato' }, `Poder ${x.retador.poder} contra ${x.rival.poder} · ${asaltos}${x.maldito ? ` · ☠️ cambió de manos: ${x.maldito}` : ''}${x.pantalla === 'chat' ? ' · solo en el chat' : ''} · ${hace(new Date(x.at).toISOString())}`));
+      }
       const ganador = x.ganaRetador ? x.retador : x.rival;
       const opcionGanadora = x.ganaRetador ? a : 100 - a;
       return h('li', {},
@@ -1154,6 +1168,19 @@ $('l-soltar').addEventListener('click', async () => {
     cargarLoot();
   } catch (err) {
     tostada(err.message, true);
+  }
+});
+
+// Duelos en pantalla: completo (~10 s) · corto (5 s) · solo en el chat.
+$('l-duelos-pantalla').addEventListener('change', async (e) => {
+  const valor = e.target.value;
+  try {
+    await api('/api/loot/ajustes', { duelosPantalla: valor });
+    tostada({ completo: 'Duelos en pantalla: completos, con los asaltos', corto: 'Duelos en pantalla: solo el resultado, 5 s', chat: 'Duelos solo en el chat: nada en pantalla' }[valor]);
+    cargarLoot();
+  } catch (err) {
+    tostada(err.message, true);
+    cargarLoot();
   }
 });
 
@@ -1828,6 +1855,7 @@ $('bo-borrar').addEventListener('click', () => borrarBocetos([...bocetos.sel]));
 // ---------------------------------------------------------------------------
 
 const ESCENAS_INFO = {
+  retro: { icono: '🎮', nombre: 'Empezando pronto · Retro', que: 'Habitación gamer nocturna con lluvia, monitores, luces suaves y un erizo que cruza ocasionalmente.' },
   inicio: { icono: '🌅', nombre: 'Empezamos', que: 'Antes de empezar: título, cuenta atrás, evento de la semana, podio y últimos botines.' },
   charla: { icono: '💬', nombre: 'Charla', que: 'Just Chatting: marco para tu cámara, chat en pantalla con emotes, evento, podio y próximo cofre. Con el avatar, sin cámara.' },
   compartir: { icono: '📺', nombre: 'Charla + compartir', que: 'Webcam a pantalla completa y tu captura a la derecha, opaca o con algo de transparencia. Es una escena independiente de Charla.' },
@@ -1847,7 +1875,7 @@ function elegirEscena(tipo) {
   if (!mandos) return;
   const vista = mandos.parentElement.querySelector('.escena-vista');
   vista.style.setProperty('--escala', String(vista.clientWidth / 1920));
-  if (tipo === 'compartir') return;
+  if (tipo === 'compartir' || tipo === 'retro') return;
   mandos.append($('e-control-textos'), $('e-control-cuenta'));
   $('e-control-cuenta').hidden = !['inicio', 'pausa'].includes(tipo);
   const claves = { inicio: ['titulo', 'subtitulo'], charla: ['charla'], pausa: ['pausa'], final: ['final'] }[tipo];
@@ -2061,6 +2089,32 @@ async function cargarEscenas() {
         h('label', { class: 'campo' }, h('span', {}, 'Opacidad del contenido · ', valorOpacidad), elegirOpacidad),
         h('p', { class: 'nota' }, 'La webcam llena el fondo y la captura va a la derecha: al 100 % se lee mejor; por debajo deja ver la webcam a través. Es tu misma captura (si cambias de ventana, aquí también). El ajuste se aplica en OBS al pulsar «Crear en OBS».'),
         h('div', { class: 'escena-botones' }, crearCompartir), resultadoCompartir))));
+  const rutaRetro = '/biblioteca/overlays/empezando-pronto.html';
+  const vistaRetro = h('div', { class: 'overlay-vista escena-vista' }, h('iframe', { src: rutaRetro, sandbox: 'allow-scripts', title: ESCENAS_INFO.retro.nombre, tabindex: '-1' }));
+  escalarOverlay.observe(vistaRetro);
+  const resultadoRetro = h('ul', { class: 'escena-resultado', hidden: true });
+  const crearRetro = h('button', { class: 'boton primario', type: 'button' }, '🎬 Crear en OBS');
+  crearRetro.addEventListener('click', async () => {
+    if (!confirm('Se creará o completará «✦ Empezando pronto · Retro» en OBS. No cambia la escena que estás emitiendo. ¿Sigo?')) return;
+    crearRetro.disabled = true;
+    try {
+      const r = await api('/api/escenas/obs', { tipo: 'retro' });
+      resultadoRetro.hidden = false;
+      resultadoRetro.replaceChildren(...r.hecho.map((x) => h('li', {}, x)));
+      tostada('Empezando pronto · Retro lista en OBS');
+    } catch (err) { tostada(err.message, true); }
+    finally { crearRetro.disabled = false; }
+  });
+  $('e-lista').append(h('article', { class: 'tarjeta escena', 'data-tipo': 'retro', hidden: escenaElegida !== 'retro' },
+    h('div', { class: 'escena-presentacion' }, vistaRetro,
+      h('div', { class: 'escena-pie' },
+        h('div', {}, h('h2', {}, '🎮 Empezando pronto · Retro'), h('p', { class: 'nota' }, ESCENAS_INFO.retro.que),
+          h('p', { class: 'nota' }, 'En OBS: ', h('code', {}, '✦ Empezando pronto · Retro'))),
+        h('div', { class: 'escena-botones' },
+          h('button', { class: 'boton', type: 'button', onclick: () => abrirGrande(rutaRetro, 'escena', ESCENAS_INFO.retro.nombre) }, '↗ Ver en grande'),
+          botonCopiar(`${location.origin}${rutaRetro}`, 'Copiar dirección'))),
+      h('div', { class: 'escena-controles' }, h('p', { class: 'nota' }, 'La vista previa es la escena animada real. Crear en OBS solo prepara una escena independiente.'),
+        h('div', { class: 'escena-botones' }, crearRetro), resultadoRetro))));
   cargarEscenasObs();
   pintarSelectoresFondo();
   pintarEstilos();

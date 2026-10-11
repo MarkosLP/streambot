@@ -19,6 +19,11 @@ export interface Duelo {
   ganaRetador: boolean;
   /** El objeto maldito que cambió de manos, si hubo. */
   maldito: string | null;
+  /** Los asaltos (11 oct 2026): el objeto de cada uno y quién lo ganó. Sin ellos, el duelo de una tirada. */
+  asaltos?: Array<{ a: { objeto: string; rareza: string; maldito: boolean }; b: { objeto: string; rareza: string; maldito: boolean }; prob: number; ganaRetador: boolean }>;
+  revancha?: boolean;
+  /** completo (~10 s con los asaltos), corto (5 s, solo el resultado) o chat (el overlay no lo enseña). */
+  pantalla?: 'completo' | 'corto' | 'chat';
   at: number;
 }
 

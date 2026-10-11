@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CRID4M · Empezando pronto</title>
+  <link rel="stylesheet" href="empezando-pronto/escena.css">
+  <link rel="stylesheet" href="empezando-pronto/efectos-nuevos.css">
+</head>
+<body>
+  <div id="scene" aria-label="Escena animada empezando pronto">
+    <img class="room" src="empezando-pronto/habitacion-v9.webp" alt="">
+    <div class="rgb rgb-left"></div><div class="rgb rgb-desk"></div>
+    <canvas id="weather" width="1920" height="1080" aria-hidden="true"></canvas>
+    <div class="lamp-glint" aria-hidden="true"></div>
+    <div class="main-screen">
+      <div class="scanline"></div>
+      <span class="screen-kicker">STREAM LOADING</span>
+      <strong id="title">EMPEZANDO<br>PRONTO</strong>
+      <span class="screen-brand" id="brand">CRID4M<span class="cursor">_</span></span>
+    </div>
+    <div class="side-screen"><span id="side-brand">CRID4M</span><small>ONLINE SOON</small><span class="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+    <div class="pc-led"></div><div class="shelf-led"></div>
+    <div class="clock" id="clock"></div>
+    <div id="runner" class="runner" aria-hidden="true">
+      <img class="runner-trail" src="empezando-pronto/sonic-estela.png" alt="">
+      <img class="runner-ball" src="empezando-pronto/sonic-bola.png" alt="">
+    </div>
+    <div id="goku" class="goku-event" aria-hidden="true">
+      <img class="goku-front" src="empezando-pronto/goku-carga-frente.png" alt="">
+      <img class="goku-body" src="empezando-pronto/goku-kamehameha.png" alt="">
+      <img class="goku-beam" src="empezando-pronto/goku-kamehameha.png" alt="">
+    </div>
+  </div>
+  <script src="empezando-pronto/escena.js"></script>
+</body>
+</html>

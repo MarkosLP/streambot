@@ -82,12 +82,13 @@ describe('El Linde del Velo', () => {
     const ana = persona('ana');
     const berto = persona('berto');
     mmo.explorar(ana, 'uno', ahora);
-    assert.deepEqual(mmo.explorar(ana, 'dos', ahora + 1), { tipo: 'espera', segundos: 120 });
+    assert.deepEqual(mmo.explorar(ana, 'dos', ahora + 1), { tipo: 'espera', segundos: 45 });
     const b = mmo.explorar(berto, 'tres', ahora + 1);
     assert.equal(b.tipo, 'ok');
     assert.deepEqual(mmo.estado().objetivo, { actual: 2, meta: 6 });
     closeDatabase(); // simula reiniciar el proceso: el estado y el cooldown siguen en SQLite
-    assert.deepEqual(mmo.explorar(ana, 'cuatro', ahora + 2), { tipo: 'espera', segundos: 120 });
+    assert.deepEqual(mmo.explorar(ana, 'cuatro', ahora + 2), { tipo: 'espera', segundos: 45 });
+    assert.deepEqual(mmo.explorar(ana, 'antes-del-limite', ahora + mmo.ACCION_MS - 1), { tipo: 'espera', segundos: 1 });
     assert.deepEqual(mmo.estado().objetivo, { actual: 2, meta: 6 });
   });
 
@@ -254,5 +255,37 @@ describe('El Linde del Velo', () => {
     const publico = JSON.stringify(mmo.estado());
     assert.match(publico, /Aventurera/);
     assert.doesNotMatch(publico, /id-secreto-42|mensaje-privado|twitch_id/);
+  });
+
+  test('los controles de prueba solo aceptan al propietario y cerrar no da premios', () => {
+    const ana = persona('ana');
+    const mod = { ...persona('mod'), isModerator: true };
+    const dueno = { ...persona('crid4m'), isBroadcaster: true };
+    mmo.explorar(ana, 'aporte', ahora);
+    assert.match(mmo.comando('!mundo terminar', ana, 'ajeno', ahora)!, /solo para Crid4m/);
+    assert.match(mmo.comando('!mundo terminar', mod, 'moderador', ahora)!, /solo para Crid4m/);
+    assert.equal(mmo.estado().fase, 'expedicion');
+    assert.match(mmo.comando('!mundo terminar', dueno, 'cierre', ahora)!, /sin premios/);
+    assert.equal(mmo.estado().fase, 'resultado');
+    assert.equal(mmo.estado().resultado?.completada, false);
+    assert.equal((getDb().prepare('SELECT COUNT(*) AS n FROM mmo_premios').get() as { n: number }).n, 0);
+    assert.equal((getDb().prepare('SELECT COUNT(*) AS n FROM mmo_reliquias').get() as { n: number }).n, 0);
+    assert.match(mmo.comando('!mundo siguiente', dueno, 'siguiente', ahora)!, /Canteras del Eco/);
+    assert.equal(mmo.estado().fase, 'calma');
+    assert.equal(mmo.estado().region.id, 'cantera');
+  });
+
+  test('probar recorre estados visuales sin modificar la expedición real', () => {
+    const dueno = { ...persona('crid4m'), isBroadcaster: true };
+    const original = JSON.stringify(mmo.estado());
+    assert.match(mmo.comando('!mundo probar', dueno, 'prueba', ahora)!, /63 s/);
+    assert.equal(mmo.estadoParaOverlay(ahora).pruebaVisual, true);
+    assert.equal(mmo.estadoParaOverlay(ahora + 3 * 7000).encrucijada?.decision, null);
+    assert.equal(mmo.estadoParaOverlay(ahora + 4 * 7000).resultado?.completada, true);
+    assert.equal(mmo.estadoParaOverlay(ahora + 7 * 7000).modo, 'pausado');
+    assert.equal(mmo.estadoParaOverlay(ahora + 8 * 7000).resultado?.completada, false);
+    assert.equal(JSON.stringify(mmo.estado()), original);
+    assert.equal((getDb().prepare('SELECT COUNT(*) AS n FROM mmo_resultados').get() as { n: number }).n, 0);
+    assert.equal(mmo.estadoParaOverlay(ahora + 9 * 7000).pruebaVisual, undefined);
   });
 });

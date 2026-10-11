@@ -435,19 +435,23 @@ describe('💥 ataques especiales del jefe', () => {
 });
 
 describe('⚔️ el duelo en el overlay', () => {
-  test('cada duelo queda para el overlay: quién, su poder, la probabilidad y quién ganó', async () => {
+  test('cada duelo queda para el overlay: quién, su poder, la probabilidad, los asaltos y quién ganó', async () => {
     meter('pepe', 'Arco de tejo élfico', 'raro');
     meter('ana', 'Mapa arrugado', 'comun');
     await handleEvent(mensaje('ana'));
     await handleEvent(mensaje('pepe', '!duelo ana'));
+    assert.equal(arena.recientes().length, 0, 'el reto pendiente no sale en pantalla');
+    await handleEvent(mensaje('ana', '!acepto'));
     const d = arena.recientes().at(-1)!;
+    assert.equal(d.asaltos![0]!.a.objeto, 'Arco de tejo élfico');
+    assert.equal(d.asaltos![0]!.b.objeto, 'Mapa arrugado');
     assert.equal(d.retador.nombre, 'pepe');
     assert.equal(d.retador.poder, 3);
     assert.equal(d.rival.nombre, 'ana');
     assert.equal(d.rival.poder, 1);
     assert.equal(d.prob, 0.75);
     assert.equal(typeof d.ganaRetador, 'boolean');
-    assert.match(enviados.at(-1)!, d.ganaRetador ? /¡Gana pepe!/ : /¡Gana ana!/, 'el chat y el overlay dicen lo mismo');
+    assert.match(enviados.at(-1)!, d.ganaRetador ? /¡Gana pepe / : /¡Gana ana /, 'el chat y el overlay dicen lo mismo');
   });
 });
 

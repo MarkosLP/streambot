@@ -1,0 +1,19 @@
+@font-face{font-family:Cinzel;src:url('../../biblioteca/imagenes/combate/fuentes/CinzelDecorative-Bold.ttf')}
+*{box-sizing:border-box}
+html,body{width:640px;height:900px;margin:0;overflow:hidden}
+body{position:relative;color:#f8e9c9;background-color:#1b100b;background-position:center;background-size:640px 900px;background-repeat:no-repeat;text-align:center;-webkit-font-smoothing:antialiased}
+body.chat{background-image:url('arte/boceto-dos-chat-ia.png')}
+body.oros{background-image:url('arte/boceto-dos-oros-ia.png')}
+main{position:absolute;top:321px;left:48px;width:544px;height:530px;display:flex;flex-direction:column;align-items:stretch}
+h1{font:700 36px/1.15 Cinzel,Georgia,serif;letter-spacing:.5px;color:#ffdfa1;text-shadow:0 2px 7px #170c07;margin:0 0 12px}
+.intro{font:24px/1.2 Georgia,serif;color:#f5e6c8;margin:0 auto 18px;max-width:520px}
+.rows{margin:0;text-align:left}
+.row{display:flex;align-items:center;gap:16px;min-height:73px;padding:9px 8px;border-top:1px solid rgba(226,184,112,.46)}
+.row:last-child{border-bottom:1px solid rgba(226,184,112,.46)}
+.key{flex:0 0 205px;color:#ffdc94;font:700 26px/1.12 Georgia,serif;text-shadow:0 1px 4px #170c07}
+.value{color:#f5e8cf;font:23px/1.16 Georgia,serif}
+.closing{font:23px/1.22 Georgia,serif;color:#f0d8ac;margin:auto 12px 0;text-shadow:0 1px 5px #170c07}
+.oros .key{flex-basis:245px;font-size:24px}
+.oros main{top:326px}
+.oros .intro{margin-bottom:24px}
+.oros .row{min-height:72px}

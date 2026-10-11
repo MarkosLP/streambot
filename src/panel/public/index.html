@@ -396,7 +396,14 @@
       <div class="dos-col">
         <article class="tarjeta">
           <header><h2>⚔️ Últimos duelos</h2><span class="nota">Desde que arrancó el bot</span></header>
-          <p class="nota">El porcentaje se calcula con el poder antes del duelo. Si la tirada es menor que el límite del retador, gana quien retó; si no, gana su rival. Un objeto maldito cambia de manos después.</p>
+          <p class="nota">Quien reta escribe !duelo; el retado tiene 60 s para !acepto o !huyo. Se pelea al mejor de tres asaltos, con un objeto de cada mochila en cada uno; el poder total fija la probabilidad (20-80 %). Quien pierde puede pedir !revancha durante 2 min.</p>
+          <label class="campo duelos-pantalla"><span>En pantalla (fuente FX Jefe)</span>
+            <select id="l-duelos-pantalla">
+              <option value="completo">Completo · los asaltos, ~10 s</option>
+              <option value="corto">Corto · solo el resultado, 5 s</option>
+              <option value="chat">Solo en el chat · nada en pantalla</option>
+            </select></label>
+          <p class="nota" id="l-retos" hidden></p>
           <ol class="botines" id="l-duelos"></ol>
         </article>
         <article class="tarjeta">
@@ -493,7 +500,7 @@
     <section class="vista" id="v-escenas" hidden>
       <header class="cabecera-vista">
         <div>
-          <p class="antetitulo">Empezamos · Charla · Compartir · Pausa · Final</p>
+          <p class="antetitulo">Empezando pronto · Empezamos · Charla · Compartir · Pausa · Final</p>
           <h1>Escenas</h1>
           <p class="nota">Los textos, la cuenta atrás y el avatar se cambian aquí y salen en directo, sin tocar OBS. «Crear en OBS» solo añade: nunca cambia la escena que estás emitiendo.</p>
         </div>

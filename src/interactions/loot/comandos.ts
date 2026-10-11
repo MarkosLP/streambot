@@ -39,7 +39,7 @@ import {
   puedePurificar,
   type EfectoCanal,
 } from './index.js';
-import * as arena from './arena.js';
+import { duelo, acepto, huyo, revancha } from './duelo.js';
 import * as jefe from './jefe.js';
 import * as eventos from './eventos.js';
 import * as temporada from './temporada.js';
@@ -50,7 +50,7 @@ const sinTildes = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').trim(
  * Para qué sirve el botín (decidido el 25 sep 2026: los cuatro usos).
  *
  *   !poder             tu poder, tu puesto y tus duelos
- *   !duelo nombre      el poder fija la probabilidad; una tirada decide (vale con o sin @)
+ *   !duelo nombre      reta; el otro !acepto o !huyo. Tres asaltos con objetos de cada mochila (duelo.ts)
  *   !forjar [rareza]   3 de una rareza → 1 de la siguiente
  *   !presumir          tu mejor pieza, en la pantalla del directo
  *   !coleccion         cuántos objetos distintos has conseguido; títulos
@@ -102,75 +102,10 @@ export const poder: Interaction<CtxComando> = {
 };
 
 // ---------------------------------------------------------------------------
-// !duelo @alguien
+// !duelo, !acepto, !huyo, !revancha: en duelo.ts
 // ---------------------------------------------------------------------------
 
-/**
- * Probabilidad de que gane quien reta. Proporcional al poder, pero nunca por
- * debajo del 20 % ni por encima del 80 %: con 1-3 personas en el chat, un
- * duelo que el débil no puede ganar nunca deja de hacer gracia muy rápido.
- */
-export function probabilidad(poderA: number, poderB: number): number {
-  const p = poderA / (poderA + poderB);
-  return Math.min(0.8, Math.max(0.2, p));
-}
-
-export const duelo: Interaction<CtxComando> = {
-  name: 'loot-duelo',
-  spontaneous: false,
-  guards: [
-    (ctx) => (ctx.args.trim() ? { ok: true } : { ok: false, motivo: 'sin rival', registrar: false }),
-  ],
-  cooldowns: [porPersona('loot-duelo', 3 * 60_000)],
-  run: (ctx) => {
-    const yo = ctx.viewer;
-    const nombreRival = ctx.args.trim().split(/\s+/)[0]!.replace(/^@/, '');
-    const rival = buscarPresente(nombreRival);
-
-    if (!rival) {
-      return { text: `@${yo.displayName} ⚔️ No veo a ${nombreRival} por el chat. Solo puedes retar a alguien que haya escrito hace poco.`, ...mencion(ctx) };
-    }
-    if (rival.id === yo.id) {
-      return { text: `@${yo.displayName} ⚔️ Retarte a ti mismo es valiente, pero no cuenta.`, ...mencion(ctx) };
-    }
-    const pa = lootDb.poder(yo.id);
-    const pb = lootDb.poder(rival.id);
-    if (pa === 0) {
-      return { text: `@${yo.displayName} ⚔️ Con la mochila vacía no se reta a nadie. Habla en el chat y caerá algo 🎁`, ...mencion(ctx) };
-    }
-    if (pb === 0) {
-      return { text: `@${yo.displayName} ⚔️ ${rival.displayName} no tiene nada con qué defenderse. Déjale que consiga algo primero.`, ...mencion(ctx) };
-    }
-
-    const prob = probabilidad(pa, pb);
-    const tirada = (ctx.azar ?? Math.random)();
-    const ganaYo = tirada < prob;
-    const [ganador, perdedor] = ganaYo ? [yo, rival] : [rival, yo];
-    lootDb.apuntarDuelo(ganador.id, perdedor.id);
-    const puntos = temporada.puntosDuelo();
-    temporadas.sumar(ganador.id, ganador.displayName, puntos);
-    // La patata caliente: el maldito más fuerte del perdedor cambia de manos.
-    const maldito = lootDb.traspasarMaldito(perdedor.id, ganador.id, ganador.displayName);
-    // En pantalla lo enseña el overlay del duelo, maldito incluido: el banner
-    // del botín saldría a la vez, en el mismo sitio.
-    arena.registrarDuelo({
-      retador: { nombre: yo.displayName, titulo: lootDb.titulo(yo.id), poder: pa },
-      rival: { nombre: rival.displayName, titulo: lootDb.titulo(rival.id), poder: pb },
-      prob,
-      tirada,
-      ganaRetador: ganaYo,
-      maldito: maldito ? maldito.objeto : null,
-    }, Date.now(), { retadorId: yo.id, rivalId: rival.id });
-    const sorpresa = (ganaYo ? prob : 1 - prob) < 0.4 ? ' ¡Sorpresa!' : '';
-    const traspaso = maldito ? ` ☠️ ${etiqueta(maldito)} pasa a ${ganador.displayName}.` : '';
-    return {
-      text:
-        `⚔️ @${yo.displayName} (poder ${pa}, ${Math.round(prob * 100)} %) reta a @${rival.displayName} (poder ${pb}, ${Math.round((1 - prob) * 100)} %). ` +
-        `La suerte decide: ¡Gana ${conTitulo(ganador)}!${sorpresa} +${puntos} de temporada${traspaso}`,
-      allowedMentions: [yo.login, rival.login],
-    };
-  },
-};
+export { probabilidad, duelo, acepto, huyo, revancha } from './duelo.js';
 
 // ---------------------------------------------------------------------------
 // !forjar [rareza]
@@ -619,7 +554,7 @@ export const ayuda: Interaction<CtxComando> = {
     text:
       `🎁 Loot: cada ${config.loot.minutosMin}-${config.loot.minutosMax} min cae un cofre para quien hable en el chat, ` +
       // Sin @ en el ejemplo del duelo: policy bloquea mencionar a quien no participa.
-      `y con Oros está el ${config.loot.cofreRewardTitle}. Tus objetos suman poder (⚪1 🔵3 🟣8 🟠20; malditos ×2). En !duelo el poder da probabilidad, no victoria segura (20-80 %). Comandos: !pj !inventario !poder !duelo nombre !dar nombre !usar !forjar !presumir !coleccion !top !temporada !evento`,
+      `y con Oros está el ${config.loot.cofreRewardTitle}. Tus objetos suman poder (⚪1 🔵3 🟣8 🟠20; malditos ×2). En !duelo el poder da probabilidad, no victoria segura (20-80 %); el retado !acepto o !huyo. Comandos: !pj !inventario !poder !duelo nombre !dar nombre !usar !forjar !presumir !coleccion !top !temporada !evento`,
   }),
 };
 
@@ -631,6 +566,9 @@ const COMANDOS: Array<[RegExp, Interaction<CtxComando>]> = [
   [/^!(inventario|inv|mochila)\b/i, inventario as unknown as Interaction<CtxComando>],
   [/^!poder\b/i, poder],
   [/^!duelo\b/i, duelo],
+  [/^!(acepto|aceptar|acepta)\b/i, acepto],
+  [/^!(huyo|huir|rechazo|rechazar)\b/i, huyo],
+  [/^!revancha\b/i, revancha],
   [/^!(forjar|fundir)\b/i, forjar],
   [/^!presumir\b/i, presumir],
   [/^!colecci[oó]n\b/i, coleccion],
@@ -661,7 +599,9 @@ export const LISTA = [
   ['!inventario', 'Tu mochila (máx. 20), tu poder y tu mejor pieza. También !mochila e !inv'],
   ['!pj', 'Tu ficha de personaje en una línea: poder, temporada, colección, duelos, racha. !pj nombre enseña la de otro'],
   ['!poder', 'Tu poder desglosado por rareza (⚪1 🔵3 🟣8 🟠20; malditos ×2), puesto y duelos'],
-  ['!duelo nombre', 'Reta a quien esté en el chat. Poder de toda la mochila → probabilidad de ganar (20-80 %); decide una tirada aleatoria'],
+  ['!duelo nombre', 'Reta a quien esté en el chat; tiene 60 s para !acepto o !huyo. Tres asaltos con objetos de cada mochila; el poder total da la probabilidad (20-80 %)'],
+  ['!acepto', 'Acepta el duelo que te han propuesto (también !aceptar). !huyo lo rechaza sin perder nada'],
+  ['!revancha', 'Tras perder un duelo, 2 min para pedir la revancha: +10 % y puntos dobles si la ganas'],
   ['!forjar', `${FORJA_CANTIDAD} objetos de una rareza → 1 de la siguiente. Se puede elegir: !forjar raros. También !fundir`],
   ['!presumir', 'Tu mejor pieza, en la pantalla del directo'],
   ['!coleccion', 'Cuántos objetos distintos has conseguido. Completar una rareza da título'],

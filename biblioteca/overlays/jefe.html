@@ -631,6 +631,30 @@
   .duelo .luchador .quien { font-size: 45px; }
   .duelo .luchador .titulo, .duelo .luchador .poder, .duelo .ruleta-pct, .duelo .extra { font-family: 'Rajdhani Local', sans-serif; }
 
+  /* Asaltos (11 oct 2026): en el centro chocan los dos objetos pintados
+     (imagenes/objetos/<tipo>.png); bajo cada nombre, la pieza que lleva y
+     los asaltos ganados. Duración y salida, desde el script (duracionDuelo). */
+  .duelo .luchador .arma { margin-top: 4px; min-height: 26px; font: 700 21px 'Rajdhani Local', sans-serif; color: var(--rar, #e8dcc4);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 2px 3px #000; }
+  .duelo .luchador .pips { margin-left: 10px; letter-spacing: 4px; color: #ffd24a; text-shadow: 0 0 8px rgba(255, 200, 60, .8); }
+  .duelo.asaltando .vs { opacity: 0; transition: opacity .2s; }
+  .duelo .choque { position: absolute; left: 50%; top: 150px; width: 390px; height: 175px; transform: translateX(-50%); z-index: 3; }
+  .duelo .choque[hidden] { display: none; }
+  .duelo .choque .ronda { position: absolute; left: 0; right: 0; top: -6px; text-align: center; font: 700 20px 'Rajdhani Local', sans-serif;
+    letter-spacing: .3em; color: #f3dfb5; text-shadow: 0 2px 3px #000; }
+  .duelo .choque .pieza { position: absolute; top: 34px; width: 130px; height: 130px; object-fit: contain;
+    filter: drop-shadow(0 6px 8px rgba(0, 0, 0, .7)) drop-shadow(0 0 14px var(--rar, rgba(255, 220, 160, .6))); }
+  .duelo .choque .pieza.a { left: 40px; } .duelo .choque .pieza.b { right: 40px; transform: scaleX(-1); }
+  .duelo .choque.entra .pieza.a { animation: pieza-a .45s cubic-bezier(.2, 1.4, .4, 1) both; }
+  .duelo .choque.entra .pieza.b { animation: pieza-b .45s cubic-bezier(.2, 1.4, .4, 1) both; }
+  @keyframes pieza-a { from { opacity: 0; transform: translateX(-150px) rotate(-25deg); } 70% { transform: translateX(14px); } }
+  @keyframes pieza-b { from { opacity: 0; transform: translateX(150px) scaleX(-1) rotate(-25deg); } 70% { transform: translateX(-14px) scaleX(-1); } }
+  .duelo .choque .pieza.a.gana { animation: pieza-gana .45s ease-out forwards; }
+  .duelo .choque .pieza.b.gana { animation: pieza-gana-b .45s ease-out forwards; }
+  @keyframes pieza-gana { to { transform: scale(1.18); } }
+  @keyframes pieza-gana-b { to { transform: scaleX(-1) scale(1.18); } }
+  .duelo .choque .pieza.pierde { filter: grayscale(1) brightness(.45) drop-shadow(0 6px 8px rgba(0, 0, 0, .7)); transition: filter .3s; }
+
   .aviso {
     left: 50%; right: auto; top: 50%; width: 1250px; height: 365px;
     transform: translate(-50%, -50%);
@@ -759,9 +783,10 @@
 <div class="duelo" id="duelo" hidden>
   <div class="duelo-fondo"></div>
   <div class="destello"></div>
-  <div class="luchador izq" id="d-a"><div class="sello">¡GANA!</div><div class="quien"></div><div class="titulo"></div><div class="poder"></div></div>
+  <div class="luchador izq" id="d-a"><div class="sello">¡GANA!</div><div class="quien"></div><div class="titulo"></div><div class="poder"></div><div class="arma"></div></div>
   <div class="vs">VS</div>
-  <div class="luchador der" id="d-b"><div class="sello">¡GANA!</div><div class="quien"></div><div class="titulo"></div><div class="poder"></div></div>
+  <div class="choque" id="d-choque" hidden><div class="ronda" id="d-ronda"></div><img class="pieza a" id="d-pieza-a" alt=""><img class="pieza b" id="d-pieza-b" alt=""></div>
+  <div class="luchador der" id="d-b"><div class="sello">¡GANA!</div><div class="quien"></div><div class="titulo"></div><div class="poder"></div><div class="arma"></div></div>
   <div class="ruleta">
     <div class="ruleta-barra"><div class="ruleta-a" id="d-pa"></div><div class="ruleta-b" id="d-pb"></div><div class="aguja" id="d-aguja"></div></div>
     <div class="ruleta-pct"><span class="a" id="d-pcta"></span><span class="b" id="d-pctb"></span></div>
@@ -1375,20 +1400,61 @@
 
   const DUELO_MS = 7200;
   const ANIMA_RULETA_MS = 2000;
+  // Con asaltos: entrada, 1,5 s por asalto y el resultado. Nunca más de ~9 s.
+  const ENTRADA_MS = 1100;
+  const ASALTO_MS = 1500;
+  const RESULTADO_MS = 3300;
+  const CORTO_MS = 5000;
+  const duracionDuelo = (d) => (d.pantalla === 'corto' ? CORTO_MS : d.asaltos?.length ? ENTRADA_MS + d.asaltos.length * ASALTO_MS + RESULTADO_MS : DUELO_MS);
 
   function siguienteDuelo() {
     if (enseñandoDuelo || !colaDuelos.length) return;
     const siguiente = DirectoRed.extraer(colaDuelos);
     if (!siguiente) return;
+    // «Solo en el chat» (panel → Loot): no sale en pantalla.
+    if (siguiente.pantalla === 'chat') { siguienteDuelo(); return; }
     enseñandoDuelo = true;
+    const ms = duracionDuelo(siguiente);
+    $('duelo').style.animationDelay = `${ms - 600}ms`;
     duelo(siguiente);
-    setTimeout(() => { $('duelo').hidden = true; enseñandoDuelo = false; siguienteDuelo(); }, DUELO_MS);
+    setTimeout(() => { $('duelo').hidden = true; enseñandoDuelo = false; siguienteDuelo(); }, ms);
+  }
+
+  // El objeto pintado de cada pieza, por su nombre (como en botin.html).
+  const TIPOS_OBJETO = [
+    ['montura', /montura|pollo|mascota|grifo|poni/], ['corona', /corona/], ['pocion', /poci[oó]n|frasco|agua|embotellado|c[aá]liz/],
+    ['libro', /tomo|grimorio|pergamino|mapa|carta/], ['joya', /anillo|amuleto|colgante/], ['casco', /casco|yelmo/], ['escudo', /escudo/],
+    ['daga', /daga/], ['hacha', /hacha/], ['espada', /espada|hoja|filo/], ['arco', /arco|flecha/], ['lanza', /lanza/], ['martillo', /martillo/],
+    ['baston', /b[aá]culo|bast[oó]n|orbe/], ['armadura', /armadura|brazales|guantes|botas|cintur[oó]n|calcet[ií]n/], ['capa', /capa|capucha|t[uú]nica|alas?|estandarte/],
+  ];
+  function tipoObjeto(nombre) {
+    const n = String(nombre).toLowerCase();
+    for (const [tipo, re] of TIPOS_OBJETO) if (new RegExp(`(?<!\\p{L})(${re.source})(?!\\p{L})`, 'u').test(n)) return tipo;
+    return 'tesoro';
+  }
+  const COLOR_RAREZA = { comun: '#d6d6d6', raro: '#6fb6ff', epico: '#c58bff', legendario: '#ffb347' };
+  const EMOJI_RAREZA = { comun: '⚪', raro: '🔵', epico: '🟣', legendario: '🟠' };
+  const colorPieza = (p) => (p.maldito ? '#a6ff7a' : COLOR_RAREZA[p.rareza] || '#e8dcc4');
+  function ponerArma(el, p) {
+    const arma = el.querySelector('.arma');
+    arma.textContent = p ? `${p.maldito ? '☠️' : EMOJI_RAREZA[p.rareza] || ''} ${p.objeto}` : '';
+    arma.style.setProperty('--rar', p ? colorPieza(p) : '');
+  }
+  function ponerPips(el, ganados) {
+    const poder = el.querySelector('.poder');
+    poder.querySelector('.pips')?.remove();
+    if (!ganados) return;
+    const pips = document.createElement('span');
+    pips.className = 'pips';
+    pips.textContent = '◆'.repeat(ganados);
+    poder.append(pips);
   }
 
   function luchador(el, l) {
     el.querySelector('.quien').textContent = l.nombre;
     el.querySelector('.titulo').textContent = l.titulo ? `«${l.titulo}»` : '';
     el.querySelector('.poder').textContent = `⚔️ Poder ${l.poder}`;
+    ponerArma(el, null);
     el.classList.remove('gana', 'pierde');
   }
 
@@ -1403,8 +1469,12 @@
     $('d-pcta').textContent = `${pa} %`;
     $('d-pctb').textContent = `${100 - pa} %`;
     $('d-extra').replaceChildren();
+    caja.classList.remove('asaltando');
+    $('d-choque').hidden = true;
     caja.hidden = true; void caja.offsetWidth; caja.hidden = false;
     sonar('grito-de-guerra.wav');
+    if (d.asaltos?.length && d.pantalla !== 'corto') return asaltos(d, pa);
+    if (d.pantalla === 'corto') return resolver(d, ENTRADA_MS - 200, pa);
 
     // La aguja: va y viene y se para en el lado de quien gana, dentro de su parte.
     const destino = d.ganaRetador ? 4 + Math.random() * Math.max(1, pa - 8) : pa + 4 + Math.random() * Math.max(1, 100 - pa - 8);
@@ -1415,12 +1485,77 @@
       { duration: ANIMA_RULETA_MS, delay: 1100, easing: 'cubic-bezier(.3, .1, .2, 1)', fill: 'forwards' },
     );
 
+    resolver(d, 1100 + ANIMA_RULETA_MS + 150, pa);
+  }
+
+  /** Los asaltos, uno tras otro: chocan las piezas, la aguja cae del lado de quien gana y suma su punto. */
+  function asaltos(d, pa) {
+    const caja = $('duelo');
+    const aguja = $('d-aguja');
+    aguja.getAnimations().forEach((a) => a.cancel());
+    let ganadosA = 0;
+    let ganadosB = 0;
+    let donde = 50;
+    d.asaltos.forEach((s, i) => setTimeout(() => {
+      caja.classList.add('asaltando');
+      const choque = $('d-choque');
+      choque.hidden = false;
+      $('d-ronda').textContent = `ASALTO ${i + 1}`;
+      for (const [id, p] of [['d-pieza-a', s.a], ['d-pieza-b', s.b]]) {
+        const img = $(id);
+        img.classList.remove('gana', 'pierde');
+        img.style.setProperty('--rar', colorPieza(p));
+        img.src = `../imagenes/objetos/${tipoObjeto(p.objeto)}.png`;
+      }
+      ponerArma($('d-a'), s.a);
+      ponerArma($('d-b'), s.b);
+      choque.classList.remove('entra'); void choque.offsetWidth; choque.classList.add('entra');
+      const destino = s.ganaRetador ? 4 + Math.random() * Math.max(1, pa - 8) : pa + 4 + Math.random() * Math.max(1, 100 - pa - 8);
+      aguja.getAnimations().forEach((a) => a.cancel());
+      aguja.animate([{ left: `${donde}%` }, { left: s.ganaRetador ? '92%' : '8%' }, { left: `${destino}%` }],
+        { duration: 800, delay: 250, easing: 'cubic-bezier(.3, .1, .2, 1)', fill: 'forwards' });
+      donde = destino;
+      setTimeout(() => {
+        $(s.ganaRetador ? 'd-pieza-a' : 'd-pieza-b').classList.add('gana');
+        $(s.ganaRetador ? 'd-pieza-b' : 'd-pieza-a').classList.add('pierde');
+        if (s.ganaRetador) ganadosA++; else ganadosB++;
+        ponerPips($('d-a'), ganadosA);
+        ponerPips($('d-b'), ganadosB);
+      }, 1050);
+    }, ENTRADA_MS + i * ASALTO_MS));
+    resolver(d, ENTRADA_MS + d.asaltos.length * ASALTO_MS, pa, () => {
+      $('d-choque').hidden = true;
+      caja.classList.remove('asaltando');
+    });
+  }
+
+  /** Marcador de los asaltos desde el lado de quien gana: «2-1». */
+  function marcadorDe(d) {
+    if (!d.asaltos?.length) return '';
+    const a = d.asaltos.filter((x) => x.ganaRetador).length;
+    const b = d.asaltos.length - a;
+    return d.ganaRetador ? `${a}-${b}` : `${b}-${a}`;
+  }
+
+  /** El resultado: sello, quién pierde y la línea de abajo (revancha, marcador, sorpresa, maldito). */
+  function resolver(d, cuando, pa, alResolver) {
+    const caja = $('duelo');
     setTimeout(() => {
+      alResolver?.();
+      if (d.pantalla === 'corto') {
+        // Sin asaltos que enseñar: la aguja directamente a su lado.
+        const destino = d.ganaRetador ? Math.max(4, pa / 2) : pa + (100 - pa) / 2;
+        $('d-aguja').getAnimations().forEach((a) => a.cancel());
+        $('d-aguja').animate([{ left: '50%' }, { left: `${destino}%` }], { duration: 350, fill: 'forwards' });
+      }
       $(d.ganaRetador ? 'd-a' : 'd-b').classList.add('gana');
       $(d.ganaRetador ? 'd-b' : 'd-a').classList.add('pierde');
       const probGanador = d.ganaRetador ? d.prob : 1 - d.prob;
       const extra = [];
-      if (probGanador < 0.4) { const e = document.createElement('span'); e.className = 'sorpresa'; e.textContent = '¡SORPRESA!'; extra.push(e); }
+      const etiqueta = (texto) => { const e = document.createElement('span'); e.className = 'sorpresa'; e.textContent = texto; extra.push(e); };
+      if (d.revancha) etiqueta('🔥 REVANCHA');
+      if (marcadorDe(d)) etiqueta(marcadorDe(d));
+      if (probGanador < 0.4) etiqueta('¡SORPRESA!');
       if (d.maldito) {
         const e = document.createElement('span'); e.className = 'maldito';
         e.textContent = `☠️ ${d.maldito} pasa a ${d.ganaRetador ? d.retador.nombre : d.rival.nombre}`;
@@ -1429,7 +1564,7 @@
       $('d-extra').replaceChildren(...extra);
       caja.classList.add('resuelto');
       sonar('cofre.wav');
-    }, 1100 + ANIMA_RULETA_MS + 150);
+    }, cuando);
   }
 
   function aparece(j) {
@@ -1721,9 +1856,23 @@
   /** Unos duelos de mentira, uno detrás de otro. */
   function demoDuelos() {
     const duelos = [
-      { n: 1, retador: { nombre: 'crid4n', titulo: null, poder: 12 }, rival: { nombre: 'Crid4m', titulo: 'Cazatesoros', poder: 34 }, prob: 0.26, ganaRetador: true, maldito: null },
-      { n: 2, retador: { nombre: 'Ana_la_Tanque', titulo: 'Trotamundos', poder: 40 }, rival: { nombre: 'Pepe', titulo: null, poder: 22 }, prob: 0.65, ganaRetador: true, maldito: 'Corona del Liche' },
-      { n: 3, retador: { nombre: 'Pepe', titulo: null, poder: 9 }, rival: { nombre: 'crid4n', titulo: null, poder: 15 }, prob: 0.38, ganaRetador: false, maldito: null },
+      { n: 1, retador: { nombre: 'crid4n', titulo: null, poder: 12 }, rival: { nombre: 'Crid4m', titulo: 'Cazatesoros', poder: 34 }, prob: 0.26, ganaRetador: true, maldito: null,
+        asaltos: [
+          { a: { objeto: 'Daga mellada', rareza: 'comun', maldito: false }, b: { objeto: 'Espada del Amanecer', rareza: 'legendario', maldito: false }, prob: 0.3, ganaRetador: false },
+          { a: { objeto: 'Arco de tejo', rareza: 'raro', maldito: false }, b: { objeto: 'Escudo de roble', rareza: 'comun', maldito: false }, prob: 0.4, ganaRetador: true },
+          { a: { objeto: 'Hacha rúnica', rareza: 'epico', maldito: false }, b: { objeto: 'Yelmo abollado', rareza: 'raro', maldito: false }, prob: 0.42, ganaRetador: true },
+        ] },
+      { n: 2, retador: { nombre: 'Ana_la_Tanque', titulo: 'Trotamundos', poder: 40 }, rival: { nombre: 'Pepe', titulo: null, poder: 22 }, prob: 0.65, ganaRetador: true, maldito: 'Corona del Liche',
+        asaltos: [
+          { a: { objeto: 'Martillo de guerra', rareza: 'epico', maldito: false }, b: { objeto: 'Lanza de caza', rareza: 'raro', maldito: false }, prob: 0.64, ganaRetador: true },
+          { a: { objeto: 'Corona del Liche', rareza: 'epico', maldito: true }, b: { objeto: 'Capa de viaje', rareza: 'comun', maldito: false }, prob: 0.66, ganaRetador: true },
+        ] },
+      { n: 3, retador: { nombre: 'Pepe', titulo: null, poder: 9 }, rival: { nombre: 'Ana_la_Tanque', titulo: 'Trotamundos', poder: 40 }, prob: 0.3, ganaRetador: false, maldito: null, revancha: true,
+        asaltos: [
+          { a: { objeto: 'Lanza de caza', rareza: 'raro', maldito: false }, b: { objeto: 'Martillo de guerra', rareza: 'epico', maldito: false }, prob: 0.33, ganaRetador: true },
+          { a: { objeto: 'Capa de viaje', rareza: 'comun', maldito: false }, b: { objeto: 'Corona del Liche', rareza: 'epico', maldito: true }, prob: 0.31, ganaRetador: false },
+          { a: { objeto: 'Anillo de cobre', rareza: 'comun', maldito: false }, b: { objeto: 'Espada del Amanecer', rareza: 'legendario', maldito: false }, prob: 0.3, ganaRetador: false },
+        ] },
     ];
     pintar({ jefe: null, final: null, duelos: [] });
     let tanda = 0;
@@ -1732,7 +1881,7 @@
       duelos.forEach((d, i) => setTimeout(() => pintar({ jefe: null, final: null, duelos: [{ ...d, n: base + i }] }), 300 + i * 150));
     };
     lanzar();
-    setInterval(lanzar, duelos.length * DUELO_MS + 1400);
+    setInterval(lanzar, duelos.reduce((t, d) => t + duracionDuelo(d), 0) + 1400);
   }
 
   /** Un combate de mentira: aparece, recibe golpes, cae y enseña el podio. */

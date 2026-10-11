@@ -10,6 +10,7 @@ import * as policy from '../../core/policy.js';
 import * as killswitch from '../../core/killswitch.js';
 import * as ajustes from '../../core/ajustes.js';
 import * as engine from '../../core/engine.js';
+import * as duelos from './duelo.js';
 import * as consent from '../../core/consent.js';
 import * as streams from '../../data/streams.js';
 import * as lootDb from '../../data/loot.js';
@@ -63,6 +64,7 @@ before(() => configureDatabase(':memory:'));
 
 beforeEach(() => {
   truncateAll();
+  duelos.reset();
   cooldowns.reset();
   policy.reset();
   killswitch.enable('test');
@@ -188,8 +190,11 @@ describe('💀 Maldición', () => {
 });
 
 describe('☠️ el maldito en los duelos', () => {
-  const retar = (azar: number) =>
-    engine.run(comandos.duelo, { viewer: { id: 'id-pepe', login: 'pepe', displayName: 'pepe' } as any, trigger: 'command', args: 'ana', azar: fijo(azar) });
+  // Pepe reta y Ana acepta: con 0,99 gana Ana todos los asaltos; con 0, Pepe.
+  const retar = async (azar: number) => {
+    await engine.run(comandos.duelo, { viewer: { id: 'id-pepe', login: 'pepe', displayName: 'pepe' } as any, trigger: 'command', args: 'ana' });
+    await engine.run(comandos.acepto, { viewer: { id: 'id-ana', login: 'ana', displayName: 'ana' } as any, trigger: 'command', args: '', azar: fijo(azar) });
+  };
 
   test('quien pierde un duelo pierde su maldito, que pasa al ganador', async () => {
     lootDb.dar('id-pepe', 'pepe', { objeto: 'Corona del Liche', rareza: 'epico', maldito: true }, 'maldicion');
@@ -197,7 +202,7 @@ describe('☠️ el maldito en los duelos', () => {
     await handleEvent(mensaje('ana'));
     await retar(0.99);
     await pantalla();
-    assert.match(enviados[0]!, /¡Gana ana!.*☠️ ☠️🟣 Corona del Liche pasa a ana\./);
+    assert.match(enviados.at(-1)!, /¡Gana ana 2-0!.*☠️ ☠️🟣 Corona del Liche pasa a ana\./);
     assert.equal(lootDb.inventario('id-pepe').malditos, 0);
     assert.equal(lootDb.inventario('id-ana').malditos, 1);
     assert.equal(lootDb.coleccion('id-ana').porRareza.epico.tiene, 1, 'cuenta para su colección');
@@ -211,7 +216,7 @@ describe('☠️ el maldito en los duelos', () => {
     lootDb.dar('id-ana', 'ana', { objeto: 'Espada oxidada', rareza: 'comun' }, 'cofre');
     await handleEvent(mensaje('ana'));
     await retar(0);
-    assert.doesNotMatch(enviados[0]!, /pasa a/);
+    assert.doesNotMatch(enviados.at(-1)!, /pasa a/);
     assert.equal(lootDb.inventario('id-pepe').malditos, 1);
   });
 });
@@ -248,7 +253,9 @@ describe('🧪 Poción de vida y !purificar', () => {
     lootDb.purificar('id-pepe');
     lootDb.dar('id-ana', 'ana', { objeto: 'Espada oxidada', rareza: 'comun' }, 'cofre');
     await handleEvent(mensaje('ana'));
-    await engine.run(comandos.duelo, { viewer: { id: 'id-pepe', login: 'pepe', displayName: 'pepe' } as any, trigger: 'command', args: 'ana', azar: fijo(0.99) });
+    await engine.run(comandos.duelo, { viewer: { id: 'id-pepe', login: 'pepe', displayName: 'pepe' } as any, trigger: 'command', args: 'ana' });
+    await engine.run(comandos.acepto, { viewer: { id: 'id-ana', login: 'ana', displayName: 'ana' } as any, trigger: 'command', args: '', azar: fijo(0.99) });
+    assert.match(enviados.at(-1)!, /¡Gana ana/);
     assert.equal(lootDb.inventario('id-pepe').porRareza.epico, 1);
   });
 });

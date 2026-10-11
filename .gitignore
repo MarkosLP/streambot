@@ -34,3 +34,6 @@ biblioteca/musica/
 
 # Sonido de la alerta de follow: es de Mixkit (no se puede repartir el archivo; el repo es público).
 biblioteca/sonidos/follow-captura.wav
+
+# Referencias personales: se conservan solo en el equipo local.
+biblioteca/imagenes/referencias/j-marcos/

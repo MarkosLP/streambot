@@ -157,7 +157,8 @@ export function resolver(pathname: string, dir = DIR_BIBLIOTECA): { ruta: string
   // Cada trozo se decodifica y se comprueba POR SEPARADO: un %2F dentro de un
   // nombre no puede colar una barra, ni un %2E%2E un "..".
   const trozos = m[2].split('/');
-  if (seccion === 'musica' ? trozos.length !== 2 : trozos.length > 1 && (seccion !== 'imagenes' || trozos.length > PROFUNDIDAD + 1)) return null;
+  const recursoEscenaRetro = seccion === 'overlays' && trozos.length === 2 && trozos[0] === 'empezando-pronto';
+  if (seccion === 'musica' ? trozos.length !== 2 : trozos.length > 1 && !recursoEscenaRetro && (seccion !== 'imagenes' || trozos.length > PROFUNDIDAD + 1)) return null;
   const partes: string[] = [];
   for (const t of trozos) {
     let parte: string;
@@ -172,6 +173,11 @@ export function resolver(pathname: string, dir = DIR_BIBLIOTECA): { ruta: string
   // Las tipografías del combate son recursos del overlay, no tarjetas de imágenes.
   if (seccion === 'imagenes' && partes.length === 3 && partes[0] === 'combate' && partes[1] === 'fuentes' && extname(partes[2]).toLowerCase() === '.ttf') {
     return { ruta: join(dir, seccion, ...partes), tipo: 'font/ttf' };
+  }
+  if (recursoEscenaRetro) {
+    const tipos: Record<string, string> = { '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.webp': 'image/webp', '.png': 'image/png', '.ttf': 'font/ttf' };
+    const tipo = tipos[extname(partes[1]).toLowerCase()];
+    return tipo ? { ruta: join(dir, seccion, ...partes), tipo } : null;
   }
   const tipo = (TIPOS[seccion] as Record<string, string>)[extname(partes.at(-1)!).toLowerCase()];
   if (!tipo) return null;

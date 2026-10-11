@@ -246,7 +246,7 @@ async function handleMessage(event: ViewerMessageEvent): Promise<void> {
       text: respuesta,
       reason: 'mmo-comando',
       solicitado: true,
-      consulta: /^!(mundo|expedicion)\b/i.test(text) && !/^!mundo\s+(activar|pausar|apagar)\b/i.test(text),
+      consulta: /^!(mundo|expedicion)\b/i.test(text) && !/^!mundo\s+(activar|pausar|apagar|terminar|siguiente|probar|cancelar|pruebas)\b/i.test(text),
     });
     return;
   }

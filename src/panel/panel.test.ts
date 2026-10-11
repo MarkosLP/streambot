@@ -837,6 +837,24 @@ describe('Escenas', () => {
     assert.equal((await post('/api/escenas/obs', { tipo: 'otra' })).status, 400);
   });
 
+  test('Empezando pronto retro se sirve completo y se prepara en OBS una sola vez', async () => {
+    for (const ruta of [
+      '/biblioteca/overlays/empezando-pronto.html',
+      '/biblioteca/overlays/empezando-pronto/escena.css',
+      '/biblioteca/overlays/empezando-pronto/escena.js',
+      '/biblioteca/overlays/empezando-pronto/habitacion.webp',
+      '/biblioteca/overlays/empezando-pronto/erizo.png',
+      '/biblioteca/overlays/empezando-pronto/Orbitron-900.ttf',
+    ]) assert.equal((await pedir('GET', ruta)).status, 200, ruta);
+    assert.equal((await pedir('GET', '/biblioteca/overlays/empezando-pronto/../../server.ts')).status, 404);
+    const primera = await post('/api/escenas/obs', { tipo: 'retro' });
+    assert.equal(primera.status, 200);
+    assert.deepEqual(obs.items['✦ Empezando pronto · Retro']!.map((i) => i.sourceName), ['ESC Empezando pronto Retro']);
+    assert.match(obs.entradas.find((e) => e.inputName === 'ESC Empezando pronto Retro')!.settings.url, /\/biblioteca\/overlays\/empezando-pronto\.html$/);
+    assert.equal((await post('/api/escenas/obs', { tipo: 'retro' })).status, 200);
+    assert.equal(obs.items['✦ Empezando pronto · Retro']!.length, 1);
+  });
+
   test('Charla + compartir usa la captura original dentro de una capa, sin copiarla ni filtrarla', async () => {
     const escena = '✦ Charla + compartir', capa = 'ESC Compartir (capa)';
     obs.entradas.push({ inputName: 'Cámara', inputKind: 'dshow_input', settings: {} });
@@ -1001,6 +1019,7 @@ describe('El Linde del Velo desde el panel', () => {
     const fuente = obs.entradas.find((e) => e.inputName === 'ESC Linde del Velo')!;
     assert.match(fuente.settings.url, /\/biblioteca\/overlays\/mmo\.html$/);
     assert.equal(fuente.settings.shutdown, true, 'no gasta mientras la escena no se ve');
+    assert.equal(fuente.settings.reroute_audio, true, 'el sonido del inicio se controla en el mezclador de OBS');
     const item = obs.items['✦ El Linde del Velo']![0]!;
     assert.equal(obs.transformes[item.sceneItemId].scaleX, 2560 / 1920);
 

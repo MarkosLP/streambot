@@ -346,6 +346,40 @@ export const HUECO_CAMARA = { x: 48, y: 48, ancho: 1280, alto: 720 };
 export const urlEscena = (tipo: TipoEscena) =>
   `http://127.0.0.1:${config.panel.port}/biblioteca/overlays/escena.html?tipo=${tipo}`;
 
+export const ESCENA_RETRO = { escena: '✦ Empezando pronto · Retro', fuente: 'ESC Empezando pronto Retro' } as const;
+export const urlEscenaRetro = () => `http://127.0.0.1:${config.panel.port}/biblioteca/overlays/empezando-pronto.html`;
+
+/** Prepara la escena retro independiente sin cambiar la escena en emisión. */
+export async function crearEscenaRetro(pedir: PedirObs): Promise<string[]> {
+  const { escena, fuente } = ESCENA_RETRO;
+  const hecho: string[] = [];
+  try {
+    await pedir('CreateScene', { sceneName: escena });
+    hecho.push(`Escena «${escena}» creada.`);
+  } catch (err) {
+    if (!(err instanceof ErrorObs) || err.codigo !== YA_EXISTE) throw err;
+    hecho.push(`La escena «${escena}» ya existía: se completa sin quitar nada.`);
+  }
+  const ajustes = { width: 1920, height: 1080, ...FPS, is_local_file: false, url: urlEscenaRetro(), shutdown: true, restart_when_active: false, reroute_audio: false };
+  const { inputs } = await pedir<{ inputs: { inputName: string }[] }>('GetInputList');
+  let id: number;
+  if (inputs.some((i) => i.inputName === fuente)) {
+    await pedir('SetInputSettings', { inputName: fuente, inputSettings: ajustes, overlay: true });
+    const { sceneItems } = await pedir<{ sceneItems: { sourceName: string; sceneItemId: number }[] }>('GetSceneItemList', { sceneName: escena });
+    const anterior = sceneItems.find((i) => i.sourceName === fuente);
+    if (anterior) {
+      hecho.push(`Overlay «${fuente}» actualizado.`);
+      return hecho;
+    }
+    ({ sceneItemId: id } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: fuente, sceneItemEnabled: true }));
+  } else {
+    ({ sceneItemId: id } = await pedir<{ sceneItemId: number }>('CreateInput', { sceneName: escena, inputName: fuente, inputKind: 'browser_source', inputSettings: ajustes, sceneItemEnabled: true }));
+  }
+  await pantallaCompleta(pedir, escena, id);
+  hecho.push(`Overlay «${fuente}» añadido a pantalla completa.`);
+  return hecho;
+}
+
 /** Tipos de fuente de OBS que son una cámara (Windows, Mac, Linux). */
 const KINDS_CAMARA = ['dshow_input', 'av_capture_input', 'macos-avcapture', 'v4l2_input'];
 
@@ -546,7 +580,7 @@ export async function crearEscenaMundo(pedir: PedirObs): Promise<string[]> {
   const { inputs } = await pedir<{ inputs: { inputName: string }[] }>('GetInputList');
 
   // Apagada mientras la escena no está en pantalla: no gasta mientras juegas.
-  const ajustes = { width: 1920, height: 1080, ...FPS, is_local_file: false, url: urlMundo(), shutdown: true, restart_when_active: false, reroute_audio: false };
+  const ajustes = { width: 1920, height: 1080, ...FPS, is_local_file: false, url: urlMundo(), shutdown: true, restart_when_active: false, reroute_audio: true };
   if (!inputs.some((i) => i.inputName === fuente)) {
     const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateInput', {
       sceneName: escena, inputName: fuente, inputKind: 'browser_source', inputSettings: ajustes, sceneItemEnabled: true,
