@@ -35,6 +35,49 @@ try {
   socket.onmessage=async e=>{const m=JSON.parse(e.data);if(m.id){const p=pendientes.get(m.id);if(p){clearTimeout(p.t);pendientes.delete(m.id);m.error?p.ko(Error(JSON.stringify(m.error))):p.ok(m.result);}}else if(m.method==='Fetch.requestPaused'){const {requestId,request}=m.params;await pedir(request.url.startsWith(raiz+'/')||request.url.startsWith('data:')?'Fetch.continueRequest':'Fetch.failRequest',{requestId,...(!request.url.startsWith(raiz+'/')&&!request.url.startsWith('data:')?{errorReason:'BlockedByClient'}:{})}).catch(e=>{if(!e.message.includes('Invalid InterceptionId'))console.error('Interceptación:',e.message);});}};
   await pedir('Page.enable');await pedir('Fetch.enable',{patterns:[{urlPattern:'*'}]});
   const caso=process.argv[2]||'10';
+  if(caso==='mmo-panel') {
+    await abrir('/#/mundo',1366,768);
+    assert.equal(await evaluar("(()=>{const ids=[...document.querySelectorAll('[id]')].map(e=>e.id);return ids.length===new Set(ids).size})()"),true,'los ids del panel son únicos');
+    assert.equal(await evaluar("document.querySelector('#m-vista iframe').getAttribute('src')"),'/biblioteca/overlays/mmo.html');
+    await evaluar("document.querySelector('[data-mundo-vista=atlas]').click()");
+    assert.equal(await evaluar("document.querySelector('#m-vista iframe').getAttribute('src')"),'/biblioteca/overlays/mmo-atlas.html');
+    assert.equal(await evaluar("document.querySelector('[data-mundo-vista=atlas]').getAttribute('aria-pressed')"),'true');
+    assert.equal(await evaluar("document.querySelector('#m-demo-enlace').getAttribute('href')"),'/biblioteca/overlays/mmo-atlas.html?demo=1');
+    await evaluar("document.querySelector('#w-obs-comprobar').click()");
+    for(let i=0;i<30 && !(await evaluar("document.querySelector('#w-obs-estado').textContent.includes('No se pudo comprobar OBS')"));i++) await esperar(100);
+    assert.equal(await evaluar("document.querySelector('#w-obs-estado').textContent"),'No se pudo comprobar OBS.');
+    await esperar(1500);
+    await captura('mmo-panel-atlas');
+    await evaluar("document.querySelector('[data-mundo-vista=diorama]').click()");
+    assert.equal(await evaluar("document.querySelector('#m-vista iframe').getAttribute('src')"),'/biblioteca/overlays/mmo.html');
+    assert.equal(await evaluar("document.querySelector('#m-demo-enlace').getAttribute('href')"),'/biblioteca/overlays/mmo.html?demo=1&v=2');
+    await abrir('/#/mundo',390,844);
+    await evaluar("document.querySelector('[data-mundo-vista=atlas]').click()");
+    assert.equal(await evaluar("document.documentElement.scrollWidth<=390"),true,'el panel no desborda en móvil');
+    await esperar(1000);
+    await evaluar("document.querySelector('#m-vista').scrollIntoView({block:'center'})");
+    await esperar(1600);
+    await captura('mmo-panel-atlas-movil');
+  }
+  if(caso==='mmo-senda') {
+    await abrir('/biblioteca/overlays/mmo.html?demo=1',1920,1080);
+    await evaluar("demoAccion('explorar')");
+    assert.equal(await evaluar("document.querySelectorAll('#senda-pasos i').length"),4);
+    assert.equal(await evaluar("document.querySelectorAll('#senda-pasos i.encendido').length"),1);
+    await evaluar("demoAccion('grupo')");
+    assert.equal(await evaluar("document.querySelectorAll('#senda-pasos i').length"),12);
+    assert.equal(await evaluar("document.querySelectorAll('#senda-pasos i.encendido').length"),9);
+    assert.equal(await evaluar("document.querySelector('#aporte-vivo').textContent.includes('objetivo 12')"),true,'explica el cambio de meta');
+    await evaluar("demo.objetivo.actual++;demo.participantes.find(p=>p.nombre==='Mara').aporte++;demo.acciones.unshift({quien:'Mara',texto:'avanza por la senda.',at:new Date().toISOString()});demoPintar()");
+    assert.equal(await evaluar("document.querySelector('#aporte-vivo').textContent"),'+1 Mara');
+    assert.equal(await evaluar("document.querySelectorAll('#compania-viva figure.avanza').length"),0,'no anima el personaje de otra persona');
+    assert.equal(await evaluar("document.querySelector('#aventurero-nombre').textContent"),'Mara','el globo coincide con el aporte nuevo');
+    assert.equal(await evaluar("(()=>{const linea=document.querySelector('#senda-progreso');linea.style.transition='none';const ultimo=[...document.querySelectorAll('#senda-pasos i.encendido')].at(-1).getBoundingClientRect();return Math.abs(linea.getBoundingClientRect().right-(ultimo.left+ultimo.width/2))<2})()"),true,'la línea termina en el último paso real');
+    await captura('mmo-senda-grupo');
+    await evaluar("demo.objetivo.meta=14;demoPintar()");
+    assert.equal(await evaluar("document.querySelectorAll('#senda-pasos i').length"),14,'caben los 14 pasos del camino arriesgado');
+    await captura('mmo-senda-catorce');
+  }
   if(caso==='espectadores')for(const etiqueta of ['1','0']) {
     // Encima de un fondo del canal, para ver la placa como sobre el juego.
     await abrir(`/biblioteca/overlays/espectadores.html?demo=1&etiqueta=${etiqueta}`,640,200);

@@ -1,6 +1,6 @@
 # Atlas vivo de El Linde del Velo
 
-Estado: prototipo probado con el motor real en un servidor aislado y en OBS sin emitir, 11 de octubre de 2026. Falta probarlo con el chat de Twitch. Encargo: [ENCARGO-CLAUDE-ATLAS-VELO.md](ENCARGO-CLAUDE-ATLAS-VELO.md). Archivo: [mmo-atlas.html](../biblioteca/overlays/mmo-atlas.html). Prueba: [scripts/prueba-atlas.mjs](../scripts/prueba-atlas.mjs). No toca el motor ni el panel, y no está en ningún commit.
+Estado: prototipo probado con el motor real en un servidor aislado y en OBS sin emitir, 11 de octubre de 2026. El 12 de octubre se añadió la elección de vista previa al panel y la preparación automática de una fuente de atlas oculta al crear la escena; son cambios locales sin prueba con chat real. Encargo original: [ENCARGO-CLAUDE-ATLAS-VELO.md](ENCARGO-CLAUDE-ATLAS-VELO.md). Archivo: [mmo-atlas.html](../biblioteca/overlays/mmo-atlas.html). Prueba: [scripts/prueba-atlas.mjs](../scripts/prueba-atlas.mjs).
 
 El atlas es una segunda vista del mundo, de 1920 × 1080, pensada para emisiones largas sin webcam. Enseña la Última Lumbre y las tres tierras tras el Velo como un mapa: dónde está la compañía, qué tierras están cartografiadas, el objetivo de la salida y lo que tiene que escribir el chat. Solo lee `GET /api/mmo/estado` cada 3 s. No escribe nada ni manda mensajes al chat.
 
@@ -42,7 +42,7 @@ En las capturas reales, uno de los participantes se llama `<img src=x onerror=�
 
 Propuesta, de menos a más trabajo:
 
-1. **Segunda fuente en la escena del mundo.** Añadir `ESC Atlas del Velo` (navegador, 1920 × 1080, la URL de arriba) a `✦ El Linde del Velo`, oculta por defecto. Crid4m decide cuándo la enseña. No hace falta cambiar código. Lo haría «Crear escena en OBS» del panel o Crid4m a mano, nunca el atlas.
+1. **Segunda fuente en la escena del mundo.** «Crear escena en OBS» prepara `ESC Atlas del Velo` (navegador, 1920 × 1080, la URL de arriba) oculta por defecto al crearla. Si ya existe, conserva su visibilidad. Para enseñar el Atlas desde OBS, ocultar `ESC Linde del Velo` y mostrar `ESC Atlas del Velo`; para volver, hacer lo contrario. La elección Diorama/Atlas del panel solo cambia la vista previa; «Comprobar fuentes en OBS» lee su estado sin cambiarlo.
 2. **Alternancia en calma.** Que `mmo.html` muestre el atlas tras unos minutos de calma sin actividad y vuelva a su vista al empezar una expedición. Se puede hacer con un `<iframe>` del atlas dentro de `mmo.html` o con una acción de Streamer.bot que alterne la visibilidad de las dos fuentes. Es trabajo de Codex, porque toca `mmo.html`.
 3. **Fusión.** Llevar el mapa SVG a `mmo.html` como vista de calma. Solo merece la pena si la prueba con gente confirma que el atlas se entiende mejor.
 
@@ -190,6 +190,6 @@ Mejora pequeña sin tocar el motor: el contrato ya envía seis piezas en `memori
 
 - **Contrato:** el atlas no necesita cambios en el motor. Si se añade `expedicion_id` a `EstadoPublico`, el atlas puede usarlo en lugar de comparar región y fase (`mismaSalidaQue` y `claveResultado`).
 - **`chatConectado`:** `server.ts` lo añade y el motor ya da `detenido: 'sin-chat'` con la misma información. El atlas acepta cualquiera de los dos; si se quita uno, no se rompe.
-- **OBS:** `ESC Atlas del Velo` ya existe en `✦ El Linde del Velo` y está oculta por defecto. Si se quiere que «Crear escena en OBS» la cree automáticamente en instalaciones nuevas, habrá que añadirla a esa función.
+- **OBS:** `ESC Atlas del Velo` ya existe en `✦ El Linde del Velo` y está oculta por defecto. Desde el 12 de octubre, «Crear escena en OBS» también la prepara oculta en instalaciones nuevas; esta ruta se verificó con OBS simulado, sin tocar la escena real.
 - **Pruebas:** `scripts/prueba-atlas.mjs` es independiente de `scripts/pruebas-visuales.mjs`. Se puede dejar así o pasar a un caso `atlas` de ese script.
 - **Cuarta región:** necesitaría posición, ruta, recorte de imagen y glifo en `REGIONES` del atlas. Hasta entonces, el lateral la nombra pero el mapa no la sitúa.

@@ -3492,6 +3492,25 @@ $('r-espectadores').addEventListener('click', cargarEspectadores);
 
 const MUNDO_MODOS = { activo: ['Activo', 'ok'], pausado: ['En pausa', 'aviso'], apagado: ['Apagado', ''] };
 const MUNDO_FASES = { calma: 'En la Lumbre, esperando a que alguien escriba !explorar', expedicion: 'Expedición en marcha', resultado: 'Volviendo de la expedición' };
+const MUNDO_VISTAS = {
+  diorama: { url: '/biblioteca/overlays/mmo.html', demo: '?demo=1&v=2', titulo: 'Diorama del mundo con datos reales' },
+  atlas: { url: '/biblioteca/overlays/mmo-atlas.html', demo: '?demo=1', titulo: 'Atlas del Velo con datos reales' },
+};
+document.querySelector('.mundo-vistas').addEventListener('click', (evento) => {
+  const boton = evento.target.closest('[data-mundo-vista]');
+  const vista = MUNDO_VISTAS[boton?.dataset.mundoVista];
+  if (!vista) return;
+  for (const otro of document.querySelectorAll('[data-mundo-vista]')) {
+    const activa = otro === boton;
+    otro.setAttribute('aria-pressed', String(activa));
+    otro.classList.toggle('activo', activa);
+  }
+  const marco = $('m-vista').querySelector('iframe');
+  if (marco.getAttribute('src') !== vista.url) marco.setAttribute('src', vista.url);
+  marco.title = vista.titulo;
+  $('m-abrir-enlace').href = vista.url;
+  $('m-demo-enlace').href = `${vista.url}${vista.demo}`;
+});
 
 function pintarMundo(d) {
   const e = d.estado;
@@ -3512,7 +3531,7 @@ function pintarMundo(d) {
     filas.push(['Misión', e.region.objetivo]);
     filas.push(['Progreso', `${e.objetivo.actual} / ${e.objetivo.meta}`]);
     if (e.detenido) filas.push(['Tiempo', { 'sin-directo': 'Congelado hasta que vuelva el directo', 'bot-apagado': 'Congelado hasta que enciendas el bot', 'sin-chat': 'Congelado hasta que vuelva Streamer.bot' }[e.detenido] ?? 'Congelado']);
-    else if (e.hasta) filas.push([e.fase === 'resultado' ? 'Nueva salida' : 'El Velo se cierra', `en ${Math.max(0, Math.ceil((new Date(e.hasta) - Date.now()) / 60000))} min`]);
+    else if (e.hasta) filas.push([e.fase === 'resultado' ? 'Nueva salida posible' : 'El Velo se cierra', `en ${Math.max(0, Math.ceil((new Date(e.hasta) - Date.now()) / 60000))} min`]);
     if (e.encrucijada) {
       const [a, b] = e.encrucijada.opciones;
       filas.push(['Encrucijada', e.encrucijada.decision
@@ -3548,21 +3567,44 @@ for (const accion of ['activar', 'pausar', 'apagar']) {
   });
 }
 
-$('m-obs').addEventListener('click', async () => {
+$('w-obs-crear').addEventListener('click', async () => {
   if (!confirm(`Se creará (o completará) la escena «${$('m-escena').textContent}» en OBS.
 
 No cambia la escena que estás emitiendo ni borra nada. ¿Sigo?`)) return;
-  $('m-obs').disabled = true;
+  $('w-obs-crear').disabled = true;
   try {
     const r = await api('/api/escenas/obs', { tipo: 'mundo' });
-    $('m-obs-hecho').replaceChildren(...r.hecho.map((x) => h('li', {}, x)));
+    $('w-obs-hecho').replaceChildren(...r.hecho.map((x) => h('li', {}, x)));
     tostada('Escena del mundo lista en OBS');
+    await comprobarMundoObs();
   } catch (err) {
     tostada(err.message, true);
   } finally {
-    $('m-obs').disabled = false;
+    $('w-obs-crear').disabled = false;
   }
 });
+async function comprobarMundoObs() {
+  const boton = $('w-obs-comprobar');
+  boton.disabled = true;
+  try {
+    const d = await api('/api/mmo/obs');
+    const estado = $('w-obs-estado');
+    const nombre = { visible: 'activado', oculto: 'oculto', ausente: 'sin preparar' };
+    if (!d.conectado) estado.textContent = 'No se pudo comprobar OBS.';
+    else if (!d.escena) estado.textContent = 'La escena del mundo aún no existe en OBS.';
+    else {
+      const visibles = Number(d.diorama === 'visible') + Number(d.atlas === 'visible');
+      const nota = visibles === 2 ? ' Oculta una de las dos fuentes para elegir la vista.'
+        : visibles === 0 ? ' Ninguna vista está activa: muestra el Diorama o el Atlas.' : '';
+      estado.textContent = `En OBS: Diorama ${nombre[d.diorama]}, Atlas ${nombre[d.atlas]}. ${d.enEmision ? 'La escena está en emisión.' : 'La escena no está en emisión.'}${nota}`;
+    }
+  } catch (err) {
+    $('w-obs-estado').textContent = `No se pudo comprobar OBS: ${err.message}`;
+  } finally {
+    boton.disabled = false;
+  }
+}
+$('w-obs-comprobar').addEventListener('click', comprobarMundoObs);
 escalarOverlay.observe($('m-vista'));
 DirectoRed.sondear(() => ($('v-mundo').hidden ? undefined : cargarMundo()), 3000, false);
 

@@ -182,7 +182,9 @@ describe('soltar un cofre', () => {
     await handleEvent(mensaje('pepe'));
     await handleEvent(mensaje('ana'));
     await loot.soltarCofre({ azar: fijo(0) });
-    await new Promise((r) => setTimeout(r, 80));
+    for (let intento = 0; intento < 100 && orden.length < 4; intento++) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
     assert.deepEqual(orden, ['empieza pepe', 'acaba pepe', 'empieza ana', 'acaba ana']);
   });
 

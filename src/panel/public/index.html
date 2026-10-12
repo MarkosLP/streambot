@@ -485,14 +485,20 @@
         </article>
 
         <article class="tarjeta">
-          <header><h2>&#128444;&#65039; La escena</h2><div><a class="enlace" href="/biblioteca/overlays/mmo.html?demo=1&amp;v=2" target="_blank" rel="noopener">Probar sin directo</a> · <a class="enlace" href="/biblioteca/overlays/mmo.html" target="_blank" rel="noopener">Abrir aparte</a></div></header>
-          <div class="overlay-vista mundo-vista" id="m-vista"><iframe src="/biblioteca/overlays/mmo.html" sandbox="allow-scripts" title="Escena del mundo con datos reales" tabindex="-1"></iframe></div>
-          <div class="mundo-botones">
-            <button class="boton" type="button" id="m-obs">Crear escena en OBS</button>
+          <header><h2>✦ La escena</h2><div><a class="enlace" id="m-demo-enlace" href="/biblioteca/overlays/mmo.html?demo=1&amp;v=2" target="_blank" rel="noopener">Probar sin directo</a> · <a class="enlace" id="m-abrir-enlace" href="/biblioteca/overlays/mmo.html" target="_blank" rel="noopener">Abrir aparte</a></div></header>
+          <div class="mundo-vistas" role="group" aria-label="Vista del mundo que quieres previsualizar">
+            <button class="boton activo" type="button" data-mundo-vista="diorama" aria-pressed="true">Diorama</button>
+            <button class="boton" type="button" data-mundo-vista="atlas" aria-pressed="false">Atlas del Velo</button>
           </div>
-          <p class="nota">«Probar sin directo» abre una demo interactiva aislada: simula exploraciones, grupo, encrucijada, victoria, cierre y pausa solo en el navegador. No toca el mundo real ni manda mensajes.</p>
-          <p class="nota">Crea «<span id="m-escena">✦ El Linde del Velo</span>» con la escena a pantalla completa y tus alertas encima. Solo añade: no cambia la escena que estás emitiendo. Cuando te vayas, cambia tú a ella.</p>
-          <ul class="mundo-hecho" id="m-obs-hecho"></ul>
+          <div class="overlay-vista mundo-vista" id="m-vista"><iframe src="/biblioteca/overlays/mmo.html" sandbox="allow-scripts" title="Diorama del mundo con datos reales" tabindex="-1"></iframe></div>
+          <div class="mundo-botones">
+            <button class="boton" type="button" id="w-obs-crear">Crear escena en OBS</button>
+            <button class="boton" type="button" id="w-obs-comprobar">Comprobar fuentes en OBS</button>
+          </div>
+          <p class="nota" id="w-obs-estado" aria-live="polite">Pulsa «Comprobar fuentes en OBS» para ver qué fuente está preparada y activada.</p>
+          <p class="nota">Elegir Diorama o Atlas solo cambia esta vista previa. «Probar sin directo» abre una demo aislada: no toca el mundo real ni manda mensajes.</p>
+          <p class="nota">Al crear «<span id="m-escena">✦ El Linde del Velo</span>», prepara el Diorama y el Atlas oculto, con tus alertas encima. El Diorama aparece visible salvo que el Atlas ya lo esté. Si las fuentes ya existen, conserva su visibilidad. Para mostrar el Atlas desde OBS, oculta el Diorama y muestra el Atlas. No cambia de escena.</p>
+          <ul class="mundo-hecho" id="w-obs-hecho"></ul>
         </article>
       </div>
     </section>

@@ -563,6 +563,24 @@ export async function crearCharlaCompartida(pedir: PedirObs, origen?: string, op
  */
 export const ESCENA_MUNDO = { escena: '✦ El Linde del Velo', fuente: 'ESC Linde del Velo' } as const;
 export const urlMundo = () => `http://127.0.0.1:${config.panel.port}/biblioteca/overlays/mmo.html`;
+export const FUENTE_ATLAS_MUNDO = 'ESC Atlas del Velo';
+export const urlAtlasMundo = () => `http://127.0.0.1:${config.panel.port}/biblioteca/overlays/mmo-atlas.html`;
+
+/** Consulta las dos fuentes sin cambiar ninguna escena ni su visibilidad. */
+export async function estadoEscenaMundo(pedir: PedirObs): Promise<{
+  conectado: true; escena: boolean; enEmision: boolean; diorama: 'visible' | 'oculto' | 'ausente'; atlas: 'visible' | 'oculto' | 'ausente';
+}> {
+  const lista = await pedir<{ scenes: { sceneName: string }[]; currentProgramSceneName: string }>('GetSceneList');
+  const escena = lista.scenes.some((s) => s.sceneName === ESCENA_MUNDO.escena);
+  if (!escena) return { conectado: true, escena: false, enEmision: false, diorama: 'ausente', atlas: 'ausente' };
+  const { sceneItems } = await pedir<{ sceneItems: { sourceName: string; sceneItemEnabled: boolean }[] }>('GetSceneItemList', { sceneName: ESCENA_MUNDO.escena });
+  const estado = (nombre: string): 'visible' | 'oculto' | 'ausente' => {
+    const item = sceneItems.find((i) => i.sourceName === nombre);
+    return item ? item.sceneItemEnabled ? 'visible' : 'oculto' : 'ausente';
+  };
+  return { conectado: true, escena: true, enEmision: lista.currentProgramSceneName === ESCENA_MUNDO.escena,
+    diorama: estado(ESCENA_MUNDO.fuente), atlas: estado(FUENTE_ATLAS_MUNDO) };
+}
 
 /** Crea o completa la escena del mundo. Nunca cambia la escena en emisión ni mueve lo que ya había. */
 export async function crearEscenaMundo(pedir: PedirObs): Promise<string[]> {
@@ -575,26 +593,45 @@ export async function crearEscenaMundo(pedir: PedirObs): Promise<string[]> {
     if (!(err instanceof ErrorObs) || err.codigo !== YA_EXISTE) throw err;
     hecho.push(`La escena «${escena}» ya existía: se completa sin quitar nada.`);
   }
+
   const items = async () =>
-    (await pedir<{ sceneItems: { sourceName: string; sceneItemId: number }[] }>('GetSceneItemList', { sceneName: escena })).sceneItems;
+    (await pedir<{ sceneItems: { sourceName: string; sceneItemId: number; sceneItemEnabled: boolean }[] }>('GetSceneItemList', { sceneName: escena })).sceneItems;
   const { inputs } = await pedir<{ inputs: { inputName: string }[] }>('GetInputList');
 
   // Apagada mientras la escena no está en pantalla: no gasta mientras juegas.
   const ajustes = { width: 1920, height: 1080, ...FPS, is_local_file: false, url: urlMundo(), shutdown: true, restart_when_active: false, reroute_audio: true };
+  const atlasVisible = (await items()).some((i) => i.sourceName === FUENTE_ATLAS_MUNDO && i.sceneItemEnabled);
   if (!inputs.some((i) => i.inputName === fuente)) {
     const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateInput', {
-      sceneName: escena, inputName: fuente, inputKind: 'browser_source', inputSettings: ajustes, sceneItemEnabled: true,
+      sceneName: escena, inputName: fuente, inputKind: 'browser_source', inputSettings: ajustes, sceneItemEnabled: !atlasVisible,
     });
     await pantallaCompleta(pedir, escena, sceneItemId);
-    hecho.push(`Overlay «${fuente}» creado a pantalla completa.`);
+    hecho.push(`Overlay «${fuente}» creado a pantalla completa${atlasVisible ? ', oculto porque el Atlas está visible' : ''}.`);
   } else {
     await pedir('SetInputSettings', { inputName: fuente, inputSettings: ajustes, overlay: true });
     if ((await items()).some((i) => i.sourceName === fuente)) hecho.push(`Overlay «${fuente}» actualizado; conserva su posición.`);
     else {
-      const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: fuente, sceneItemEnabled: true });
+      const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: fuente, sceneItemEnabled: !atlasVisible });
       await pantallaCompleta(pedir, escena, sceneItemId);
-      hecho.push(`Overlay «${fuente}» añadido a pantalla completa.`);
+      hecho.push(`Overlay «${fuente}» añadido a pantalla completa${atlasVisible ? ', oculto porque el Atlas está visible' : ''}.`);
     }
+  }
+
+  // El atlas queda preparado como alternativa, oculto. No cambia lo que ve el público.
+  const ajustesAtlas = { ...ajustes, url: urlAtlasMundo(), reroute_audio: false };
+  if (!inputs.some((i) => i.inputName === FUENTE_ATLAS_MUNDO)) {
+    const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateInput', {
+      sceneName: escena, inputName: FUENTE_ATLAS_MUNDO, inputKind: 'browser_source', inputSettings: ajustesAtlas, sceneItemEnabled: false,
+    });
+    await pantallaCompleta(pedir, escena, sceneItemId);
+    hecho.push(`Atlas «${FUENTE_ATLAS_MUNDO}» creado, oculto.`);
+  } else {
+    await pedir('SetInputSettings', { inputName: FUENTE_ATLAS_MUNDO, inputSettings: ajustesAtlas, overlay: true });
+    if (!(await items()).some((i) => i.sourceName === FUENTE_ATLAS_MUNDO)) {
+      const { sceneItemId } = await pedir<{ sceneItemId: number }>('CreateSceneItem', { sceneName: escena, sourceName: FUENTE_ATLAS_MUNDO, sceneItemEnabled: false });
+      await pantallaCompleta(pedir, escena, sceneItemId);
+      hecho.push(`Atlas «${FUENTE_ATLAS_MUNDO}» añadido, oculto.`);
+    } else hecho.push(`Atlas «${FUENTE_ATLAS_MUNDO}» actualizado; conserva su visibilidad.`);
   }
 
   // Subs, bits y raids también se ven mientras estás ausente.

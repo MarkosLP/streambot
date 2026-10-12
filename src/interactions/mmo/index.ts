@@ -730,7 +730,7 @@ export function comando(texto: string, viewer: Viewer, mensajeId: string, now = 
     const memoria = `Reliquias de la Lumbre: ${e.reliquias.halladas}/${e.reliquias.total} · Crónica: ${e.cronica.capitulo === 0 ? 'prólogo' : `capítulo ${e.cronica.capitulo} de ${e.cronica.total}`}.`;
     if (e.fase === 'calma') return `El Linde del Velo · La compañía descansa en la Última Lumbre. Escribe !explorar para salir hacia ${e.region.nombre}. Basta con una persona. ${memoria}`;
     if (e.fase === 'resultado') return e.resultado?.completada
-      ? `La compañía vuelve de ${e.region.nombre} con ${e.resultado.hallazgo}. Nueva salida en breve.`
+      ? `La compañía vuelve de ${e.region.nombre} con ${e.resultado.hallazgo}. En breve podréis abrir otra salida con !explorar.`
       : `El Velo se cerró en ${e.region.nombre} con ${e.objetivo.actual}/${e.objetivo.meta}. Nadie pierde nada.`;
     const minutos = e.hasta ? Math.max(0, Math.ceil((Date.parse(e.hasta) - now) / 60_000)) : 0;
     const votacion = e.encrucijada?.decision === null && e.encrucijada.hasta

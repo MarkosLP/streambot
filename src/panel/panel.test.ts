@@ -108,7 +108,7 @@ const obsFalso: ConObs = async (trabajo) => {
         obs.entradas.find((e) => e.inputName === d.inputName)!.settings = d.inputSettings;
         return {};
       case 'GetSceneItemList':
-        return { sceneItems: obs.items[d.sceneName] };
+        return { sceneItems: obs.items[d.sceneName]?.map((i) => ({ ...i, sceneItemEnabled: i.enabled })) };
       case 'SetSceneItemEnabled':
         obs.items[d.sceneName].find((i) => i.sceneItemId === d.sceneItemId)!.enabled = d.sceneItemEnabled;
         return {};
@@ -1012,10 +1012,16 @@ describe('El Linde del Velo desde el panel', () => {
   });
 
   test('Crear en OBS: escena del mundo con el overlay y las alertas encima, sin duplicar', async () => {
+    assert.deepEqual((await pedir('GET', '/api/mmo/obs')).body,
+      { conectado: true, escena: false, enEmision: false, diorama: 'ausente', atlas: 'ausente' });
     obs.entradas.push({ inputName: 'OVL Alertas', inputKind: 'browser_source', settings: {} });
     const r = await post('/api/escenas/obs', { tipo: 'mundo' });
     assert.equal(r.status, 200);
-    assert.deepEqual(obs.items['✦ El Linde del Velo']!.map((i) => i.sourceName), ['ESC Linde del Velo', 'OVL Alertas']);
+    assert.deepEqual(obs.items['✦ El Linde del Velo']!.map((i) => i.sourceName), ['ESC Linde del Velo', 'ESC Atlas del Velo', 'OVL Alertas']);
+    assert.equal(obs.items['✦ El Linde del Velo']![1]!.enabled, false, 'el atlas se prepara oculto');
+    assert.deepEqual((await pedir('GET', '/api/mmo/obs')).body,
+      { conectado: true, escena: true, enEmision: false, diorama: 'visible', atlas: 'oculto' });
+    assert.match(obs.entradas.find((e) => e.inputName === 'ESC Atlas del Velo')!.settings.url, /\/biblioteca\/overlays\/mmo-atlas\.html$/);
     const fuente = obs.entradas.find((e) => e.inputName === 'ESC Linde del Velo')!;
     assert.match(fuente.settings.url, /\/biblioteca\/overlays\/mmo\.html$/);
     assert.equal(fuente.settings.shutdown, true, 'no gasta mientras la escena no se ve');
@@ -1025,9 +1031,29 @@ describe('El Linde del Velo desde el panel', () => {
 
     // Si alguien sube el mundo por encima de las alertas, al volver a pulsar quedan otra vez encima.
     obs.items['✦ El Linde del Velo']!.reverse();
+    obs.entradas.find((e) => e.inputName === 'ESC Atlas del Velo')!.settings.url = 'http://127.0.0.1:9999/antiguo';
     const otra = await post('/api/escenas/obs', { tipo: 'mundo' });
-    assert.deepEqual(obs.items['✦ El Linde del Velo']!.map((i) => i.sourceName), ['ESC Linde del Velo', 'OVL Alertas']);
+    assert.deepEqual(obs.items['✦ El Linde del Velo']!.map((i) => i.sourceName), ['ESC Atlas del Velo', 'ESC Linde del Velo', 'OVL Alertas']);
+    assert.equal(obs.items['✦ El Linde del Velo']!.filter((i) => i.sourceName === 'ESC Atlas del Velo').length, 1, 'no duplica el atlas');
+    assert.equal(obs.items['✦ El Linde del Velo']!.find((i) => i.sourceName === 'ESC Atlas del Velo')!.enabled, false, 'conserva el atlas oculto');
+    assert.match(obs.entradas.find((e) => e.inputName === 'ESC Atlas del Velo')!.settings.url, /\/biblioteca\/overlays\/mmo-atlas\.html$/, 'actualiza su URL');
     assert.ok(otra.body.hecho.some((x: string) => /ya existía/.test(x)));
     assert.ok(!obs.items['Escena juego']!.some((i) => i.sourceName === 'ESC Linde del Velo'), 'no toca la escena del juego');
+
+    obs.items['✦ El Linde del Velo'] = obs.items['✦ El Linde del Velo']!.filter((i) => i.sourceName !== 'ESC Atlas del Velo');
+    await post('/api/escenas/obs', { tipo: 'mundo' });
+    assert.equal(obs.items['✦ El Linde del Velo']!.find((i) => i.sourceName === 'ESC Atlas del Velo')?.enabled, false, 'vuelve a añadir el atlas oculto');
+    obs.items['✦ El Linde del Velo']!.find((i) => i.sourceName === 'ESC Atlas del Velo')!.enabled = true;
+    await post('/api/escenas/obs', { tipo: 'mundo' });
+    assert.equal(obs.items['✦ El Linde del Velo']!.find((i) => i.sourceName === 'ESC Atlas del Velo')?.enabled, true, 'conserva una elección manual visible');
+    assert.equal((await pedir('GET', '/api/mmo/obs')).body.atlas, 'visible');
+    obs.items['✦ El Linde del Velo'] = obs.items['✦ El Linde del Velo']!.filter((i) => i.sourceName !== 'ESC Linde del Velo');
+    obs.entradas = obs.entradas.filter((e) => e.inputName !== 'ESC Linde del Velo');
+    await post('/api/escenas/obs', { tipo: 'mundo' });
+    assert.equal(obs.items['✦ El Linde del Velo']!.find((i) => i.sourceName === 'ESC Linde del Velo')?.enabled, false,
+      'si el atlas está visible, reponer el Diorama no lo tapa');
+    obsCaido = true;
+    assert.deepEqual((await pedir('GET', '/api/mmo/obs')).body, { conectado: false }, 'OBS caído se informa sin error del panel');
+    obsCaido = false;
   });
 });

@@ -1353,6 +1353,8 @@ a.boton { text-decoration: none; display: inline-flex; align-items: center; }
 .mundo-avisos:empty { display: none; }
 .mundo-avisos li { padding: 8px 12px; border-radius: 9px; border: 1px solid var(--ambar); color: var(--ambar); background: color-mix(in srgb, var(--ambar) 10%, transparent); }
 .mundo-botones { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 12px; }
+.mundo-vistas { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+.mundo-vistas .boton[aria-pressed="true"] { border-color: var(--oro); color: var(--texto); background: color-mix(in srgb, var(--oro) 18%, var(--tarjeta)); }
 .mundo-vista { border-radius: 10px; border: 1px solid var(--borde); }
 .mundo-hecho { margin: 8px 0 0; padding-left: 18px; color: var(--texto-2); }
 .mundo-hecho:empty { display: none; }

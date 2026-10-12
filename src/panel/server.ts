@@ -803,6 +803,11 @@ async function atender(server: Server, sb: PuertoStreamerbot, obs: ConObs, req: 
     }
   }
 
+  if (ruta === 'GET /api/mmo/obs') {
+    const estado = await obs((pedir) => obsSetup.estadoEscenaMundo(pedir)).catch(() => ({ conectado: false as const }));
+    return json(res, 200, estado);
+  }
+
   // Crea o completa la escena en OBS. Solo cuando lo pulsas; nunca cambia la
   // escena en emisión.
   if (ruta === 'POST /api/escenas/obs') {
